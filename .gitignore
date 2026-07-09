@@ -1,0 +1,73 @@
+# ─────────────────────────────────────────────
+# loupit .gitignore
+# ─────────────────────────────────────────────
+
+# ── Secrets / env (절대 커밋 금지) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.*
+server/.env
+
+# ── Python ──
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+build/
+dist/
+.Python
+venv/
+.venv/
+env/
+server/venv/
+server/.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Node / 프론트 툴링 (필요시) ──
+node_modules/
+npm-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# ── 빌드 산출물 (빌드타임 생성물) ──
+*.gz
+# 정적 생성 회사/조합 페이지 출력 디렉토리 (빌드 결과 — 소스에서 재생성)
+dist-static/
+public/generated/
+sitemap.xml
+robots.txt.generated
+
+# ── 광고/제휴 비공개 키 (있다면) ──
+ads.local.*
+
+# ── 인프라 (Terraform) ──
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+!*.tfvars.example
+crash.log
+
+# ── OMC / Claude 로컬 상태 ──
+.omc/
+.claude/settings.local.json
+.playwright-mcp/
+
+# ── OS / 에디터 ──
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+*.bak
+*.tmp
