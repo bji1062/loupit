@@ -33,7 +33,7 @@
 | **FR-91** | `GET /api/v1/health` — 헬스체크 | 가용성 점검 | UC-A5 |
 | **FR-92** | `GET /api/v1/reference/all` — 참조 번들 | 부팅 단일 소스 + 1h 캐시 | UC-A1·UC-90 |
 | **FR-93** | `GET /api/v1/companies/search?q=` — 검색 | q 검증·최대 20건 | UC-10~12(흡수)·UC-91 |
-| **FR-94** | `GET /api/v1/companies/{comp_id}` — 회사 상세 | 프리셋 폴백 병합·404 | UC-93·UC-95 |
+| **FR-94** | `GET /api/v1/companies/{comp_id}` — 회사 상세 | 실복지 회사 객체·404 | UC-93·UC-95 |
 | **FR-95** | 공통 상태코드·오류 응답 계약 | status matrix·오류 envelope·무크래시 | UC-90·UC-91·UC-95 |
 | **FR-96** | CORS·전송 헤더·캐시 정책 | CORS 허용목록·Cache-Control 요약 | UC-A1 |
 
@@ -123,14 +123,14 @@
 | (없음) | — | — | — | 파라미터 없음. 전량 반환 |
 
 **출력·상태**
-- HTTP 200, JSON 객체. 본문 스키마 = **FR-D1**: 최상위 키 `company_types[]`(FR-D2), `benefit_presets{type_cd:[…]}`(FR-D3), `companies[{…, aliases[], benefits[]}]`(FR-D4). 회사 복지는 실데이터∪프리셋 폴백이 **서버에서 병합**되어 인라인 포함된다(§6, D6.3, `01` FR-06).
+- HTTP 200, JSON 객체. 본문 스키마 = **FR-D1**: 최상위 키 `company_types[]`(FR-D2), `benefit_presets{type_cd:[…]}`(FR-D3), `companies[{…, aliases[], benefits[]}]`(FR-D4). 회사 복지는 회사별 실데이터가 인라인 포함된다(등록 회사는 모두 실복지 보유 → 회사페이지 프리셋 폴백 불필요, §6, D6.3).
 - 프로파일러 키(`profiles`/`questions`/`job_groups`) **부재**(FR-D10, D5.4).
 - 헤더: `Cache-Control: public, max-age=3600`(§6·D4.4, NFR3), `Content-Type: application/json; charset=utf-8`.
 
 **검증·비즈니스 규칙**
 1. 응답 헤더 `Cache-Control: public, max-age=3600` 필수(브리프 §6 명시 값, NFR3). 데이터 재시드 후 최대 캐시 TTL(1시간) 내 반영(D4.4).
 2. 최상위 키는 정확히 3종이며 프로파일러 키가 나타나면 계약 위반(FR-D1·FR-D10).
-3. 각 회사의 `benefits`는 비어 있지 않다(실데이터 없으면 유형 프리셋 폴백 병합, D2.5·D2.6, `01` FR-06).
+3. 각 회사의 `benefits`는 비어 있지 않다(등록 회사는 모두 실복지 보유, D2.6).
 4. 개인화·인증에 따라 응답이 달라지지 않는다(모든 방문자 동일, 캐시 가능).
 
 **추적**: F8(`reference/all`) → F1·F2·F3 / UC-A1(부팅 로드)·UC-90(로드 실패) / NFR3(캐시)·NFR26(무크래시) / D4.4·D5.4·D6.3 / §6 / `01` FR-02·FR-06 / 본문 스키마 FR-D1~D5.
@@ -178,13 +178,13 @@
 
 ## [FR-94] `GET /api/v1/companies/{comp_id}` — 회사 상세
 
-**설명**: 단일 회사 상세 엔드포인트. **프리셋 폴백이 병합된 완전 회사 객체**를 반환한다(§6, D6.4). 응답 본문 스키마는 데이터 계약 **FR-D7**(및 회사 객체 FR-D4)이 소유한다. 미존재 식별자는 **404**로 응답한다(UC-95).
+**설명**: 단일 회사 상세 엔드포인트. **실복지가 포함된 완전 회사 객체**를 반환한다(등록 회사는 모두 실복지 보유, §6, D6.4). 응답 본문 스키마는 데이터 계약 **FR-D7**(및 회사 객체 FR-D4)이 소유한다. 미존재 식별자는 **404**로 응답한다(UC-95).
 
 **상세 동작**
 - 정상: `GET /api/v1/companies/{comp_id}`가 회사 객체를 **HTTP 200**으로 반환한다. 최소 `work_style_val`·`aliases[]`·`benefits[]`를 포함하며 회사 마스터 필드를 함께 제공한다(FR-D4/FR-D7).
-- 대안(프리셋 폴백 병합): 회사별 실데이터 복지(`TCOMPANY_BENEFIT`)가 없으면 회사의 기업유형(`comp_tp_cd`) 프리셋(`TBENEFIT_PRESET`)으로 폴백하여 `benefits`를 채운다(UC-93 1a, D2.5, `01` FR-06). 일부만 존재하면 실데이터 우선, 누락 항목만 프리셋으로 보완(병합, UC-93 3a). 폴백 복지는 배지가 프리셋 기본값(주로 est)으로 표기된다.
+- 정상(실복지 반환): 등록 회사는 모두 실데이터 복지(`TCOMPANY_BENEFIT`)를 보유하므로 회사페이지용 프리셋(`TBENEFIT_PRESET`) 폴백 병합은 불필요하다. `benefits`는 회사별 실복지로 채워지며 배지는 각 항목의 실제 출처(official/est)를 따른다(UC-93). 프리셋은 회사페이지가 아니라 비교 툴 직접 입력 모드(사용자 회사가 등록 회사에 없을 때)에서만 사용된다(UC-15/21).
 - 대안(번들 우선): SPA 런타임은 `reference/all` 번들이 동일 회사 객체를 이미 전량 인라인 보유하므로 본 엔드포인트를 개별 호출하지 않을 수 있다(USECASE 01 §4.1, FR-D7). 두 소스의 회사 객체 스키마는 동일하다. 본 엔드포인트는 상세 데이터원·계약 완결성을 위해 제공된다.
-- 예외(미존재 id): 존재하지 않는 `comp_id`(200개 회사 목록 밖)는 **404 Not Found**로 응답한다(UC-95 1a). API 경로에서는 액터 A1이며, 프론트는 오류를 흡수하여 크래시하지 않고 "회사 정보를 불러올 수 없습니다"를 표시한다(NFR26, FR-D11).
+- 예외(미존재 id): 존재하지 않는 `comp_id`(등록된 복지 보유 회사 약 96개 밖)는 **404 Not Found**로 응답한다(UC-95 1a). API 경로에서는 액터 A1이며, 프론트는 오류를 흡수하여 크래시하지 않고 "회사 정보를 불러올 수 없습니다"를 표시한다(NFR26, FR-D11).
 
 **입력**
 
@@ -196,19 +196,19 @@
 
 | 상태 | 조건 | 본문 |
 |------|------|------|
-| 200 OK | 존재하는 `comp_id` | FR-D4 회사 객체(`benefits`=실데이터∪프리셋 병합, `aliases[]`·`work_style_val` 포함) |
+| 200 OK | 존재하는 `comp_id` | FR-D4 회사 객체(`benefits`=회사별 실복지, `aliases[]`·`work_style_val` 포함) |
 | 404 Not Found | 존재하지 않는 `comp_id` | 오류 envelope(FR-95) |
 | 422 Unprocessable Entity | `comp_id`가 정수 형식 아님 | 검증 오류 envelope(FR-95) |
 
 - 헤더: `Content-Type: application/json; charset=utf-8`, `Cache-Control: public, max-age=3600`(정적-까지-재시드 데이터, D4.4 1시간 반영에 정렬한 파생 기본값; FR-96).
 
 **검증·비즈니스 규칙**
-1. 반환 회사 객체의 `benefits`는 **비어 있지 않다**(D2.6). 실데이터가 없으면 유형 프리셋으로 채운다(D2.5, `01` FR-06). 폴백은 F2 입력 초기값·F4/F5 정적 페이지·본 API에서 동일 규약(UC-93).
+1. 반환 회사 객체의 `benefits`는 **비어 있지 않다**(등록 회사는 모두 실복지 보유, D2.6). 회사페이지(F4/F5)·본 API는 실복지를 반환하며 프리셋 폴백 병합이 없다. 유형 프리셋은 비교 툴 직접 입력 모드(F2 입력 초기값)에서만 쓰인다(UC-15/21).
 2. 검색(FR-93)과 상세(FR-94)의 `comp_id`·`comp_nm`·`comp_tp_cd`·`industry_nm`·`logo_nm` 값은 동일 회사에 대해 일치한다.
 3. 정성 복지(`qual_yn=true`, `benefit_amt` NULL)는 금액 합산 대상이 아니며 정성 항목으로 표기된다(UC-93 4a, FR-D5).
 4. slug는 회사 영문식별자(`COMP_ENG_NM`)를 쓰는 **정적 페이지 경로**의 기준이고, 본 API는 정수 `comp_id`로 조회한다. 별칭·통칭·검색어는 경로가 아니라 검색(FR-93)으로 처리한다(UC-95 3a).
 
-**추적**: F8(`companies/{id}`)·F1·F4 / UC-93(프리셋 폴백 병합)·UC-95(미존재 404) / NFR26·NFR11(정적 slug canonical은 F4 소유) / D2.5·D2.6·D6.4 / §6 / `01` FR-06 / 본문 스키마 FR-D7·FR-D4.
+**추적**: F8(`companies/{id}`)·F1·F4 / UC-93(회사 실복지 상세)·UC-95(미존재 404) / NFR26·NFR11(정적 slug canonical은 F4 소유) / D2.5·D2.6·D6.4 / §6 / `01` FR-06 / 본문 스키마 FR-D7·FR-D4.
 
 ---
 
