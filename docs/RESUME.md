@@ -4,13 +4,13 @@
 
 ## 0. 한 줄 요약
 
-**loupit** = 기존 `job_change`("직장 선택 OS")를 **로그인 제거 + 광고(AdSense·제휴) 수익 모델**로 재설계하는 프로젝트. 현재 **8단계 문서 파이프라인 중 6단계(SPEC)까지 완료**, 다음은 **7단계 TASK**.
+**loupit** = 기존 `job_change`("직장 선택 OS")를 **로그인 제거 + 광고(AdSense·제휴) 수익 모델**로 재설계하는 프로젝트. 현재 **8단계 문서 파이프라인 중 7단계(TASK)까지 완료**, 다음은 **8단계 구현(TDD)**.
 
 ## 1. 지금 어디까지 왔나
 
 ```
-1 PRD ✅  2 USECASE ✅  3 FRD ✅  4 FLOW ✅  5 WIREFRAME ✅  6 SPEC ✅
-7 TASK ⬅ 다음 할 일   8 구현(TDD) ⬜
+1 PRD ✅  2 USECASE ✅  3 FRD ✅  4 FLOW ✅  5 WIREFRAME ✅  6 SPEC ✅  7 TASK ✅
+8 구현(TDD) ⬅ 다음 할 일
 ```
 
 | 단계 | 문서 | 상태 | 규모 |
@@ -22,17 +22,19 @@
 | 5 | [WIREFRAME.md](WIREFRAME.md) + WIREFRAME/ | ✅ | 8개 파일, 34개 SCR (ASCII 와이어) |
 | 6 | [SPEC.md](SPEC.md) + SPEC/ | ✅ | 12개 파일, SP-* 구현 계약 |
 | — | [RESEARCH.md](RESEARCH.md) + RESEARCH/ | ✅ | 복지 데이터 수집·스크래핑 전략 |
-| 7 | TASK.md + TASK/ | ⬜ **다음** | SPEC → 구현 작업 계획(계층·진행상태) |
-| 8 | 구현 | ⬜ | TASK를 구현할 스킬 생성 후 실행 |
+| 7 | [TASK.md](TASK.md) + TASK/ | ✅ | 14개 파일, 286 리프(계층·진행·DoD)·빌드순서 M0~M8·Tier-0 27·DG-1~4 |
+| 8 | 구현 | ⬜ **다음** | TASK를 구현할 스킬 생성 후 M0부터 실행 |
 
 **git**: 모든 진행분 커밋·push 완료. 리모트 `git@github.com:bji1062/loupit.git` (SSH). 작업 트리 clean.
 
-## 2. 다음 할 일 (7단계 TASK)
+## 2. 다음 할 일 (8단계 구현·TDD)
 
-원래 지시(8단계 프로세스 中 7):
-> `docs/SPEC.md`를 구현하기 위한 구체적인 작업 계획을 `docs/TASK.md`에 작성한다. 작업 단계는 계층구조로 나누고, 하나의 세부 작업 단계에서는 최소한의 작은 독립적 기능만 구현한다. 작업 단계별 진행상태(`- [ ]`/`- [-]`/`- [v]`)도 관리할 수 있도록 항목을 추가한다.
+7단계 TASK 완료(2026-07-10): `docs/TASK.md`(얇은 인덱스) + `docs/TASK/00~12`(빌드순서 + 12 도메인). SPEC → **286개 최소 리프**(계층 `T-nn.g.i`, 진행마커 `- [ ]`/`- [-]`/`- [v]`, DoD=구현+테스트 green). 빌드순서 M0~M8·의존 DAG·크리티컬 패스·결정게이트 DG-1~4·Tier-0 27은 [`TASK/00-빌드순서-마일스톤.md`](TASK/00-빌드순서-마일스톤.md).
 
-이후 8단계: `docs/TASK.md`를 구현할 스킬 생성 후 실행.
+원래 지시(8단계 프로세스 中 8):
+> `docs/TASK.md`를 구현할 스킬을 생성한 뒤 실행한다.
+
+착수: **M0(스캐폴드)부터** 크리티컬 패스(SP-ARCH→SP-DB→SP-SEED→SP-API→SP-GEN) 순. 각 리프는 red-green-refactor(테스트 먼저), 완료=구현+테스트 green. **결정게이트 DG-1~4는 관련 마일스톤 착수 전 AskUserQuestion으로 반드시 확인**(임의판단 금지 — §3·§7).
 
 ## 3. 반드시 지킬 규칙 (사용자 지시)
 

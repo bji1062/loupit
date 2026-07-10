@@ -18,12 +18,12 @@
 | 단계 | 문서 | 상태 |
 |------|------|------|
 | 1 | [PRD](docs/PRD.md) — 제품 요구사항 | ✅ |
-| 2 | USECASE — 유즈케이스 | 🔄 |
-| 3 | FRD — 기능 명세 | ⏳ |
-| 4 | FLOW — 화면·플로우차트 | ⏳ |
-| 5 | WIREFRAME — 와이어프레임 | ⏳ |
-| 6 | SPEC — 개발 명세서 | ⏳ |
-| 7 | TASK — 작업 계획 | ⏳ |
+| 2 | [USECASE](docs/USECASE.md) — 유즈케이스 | ✅ |
+| 3 | [FRD](docs/FRD.md) — 기능 명세 | ✅ |
+| 4 | [FLOW](docs/FLOW.md) — 화면·플로우차트 | ✅ |
+| 5 | [WIREFRAME](docs/WIREFRAME.md) — 와이어프레임 | ✅ |
+| 6 | [SPEC](docs/SPEC.md) — 개발 명세서 | ✅ |
+| 7 | [TASK](docs/TASK.md) — 작업 계획 | ✅ |
 | 8 | 구현 (TDD) | ⏳ |
 
 ## 기술 스택
