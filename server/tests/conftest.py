@@ -181,3 +181,268 @@ def seeded_db(schema_db):
 def db_name() -> str:
     """대상 스키마명(LOUPIT) — information_schema 질의에 사용."""
     return os.environ["DB_NAME"]
+
+
+# ═══════════════════════════════════════════════════════════════════════
+# SP-API-14.1 — API 계약 테스트 픽스처 (무 DB, monkeypatch 캔드 데이터)
+#
+# 위 SP-DB/SP-SEED 픽스처(db_conn·schema_db·clean_tx·seeded_db)와는 완전히
+# 독립적이다 — API 테스트는 실 MySQL을 전혀 쓰지 않고 server.database의
+# fetch_all/fetch_one을 canned 함수로 monkeypatch해 검증한다(SP-API §14).
+# ═══════════════════════════════════════════════════════════════════════
+
+import httpx  # noqa: E402
+import pytest_asyncio  # noqa: E402
+
+
+# ── 캔드 데이터: 회사 상세(comp_id=1) ────────────────────────────────────
+_DETAIL_COMPANY_ROW = {
+    "comp_id": 1,
+    "comp_eng_nm": "testco",
+    "comp_nm": "테스트기업",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "T",
+    "work_style_val": '{"remote": true, "flex": false}',
+    "careers_benefit_url": "https://testco.example/careers",
+}
+_DETAIL_ALIAS_ROWS = [{"alias_nm": "테스트기업"}, {"alias_nm": "testco"}]
+_DETAIL_BENEFIT_ROWS = [
+    {
+        "benefit_cd": "meal",
+        "benefit_nm": "식대",
+        "benefit_amt": 220,
+        "benefit_ctgr_cd": "compensation",
+        "badge_cd": "official",
+        "amt_source": "stated",
+        "qual_yn": 0,
+        "qual_desc_ctnt": None,
+        "note_ctnt": None,
+        "verified_dtm": None,
+        "expires_dtm": None,
+        "badge_src_cd": "scrape_official",
+        "badge_src_url_ctnt": "https://testco.example/careers",
+        "sort_order_no": 1,
+    },
+]
+
+# ── 캔드 데이터: 검색 풀 (이름/별칭 부분일치 대상) ───────────────────────
+_SEARCH_POOL = [
+    {
+        "comp_id": 1,
+        "comp_nm": "테스트기업",
+        "comp_tp_cd": "large",
+        "industry_nm": "IT",
+        "logo_nm": "T",
+        "_aliases": ["테스트기업", "testco"],
+    },
+    {
+        "comp_id": 3,
+        "comp_nm": "삼성전자",
+        "comp_tp_cd": "large",
+        "industry_nm": "전자",
+        "logo_nm": "S",
+        "_aliases": ["삼성", "samsung"],
+    },
+] + [
+    {
+        "comp_id": 100 + i,
+        "comp_nm": f"매치회사{i}",
+        "comp_tp_cd": "mid",
+        "industry_nm": "제조",
+        "logo_nm": "M",
+        "_aliases": [],
+    }
+    for i in range(30)  # TSE-5: LIMIT 20 상한 검증용 30건 풀
+]
+
+
+def _unescape_like(term: str) -> str:
+    """companies.py `_like_escape` + `%...%` 래핑의 역변환(테스트 매칭용)."""
+    term = term.strip("%")
+    out: list[str] = []
+    i = 0
+    while i < len(term):
+        if term[i] == "!" and i + 1 < len(term):
+            out.append(term[i + 1])
+            i += 2
+        else:
+            out.append(term[i])
+            i += 1
+    return "".join(out)
+
+
+@pytest.fixture
+def fake_data(monkeypatch):
+    """`database.fetch_all`/`fetch_one`을 SQL 텍스트 패턴 분기로 캔드 행 반환하도록 patch.
+
+    회사 검색(search)·상세(companies/{id}) 라우터가 사용하는 두 헬퍼만
+    대상으로 한다 — build_reference_bundle은 conn.cursor()를 직접 쓰므로
+    무관(빌더 유닛 테스트는 test_reference.py가 fake conn으로 별도 검증).
+    """
+    from server import database
+
+    async def _fetch_all(sql: str, params: tuple = ()):
+        if "LEFT JOIN TCOMPANY_ALIAS" in sql and "LIKE %s ESCAPE" in sql:
+            # companies/search — params = (like, like, prefix)
+            term = _unescape_like(params[0]) if params else ""
+            if not term:
+                return []
+            matched = [
+                {k: v for k, v in row.items() if k != "_aliases"}
+                for row in _SEARCH_POOL
+                if term in row["comp_nm"] or any(term in a for a in row["_aliases"])
+            ]
+            return matched[:20]  # 실 SQL의 LIMIT 20 에뮬레이션
+        if "FROM TCOMPANY_ALIAS WHERE COMP_ID = %s" in sql:
+            comp_id = params[0] if params else None
+            return list(_DETAIL_ALIAS_ROWS) if comp_id == 1 else []
+        if "FROM TCOMPANY_BENEFIT WHERE COMP_ID = %s" in sql:
+            comp_id = params[0] if params else None
+            return [dict(r) for r in _DETAIL_BENEFIT_ROWS] if comp_id == 1 else []
+        raise AssertionError(f"fake_data: 매칭되지 않은 fetch_all SQL: {sql!r}")
+
+    async def _fetch_one(sql: str, params: tuple = ()):
+        if "WHERE c.COMP_ID = %s" in sql:
+            comp_id = params[0] if params else None
+            return dict(_DETAIL_COMPANY_ROW) if comp_id == 1 else None
+        raise AssertionError(f"fake_data: 매칭되지 않은 fetch_one SQL: {sql!r}")
+
+    monkeypatch.setattr(database, "fetch_all", _fetch_all)
+    monkeypatch.setattr(database, "fetch_one", _fetch_one)
+    return {"detail": _DETAIL_COMPANY_ROW, "search_pool": _SEARCH_POOL}
+
+
+@pytest_asyncio.fixture
+async def client(fake_data, monkeypatch):
+    """ASGITransport 기반 httpx 클라이언트 — 러닝 서버·실 DB 불필요.
+
+    lifespan은 ASGITransport에서 자동 실행되지 않으므로(SP-API-14.1 참고),
+    풀 초기화 없이 `app.state.reference_cache`만 직접 채워 캐시 경로를
+    검증 가능하게 한다. `init_pool`/`close_pool`도 방어적으로 no-op patch.
+    """
+    from server import database
+    from server.cache import TTLCache
+    from server.config import get_settings
+    from server.main import create_app
+
+    async def _noop_init_pool():
+        return None
+
+    async def _noop_close_pool():
+        return None
+
+    monkeypatch.setattr(database, "init_pool", _noop_init_pool)
+    monkeypatch.setattr(database, "close_pool", _noop_close_pool)
+
+    app = create_app()
+    app.state.reference_cache = TTLCache(get_settings().reference_cache_ttl)
+
+    # raise_app_exceptions=False: Starlette의 ServerErrorMiddleware는 등록된
+    # Exception 핸들러로 500 응답을 보낸 뒤에도 원 예외를 다시 raise한다(ASGI
+    # 서버 로그용 설계). 기본값(True)이면 httpx가 그 재raise를 테스트까지
+    # 전파해 "핸들러가 응답을 보냈는데도 테스트가 예외로 실패"하는 상황이
+    # 된다. TE-1(전역 예외 핸들러) 검증을 위해 False로 응답만 관찰한다.
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+        c.app = app  # type: ignore[attr-defined]  # TR-6: 테스트에서 app.state 직접 조작용
+        yield c
+
+
+@pytest.fixture
+def bundle_stub(monkeypatch):
+    """`reference/all`이 소비하는 `get_pool`·`build_reference_bundle`을 캔드로 대체.
+
+    reference/all은 conn을 얻어 build_reference_bundle(conn)을 호출하므로,
+    풀 없이 검증하려면 get_pool()도 무해한 더미로 막아야 한다(SP-API-14.1
+    "풀 없이 reference/all·companies/{id} 검증용" 헬퍼).
+    호출횟수 카운터(calls)로 TR-5(캐시 히트)·TR-6(TTL 만료 재조립)를 검증한다.
+    """
+    from server.routers import reference as reference_router
+
+    canned_bundle = {
+        "company_types": [
+            {
+                "comp_tp_id": 1,
+                "comp_tp_cd": "large",
+                "comp_tp_nm": "대기업",
+                "growth_rate_val": 0.04,
+                "growth_label_nm": "대기업 평균 4%",
+                "stability_score_no": 90,
+            },
+        ],
+        "benefit_presets": {
+            "large": [
+                {
+                    "benefit_cd": "meal",
+                    "benefit_nm": "식대",
+                    "benefit_amt": 200,
+                    "benefit_ctgr_cd": "compensation",
+                    "badge_cd": "est",
+                    "default_checked_yn": True,
+                    "sort_order_no": 1,
+                },
+            ],
+        },
+        "companies": [
+            {
+                "comp_id": 1,
+                "comp_eng_nm": "testco",
+                "comp_nm": "테스트기업",
+                "comp_tp_cd": "large",
+                "industry_nm": "IT",
+                "logo_nm": "T",
+                "work_style_val": {"remote": True, "flex": False},
+                "careers_benefit_url": "https://testco.example/careers",
+                "aliases": ["테스트기업", "testco"],
+                "benefits": [
+                    {
+                        "benefit_cd": "meal",
+                        "benefit_nm": "식대",
+                        "benefit_amt": 220,
+                        "benefit_ctgr_cd": "compensation",
+                        "badge_cd": "official",
+                        "amt_source": "stated",
+                        "qual_yn": False,
+                        "qual_desc_ctnt": None,
+                        "note_ctnt": None,
+                        "verified_dtm": None,
+                        "expires_dtm": None,
+                        "badge_src_cd": "scrape_official",
+                        "badge_src_url_ctnt": "https://testco.example/careers",
+                        "sort_order_no": 1,
+                    },
+                ],
+            },
+        ],
+    }
+
+    state = {"calls": 0}
+
+    class _FakePoolCtx:
+        async def __aenter__(self):
+            return object()  # build_reference_bundle이 monkeypatch되어 conn 미사용
+
+        async def __aexit__(self, *exc):
+            return False
+
+    class _FakePool:
+        def acquire(self):
+            return _FakePoolCtx()
+
+    async def _fake_build_reference_bundle(conn):
+        state["calls"] += 1
+        return {
+            "company_types": [dict(t) for t in canned_bundle["company_types"]],
+            "benefit_presets": {k: [dict(p) for p in v] for k, v in canned_bundle["benefit_presets"].items()},
+            "companies": [dict(c) for c in canned_bundle["companies"]],
+        }
+
+    # `reference_router`(소비 모듈)에 바인딩된 이름을 직접 patch한다 — reference.py가
+    # `from server.database import get_pool` / `from server.services.reference import
+    # build_reference_bundle`로 import했으므로, 원본 모듈(server.database 등)이 아니라
+    # 이미 바인딩된 이 로컬 이름을 patch해야 실제 호출 시점에 반영된다.
+    monkeypatch.setattr(reference_router, "get_pool", lambda: _FakePool())
+    monkeypatch.setattr(reference_router, "build_reference_bundle", _fake_build_reference_bundle)
+
+    return state
