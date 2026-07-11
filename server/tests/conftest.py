@@ -335,6 +335,12 @@ async def client(fake_data, monkeypatch):
     monkeypatch.setattr(database, "init_pool", _noop_init_pool)
     monkeypatch.setattr(database, "close_pool", _noop_close_pool)
 
+    # API 계약 테스트 hermetic — 개발용 server/.env(CORS_ALLOW_ORIGINS)와 무관하게
+    # CORS 허용목록을 정본 기본값으로 고정한다(env var가 .env보다 우선, pydantic-settings).
+    # TCORS-1·2가 정적 오리진(loupit.co) echo·프리플라이트를 기대하므로 결정성 확보.
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", "https://loupit.co,https://www.loupit.co")
+    get_settings.cache_clear()
+
     app = create_app()
     app.state.reference_cache = TTLCache(get_settings().reference_cache_ttl)
 

@@ -34,10 +34,14 @@ def test_T3_bundle_single_source():
         "라우터가 build_reference_bundle을 재구현했거나 다른 심볼을 참조함(단일 소스 위반)"
     )
 
+    # generator는 build_reference_bundle을 generator/bundle.py에서 소비한다
+    # (`from server.services.reference import build_reference_bundle`, SP-API-7 단일 소스).
+    # build.py는 bundle.load_bundle()를 통해 간접 사용하므로(속성 재노출 없음),
+    # 단일 소스 회귀는 소비 모듈 generator.bundle의 심볼 동일성으로 검증한다(M5 착지 후 존재).
     try:
-        generator_build = importlib.import_module("generator.build")
+        generator_bundle = importlib.import_module("generator.bundle")
     except ModuleNotFoundError:
-        generator_build = None  # M5(SP-GEN) 미착수 — 단일 정의처(services.reference)만 존재하면 충족
+        generator_bundle = None  # M5(SP-GEN) 미착수 — 단일 정의처(services.reference)만 존재하면 충족
 
-    if generator_build is not None:
-        assert generator_build.build_reference_bundle is canonical
+    if generator_bundle is not None:
+        assert generator_bundle.build_reference_bundle is canonical
