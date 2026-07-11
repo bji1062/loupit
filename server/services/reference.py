@@ -74,6 +74,13 @@ async def build_reference_bundle(conn) -> dict:
         await cur.execute(_SQL_BENEFITS)
         benefits = await cur.fetchall()
 
+    # DECIMAL(5,4) growth_rate_val → float (JSON 직렬화 + FR-D 계약 float|None).
+    # 실 aiomysql DictCursor는 DECIMAL을 Decimal로 반환한다 — generator(Jinja str화)는
+    # 무해하나 API JSONResponse는 Decimal 직렬화 불가하므로 단일 소스에서 정규화한다.
+    for t in types:
+        if t.get("growth_rate_val") is not None:
+            t["growth_rate_val"] = float(t["growth_rate_val"])
+
     # 그룹핑
     presets_by_type: dict[str, list] = {}
     for p in presets:

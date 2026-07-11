@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal
 
 import pytest
 
@@ -65,7 +66,7 @@ def _builder_datasets() -> dict[str, list[dict]]:
                 "comp_tp_id": 1,
                 "comp_tp_cd": "large",
                 "comp_tp_nm": "대기업",
-                "growth_rate_val": 0.04,
+                "growth_rate_val": Decimal("0.04"),  # 실 aiomysql DECIMAL 재현
                 "growth_label_nm": "대기업 평균 4%",
                 "stability_score_no": 90,
             },
@@ -73,7 +74,7 @@ def _builder_datasets() -> dict[str, list[dict]]:
                 "comp_tp_id": 2,
                 "comp_tp_cd": "startup",
                 "comp_tp_nm": "스타트업",
-                "growth_rate_val": 0.06,
+                "growth_rate_val": Decimal("0.06"),  # 실 aiomysql DECIMAL 재현
                 "growth_label_nm": "스타트업 평균 6%",
                 "stability_score_no": 40,
             },
@@ -163,6 +164,20 @@ async def test_builder_top_level_keys_exactly_three():
     conn = _FakeConn(_builder_datasets())
     bundle = await build_reference_bundle(conn)
     assert set(bundle.keys()) == {"company_types", "benefit_presets", "companies"}
+
+
+@pytest.mark.asyncio
+async def test_builder_output_json_serializable_growth_rate_float():
+    """실 aiomysql이 DECIMAL(growth_rate_val)을 Decimal로 반환해도 번들이 JSON
+    직렬화 가능해야 한다 — 라이브 GET /reference/all 500(Decimal 직렬화 불가) 회귀 방지.
+    fake 데이터셋의 growth_rate_val은 Decimal이며, 빌더가 float로 정규화(FR-D)해야 한다."""
+    from server.services.reference import build_reference_bundle
+
+    conn = _FakeConn(_builder_datasets())
+    bundle = await build_reference_bundle(conn)
+    json.dumps(bundle)  # Decimal 잔존 시 TypeError로 실패
+    gr = bundle["company_types"][0]["growth_rate_val"]
+    assert isinstance(gr, float), f"growth_rate_val은 float여야 함(현재 {type(gr).__name__})"
 
 
 @pytest.mark.asyncio
