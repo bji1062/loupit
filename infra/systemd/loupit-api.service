@@ -1,0 +1,40 @@
+[Unit]
+Description=loupit read-only API (FastAPI/Uvicorn)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+# 리포 루트에서 실행 → `server` 패키지 import 가능(server.config 등, SP-API-1)
+WorkingDirectory=/home/ubuntu/loupit
+Environment=PATH=/home/ubuntu/loupit/server/venv/bin
+# 비밀·설정은 파일에서 주입(웹 서빙 경로 밖). '-'로 부재 허용(개발). SP-INFRA-7·SP-API-2
+EnvironmentFile=-/home/ubuntu/loupit/server/.env
+ExecStart=/home/ubuntu/loupit/server/venv/bin/uvicorn server.main:app --host 127.0.0.1 --port 8000
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStopSec=10
+KillSignal=SIGINT
+
+# ── 프로세스 하드닝(읽기전용 서비스에 맞춤) ──
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+# /home는 읽기·실행만 허용(venv 실행 가능, 쓰기 불가) — systemd 유닛은 값 뒤 인라인 주석 미지원(별도 줄)
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+
+# 로그 → journald
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=loupit-api
+
+[Install]
+WantedBy=multi-user.target

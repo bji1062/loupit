@@ -1,0 +1,10 @@
+# SP-INFRA-10.2 — 일 1회(03:00) loupit-backup.service 기동
+[Unit]
+Description=loupit 일 1회 MySQL 백업 타이머
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

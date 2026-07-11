@@ -1,0 +1,14 @@
+# SP-INFRA-10.2 — loupit MySQL 백업(mysqldump) 1회성 유닛. loupit-backup.timer가 스케줄한다.
+[Unit]
+Description=loupit MySQL 백업 (mysqldump, 14일 보관)
+After=mysql.service
+Wants=mysql.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/loupit
+# SEED_PW는 오퍼레이터 환경(별도 EnvironmentFile, server/.env에는 미상주 — SP-INFRA-6.2·7.2)
+EnvironmentFile=-/home/ubuntu/loupit/infra/env/backup.env
+ExecStart=/usr/bin/bash /home/ubuntu/loupit/infra/deploy/backup.sh
