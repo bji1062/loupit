@@ -23,6 +23,10 @@ dist/
 venv/
 .venv/
 env/
+# infra/env/ 는 파이썬 venv가 아니라 SP-INFRA-2.4 정본 산출 디렉토리(server.env.example 템플릿) —
+# 위 범용 `env/` 규칙에서 명시적으로 예외 처리한다(디렉토리 자체 + 내용물 둘 다 un-ignore 필요).
+!infra/env/
+!infra/env/**
 server/venv/
 server/.venv/
 .pytest_cache/
