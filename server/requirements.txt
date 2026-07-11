@@ -1,0 +1,19 @@
+# loupit server 의존성 — SP-ARCH-7 버전 pin.
+# 인증 라이브러리 사용 금지(로그인/회원 부재, INV-1·NFR16·NFR20):
+#   python-jose[cryptography] · passlib[bcrypt] · smtplib/SMTP · OAuth 클라이언트 — 전면 제거.
+
+# --- API 런타임 ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+aiomysql==0.2.0
+pydantic==2.10.4
+python-dotenv==1.0.1
+
+# --- 테스트 (개발 로컬 + 릴리스 게이트) ---
+pytest==8.3.5
+httpx==0.28.1
+pytest-asyncio==0.24.0
+
+# --- 조건부 (DG-4 미해소): MySQL caching_sha2_password 인증 사용 시 필요.
+#     mysql_native_password면 생략 가능. AskUserQuestion 확정 후 주석 해제.
+# cryptography>=42.0.0

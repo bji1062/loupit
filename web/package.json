@@ -1,0 +1,10 @@
+{
+  "name": "loupit-web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "loupit 무빌드 바닐라 JS 프론트. type:module은 node:test ESM 해석 전용(브라우저는 <script type=module>).",
+  "scripts": {
+    "test": "node --test"
+  }
+}
