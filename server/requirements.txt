@@ -13,7 +13,7 @@ python-dotenv==1.0.1
 pytest==8.3.5
 httpx==0.28.1
 pytest-asyncio==0.24.0
+pymysql>=1.1,<1.2       # SP-DB/SP-SEED 테스트(동기 DB 접속)
 
-# --- 조건부 (DG-4 미해소): MySQL caching_sha2_password 인증 사용 시 필요.
-#     mysql_native_password면 생략 가능. AskUserQuestion 확정 후 주석 해제.
-# cryptography>=42.0.0
+# --- DG-4 확정(2026-07-11): MySQL caching_sha2_password 인증 → cryptography 포함 ---
+cryptography>=42.0.0
