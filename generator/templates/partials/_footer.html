@@ -1,0 +1,9 @@
+{# _footer.html — 전역 푸터. 정책 4종 링크는 SP-POL 정본 상수
+   `POLICY_FOOTER_LINKS`를 렌더 시 `footer_links` 컨텍스트로 순회한다
+   (PC-5 소비 계약, SP-POL-9.1). #}
+<nav aria-label="정책 링크" class="policy-links">
+{% for label, route in footer_links %}
+  <a href="{{ route }}">{{ label }}</a>
+{% endfor %}
+</nav>
+<p class="copyright">&copy; {{ cfg.site_name }}</p>

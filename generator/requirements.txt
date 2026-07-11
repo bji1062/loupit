@@ -1,3 +1,4 @@
 # loupit generator 의존성 — SP-ARCH-7 버전 pin. 빌드타임 정적 생성기(사용자 트래픽 무관).
 Jinja2==3.1.4          # autoescape=True (NFR21 XSS)
 pytest==8.3.5          # 생성물 검증(fake 번들)
+aiomysql==0.2.0         # generator/bundle.py load_bundle() 실 DB 경로(server/requirements.txt와 동일 pin)

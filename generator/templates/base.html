@@ -1,0 +1,23 @@
+{# base.html — 전 페이지 상속 골격(SP-GEN-4.2). <html lang="ko">·head 필수요소·
+   랜드마크(header/nav/main/footer, NFR13)·본문은 JS 없이 완성(NFR12·24) —
+   <script>는 광고/enhancement 전용이며 본문 표시·CTA를 막지 않는다. #}
+<!doctype html>
+<html lang="{{ cfg.lang }}">
+<head>
+{% block head %}
+{% include "partials/_head_meta.html" %}
+{% block jsonld %}{% endblock %}
+{% endblock %}
+</head>
+<body>
+<header>
+{% include "partials/_header.html" %}
+</header>
+<main>
+{% block main %}{% endblock %}
+</main>
+<footer>
+{% include "partials/_footer.html" %}
+</footer>
+</body>
+</html>

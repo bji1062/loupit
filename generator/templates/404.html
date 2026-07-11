@@ -1,0 +1,9 @@
+{# 404.html — 오류 안내(SCR-09). in_sitemap=False(Page 생성 시 지정). #}
+{% extends "base.html" %}
+{% block main %}
+<article class="not-found">
+  <h1>페이지를 찾을 수 없습니다</h1>
+  <p>요청하신 페이지가 존재하지 않거나 이동되었습니다. <a href="/">홈으로 돌아가기</a> 또는
+     <a href="{{ cfg.compare_path }}">비교하기</a>를 이용해 주세요.</p>
+</article>
+{% endblock %}

@@ -1,0 +1,36 @@
+{# company.html — 회사 상세 본문(SP-GEN-5): 기업정보 G2 + 근무형태 G3 +
+   복지표 G4 + CTA C1 + 면책 B6 + 광고 슬롯 content_mid/content_bottom. #}
+{% extends "base.html" %}
+{% from "partials/_ad_slot.html" import ad_slot %}
+{% from "partials/_benefit_table.html" import benefit_table %}
+{% block jsonld %}{% include "partials/_jsonld_org.html" %}{% endblock %}
+{% block main %}
+<article class="company-page">
+  <h1>{{ comp_nm }}</h1>
+  <section class="company-info">
+    {% if industry_nm %}<p class="industry">{{ industry_nm }}</p>{% endif %}
+    {% if comp_tp_nm %}<p class="company-type">{{ comp_tp_nm }}</p>{% endif %}
+    {% if logo_nm %}<p class="logo-mono" aria-hidden="true">{{ logo_nm }}</p>{% endif %}
+    {% if stability is not none %}<p class="stability">안정성 지표 {{ stability }}</p>{% endif %}
+    {% if growth_label %}<p class="growth">{{ growth_label }}</p>{% endif %}
+  </section>
+  {% if work_style %}
+  <section class="work-style">
+    <h2>근무형태</h2>
+    <ul>
+    {% for k, v in work_style %}
+      <li>{{ k | ws_label }} 제공</li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  <section class="benefits">
+    <h2>복지 항목</h2>
+    {{ benefit_table(benefit_groups) }}
+  </section>
+  <p class="cta"><a href="{{ compare_href }}">이 회사로 비교하기</a></p>
+  {{ ad_slot("content_mid", 250, cfg) }}
+  {% include "partials/_disclaimer.html" %}
+  {{ ad_slot("content_bottom", 250, cfg) }}
+</article>
+{% endblock %}

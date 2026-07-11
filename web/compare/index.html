@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- web/compare/index.html — SCR-02 SPA 셸(SP-FE-2). 무빌드. app.js가 나머지 모듈을 import한다. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>연봉·복지 비교 — loupit</title>
+  <meta name="description" content="두 회사의 실효연봉·복지·워라밸·성장성을 한 화면에서 비교합니다. 로그인 없이 무료로 사용하세요.">
+  <link rel="canonical" href="/compare">
+  <meta name="robots" content="noindex, follow"> <!-- 상태 의존 SPA — 인덱싱은 정적 페이지(SP-GEN)가 담당 -->
+  <link rel="stylesheet" href="/assets/css/styles.css">
+</head>
+<body data-page-type="input"> <!-- 기본 input(무광고, SP-ADS-9.1). report 뷰 진입 시 app.js가 mountAds('result') 명시 호출 -->
+<header data-global>
+  <a class="skip-link" href="#main-heading">본문 바로가기</a>
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand">loupit</a>
+    <a href="/privacy">개인정보처리방침</a>
+  </nav>
+</header>
+
+<main id="app" hidden> <!-- JS 부팅 성공 시 hidden 해제(PE-1) -->
+  <h1 id="main-heading" class="sr-only">연봉·복지 비교</h1>
+
+  <section id="view-search" class="view" data-screen="search">
+    <h2>비교할 두 직장을 선택하세요</h2>
+    <div class="search-slot" data-slot="a">
+      <label for="search-input-a">현재 직장(A)</label>
+      <input id="search-input-a" type="text" autocomplete="off" placeholder="회사명 검색">
+      <ul id="cand-a" class="cand-list" role="listbox" aria-label="A 후보"></ul>
+      <p class="search-empty" data-slot="a" hidden>검색 결과가 없습니다. 직접 입력으로 진행할 수 있습니다.</p>
+      <p class="search-error" data-slot="a" hidden>검색에 실패했습니다. <button type="button" data-retry="a">다시 시도</button></p>
+    </div>
+    <div class="search-slot" data-slot="b">
+      <label for="search-input-b">이직 후보(B)</label>
+      <input id="search-input-b" type="text" autocomplete="off" placeholder="회사명 검색">
+      <ul id="cand-b" class="cand-list" role="listbox" aria-label="B 후보"></ul>
+      <p class="search-empty" data-slot="b" hidden>검색 결과가 없습니다. 직접 입력으로 진행할 수 있습니다.</p>
+      <p class="search-error" data-slot="b" hidden>검색에 실패했습니다. <button type="button" data-retry="b">다시 시도</button></p>
+    </div>
+  </section>
+
+  <section id="view-input" class="view" data-screen="input" hidden>
+    <h2>비교 입력</h2>
+    <div id="input-slot-a" class="input-slot" data-slot="a"></div>
+    <div id="input-slot-b" class="input-slot" data-slot="b"></div>
+    <div id="priority-picker"></div>
+    <button id="btn-compare" type="button">비교하기</button>
+  </section>
+
+  <section id="view-report" class="view" data-screen="report" hidden>
+    <h2>비교 리포트</h2>
+    <div id="report-body"></div>
+    <!-- SP-ADS-9.2: report 뷰 하단 절제 광고 슬롯 정확히 1개(판정 상단·중간 삽입 금지) -->
+    <div data-ad-position="report_bottom"></div>
+    <div data-affiliate-host></div>
+    <button id="btn-edit-input" type="button">입력 수정</button>
+    <button id="btn-new-search" type="button">새 비교</button>
+  </section>
+
+  <div id="boot-error" hidden> <!-- FR-E1 참조 로드 실패 재시도 UI -->
+    <p>비교 도구를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.</p>
+    <button id="btn-boot-retry" type="button">다시 시도</button>
+  </div>
+</main>
+
+<!-- SP-ADS-9.1 동의 배너(전역, 공통 파셜). 최초 로드 시 initConsentBanner()가 hidden 상태를 결정. -->
+<div id="consent-banner" hidden>
+  <p>맞춤형 광고 표시에 동의하시겠습니까? <a href="/ads">광고·제휴 고지</a> · <a href="/privacy">개인정보처리방침</a></p>
+  <button type="button" data-consent="grant">동의</button>
+  <button type="button" data-consent="deny">거부</button>
+</div>
+
+<noscript id="nojs"> <!-- SCR-94 비-JS 폴백: 정적 안내 + 정적 콘텐츠 링크(NFR12·NFR24) -->
+  <p>비교 도구는 자바스크립트가 필요합니다. 회사 정보는 아래 정적 페이지에서 확인할 수 있습니다.</p>
+  <ul>
+    <li><a href="/">loupit 소개로 이동</a></li>
+    <li><a href="/privacy">개인정보처리방침</a></li>
+  </ul>
+  <!-- 개별 회사 상세(/company/*)·인기 조합(/vs/*) 링크는 SP-GEN(05) 생성물에서 목록으로 채워진다 -->
+</noscript>
+
+<footer data-global>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+    <a href="/ads">광고·제휴 고지</a>
+  </nav>
+  <p class="disclaimer">본 서비스의 복지·연봉 정보는 참고용이며 실제와 다를 수 있습니다.</p>
+</footer>
+
+<script type="module" src="/assets/js/app.js" defer></script>
+</body>
+</html>

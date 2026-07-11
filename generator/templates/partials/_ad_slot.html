@@ -1,0 +1,7 @@
+{# _ad_slot.html — 광고 슬롯 자리·표기·CLS 예약(SP-GEN-8). 자리·예약·"광고"
+   표기만 소유 — 실 콘텐츠는 SP-ADS `ads.js`가 런타임에 주입한다(NFR24). #}
+{% macro ad_slot(slot_name, h, cfg) -%}
+<aside class="ad-slot" data-slot="{{ slot_name }}" data-ad-client="{{ cfg.adsense_client_id }}" style="min-height:{{ h }}px">
+  <span class="ad-label">광고</span>
+</aside>
+{%- endmacro %}

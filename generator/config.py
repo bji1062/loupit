@@ -1,19 +1,18 @@
 """generator/config.py — 빌드타임 설정 상수 소스.
 
-SP-GEN(07 정적 생성기, M5)이 소유하는 파일이다. SP-GEN이 아직 착수되지
-않은 시점(M4)에 SP-POL(09 정책 페이지)이 `build_policy_docs(cfg)` 호출에
-필요한 설정 키를 요구하므로(SP-POL-2.2), 본 파일은 그 3개 정책 키만 담아
-최소로 신설한다. SP-GEN 착수 시 템플릿/출력 경로 등 추가 설정으로 확장된다
-(SP-ARCH-6 `generator/` 하위 파일 추가 허용).
+SP-GEN(07 정적 생성기, M5) 소유 파일. M4 시점에는 SP-POL(09 정책 페이지)이
+`build_policy_docs(cfg)` 호출에 필요한 정책 설정 3키만 담고 있었다. M5(SP-GEN)
+착수로 사이트 상수(오리진·OG·AdSense placeholder·경로) 전체를 추가한다
+(SP-GEN-1.3, SP-ARCH-6 `generator/` 하위 파일 추가 허용).
 
 시크릿 부재(NFR22): DB 자격·PAT·실 AdSense client id를 포함하지 않는다.
-`policy_contact` 실값은 운영자가 배포 시 환경변수로 주입하며 저장소에
-커밋하지 않는다.
+`policy_contact`·`adsense_client_id` 실값은 운영자가 배포 시 환경변수로
+주입하며 저장소에 커밋하지 않는다.
 """
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
@@ -34,6 +33,29 @@ class GenConfig:
         "POLICY_LAST_MODIFIED", "{게시 시 운영자 확정}"
     )
     legal_reviewed: bool = os.environ.get("POLICY_LEGAL_REVIEWED", "false") == "true"
+
+    # SP-GEN-1.3 사이트 상수 (FR-50, NFR22, SP-ARCH-6)
+    site_origin: str = os.environ.get("SITE_ORIGIN", "https://loupit.co")
+    out_dir: str = os.environ.get("GEN_OUT_DIR", "web/dist")
+    default_og_image: str = "/assets/og-default.png"  # 사이트 기본 공유 이미지(회사별 없음, FR-55)
+    adsense_client_id: str = os.environ.get(
+        "ADSENSE_CLIENT_ID", "ca-pub-XXXXXXXXXXXXXXXX"
+    )  # placeholder(NFR22)
+    compare_path: str = "/compare"  # CTA 진입 경로(SP-FE 셸)
+    site_name: str = "loupit"
+    lang: str = "ko"
+    desc_max: int = 155  # meta description 절단 상한
+    # sitemap에 포함되는 비-생성 정적 URL(랜딩 등). /compare(툴 셸)는 색인 대상 제외.
+    extra_sitemap_paths: tuple = ("/",)
+    # 정책 페이지 4종 (문안 소유 = SP-POL, 렌더·SEO = 본 생성기)
+    policy_pages: tuple = field(
+        default=(
+            ("privacy", "개인정보처리방침"),
+            ("terms", "이용약관"),
+            ("disclaimer", "데이터 정확성 면책"),
+            ("ads", "광고·제휴 고지"),
+        )
+    )
 
 
 CFG = GenConfig()

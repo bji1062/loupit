@@ -1,0 +1,57 @@
+{# policy.html — 정책 4종 shell (SP-GEN-1.1·4.2, SP-POL 문안 소비). 구조화
+   `sections` 순회 렌더 + 초안 배너 + 정정 섹션 + 무광고 표식. 문안 원문은
+   `PolicySection.paragraphs`로 삽입되며 autoescape만 적용(`|safe` 없음,
+   PC-13 계약). #}
+{% extends "base.html" %}
+{% block main %}
+<article class="policy-page">
+  <h1>{{ title }}</h1>
+
+  {% if draft %}
+  <aside class="policy-draft" role="note">⚠ {{ draft_banner }}</aside>
+  {% endif %}
+
+  {% if sections %}
+  <nav class="policy-toc" aria-label="목차">
+    <ul>
+    {% for s in sections %}<li><a href="#{{ s.anchor }}">{{ s.toc_label }}</a></li>{% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% for s in sections %}
+  <section id="{{ s.anchor }}">
+    <h2>{{ s.heading }}</h2>
+    {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+    {% if s.cross_route %}<p><a href="{{ s.cross_route }}">자세히 보기</a></p>{% endif %}
+  </section>
+  {% endfor %}
+
+  {% if show_correction %}
+  <section class="correction" id="correction">
+    <h2>정정·문의</h2>
+    {% if policy_contact_href %}
+    <p><a href="{{ policy_contact_href }}" rel="nofollow">{{ policy_contact }}</a></p>
+    {% else %}
+    <p>{{ policy_contact }}</p>
+    {% endif %}
+    <p class="sla">정정 요청은 접수 후 검토를 거쳐 다음 빌드에 반영됩니다. 즉시 반영되지 않으며 배포 주기에 따릅니다.</p>
+  </section>
+  {% endif %}
+
+  {% if ads_none %}
+  <p class="ads-none-notice">이 페이지에는 광고가 없습니다.</p>
+  {% endif %}
+
+  {% if related %}
+  <section class="related" aria-label="관련 문서">
+    <h2>관련 문서</h2>
+    <ul>
+    {% for label, route in related %}<li><a href="{{ route }}">{{ label }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <p class="last-modified">최종 수정일: {{ last_modified }}</p>
+</article>
+{% endblock %}

@@ -1,0 +1,7 @@
+{
+  "combinations": [
+    { "a": "samsung_elec", "b": "sk_hynix", "note": "반도체 경쟁사" },
+    { "a": "naver", "b": "kakao", "note": "IT 플랫폼" },
+    { "a": "hyundai_mobis", "b": "kia", "note": "완성차·부품" }
+  ]
+}

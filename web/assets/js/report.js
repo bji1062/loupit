@@ -1,0 +1,286 @@
+// web/assets/js/report.js — 리포트 DOM 렌더(SP-FE-9.4, FR-40·41·42·45, NFR21, SP-ENGINE-2.2·13).
+// 구 SP-RPT 대역 흡수. 엔진 calc.js는 import하지 않는다(값은 이미 계산됨) — dom.js·store.js만 사용.
+import { el, safeUrl } from './dom.js';
+import { recent } from './store.js';
+
+// 9카테고리 표시 라벨(SP-GEN CATEGORY_LABEL과 동일 어휘 사용 — 화면 간 용어 일관성).
+const CATEGORY_LABEL = {
+  compensation: '보상', flexibility: '유연성', work_env: '근무환경', time_off: '휴가',
+  health: '건강', family: '가족', growth: '성장', leisure: '여가', perks: '복리후생',
+};
+const AXIS_LABEL = { salary: '연봉', wlb: '워라밸', benefits: '복지', brand: '브랜드' };
+
+// ── 경고 배너 코드→문구 매핑(본 절 소유, 엔진은 코드만 반환) ────────────────
+export const WARN_COPY = {
+  eff_shrink: '연봉이 올라도 복지 차이 때문에 실질 보상 차이가 줄어듭니다.',
+  both_inclusive: '양측 모두 포괄임금이라 야근수당이 반영되지 않았습니다.',
+  inclusive_a: '현재 직장은 포괄임금이라 야근수당이 반영되지 않았습니다.',
+  inclusive_b: '이직처는 포괄임금이라 야근수당이 반영되지 않았습니다.',
+};
+export function warnCopy(code) { return WARN_COPY[code] || ('알 수 없는 안내(' + code + ')'); } // 미지 코드 방어
+
+function slotLabel(slot, ctx) {
+  const m = ctx.matched && ctx.matched[slot];
+  if (m && m.comp_nm) return m.comp_nm;
+  if (ctx.labels && ctx.labels[slot]) return ctx.labels[slot];
+  return '직접 입력';
+}
+
+// ── T-06.11.2 renderVdCard — 판정카드·승자색(클래스만)·tie/limited ─────────
+function perspText(p) {
+  if (p.winner === 'tie') return p.label + ': 거의 비슷합니다'; // tie/근소차 단정 회피(UC-33 3a)
+  return p.label + ' 우위: ' + (p.winner === 'a' ? '현재 직장' : '이직처');
+}
+
+function renderSacrificeNote(sacrifice) {
+  if (!sacrifice) return null;
+  if (!sacrifice.ok) return el('p', { class: 'vd-sacrifice-note vd-sacrifice-note--na', text: '희생요소 값을 산출할 수 없습니다(입력 부족).' });
+  return el('p', { class: 'vd-sacrifice-note', text: (AXIS_LABEL[sacrifice.axis] || sacrifice.axis) + ' 희생 비용이 산출되었습니다.' });
+}
+
+// 색은 SP-DSN 토큰(--green/--red/--t3/--purple)이 CSS에서 클래스에 매핑; 본 절은 클래스명만 부여.
+export function renderVdCard(vdCard, mountEl, opts = {}) {
+  mountEl.replaceChildren(); // 멱등(FR-42 curPri 전환 시 판정카드만 재호출 가능, RP-5)
+  const card = el('div', { class: 'vd-card', 'data-axis': vdCard.axis });
+  card.append(el('h3', { class: 'vd-axis-label', text: (AXIS_LABEL[vdCard.axis] || vdCard.axis) + ' 비교' }));
+  for (const p of [vdCard.p1, vdCard.p2]) {
+    const persp = el('div', {
+      class: 'vd-persp vd-persp--' + p.winner + (vdCard.axis === 'brand' ? ' vd-persp--brand' : ''),
+      'data-winner': p.winner,
+    });
+    persp.append(el('span', { class: 'vd-persp-label', text: p.label }));
+    persp.append(el('span', { class: 'vd-persp-text', text: perspText(p) }));
+    card.append(persp);
+  }
+  if (vdCard.tie) card.append(el('p', { class: 'vd-tie-note', text: '이 축은 근소한 차이라 단정하기 어렵습니다.' }));
+  if (vdCard.axis === 'brand' && vdCard.limited) {
+    card.append(el('p', { class: 'vd-limited-note', text: '한 회사 미선택 — 브랜드 축 판정이 제한됩니다.' }));
+  }
+  const sacNote = renderSacrificeNote(opts.sacrifice);
+  if (sacNote) card.append(sacNote);
+  mountEl.append(card);
+  return mountEl;
+}
+
+// ── T-06.11.3 renderCatDelta — 9카테고리 델타표(고정 순서는 엔진 catDelta가 보장) ──
+export function renderCatDelta(catDelta, mountEl) {
+  mountEl.replaceChildren();
+  const table = el('table', { class: 'cat-delta-table' });
+  const thead = el('thead');
+  const headRow = el('tr');
+  headRow.append(el('th', { text: '카테고리' }), el('th', { text: '현재 직장' }), el('th', { text: '이직처' }), el('th', { text: '차이' }));
+  thead.append(headRow);
+  table.append(thead);
+  const tbody = el('tbody');
+  for (const row of (catDelta || [])) {
+    const tr = el('tr', { 'data-ctgr': row.ctgr });
+    tr.append(
+      el('td', { class: 'cat-delta-nm', text: CATEGORY_LABEL[row.ctgr] || row.ctgr }),
+      el('td', { class: 'cat-delta-a', text: String(row.sumA) }),
+      el('td', { class: 'cat-delta-b', text: String(row.sumB) }),
+      el('td', { class: 'cat-delta-diff', text: String(row.delta) }),
+    );
+    tbody.append(tr);
+  }
+  table.append(tbody);
+  mountEl.append(table);
+  return mountEl;
+}
+
+// ── T-06.11.4 renderBands — 항목 배지·밴드 표시·safeUrl 출처(FR-41) ────────
+function badgeLabel(item, now) {
+  const expired = item.expires_dtm != null && Date.parse(item.expires_dtm) < now;
+  if (expired) return '만료'; // RP-2 만료 경고색
+  return item.badge_cd === 'official' ? '공식' : '추정';
+}
+function badgeClass(item, now) {
+  const expired = item.expires_dtm != null && Date.parse(item.expires_dtm) < now;
+  if (expired) return 'badge badge--expired';
+  return item.badge_cd === 'official' ? 'badge badge--official' : 'badge badge--est';
+}
+
+export function renderBands(slotResult, benItems, mountEl, now = Date.now()) {
+  mountEl.replaceChildren();
+  const list = el('ul', { class: 'band-list' });
+  for (const item of (benItems || [])) {
+    const li = el('li', { class: 'band-item' });
+    li.append(el('span', { class: 'band-item-nm', text: item.benefit_nm })); // RP-4 textContent
+    li.append(el('span', { class: badgeClass(item, now), text: badgeLabel(item, now) }));
+    if (item.badge_src_url_ctnt) {
+      const href = safeUrl(item.badge_src_url_ctnt); // RP-3: http/https만 링크화
+      if (href) li.append(el('a', { class: 'band-src', href, target: '_blank', rel: 'noopener', text: '출처' }));
+      else li.append(el('span', { class: 'band-src band-src--unsafe', text: '출처(비표시)' }));
+    }
+    list.append(li);
+  }
+  mountEl.append(list);
+  if (slotResult && Array.isArray(slotResult.totalRange)) {
+    const [lo, hi] = slotResult.totalRange; // RP-1: 표시만, 계수 재계산 금지
+    mountEl.append(el('div', { class: 'band-total', text: '불확실성 범위: ' + lo + ' ~ ' + hi + ' 만원' }));
+  }
+  return mountEl;
+}
+
+// ── T-06.11.6 최근 비교 저장/불러오기 UI(리포트 하단, RP-6) ────────────────
+// RecentComparison의 input/result 필드 구성은 FR-43(FRD 06) 소유 — 본 모듈은 렌더+봉투 연동만.
+function slotSummary(state, slot) {
+  const m = state.matched && state.matched[slot];
+  if (m) return { comp_id: m.comp_id, comp_nm: m.comp_nm };
+  return { comp_id: null, comp_nm: null, comp_tp_cd: (state.chosenType && state.chosenType[slot]) || null };
+}
+
+function genId() {
+  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function') return globalThis.crypto.randomUUID();
+  return Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+
+export function buildRecentRecord(state, report, ctx = {}) {
+  const a = slotSummary(state, 'a'), b = slotSummary(state, 'b');
+  return {
+    id: ctx.id || genId(),
+    savedAt: new Date().toISOString(),
+    label: (a.comp_nm || '직접 입력') + ' vs ' + (b.comp_nm || '직접 입력'),
+    slots: { a, b },
+    input: {
+      salS: state.salS, selectedRate: state.selectedRate, cmtS: state.cmtS,
+      wsState: state.wsState, curPri: state.curPri, curSacrifice: state.curSacrifice,
+      chosenType: state.chosenType, inputMode: state.inputMode,
+    },
+    result: {
+      priAxis: (report && report.vdCard && report.vdCard.axis) || null,
+      winner: (report && report.vdCard && report.vdCard.p1 && report.vdCard.p1.winner) || null,
+      effMidDiff: (report && report.deltas) ? report.deltas.effMid : null,
+    },
+  };
+}
+
+export function saveRecentComparison(state, report, ctx = {}) {
+  const record = buildRecentRecord(state, report, ctx);
+  return recent.save(record) ? record : null; // FR-44: 저장 불가 시 false→null(무크래시)
+}
+
+// 복원된 문자열(label 등)은 신뢰 불가로 간주해 el({text})로만 삽입(L-6·FR-45).
+export function renderRecentUI(mountEl, ctx = {}) {
+  const { listFn = recent.list, onRestore, onRemove } = ctx;
+  mountEl.replaceChildren();
+  const section = el('div', { class: 'rp-recent' });
+  section.append(el('h3', { text: '최근 비교' }));
+  const items = listFn();
+  if (!items.length) {
+    section.append(el('p', { class: 'rp-recent-empty', text: '저장된 비교가 없습니다.' }));
+  } else {
+    const ul = el('ul', { class: 'rp-recent-list' });
+    for (const r of items) {
+      const li = el('li', { class: 'rp-recent-item', 'data-id': r.id });
+      li.append(el('span', { class: 'rp-recent-label', text: r.label || '' }));
+      const restoreBtn = el('button', { type: 'button', class: 'rp-recent-restore', text: '불러오기' });
+      restoreBtn.addEventListener('click', () => { if (typeof onRestore === 'function') onRestore(r); });
+      const removeBtn = el('button', { type: 'button', class: 'rp-recent-remove', text: '삭제' });
+      removeBtn.addEventListener('click', () => {
+        recent.removeById(r.id);
+        if (typeof onRemove === 'function') onRemove(r.id);
+        renderRecentUI(mountEl, ctx); // 재렌더(멱등)
+      });
+      li.append(restoreBtn, removeBtn);
+      ul.append(li);
+    }
+    section.append(ul);
+  }
+  mountEl.append(section);
+  return mountEl;
+}
+
+// ── T-06.11.1 renderReport — 골격·멱등 재구성·카드 순서(FR-40) ─────────────
+function commuteText(commute, ctx) {
+  if (!commute || (!commute.a && !commute.b)) return null; // 통근 미입력(0)이면 생략
+  const winnerNm = commute.winner === 'tie' ? '동일' : slotLabel(commute.winner, ctx);
+  return '편도 통근 ' + commute.a + '분 vs ' + commute.b + '분 — 더 짧음: ' + winnerNm;
+}
+
+export function renderReport(report, mountEl, ctx = {}) {
+  mountEl.replaceChildren(); // 멱등 재구성(재호출 시 전체 재빌드)
+
+  // 1) 판정 카드
+  const vdSection = el('section', { class: 'rp-block rp-vdcard' });
+  mountEl.append(vdSection);
+  renderVdCard(report.vdCard, vdSection, { sacrifice: report.sacrifice });
+
+  // 2) 총보상 카드 + 불확실성 밴드
+  const totalSection = el('section', { class: 'rp-block rp-total' });
+  totalSection.append(el('h3', { text: '총보상 비교' }));
+  for (const slot of ['a', 'b']) {
+    const r = report[slot];
+    const row = el('div', { class: 'rp-total-slot', 'data-slot': slot });
+    row.append(el('span', { class: 'rp-slot-label', text: slotLabel(slot, ctx) }));
+    row.append(el('span', { class: 'rp-slot-total', text: r.total + ' 만원' }));
+    totalSection.append(row);
+    const bandBody = el('div', { class: 'rp-band-body', 'data-slot': slot });
+    totalSection.append(bandBody);
+    renderBands(r, (ctx.benS && ctx.benS[slot]) || [], bandBody);
+  }
+  totalSection.append(el('p', { class: 'rp-total-delta', text: '실효연봉 차이(이직처-현재): ' + report.deltas.effMid + ' 만원' }));
+  mountEl.append(totalSection);
+
+  // 3) 시간조정 가치 카드
+  const hourlySection = el('section', { class: 'rp-block rp-hourly' });
+  hourlySection.append(el('h3', { text: '시간조정 가치' }));
+  for (const slot of ['a', 'b']) {
+    const r = report[slot];
+    const txt = r.hourly == null ? '미산출' : (r.hourly + ' 원/시간'); // hourly===null → "미산출"(FR-40 2a, 무효화 금지)
+    hourlySection.append(el('p', { class: 'rp-hourly-slot', 'data-slot': slot, text: slotLabel(slot, ctx) + ': ' + txt }));
+  }
+  mountEl.append(hourlySection);
+
+  // 4) 워라밸·자율성 카드
+  const wlbSection = el('section', { class: 'rp-block rp-wlb' });
+  wlbSection.append(el('h3', { text: '워라밸·자율성' }));
+  for (const slot of ['a', 'b']) {
+    wlbSection.append(el('p', { class: 'rp-wlb-slot', 'data-slot': slot, text: slotLabel(slot, ctx) + ' 자율성 점수: ' + report[slot].autonomy }));
+  }
+  const commuteTxt = commuteText(report.commute, ctx);
+  if (commuteTxt) wlbSection.append(el('p', { class: 'rp-commute', text: commuteTxt }));
+  mountEl.append(wlbSection);
+
+  // 5) 카테고리별 복지 델타 표(9종 고정 순서)
+  const catSection = el('section', { class: 'rp-block rp-catdelta' });
+  catSection.append(el('h3', { text: '카테고리별 복지 델타' }));
+  const catBody = el('div', { class: 'rp-catdelta-body' });
+  catSection.append(catBody);
+  renderCatDelta(report.catDelta, catBody);
+  mountEl.append(catSection);
+
+  // 6) 정성 복지 표
+  const qualSection = el('section', { class: 'rp-block rp-qual' });
+  qualSection.append(el('h3', { text: '정성 복지' }));
+  for (const slot of ['a', 'b']) {
+    const items = (report.qual && report.qual[slot]) || [];
+    if (!items.length) continue;
+    const ul = el('ul', { class: 'rp-qual-list', 'data-slot': slot });
+    for (const it of items) {
+      const li = el('li', { class: 'rp-qual-item' });
+      li.append(el('span', { class: 'rp-qual-nm', text: it.benefit_nm })); // FR-45 이스케이프
+      if (it.qual_desc) li.append(el('span', { class: 'rp-qual-desc', text: it.qual_desc }));
+      ul.append(li);
+    }
+    qualSection.append(ul);
+  }
+  mountEl.append(qualSection);
+
+  // 7) 경고 배너
+  if (report.warnings && report.warnings.length) {
+    const warnSection = el('div', { class: 'rp-warnings', role: 'alert' });
+    for (const code of report.warnings) {
+      warnSection.append(el('p', { class: 'rp-warning-item', 'data-code': code, text: warnCopy(code) }));
+    }
+    mountEl.append(warnSection);
+  }
+
+  // 8) "최근 비교" 저장/불러오기 UI(RP-6)
+  if (ctx.recent !== false) {
+    const recentBody = el('div', { class: 'rp-recent-body' });
+    mountEl.append(recentBody);
+    renderRecentUI(recentBody, ctx.recentCtx || {});
+  }
+
+  return mountEl;
+}

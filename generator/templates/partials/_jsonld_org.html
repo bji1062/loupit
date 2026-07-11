@@ -1,0 +1,4 @@
+{# _jsonld_org.html — JSON-LD Organization (SP-GEN-6.1, NFR8). `jsonld` 필터가
+   script breakout-safe 이스케이프(NFR21)를 이미 적용했으므로 `| safe`가
+   유일하게 허용되는 예외 경로다. #}
+<script type="application/ld+json">{{ jsonld | jsonld | safe }}</script>

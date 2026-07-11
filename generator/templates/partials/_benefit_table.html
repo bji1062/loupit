@@ -1,0 +1,27 @@
+{# _benefit_table.html — 카테고리별 복지표 (SP-GEN-5.3). 정량은 만원 표기,
+   정성(qual_yn)은 금액 대신 qual_desc. 출처 URL은 http/https만 링크(NFR21). #}
+{% from "partials/_badge.html" import badge %}
+{% macro benefit_table(benefit_groups) -%}
+<div class="benefit-table">
+{% for key, label, items in benefit_groups %}
+  <section class="benefit-group" data-category="{{ key }}">
+    <h3>{{ label }}</h3>
+    <table>
+      <tbody>
+      {% for item in items %}
+        <tr>
+          <td class="benefit-name">{{ item.name }}</td>
+          <td class="benefit-amount">{% if item.qual %}{{ item.qual_desc }}{% else %}{{ item.amount }}{% endif %}</td>
+          <td class="benefit-badge">{{ badge(item.badge) }}</td>
+          <td class="benefit-src">{% if item.src_url %}<a href="{{ item.src_url }}" rel="nofollow noopener" target="_blank">출처</a>{% endif %}</td>
+          <td class="benefit-verified">{% if item.verified %}확인일 {{ item.verified }}{% endif %}</td>
+          <td class="benefit-expires">{% if item.expires %}만료 {{ item.expires }}{% endif %}</td>
+        </tr>
+        {% if item.note %}<tr class="benefit-note"><td colspan="6">{{ item.note }}</td></tr>{% endif %}
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+{% endfor %}
+</div>
+{%- endmacro %}
