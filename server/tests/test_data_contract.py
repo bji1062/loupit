@@ -2,19 +2,12 @@
 
 근거: SPEC/02 SP-DB-16.3 · TASK/02 T-02.4.1~T-02.4.3 · T-02.5.1~T-02.5.6.
 
-이번 스코프(SP-DB, SP-SEED 착수 전)의 원칙: `db/seed/reference.sql`·
-`db/seed/benefit/sql/*.sql`이 아직 없어(seeded_db는 schema+migration만
-적용된 빈 테이블) **실제 시드 행 존재를 전제하는 케이스**는 지금 실행하면
-빈 테이블에 대해 항상 실패(정확 카운트/존재 단언)하거나, 반대로 항상
-공허하게 참(vacuously true, 위반행 0)이 되어버려 의미가 없다.
-
-- 위반행 카운트=0 스타일의 **도메인/불변식 린트**(DC-5~11, DC-14, DC-17)는
-  빈 테이블에서도 스키마·제약이 올바르면 legitimate하게 green이며, 시드
-  적재 후에도 동일 쿼리가 계속 유효하다 — 그대로 구현·실행한다.
-- **정확 카운트/존재 단언** 스타일(DC-1, DC-2, DC-12, DC-13, DC-15, DC-16)은
-  실제 시드·백필 데이터가 있어야만 의미가 성립하므로, SP-SEED(다음 단계)
-  완료 전까지 `@pytest.mark.skip`로 명시 보류한다(가짜 green 금지).
-  이 중 DC-2·DC-12·DC-13은 Tier-0 게이트(T-02.5.2·T-02.4.2·T-02.4.1)다.
+SP-SEED 완료(db/seed/company_types.sql·benefit_presets.sql·benefit/sql/*.sql·
+load.py)로 `seeded_db`(conftest, load.main(fresh=True))가 실제 시드+백필
+데이터를 적재한다. 정확 카운트/존재 단언 케이스(DC-1·DC-2·DC-12·DC-13·
+DC-15·DC-16)의 skip을 해제한다(설계된 핸드오프 — SP-SEED가 시드를
+공급했으니 이제 green이어야 한다). 이 중 DC-2·DC-12·DC-13은 Tier-0
+게이트(T-02.5.2·T-02.4.2·T-02.4.1)다.
 """
 
 from __future__ import annotations
@@ -37,8 +30,7 @@ def _scalar(conn, sql, params=()):
         return cur.fetchone()[0]
 
 
-# ── DC-1: 유형 6종 (SP-SEED reference.sql 필요) ──
-@pytest.mark.skip(reason="SP-SEED reference.sql(기업유형 6종 시드) 적용 후 해제")
+# ── DC-1: 유형 6종 ──
 def test_DC1_company_type_count_and_domain(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_TYPE") == 6
     fmt = ",".join(["%s"] * len(TYPE_CODES_6))
@@ -51,7 +43,6 @@ def test_DC1_company_type_count_and_domain(seeded_db):
 
 
 # ── DC-2: 회사 ~96 (Tier-0, T-02.5.2) ──
-@pytest.mark.skip(reason="SP-SEED 96개 복지 SQL 재이식 후 해제 — Tier-0(T-02.5.2)")
 def test_DC2_company_count_approx_96(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
     assert count >= 90, f"회사 등록 수 하한 미달: {count} (기대 >=90, ~96)"
@@ -168,7 +159,6 @@ def test_DC11_no_negative_amount(seeded_db):
 
 
 # ── DC-12: DEC-2 디커플링 존재 (Tier-0, T-02.4.2) ──
-@pytest.mark.skip(reason="SP-SEED 시드·백필(20260710_backfill_dec2.sql) 실데이터 적용 후 해제 — Tier-0(T-02.4.2)")
 def test_DC12_dec2_decoupling_exists(seeded_db):
     count = _scalar(
         seeded_db,
@@ -178,7 +168,6 @@ def test_DC12_dec2_decoupling_exists(seeded_db):
 
 
 # ── DC-13: 백필 official 전량 (Tier-0, T-02.4.1) ──
-@pytest.mark.skip(reason="SP-SEED 시드·백필 실데이터 적용 후 해제 — Tier-0(T-02.4.1)")
 def test_DC13_backfill_promotes_all_to_official(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT WHERE BADGE_CD='est'")
     assert count == 0
@@ -195,8 +184,7 @@ def test_DC14_freshness_backfilled(seeded_db):
     assert bad_expiry == 0
 
 
-# ── DC-15: CJ 등록명 (SP-SEED 96개 SQL 재이식 필요) ──
-@pytest.mark.skip(reason="SP-SEED 96개 복지 SQL 재이식(CJ 교정 포함) 후 해제")
+# ── DC-15: CJ 등록명 ──
 def test_DC15_cj_registered_name(seeded_db):
     cj_olive = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM='CJ올리브네트웍스'")
     assert cj_olive == 1
@@ -204,8 +192,7 @@ def test_DC15_cj_registered_name(seeded_db):
     assert cj_enm == 0
 
 
-# ── DC-16: 엔씨소프트 등록 (SP-SEED 회사 메타 보강 필요) ──
-@pytest.mark.skip(reason="SP-SEED 회사 메타 보강(엔씨소프트 등록) 후 해제")
+# ── DC-16: 엔씨소프트 등록 ──
 def test_DC16_ncsoft_registered(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM LIKE %s", ("%엔씨소프트%",))
     assert count >= 1

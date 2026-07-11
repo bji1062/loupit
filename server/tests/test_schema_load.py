@@ -132,7 +132,6 @@ def test_SC1_seeded_pipeline_tables_exist(seeded_db, db_name):
     assert not missing, f"누락 테이블: {missing}"
 
 
-@pytest.mark.skip(reason="SP-SEED 시드(reference.sql·benefit/sql) 적용 후 해제 — 현재 db/seed 산출물 부재")
 def test_SC1_seeded_pipeline_rows_loaded(seeded_db, db_name):
     """T-02.1.2 seeded 픽스처 — 시드 행 로드 확인(SP-SEED 완료 후 의미 있음)."""
     with seeded_db.cursor() as cur:
