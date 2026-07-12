@@ -10,11 +10,11 @@
 
 **문서 파이프라인(1~7단계) 완료. 8단계 구현 = M0~M8 대부분 완료.** loupit이 **`beta.loupit.co` 무중단 스테이징으로 배포·적대적 검증**된 상태(재검증 판정 GO-with-fixes).
 
-- **git**: `origin/main @ 5686dcd` (push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
+- **git**: `origin/main` 최신 = B-2 커밋 `6c013f1`(그 위 RESUME 갱신 커밋 포함, push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
 - **배포된 실행 상태 (⚠️ 서버 호스트 `158.180.79.39` 에만 존재·유지 — 로컬 클론엔 없음)**:
   - beta API: systemd `loupit-beta-api.service`, 127.0.0.1:**8001** (시스템 python3, `server/.env.beta`). 공개 `https://beta.loupit.co` (nginx + Let's Encrypt).
   - DB: MySQL 스키마 **LOUPIT** / 계정 **APP_LOUPIT** (pw는 `server/.env.beta`, gitignore — 새 환경엔 없음). 회사 95·복지 1317·프리셋 28.
-  - nginx: `/etc/nginx/sites-available/loupit-beta.conf`(리포 `infra/nginx/loupit-beta.conf`) + 보안스니펫 `/etc/nginx/snippets/loupit-beta-security.conf`(⚠️ **아직 미커밋** — §B-1).
+  - nginx: `/etc/nginx/sites-available/loupit-beta.conf`(리포 `infra/nginx/loupit-beta.conf`) + 보안스니펫 `/etc/nginx/snippets/loupit-beta-security.conf`(✅ B-1로 커밋됨 — 리포 `infra/nginx/snippets/`, 배치는 `infra/deploy/deploy-beta.sh`).
   - 라이브 `loupit.co` = 예전 **job_change**(별개 DB, 무손상). 프로덕션 컷오버는 **승인 게이트**(§B 끝).
 - **⚠️ 다른 PC에서 이어갈 때**: 실행 상태·이전 세션 AI의 로컬 메모리는 이 서버/PC에만 있다(안 넘어옴). **서버 접촉 작업(nginx·systemd·LOUPIT 재시드·라이브 검증)은 반드시 이 서버에 접속해서** 하라. 순수 코드 편집만 로컬 클론에서 가능. **이 RESUME.md가 유일한 인수인계원.**
 - **⚠️ 테스트 안전규칙(C-1 수정 결과)**: 서빙 스키마 LOUPIT을 테스트에도 재사용한다. **테스트는 반드시 `bash infra/deploy/run_tests.sh` 로만 실행**(끝나면 trap이 `load.py --fresh`로 서빙 자동 복원). 맨 `pytest`로 DB 테스트를 돌리면 conftest 가드가 `[C-1 안전장치]`로 차단한다. **`LOUPIT_ALLOW_SERVING_SCHEMA=1` 설정 후 맨 pytest 실행 절대 금지**(서빙 비운 채 복원 안 됨). 서빙 깨지면 수동 복구: `python3 db/seed/load.py --fresh` + `sudo systemctl restart loupit-beta-api`.
@@ -36,8 +36,10 @@
 
 재검증이 찾은 결함(HIGH·MED·LOW) + 원래 L-1~4. **TDD(red-green-refactor)로 처리, 완료 후 커밋·push. 서버에서 작업.**
 
-1. **[HIGH] `loupit-beta-security.conf` 커밋** — `/etc/nginx/snippets/loupit-beta-security.conf`(noindex 2줄 담김)가 리포에 없어 `loupit-beta.conf`의 16개 include가 리포만으로 재구축 불가. 리포 `infra/nginx/snippets/loupit-beta-security.conf`로 복사·커밋(base `loupit-security.conf`도 리포에 있는지 확인, 없으면 함께). 배포 스크립트/문서에 snippets/ 배치 단계 명시. 검증: `git ls-files | grep beta-security`.
-2. **[MED] kakao_bank child_edu 금액 + 월→연 전수 스윕** — `db/seed/benefit/sql/카카오뱅크.sql`의 `child_edu` AMT=10 → **120**(월10만원 연환산; BENEFIT_AMT=연간 만원 규약). **추가로 NOTE에 '월 N만원' 명시인데 AMT가 월값인 행 전부 스윕**(크래프톤·파크에 이은 3번째 클래스 — 더 있을 수 있음). 회귀 테스트(`test_seed_integrity`). 처리 후 재시드(`run_tests.sh`) + `python3 -m generator.build --out web/dist` + `sudo systemctl restart loupit-beta-api`.
+> **진행(2026-07-12 이어서)**: 1·2 완료(우선순위 착수, 사용자 선택). 남은 착수분 = **3~7**.
+
+1. ✅ **[HIGH] `loupit-beta-security.conf` 커밋** — 완료(커밋 `624223d`). 리포 `infra/nginx/snippets/loupit-beta-security.conf` + base `loupit-security.conf`(기존) + 배치 스크립트 `infra/deploy/deploy-beta.sh`(provision.sh는 프로덕션 전용이라 신설). 검증 통과: `git ls-files | grep beta-security` → 존재, `nginx -t` PASS.
+2. ✅ **[MED] kakao_bank child_edu 금액 + 월→연 전수 스윕** — 완료(커밋 `6c013f1`). `child_edu` AMT 10→**120** + note '(연 120만원)' 명시. **95개 시드 SQL 전수 감사(8배치 병렬 스캔 + 적대적 재검증)** 결과 확정 실버그는 이 1건뿐(크래프톤·파크는 M-5 처리분, LS fitness 30은 이미 연값이라 기각). 회귀 `test_SI_B2_monthly_amount_annualized` 추가(red→green). 재시드+생성기 재빌드+beta-api 재시작 후 라이브 `/api/v1/reference/all` child_edu=120·`beta.loupit.co/company/kakao-bank` 200 검증.
 3. **[LOW] L-1 HEAD 405** — `server/routers/{health,companies,reference}.py` GET에 `methods=["GET","HEAD"]`(또는 공용 팩토리). 테스트 추가. (자체 스모크의 HEAD→GET 우회 f9459f9 원복 가능.)
 4. **[LOW] L-2 / 정규 URL 중복** — 문서루트가 `web/`라 `/dist/company/*.html`·`.html.gz` 직접 200 노출. `infra/nginx/loupit.conf` + `loupit-beta.conf`에 `location ^~ /dist/ { return 404; }` + `.html(.gz)` 직접접근 차단. 검증: `curl .../dist/company/alteogen.html` → 404.
 5. **[LOW] L-3 robots 중복헤더** — `loupit-beta.conf` robots.txt location의 불필요한 `add_header Content-Type` 제거.
