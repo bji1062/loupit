@@ -7,6 +7,11 @@ BADGE_SRC_CD·VERIFIED_DTM을 정밀화한다.
 DG-1 확정(TASK/00 §4, 2026-07-11): 만료 TTL = **균일 18개월**(카테고리 차등 폐기).
 DG-2 확정: amt_source 판별 규칙 — 정성/금액없음→none, (추정·환산 표기 OR note
 없음)→estimated, 명시금액+추정표기 없음→stated.
+
+M-4(2026-07-12 검증): 위 규칙 적용 후, 무관 회사 간 동일 (복지코드·금액) 앵커값
+(≥ ANCHOR_MIN_COMPANIES 개사)은 stated→estimated로 강등한다. 같은 코드·금액이 여러
+회사에 반복되면 회사가 개별 명시한 값이 아니라 표준 앵커/환산일 가능성이 높으므로,
+근거없는 ±5% 정밀도를 피하고 ±20% estimated 밴드로 정직하게 표기한다(DEC-2).
 """
 
 from __future__ import annotations
@@ -22,6 +27,7 @@ if str(_THIS_DIR) not in sys.path:
 from company_meta import BENEFIT_SQL_DIR, parse_header_insert  # noqa: E402
 
 TTL_MONTHS_UNIFORM = 18  # DG-1 확정: 카테고리 무관 균일 18개월
+ANCHOR_MIN_COMPANIES = 3  # M-4: 동일 (복지코드·금액)이 N개사 이상 반복 → 앵커로 보고 stated→estimated 강등
 
 _DATE_RE = re.compile(r"^-- 출처: AI 파싱 \((\d{4}-\d{2}-\d{2})\)", re.MULTILINE)
 _URL_RE = re.compile(r"^-- URL: (http\S+)", re.MULTILINE)
@@ -69,6 +75,30 @@ def backfill(cur) -> dict:
             "UPDATE TCOMPANY_BENEFIT SET AMT_SOURCE_CD=%s WHERE BENEFIT_ID=%s",
             (src, benefit_id),
         )
+
+    # 2b) M-4: 무관 회사 간 동일 (복지코드·금액) 앵커값 → stated에서 estimated로 강등.
+    cur.execute(
+        """
+        SELECT BENEFIT_CD, BENEFIT_AMT
+          FROM TCOMPANY_BENEFIT
+         WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL
+         GROUP BY BENEFIT_CD, BENEFIT_AMT
+        HAVING COUNT(DISTINCT COMP_ID) >= %s
+        """,
+        (ANCHOR_MIN_COMPANIES,),
+    )
+    demoted = 0
+    for bcd, bamt in cur.fetchall():
+        cur.execute(
+            "UPDATE TCOMPANY_BENEFIT SET AMT_SOURCE_CD='estimated' "
+            "WHERE AMT_SOURCE_CD='stated' AND BENEFIT_CD=%s AND BENEFIT_AMT=%s",
+            (bcd, bamt),
+        )
+        demoted += cur.rowcount
+    amt_source_counts["stated"] -= demoted
+    amt_source_counts["estimated"] += demoted
+    stats["anchor_demoted"] = demoted
+
     stats["amt_source"] = amt_source_counts
 
     # 3) 출처유형·URL + 4) 신선도·만료(균일 18개월, DG-1) — 회사 단위 프로버넌스 전파

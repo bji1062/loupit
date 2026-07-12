@@ -144,3 +144,45 @@ def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
     assert count == 95
     assert count != 200
+
+
+# ── SI-M5: note 명시 금액 ↔ BENEFIT_AMT 정합성 회귀(2026-07-12 검증 M-5) ──
+
+
+def test_SI_M5_stated_amount_matches_note(seeded_db):
+    """M-5 회귀: note에 명시된 만원 금액과 BENEFIT_AMT(연간 환산 만원) 정합성 —
+    화면 노출값과 calc 합산값 불일치 방지. 파크시스템스 출산축하금 100, 크래프톤 운동비 연 120."""
+    park = _scalar(
+        seeded_db,
+        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
+        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
+        ("park_systems", "fertility_support"),
+    )
+    assert park == 100, f"파크시스템스 출산축하금 100(만원) 기대(현재 {park})"
+    kraft = _scalar(
+        seeded_db,
+        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
+        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
+        ("krafton", "fitness"),
+    )
+    assert kraft == 120, f"크래프톤 운동비 연환산 120(만원) 기대(현재 {kraft})"
+
+
+# ── SI-M4: 앵커 추정값 stated 위장 방지 회귀(2026-07-12 검증 M-4) ──
+
+
+def test_SI_M4_no_stated_anchor_across_companies(seeded_db):
+    """M-4 회귀: 무관 회사 간 동일 (복지코드·금액)이 3개사 이상 반복되면 회사가 개별
+    명시한 값이 아니라 표준 앵커/환산일 가능성이 높다 → stated(±5%)로 남기지 않고
+    estimated(±20%)로 강등해야 한다(DEC-2 정직성, 근거없는 정밀도 방지)."""
+    anchors = _rows(
+        seeded_db,
+        """
+        SELECT BENEFIT_CD, BENEFIT_AMT, COUNT(DISTINCT COMP_ID) AS c
+          FROM TCOMPANY_BENEFIT
+         WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL
+         GROUP BY BENEFIT_CD, BENEFIT_AMT
+        HAVING c >= 3
+        """,
+    )
+    assert anchors == (), f"stated로 남은 앵커(3개사+ 동일값): {anchors}"

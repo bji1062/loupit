@@ -11,7 +11,7 @@
       {% for item in items %}
         <tr>
           <td class="benefit-name">{{ item.name }}</td>
-          <td class="benefit-amount">{% if item.qual %}{{ item.qual_desc }}{% else %}{{ item.amount }}{% endif %}</td>
+          <td class="benefit-amount">{% if item.qual %}{{ item.qual_desc or '' }}{% else %}{{ item.amount }}{% endif %}</td>
           <td class="benefit-badge">{{ badge(item.badge) }}</td>
           <td class="benefit-src">{% if item.src_url %}<a href="{{ item.src_url }}" rel="nofollow noopener" target="_blank">출처</a>{% endif %}</td>
           <td class="benefit-verified">{% if item.verified %}확인일 {{ item.verified }}{% endif %}</td>

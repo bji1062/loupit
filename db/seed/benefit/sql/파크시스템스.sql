@@ -53,7 +53,7 @@ VALUES
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'childcare', '어린이집', NULL, 'family',
    'est', NULL, TRUE, '유명 어린이집 운영', 50),
-  (@comp_id, 'fertility_support', '출산 축하금', 10, 'family',
+  (@comp_id, 'fertility_support', '출산 축하금', 100, 'family',
    'est', '출산 축하금 100만원 + 출산 선물', FALSE, NULL, 51),
   (@comp_id, 'event', '경조금/화환/상조용품', 50, 'family',
    'est', '(추정)', FALSE, NULL, 52),

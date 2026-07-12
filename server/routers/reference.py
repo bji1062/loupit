@@ -11,7 +11,7 @@ from fastapi import APIRouter, Request, Response
 
 from server.config import get_settings
 from server.database import get_pool
-from server.models.reference import ReferenceBundle  # OpenAPI 문서용
+from server.models.reference import ReferenceBundle  # OpenAPI 문서 + 런타임 계약 검증(H-1)
 from server.services.reference import build_reference_bundle
 
 router = APIRouter(tags=["reference"])
@@ -25,6 +25,11 @@ async def reference_all(request: Request) -> Response:
     if body is None:  # 캐시 미스 → 조립
         async with get_pool().acquire() as conn:
             bundle = await build_reference_bundle(conn)
+        # H-1: raw Response 반환이라 response_model(위 데코레이터)이 런타임 미적용 →
+        # 여기서 ReferenceBundle로 조립 결과를 명시 검증한다. 계약 위반(필드 누락·타입
+        # 불일치)은 예외로 전파돼 전역 핸들러가 500(no-store)으로 처리 — 잘못된 형태를
+        # 200으로 조용히 내보내던 사각지대(과거 Decimal 500과 동형)를 닫는다.
+        ReferenceBundle.model_validate(bundle)
         body = json.dumps(bundle, ensure_ascii=False).encode("utf-8")
         cache.set(_CACHE_KEY, body)
     return Response(

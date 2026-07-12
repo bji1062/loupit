@@ -327,3 +327,19 @@ async def test_TE1_unhandled_exception_returns_generic_500(client, bundle_stub, 
     assert "SELECT" not in resp.text
     assert "RuntimeError" not in resp.text
     assert resp.headers.get("cache-control") == "no-store"
+
+
+@pytest.mark.asyncio
+async def test_TR7_contract_violation_returns_500(client, bundle_stub, monkeypatch):
+    """H-1: raw Response 반환이라 response_model이 런타임 미적용 → 조립 결과가
+    ReferenceBundle 계약을 위반하면 200으로 잘못된 형태를 내보내지 않고 500(전역 핸들러)."""
+    from server.routers import reference as reference_router
+
+    async def _invalid(conn):
+        return {"company_types": [], "benefit_presets": {}, "companies": "부적합"}  # companies 타입 위반
+
+    monkeypatch.setattr(reference_router, "build_reference_bundle", _invalid)
+    resp = await client.get("/api/v1/reference/all")
+    assert resp.status_code == 500
+    assert resp.json() == {"detail": "일시적인 오류가 발생했습니다."}
+    assert "부적합" not in resp.text

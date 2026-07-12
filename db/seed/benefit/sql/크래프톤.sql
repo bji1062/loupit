@@ -51,8 +51,8 @@ VALUES
    'est', '본인 및 가족 단체 건강보험 지원 (추정)', FALSE, NULL, 41),
   (@comp_id, 'mental', '케이마인드 케어', NULL, 'health',
    'est', NULL, TRUE, '전문가 코칭을 통한 부정적 감정 회복 프로그램', 42),
-  (@comp_id, 'fitness', '운동비 지원', 10, 'health',
-   'est', '운동비 월 10만원 지원 (연 120만원 중 10만원/월)', FALSE, NULL, 43),
+  (@comp_id, 'fitness', '운동비 지원', 120, 'health',
+   'est', '운동비 월 10만원 지원 (연 120만원)', FALSE, NULL, 43),
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'childcare', '사내 어린이집 리틀포레', NULL, 'family',

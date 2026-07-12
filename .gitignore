@@ -75,3 +75,4 @@ Thumbs.db
 .vscode/
 *.bak
 *.tmp
+web/dist.prev/

@@ -88,6 +88,7 @@ def test_SB7_amt_source_rule_samples(seeded_db):
     assert samsung_rows.get("health_check") == "estimated"  # note '(추정)'
     assert samsung_rows.get("meal") == "estimated"  # note '환산' 포함
 
+    # M-4(2026-07-12): CJ welfare_point(=100)는 앵커(동일 코드·금액이 ≥3개사)라 estimated로 강등된다.
     cj_amt_source = _scalar(
         seeded_db,
         """
@@ -96,7 +97,20 @@ def test_SB7_amt_source_rule_samples(seeded_db):
         WHERE c.COMP_ENG_NM='cj' AND b.BENEFIT_CD='welfare_point'
         """,
     )
-    assert cj_amt_source == "stated"  # 명시 금액, 추정표기 없음
+    assert cj_amt_source == "estimated"  # M-4 앵커 강등(welfare_point=100, ≥3개사)
+
+    # stated 브랜치: 앵커가 아닌(단일 회사 고유) 명시 금액은 stated로 유지되어야 한다(기본 규칙 존속).
+    unique_stated = _scalar(
+        seeded_db,
+        """
+        SELECT COUNT(*) FROM (
+          SELECT BENEFIT_CD, BENEFIT_AMT FROM TCOMPANY_BENEFIT
+          WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL
+          GROUP BY BENEFIT_CD, BENEFIT_AMT HAVING COUNT(DISTINCT COMP_ID)=1
+        ) t
+        """,
+    )
+    assert unique_stated > 0
 
 
 # ── SB-8: VERIFIED_DTM 전량 존재 ──

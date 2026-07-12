@@ -195,3 +195,34 @@ def test_gc17_no_ad_slot_inside_benefit_table(fake_bundle, fake_now):
     table_start = p.html.index('class="benefit-table"')
     table_end = p.html.index("</section>", table_start)
     assert "ad-slot" not in p.html[table_start:table_end]
+
+
+def test_M2_qualitative_benefit_null_desc_no_none_token():
+    """M-2 회귀: 정성복지(qual_yn=True)의 qual_desc_ctnt가 NULL이어도 benefit-amount 셀에
+    'None' 문자열이 렌더되면 안 된다(과거 아모레퍼시픽 <td>None</td> 누수)."""
+    from datetime import datetime
+
+    bundle = {
+        "company_types": [],
+        "benefit_presets": {},
+        "companies": [
+            {
+                "comp_id": 77, "comp_eng_nm": "qualco", "comp_nm": "정성사",
+                "comp_tp_cd": "none", "industry_nm": "기타", "logo_nm": "Q",
+                "work_style_val": {}, "aliases": [],
+                "benefits": [
+                    {
+                        "benefit_nm": "보건관리자 상주", "benefit_amt": None,
+                        "benefit_ctgr_cd": "health", "badge_cd": "official",
+                        "amt_source": "none", "qual_yn": True,
+                        # qual_desc_ctnt 없음 → None (버그 조건 재현)
+                        "verified_dtm": "2026-01-01", "expires_dtm": "2099-12-31",
+                    }
+                ],
+            }
+        ],
+    }
+    env = make_env()
+    ctx = build_context(bundle, now=datetime(2026, 7, 11))
+    html = company.render_all(env, ctx)[0].html
+    assert ">None<" not in html, "정성복지 qual_desc NULL이 'None'으로 렌더됨(M-2 회귀)"
