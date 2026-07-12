@@ -1,10 +1,16 @@
 """SP-DB-16 테스트 픽스처 — LOUPIT MySQL 스키마 격리·DDL 적용 오케스트레이션.
 
 근거: SPEC/02 SP-DB-16(테스트 명세) · TASK/02 T-02.1.1·T-02.1.2.
-접속 정보는 server/.env(dotenv)에서만 읽는다 — 비밀번호를 화면/로그/코드에
-하드코딩하지 않는다(os.environ 경유). 스키마명 LOUPIT는 비어있는 실 스키마이며
-별도 loupit_test 권한이 없으므로, 이 스키마 안에서 5개 참조 테이블을
-DROP/CREATE 하여 테스트 세션을 격리한다(TASK/00 §4 DG-4 확정 사항).
+접속 정보는 server/.env 에서만 읽는다 — 비밀번호를 화면/로그/코드에 하드코딩하지
+않는다(os.environ 경유).
+
+**스키마 재사용 + 복원(C-1 수정, 2026-07-12):** 이 서버는 LOUPIT 스키마를 테스트에도
+재사용한다(APP_LOUPIT 이 별도 DB 생성권한이 없음). 테스트는 5개 참조 테이블을
+DROP/CREATE 하므로, **서빙 스키마 대상 테스트는 run_tests.sh 경유로만 허용**한다 —
+run_tests.sh 는 테스트 종료 후 load.py 로 서빙 데이터를 자동 복원(trap)하고
+LOUPIT_ALLOW_SERVING_SCHEMA=1 로 이를 신호한다. pytest_configure 의 assert_test_target
+가드는 이 신호가 없는 맨 `pytest` 직접 실행(복원 보장 없음)을 차단해, run_tests.sh 가
+서빙을 비운 채 복원하지 않던 2026-07-11 C-1 회귀를 막는다.
 """
 
 from __future__ import annotations
@@ -17,6 +23,8 @@ import pymysql
 import pytest
 from dotenv import load_dotenv
 
+from server.tests.schema_guard import ServingSchemaError, assert_test_target
+
 # server/tests/conftest.py → parents[2] = 리포 루트(/home/ubuntu/loupit)
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_SQL = ROOT / "db" / "schema.sql"
@@ -26,6 +34,20 @@ REFERENCE_SQL = SEED_DIR / "reference.sql"
 BENEFIT_SQL_DIR = SEED_DIR / "benefit" / "sql"
 
 load_dotenv(ROOT / "server" / ".env")
+
+
+def pytest_configure(config):
+    """세션 시작 즉시 테스트 대상 DB_NAME 이 안전한지 검증(C-1 안전장치).
+
+    서빙 스키마(LOUPIT) 대상 테스트는 복원을 보장하는 run_tests.sh 경유(환경변수
+    LOUPIT_ALLOW_SERVING_SCHEMA=1)로만 허용한다. 이 신호가 없는 맨 `pytest` 직접 실행은
+    schema_db 픽스처의 DROP TABLE 이 서빙 데이터를 복원 없이 비우므로 여기서 중단한다 —
+    2026-07-11 C-1 회귀 차단."""
+    allow_serving = os.environ.get("LOUPIT_ALLOW_SERVING_SCHEMA") == "1"
+    try:
+        assert_test_target(os.environ.get("DB_NAME"), allow_serving=allow_serving)
+    except ServingSchemaError as exc:
+        pytest.exit(f"[C-1 안전장치] {exc}", returncode=3)
 
 # 생성 순서(FK 부모→자식, SP-DB-8). DROP은 이 역순(자식→부모)으로 수행한다.
 TABLE_CREATE_ORDER = [

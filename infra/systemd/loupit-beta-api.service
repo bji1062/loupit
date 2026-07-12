@@ -1,0 +1,38 @@
+[Unit]
+# beta.loupit.co 무중단 스테이징 인스턴스 — 프로덕션 loupit-api.service(:8000)와 별개.
+# 라이브 jobchoice.service(:8000)를 건드리지 않도록 포트 8001·전용 env로 격리.
+Description=loupit BETA staging API (FastAPI/Uvicorn, :8001)
+After=network.target mysql.service
+Wants=mysql.service
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/loupit
+# venv 미프로비저닝 → 시스템 python3 사용(fastapi/uvicorn/pymysql 설치 확인됨)
+EnvironmentFile=-/home/ubuntu/loupit/server/.env.beta
+ExecStart=/usr/bin/python3 -m uvicorn server.main:app --host 127.0.0.1 --port 8001
+ExecReload=/bin/kill -HUP $MAINPID
+Restart=always
+RestartSec=5
+TimeoutStopSec=10
+KillSignal=SIGINT
+
+# ── 프로세스 하드닝(읽기전용 서비스) ──
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+LockPersonality=true
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=loupit-beta-api
+
+[Install]
+WantedBy=multi-user.target

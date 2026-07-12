@@ -10,8 +10,23 @@ if [ -x "$ROOT/server/venv/bin/python" ]; then PY="$ROOT/server/venv/bin/python"
 elif command -v python3 >/dev/null; then PY="python3"
 else PY="python"; fi
 
-echo "[1/5] 백엔드(API·스키마·시드) — pytest (+ loupit_test MySQL)"
+# ── C-1 안전장치(2026-07-12): 이 서버는 서빙 스키마 LOUPIT 를 테스트에도 재사용한다.
+# 백엔드 테스트는 5개 참조 테이블을 DROP/CREATE 하므로, 종료 시 반드시 서빙 데이터를
+# 재시드해 beta/프로덕션 API 가 500 으로 남지 않게 한다. trap 으로 실패·중단(set -e)
+# 시에도 복원을 보장한다. LOUPIT_ALLOW_SERVING_SCHEMA=1 이 conftest 가드에 "복원 책임을
+# 지는 래퍼"임을 신호한다(맨 pytest 직접 실행은 이 신호가 없어 차단됨).
+export LOUPIT_ALLOW_SERVING_SCHEMA=1
+_restore_done=0
+restore_serving() {
+  [ "$_restore_done" = 1 ] && return 0
+  echo "  [restore] 서빙 스키마(LOUPIT) 재시드 — load.py --fresh"
+  "$PY" "$ROOT/db/seed/load.py" --fresh && _restore_done=1
+}
+trap restore_serving EXIT
+
+echo "[1/5] 백엔드(API·스키마·시드) — pytest (LOUPIT, 종료 후 자동 재시드)"
 "$PY" -m pytest server/tests/ -q
+restore_serving   # 백엔드 테스트 직후 즉시 복원 → 서빙 다운타임 최소화(이후 단계는 DB 무접촉)
 
 echo "[2/5] 정적 생성물·정책 — pytest (fake 번들)"
 "$PY" -m pytest generator/tests/ -q
