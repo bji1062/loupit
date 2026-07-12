@@ -49,8 +49,8 @@ VALUES
    'est', NULL, TRUE, '임신기간 근무단축, 산전후휴가, 육아휴직, 난임휴가 등', 50),
   (@comp_id, 'childcare', '어린이집 지원', NULL, 'family',
    'est', NULL, TRUE, '신청시 어린이집 등원 가능', 51),
-  (@comp_id, 'child_edu', '자녀 학자금/영유아 지원', 10, 'family',
-   'est', '고등/대학 학자금 지원, 4~7세 자녀 영유아지원금 월 10만원(2년간)', FALSE, NULL, 52),
+  (@comp_id, 'child_edu', '자녀 학자금/영유아 지원', 120, 'family',
+   'est', '고등/대학 학자금 지원, 4~7세 자녀 영유아지원금 월 10만원(2년간, 연 120만원)', FALSE, NULL, 52),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '경조휴가/경조비, 장의용품/장례도우미 파견 지원', 53),
 

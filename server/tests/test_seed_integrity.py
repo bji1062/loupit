@@ -168,6 +168,20 @@ def test_SI_M5_stated_amount_matches_note(seeded_db):
     assert kraft == 120, f"크래프톤 운동비 연환산 120(만원) 기대(현재 {kraft})"
 
 
+def test_SI_B2_monthly_amount_annualized(seeded_db):
+    """B-2 회귀(2026-07-12): note가 '월 N만원'인데 BENEFIT_AMT가 월값으로 저장된
+    월→연 환산 누락 방지. 95개 시드 SQL 전수 스윕+적대검증으로 확정된 유일 실버그 —
+    카카오뱅크 영유아지원금 '월 10만원' → 연 120(만원). (크래프톤·파크는 M-5에서 처리,
+    LS 체력단련비 30은 청구주기 서술일 뿐 이미 연값이라 대상 아님.)"""
+    kakao = _scalar(
+        seeded_db,
+        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
+        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
+        ("kakao_bank", "child_edu"),
+    )
+    assert kakao == 120, f"카카오뱅크 영유아지원금 월10만원→연환산 120(만원) 기대(현재 {kakao})"
+
+
 # ── SI-M4: 앵커 추정값 stated 위장 방지 회귀(2026-07-12 검증 M-4) ──
 
 
