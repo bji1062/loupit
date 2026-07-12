@@ -1,6 +1,54 @@
 # RESUME — 작업 재개 가이드
 
-> **다른 PC/새 세션에서 이 프로젝트를 이어받는 사람(또는 AI)을 위한 인수인계 문서.** 이 파일 하나만 읽으면 지금까지의 맥락·규칙·다음 할 일을 파악할 수 있다. 최종 업데이트: 2026-07-10 (SPEC 6단계 완료 시점).
+> **다른 PC/새 세션에서 이 프로젝트를 이어받는 사람(또는 AI)을 위한 인수인계 문서.** 이 파일 하나만 읽으면 지금까지의 맥락·규칙·다음 할 일을 파악할 수 있다. 최종 업데이트: **2026-07-12** (구현 M0~M8 대부분 완료·beta 배포·검증 시점).
+>
+> **⚡ 먼저 아래 §A(현재 상태)·§B(다음 착수)를 읽어라.** 그 아래 §0~§2는 문서 파이프라인 시점(2026-07-10)의 배경이며, "다음 할 일"은 §B가 정본이다.
+
+---
+
+## A. 현재 상태 (2026-07-12) ⬅ 여기부터
+
+**문서 파이프라인(1~7단계) 완료. 8단계 구현 = M0~M8 대부분 완료.** loupit이 **`beta.loupit.co` 무중단 스테이징으로 배포·적대적 검증**된 상태(재검증 판정 GO-with-fixes).
+
+- **git**: `origin/main @ 5686dcd` (push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
+- **배포된 실행 상태 (⚠️ 서버 호스트 `158.180.79.39` 에만 존재·유지 — 로컬 클론엔 없음)**:
+  - beta API: systemd `loupit-beta-api.service`, 127.0.0.1:**8001** (시스템 python3, `server/.env.beta`). 공개 `https://beta.loupit.co` (nginx + Let's Encrypt).
+  - DB: MySQL 스키마 **LOUPIT** / 계정 **APP_LOUPIT** (pw는 `server/.env.beta`, gitignore — 새 환경엔 없음). 회사 95·복지 1317·프리셋 28.
+  - nginx: `/etc/nginx/sites-available/loupit-beta.conf`(리포 `infra/nginx/loupit-beta.conf`) + 보안스니펫 `/etc/nginx/snippets/loupit-beta-security.conf`(⚠️ **아직 미커밋** — §B-1).
+  - 라이브 `loupit.co` = 예전 **job_change**(별개 DB, 무손상). 프로덕션 컷오버는 **승인 게이트**(§B 끝).
+- **⚠️ 다른 PC에서 이어갈 때**: 실행 상태·이전 세션 AI의 로컬 메모리는 이 서버/PC에만 있다(안 넘어옴). **서버 접촉 작업(nginx·systemd·LOUPIT 재시드·라이브 검증)은 반드시 이 서버에 접속해서** 하라. 순수 코드 편집만 로컬 클론에서 가능. **이 RESUME.md가 유일한 인수인계원.**
+- **⚠️ 테스트 안전규칙(C-1 수정 결과)**: 서빙 스키마 LOUPIT을 테스트에도 재사용한다. **테스트는 반드시 `bash infra/deploy/run_tests.sh` 로만 실행**(끝나면 trap이 `load.py --fresh`로 서빙 자동 복원). 맨 `pytest`로 DB 테스트를 돌리면 conftest 가드가 `[C-1 안전장치]`로 차단한다. **`LOUPIT_ALLOW_SERVING_SCHEMA=1` 설정 후 맨 pytest 실행 절대 금지**(서빙 비운 채 복원 안 됨). 서빙 깨지면 수동 복구: `python3 db/seed/load.py --fresh` + `sudo systemctl restart loupit-beta-api`.
+
+### 이번 세션(2026-07-11~12) 한 일
+1. **beta.loupit.co 무중단 스테이징 배포** (포트 8001, nginx vhost, TLS, X-Robots noindex).
+2. **7차원 적대적 종합검증** → 치명결함 **C-1** 발견·실발현(`run_tests.sh`가 서빙 스키마 DROP → 라이브 API 다운, 즉시 복구).
+3. **결함 7건 수정·커밋**(회귀 테스트 포함, run_tests.sh ALL GREEN 백엔드175·생성152·node·nginx):
+   - **C-1**(e4ce20a): 별도 TEST DB 불가(APP_LOUPIT 권한) → LOUPIT 재사용+테스트후 자동복원(run_tests.sh trap) + `server/tests/schema_guard.py` 가드.
+   - **M-1**(e4ce20a): `/company/`·`/vs/` soft-404 → `try_files ... =404` (beta+prod).
+   - **M-3**(e4ce20a): 베타 산출물 `infra/nginx/loupit-beta.conf`·`infra/systemd/loupit-beta-api.service` 커밋.
+   - **H-1**(5686dcd): `server/routers/reference.py` 캐시미스 조립 후 `ReferenceBundle.model_validate()`.
+   - **M-2**(5686dcd): `_benefit_table.html` qual_desc `or ''` 가드(None 렌더 누수).
+   - **M-4**(5686dcd): `db/seed/backfill_dec2.py` 앵커 강등(동일 코드·금액 ≥3개사 → stated→estimated, 49건).
+   - **M-5**(5686dcd): 파크시스템스 출산금 10→100·크래프톤 운동비 10→120.
+4. **재검증 워크플로우** → 판정 **GO-with-fixes**(5 holds / 2 partial), 잔여 결함 4건(§B).
+
+## B. 다음 세션 즉시 착수 목록 ("전부 수정" — 사용자 승인 2026-07-12)
+
+재검증이 찾은 결함(HIGH·MED·LOW) + 원래 L-1~4. **TDD(red-green-refactor)로 처리, 완료 후 커밋·push. 서버에서 작업.**
+
+1. **[HIGH] `loupit-beta-security.conf` 커밋** — `/etc/nginx/snippets/loupit-beta-security.conf`(noindex 2줄 담김)가 리포에 없어 `loupit-beta.conf`의 16개 include가 리포만으로 재구축 불가. 리포 `infra/nginx/snippets/loupit-beta-security.conf`로 복사·커밋(base `loupit-security.conf`도 리포에 있는지 확인, 없으면 함께). 배포 스크립트/문서에 snippets/ 배치 단계 명시. 검증: `git ls-files | grep beta-security`.
+2. **[MED] kakao_bank child_edu 금액 + 월→연 전수 스윕** — `db/seed/benefit/sql/카카오뱅크.sql`의 `child_edu` AMT=10 → **120**(월10만원 연환산; BENEFIT_AMT=연간 만원 규약). **추가로 NOTE에 '월 N만원' 명시인데 AMT가 월값인 행 전부 스윕**(크래프톤·파크에 이은 3번째 클래스 — 더 있을 수 있음). 회귀 테스트(`test_seed_integrity`). 처리 후 재시드(`run_tests.sh`) + `python3 -m generator.build --out web/dist` + `sudo systemctl restart loupit-beta-api`.
+3. **[LOW] L-1 HEAD 405** — `server/routers/{health,companies,reference}.py` GET에 `methods=["GET","HEAD"]`(또는 공용 팩토리). 테스트 추가. (자체 스모크의 HEAD→GET 우회 f9459f9 원복 가능.)
+4. **[LOW] L-2 / 정규 URL 중복** — 문서루트가 `web/`라 `/dist/company/*.html`·`.html.gz` 직접 200 노출. `infra/nginx/loupit.conf` + `loupit-beta.conf`에 `location ^~ /dist/ { return 404; }` + `.html(.gz)` 직접접근 차단. 검증: `curl .../dist/company/alteogen.html` → 404.
+5. **[LOW] L-3 robots 중복헤더** — `loupit-beta.conf` robots.txt location의 불필요한 `add_header Content-Type` 제거.
+6. **[LOW] L-4 parseSalRange** — `web/assets/js/calc.js`: 빈 토큰 명시 거부(`Number('')===0` 함정) + `min<=max` 검증. node 테스트.
+7. **[LOW] 복원 원자성** — `load.py` 재시드를 임시스키마→`RENAME TABLE` 원자 스왑으로 전환하거나, 최소 run_tests.sh의 '복원 보장' 문구를 '복원 시도(비원자)'로 정정 + 실패 시 알림/헬스체크.
+
+**완료 후 흐름**: 커밋·push → **수동 QA(28리프, 실제 브라우저 플로우)** → **🚦 프로덕션 컷오버**(loupit.co를 job_change→loupit으로 스왑 · nginx `loupit.conf` 활성 · 포트 8000 · 인증서 · **반드시 사용자 승인 게이트**).
+
+> **참고**: `docs/TASK.md`(마일스톤·진행 롤업)·`docs/TASK/00~12`가 리프 정본. 재검증 리포트 원본은 세션 임시파일이라 소실될 수 있어 위 §B에 요지를 남김.
+
+---
 
 ## 0. 한 줄 요약
 
