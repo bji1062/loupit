@@ -11,16 +11,35 @@ elif command -v python3 >/dev/null; then PY="python3"
 else PY="python"; fi
 
 # ── C-1 안전장치(2026-07-12): 이 서버는 서빙 스키마 LOUPIT 를 테스트에도 재사용한다.
-# 백엔드 테스트는 5개 참조 테이블을 DROP/CREATE 하므로, 종료 시 반드시 서빙 데이터를
-# 재시드해 beta/프로덕션 API 가 500 으로 남지 않게 한다. trap 으로 실패·중단(set -e)
-# 시에도 복원을 보장한다. LOUPIT_ALLOW_SERVING_SCHEMA=1 이 conftest 가드에 "복원 책임을
-# 지는 래퍼"임을 신호한다(맨 pytest 직접 실행은 이 신호가 없어 차단됨).
+# 백엔드 테스트는 5개 참조 테이블을 DROP/CREATE 하므로, 종료 시 서빙 데이터를 재시드해
+# beta/프로덕션 API 가 500/빈응답으로 남지 않게 한다. trap 으로 실패·중단(set -e) 시에도
+# 재시드를 '시도'한다.
+#
+# ⚠ 비원자성(L-7, 2026-07-13): load.py --fresh 는 DROP TABLE(DDL) 을 쓰는데 MySQL 에서
+# DDL 은 암묵 커밋이라 load.py 의 autocommit=False·try/rollback 이 이 구간엔 무력하다.
+# 즉 DROP~재시드 완료 사이에 프로세스가 죽으면 서빙이 빈 채로 남을 수 있다 — 원자 '보장'
+# 이 아니라 '시도'다. 그래서 재시드 후 COUNT 로 서빙 적재를 검증하고, 실패하면 조용히
+# 넘기지 않고 크게 경고 + 수동 복구 명령을 출력한다. (진짜 원자 스왑이 필요하면 임시테이블
+# +RENAME TABLE 로 load.py 를 전환해야 하며, 95개 시드 SQL·백필의 테이블명 하드코딩 때문에
+# 범위가 커 별도 작업으로 남긴다.)
+# LOUPIT_ALLOW_SERVING_SCHEMA=1 이 conftest 가드에 "복원 책임을 지는 래퍼"임을 신호한다
+# (맨 pytest 직접 실행은 이 신호가 없어 차단됨).
 export LOUPIT_ALLOW_SERVING_SCHEMA=1
 _restore_done=0
+_restore_fail_msg() {
+  echo "  ⚠⚠⚠ [restore] 서빙(LOUPIT) 복원 실패 — 비었거나 깨진 상태일 수 있다. 즉시 수동 복구:" >&2
+  echo "        python3 db/seed/load.py --fresh && sudo systemctl restart loupit-beta-api" >&2
+}
 restore_serving() {
   [ "$_restore_done" = 1 ] && return 0
-  echo "  [restore] 서빙 스키마(LOUPIT) 재시드 — load.py --fresh"
-  "$PY" "$ROOT/db/seed/load.py" --fresh && _restore_done=1
+  echo "  [restore] 서빙 스키마(LOUPIT) 재시드 시도(비원자) — load.py --fresh"
+  if ! "$PY" "$ROOT/db/seed/load.py" --fresh; then _restore_fail_msg; return 1; fi
+  # 비원자 재시드라 정상 종료여도 서빙 적재를 한 번 더 검증(회사 하한 90; 정상은 95).
+  if ! LOUPIT_ROOT="$ROOT" "$PY" -c "import os,sys; sys.path.insert(0, os.path.join(os.environ['LOUPIT_ROOT'],'db','seed')); import load; c=load.connect(); cur=c.cursor(); cur.execute('SELECT COUNT(*) FROM TCOMPANY'); n=cur.fetchone()[0]; print('  [restore] 검증: TCOMPANY=%d'%n); sys.exit(0 if n>=90 else 2)"; then
+    _restore_fail_msg; return 1
+  fi
+  _restore_done=1
+  echo "  [restore] OK — 서빙 검증 통과"
 }
 trap restore_serving EXIT
 
