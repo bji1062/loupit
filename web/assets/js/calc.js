@@ -146,8 +146,18 @@ export const BENEFIT_CATEGORIES = ['compensation', 'flexibility', 'work_env', 't
 /** 슬롯 a 연봉 문자열 → Range. 미입력/파싱불가 → {0,0,0}. */
 export function parseSalRange(salStr) {
   if (!salStr) return { min: 0, max: 0, mid: 0 };
-  const [lo, hi] = String(salStr).split('-').map(Number);
+  const parts = String(salStr).split('-');
+  // 정확히 min-max 두 토큰만 허용(단일값·'1-2-3' 등 거부)
+  if (parts.length !== 2) return { min: 0, max: 0, mid: 0 };
+  const loStr = parts[0].trim();
+  const hiStr = parts[1].trim();
+  // 빈 토큰 명시 거부 — Number('')===0 함정 방지('100-'·'-'·'-100'이 0으로 둔갑하는 것 차단)
+  if (loStr === '' || hiStr === '') return { min: 0, max: 0, mid: 0 };
+  const lo = Number(loStr);
+  const hi = Number(hiStr);
   if (!Number.isFinite(lo) || !Number.isFinite(hi)) return { min: 0, max: 0, mid: 0 };
+  // 역전 범위(min>max) 거부(min==max 는 유효)
+  if (lo > hi) return { min: 0, max: 0, mid: 0 };
   return { min: lo, max: hi, mid: Math.round((lo + hi) / 2) };
 }
 

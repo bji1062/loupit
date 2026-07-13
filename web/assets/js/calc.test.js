@@ -88,6 +88,25 @@ describe('T-05.2 연봉 Range', () => {
     assert.deepEqual(parseSalRange('abc'), { min: 0, max: 0, mid: 0 });
   });
 
+  test('L-4: parseSalRange 빈 토큰 명시 거부(Number("")===0 함정)', () => {
+    // '100-'·'-100'·'-'·공백 토큰이 0으로 둔갑해 {100,0,..} 같은 오범위를 만들면 안 된다.
+    assert.deepEqual(parseSalRange('100-'), { min: 0, max: 0, mid: 0 });
+    assert.deepEqual(parseSalRange('-100'), { min: 0, max: 0, mid: 0 });
+    assert.deepEqual(parseSalRange('-'), { min: 0, max: 0, mid: 0 });
+    assert.deepEqual(parseSalRange('5000- '), { min: 0, max: 0, mid: 0 });
+    assert.deepEqual(parseSalRange(' -7000'), { min: 0, max: 0, mid: 0 });
+  });
+
+  test('L-4: parseSalRange 역전 범위(min>max) 거부', () => {
+    assert.deepEqual(parseSalRange('7000-5000'), { min: 0, max: 0, mid: 0 });
+    // 경계: min==max 는 유효
+    assert.deepEqual(parseSalRange('5000-5000'), { min: 5000, max: 5000, mid: 5000 });
+  });
+
+  test('L-4: parseSalRange 토큰 2개 초과 거부', () => {
+    assert.deepEqual(parseSalRange('1-2-3'), { min: 0, max: 0, mid: 0 });
+  });
+
   test('T-ENGINE-3: deriveOfferRange 상승률 10%', () => {
     const base = { min: 5000, max: 7000, mid: 6000 };
     assert.deepEqual(deriveOfferRange(base, 10), { min: 5500, max: 7700, mid: 6600 });
