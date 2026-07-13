@@ -383,18 +383,18 @@ describe('UT-NO-LITERAL', () => {
   });
 });
 
-// ── UT-DARK-DEFAULT (T-10.2.1) ──────────────────────────────────────────────
-describe('UT-DARK-DEFAULT', () => {
+// ── UT-LIGHT-DEFAULT (T-10.2.1) — 사용자 결정(2026-07-13): 시안 A(라이트) 채택 ──
+describe('UT-LIGHT-DEFAULT', () => {
   const tokens = parseTokens(cssText);
 
-  test('--bg-0 밝기 < --t1 밝기(다크 배경·밝은 텍스트)', () => {
+  test('--bg-0 밝기 > --t1 밝기(라이트 배경·어두운 텍스트)', () => {
     const lBg = relLuminance(parseColor(tokens.get('--bg-0')));
     const lText = relLuminance(parseColor(tokens.get('--t1')));
-    assert.ok(lBg < lText, `--bg-0 휘도(${lBg}) >= --t1 휘도(${lText})`);
+    assert.ok(lBg > lText, `--bg-0 휘도(${lBg}) <= --t1 휘도(${lText}) — 라이트 기본 위반`);
   });
 
-  test('data-theme 미부착 = 다크(활성 [data-theme] 셀렉터 규칙 없음)', () => {
+  test('data-theme 미부착 = 라이트(활성 [data-theme] 셀렉터 규칙 없음; 다크는 후속 훅)', () => {
     const stripped = stripComments(cssText);
-    assert.ok(!/\[\s*data-theme\s*=/.test(stripped), '활성 [data-theme=...] 규칙 발견 — MVP는 훅 주석만 허용');
+    assert.ok(!/\[\s*data-theme\s*=/.test(stripped), '활성 [data-theme=...] 규칙 발견 — 현재는 라이트 단일, 다크는 훅 주석만');
   });
 });
