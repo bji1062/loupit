@@ -53,7 +53,7 @@ class FakeLocalStorage {
 globalThis.localStorage = new FakeLocalStorage();
 
 const {
-  renderReport, renderVdCard, renderCatDelta, renderBands,
+  renderReport, renderVdCard, renderCatDelta, renderCatButterfly, renderBands,
   WARN_COPY, warnCopy, renderRecentUI, buildRecentRecord, saveRecentComparison,
 } = await import('./report.js');
 const { recent } = await import('./store.js');
@@ -125,6 +125,40 @@ describe('T-06.11.3 renderCatDelta', () => {
     // perks(a) 항목 확인: sumA=100
     const perksRow = tbody.children.find((tr) => tr.attributes['data-ctgr'] === 'perks');
     assert.equal(perksRow.children[1].textContent, '100');
+  });
+});
+
+// ── renderCatButterfly — 버터플라이(back-to-back) 카테고리 차트(예전 loupit 이식) ──
+describe('renderCatButterfly 버터플라이 차트', () => {
+  test('범례 + 9행, 각 행에 A/B 막대(폭%)·중앙 라벨·차이 배지', () => {
+    const report = compare(fixtureState());
+    const mount = new FakeElement('div');
+    renderCatButterfly(report.catDelta, mount);
+    // [0]=범례, [1]=차트
+    const legend = mount.children[0];
+    assert.ok(legend.className.includes('bfly-legend'), '범례 렌더');
+    const chart = mount.children[1];
+    const rows = chart.findAll((n) => n.className && n.className.includes('bfly-row') === true);
+    assert.equal(rows.length, 9, '9카테고리 행');
+    // 고정 순서 유지
+    const order = rows.map((r) => r.attributes['data-ctgr']);
+    assert.deepEqual(order, ['compensation', 'flexibility', 'work_env', 'time_off', 'health', 'family', 'growth', 'leisure', 'perks']);
+    // perks 행: sumA=100 값 노출 + A/B 막대(width style)·중앙 라벨 존재
+    const perks = rows.find((r) => r.attributes['data-ctgr'] === 'perks');
+    assert.equal(perks.children[0].textContent, '100', 'A값 노출');
+    const bars = perks.findAll((n) => n.className && n.className.includes('bfly-bar'));
+    assert.equal(bars.length, 2, 'A/B 막대 2개');
+    assert.ok(bars.every((b) => /width:\s*[\d.]+%/.test(b.attributes.style || '')), '막대 폭% 인라인 스타일');
+    const label = perks.find((n) => n.className && n.className.includes('bfly-label'));
+    assert.ok(label && label.textContent.length > 0, '중앙 카테고리 라벨');
+  });
+
+  test('빈 catDelta도 무크래시(범례만, 행 0)', () => {
+    const mount = new FakeElement('div');
+    renderCatButterfly([], mount);
+    const chart = mount.children[1];
+    const rows = chart.findAll((n) => n.className && n.className.includes('bfly-row'));
+    assert.equal(rows.length, 0);
   });
 });
 

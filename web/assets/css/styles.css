@@ -290,6 +290,30 @@ main p { margin-top:var(--sp-3); }
 .cat-delta-table th, .cat-delta-table td { padding:var(--sp-2); text-align:right; font-size:var(--fs-sm); border-bottom:var(--bw) solid var(--border); }
 .cat-delta-table th:first-child, .cat-delta-table td:first-child, .cat-delta-nm { text-align:left; color:var(--t3); }
 .cat-delta-diff { font-weight:var(--fw-semibold); }
+/* 버터플라이(back-to-back) 카테고리 차트 — 예전 loupit 디자인 이식. A는 중앙축서 왼쪽, B는 오른쪽. */
+.rp-catbfly { margin:var(--sp-3) 0 var(--sp-5); }
+.bfly-legend { display:flex; gap:var(--sp-4); justify-content:center; margin-bottom:var(--sp-3); font-size:var(--fs-xs); color:var(--t3); }
+.bfly-key { display:inline-flex; align-items:center; gap:var(--sp-1); }
+.bfly-key::before { content:""; width:10px; height:10px; border-radius:var(--r-xs); }
+.bfly-key.a::before { background:var(--blue); }
+.bfly-key.b::before { background:var(--coral); }
+.bfly { display:flex; flex-direction:column; gap:var(--sp-2); }
+.bfly-row { display:grid; grid-template-columns:52px 1fr 104px 1fr 52px; align-items:center; gap:var(--sp-2); }
+.bfly-val { font-size:var(--fs-xs); color:var(--t3); }
+.bfly-val.a { text-align:right; }
+.bfly-val.b { text-align:left; }
+.bfly-wing { height:14px; display:flex; align-items:center; }
+.bfly-wing.a { justify-content:flex-end; }
+.bfly-wing.b { justify-content:flex-start; }
+.bfly-bar { height:100%; border-radius:var(--r-xs); }
+.bfly-bar.a { background:var(--blue); }
+.bfly-bar.b { background:var(--coral); }
+.bfly-center { text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.bfly-label { font-size:var(--fs-xs); font-weight:var(--fw-medium); color:var(--t2); }
+.bfly-diff { font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
+.bfly-diff.a { color:var(--blue); }
+.bfly-diff.b { color:var(--coral); }
+.bfly-diff.eq { color:var(--t4); }
 .rp-qual-list { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-2); }
 .rp-qual-item { background:var(--surface-card); border:var(--bw) solid var(--border); border-radius:var(--r-pill); padding:var(--sp-1) var(--sp-3); font-size:var(--fs-sm); }
 .rp-recent { margin-top:var(--sp-2); }

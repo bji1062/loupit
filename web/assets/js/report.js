@@ -87,6 +87,56 @@ export function renderCatDelta(catDelta, mountEl) {
   return mountEl;
 }
 
+// ── renderCatButterfly — 카테고리별 총액 back-to-back(버터플라이) 차트 ──────────
+// 예전 loupit(job_change) 리포트 디자인 이식: 각 카테고리 행에서 현재 직장(A)은 중앙축
+// 기준 왼쪽으로, 이직처(B)는 오른쪽으로 막대가 뻗어 두 회사를 한눈에 대칭 비교한다.
+// 폭은 전 카테고리 중 최대 sum 대비 정규화(%). 순수 CSS/DOM(무외부라이브러리), 값은 표(renderCatDelta)가 정밀 제공.
+function bflyWing(side, pct) {
+  const w = el('div', { class: 'bfly-wing ' + side });
+  w.append(el('div', { class: 'bfly-bar ' + side, style: 'width:' + pct + '%' }));
+  return w;
+}
+function bflyCenter(row) {
+  const c = el('div', { class: 'bfly-center' });
+  c.append(el('span', { class: 'bfly-label', text: CATEGORY_LABEL[row.ctgr] || row.ctgr }));
+  const d = row.delta || 0;
+  const cls = d > 0 ? 'bfly-diff b' : d < 0 ? 'bfly-diff a' : 'bfly-diff eq';
+  const txt = d > 0 ? '+' + d : d < 0 ? String(d) : '±0';
+  c.append(el('span', { class: cls, text: txt }));
+  return c;
+}
+export function renderCatButterfly(catDelta, mountEl) {
+  mountEl.replaceChildren();
+  const rows = catDelta || [];
+  const maxSum = Math.max(1, ...rows.map((r) => Math.max(r.sumA || 0, r.sumB || 0)));
+  // 범례
+  const legend = el('div', { class: 'bfly-legend' });
+  legend.append(
+    el('span', { class: 'bfly-key a', text: '현재 직장(A)' }),
+    el('span', { class: 'bfly-key b', text: '이직처(B)' }),
+  );
+  mountEl.append(legend);
+  const chart = el('div', {
+    class: 'bfly', role: 'img',
+    'aria-label': '카테고리별 복지 총액 비교 — 왼쪽 현재 직장(A), 오른쪽 이직처(B)',
+  });
+  for (const r of rows) {
+    const pctA = (r.sumA || 0) > 0 ? Math.max(4, (r.sumA / maxSum) * 100) : 0;
+    const pctB = (r.sumB || 0) > 0 ? Math.max(4, (r.sumB / maxSum) * 100) : 0;
+    const rowEl = el('div', { class: 'bfly-row', 'data-ctgr': r.ctgr });
+    rowEl.append(
+      el('span', { class: 'bfly-val a', text: (r.sumA || 0) > 0 ? String(r.sumA) : '-' }),
+      bflyWing('a', pctA),
+      bflyCenter(r),
+      bflyWing('b', pctB),
+      el('span', { class: 'bfly-val b', text: (r.sumB || 0) > 0 ? String(r.sumB) : '-' }),
+    );
+    chart.append(rowEl);
+  }
+  mountEl.append(chart);
+  return mountEl;
+}
+
 // ── T-06.11.4 renderBands — 항목 배지·밴드 표시·safeUrl 출처(FR-41) ────────
 function badgeLabel(item, now) {
   const expired = item.expires_dtm != null && Date.parse(item.expires_dtm) < now;
@@ -241,9 +291,12 @@ export function renderReport(report, mountEl, ctx = {}) {
   if (commuteTxt) wlbSection.append(el('p', { class: 'rp-commute', text: commuteTxt }));
   mountEl.append(wlbSection);
 
-  // 5) 카테고리별 복지 델타 표(9종 고정 순서)
+  // 5) 카테고리별 복지 비교 — 버터플라이 차트(시각) + 델타 표(정밀·9종 고정 순서)
   const catSection = el('section', { class: 'rp-block rp-catdelta' });
-  catSection.append(el('h3', { text: '카테고리별 복지 델타' }));
+  catSection.append(el('h3', { text: '카테고리별 복지 비교' }));
+  const bflyBody = el('div', { class: 'rp-catbfly' });
+  catSection.append(bflyBody);
+  renderCatButterfly(report.catDelta, bflyBody);
   const catBody = el('div', { class: 'rp-catdelta-body' });
   catSection.append(catBody);
   renderCatDelta(report.catDelta, catBody);
