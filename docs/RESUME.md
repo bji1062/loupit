@@ -10,7 +10,7 @@
 
 **문서 파이프라인(1~7단계) 완료. 8단계 구현 = M0~M8 대부분 완료.** loupit이 **`beta.loupit.co` 무중단 스테이징으로 배포·적대적 검증**된 상태(재검증 판정 GO-with-fixes).
 
-- **git**: `origin/main` 최신 = B-2 커밋 `6c013f1`(그 위 RESUME 갱신 커밋 포함, push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
+- **git**: `origin/main` 최신 = §B 1~7 완료(L-1 `0e4b79e`·L-4 `91d24a8`·L-2/L-3 `f5ba3c1`·복원 `b2a8bc7` + RESUME 갱신, push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
 - **배포된 실행 상태 (⚠️ 서버 호스트 `158.180.79.39` 에만 존재·유지 — 로컬 클론엔 없음)**:
   - beta API: systemd `loupit-beta-api.service`, 127.0.0.1:**8001** (시스템 python3, `server/.env.beta`). 공개 `https://beta.loupit.co` (nginx + Let's Encrypt).
   - DB: MySQL 스키마 **LOUPIT** / 계정 **APP_LOUPIT** (pw는 `server/.env.beta`, gitignore — 새 환경엔 없음). 회사 95·복지 1317·프리셋 28.
@@ -36,15 +36,15 @@
 
 재검증이 찾은 결함(HIGH·MED·LOW) + 원래 L-1~4. **TDD(red-green-refactor)로 처리, 완료 후 커밋·push. 서버에서 작업.**
 
-> **진행(2026-07-12 이어서)**: 1·2 완료(우선순위 착수, 사용자 선택). 남은 착수분 = **3~7**.
+> **진행(2026-07-12~13 이어서)**: **1~7 전부 완료.** 1·2(우선순위) 이후 3~7(L-1~4·복원원자성)까지 TDD로 처리·커밋·push. 남은 것은 아래 '완료 후 흐름'의 **수동 QA(28리프) → 🚦 프로덕션 컷오버(승인 게이트)** 뿐.
 
 1. ✅ **[HIGH] `loupit-beta-security.conf` 커밋** — 완료(커밋 `624223d`). 리포 `infra/nginx/snippets/loupit-beta-security.conf` + base `loupit-security.conf`(기존) + 배치 스크립트 `infra/deploy/deploy-beta.sh`(provision.sh는 프로덕션 전용이라 신설). 검증 통과: `git ls-files | grep beta-security` → 존재, `nginx -t` PASS.
 2. ✅ **[MED] kakao_bank child_edu 금액 + 월→연 전수 스윕** — 완료(커밋 `6c013f1`). `child_edu` AMT 10→**120** + note '(연 120만원)' 명시. **95개 시드 SQL 전수 감사(8배치 병렬 스캔 + 적대적 재검증)** 결과 확정 실버그는 이 1건뿐(크래프톤·파크는 M-5 처리분, LS fitness 30은 이미 연값이라 기각). 회귀 `test_SI_B2_monthly_amount_annualized` 추가(red→green). 재시드+생성기 재빌드+beta-api 재시작 후 라이브 `/api/v1/reference/all` child_edu=120·`beta.loupit.co/company/kakao-bank` 200 검증.
-3. **[LOW] L-1 HEAD 405** — `server/routers/{health,companies,reference}.py` GET에 `methods=["GET","HEAD"]`(또는 공용 팩토리). 테스트 추가. (자체 스모크의 HEAD→GET 우회 f9459f9 원복 가능.)
-4. **[LOW] L-2 / 정규 URL 중복** — 문서루트가 `web/`라 `/dist/company/*.html`·`.html.gz` 직접 200 노출. `infra/nginx/loupit.conf` + `loupit-beta.conf`에 `location ^~ /dist/ { return 404; }` + `.html(.gz)` 직접접근 차단. 검증: `curl .../dist/company/alteogen.html` → 404.
-5. **[LOW] L-3 robots 중복헤더** — `loupit-beta.conf` robots.txt location의 불필요한 `add_header Content-Type` 제거.
-6. **[LOW] L-4 parseSalRange** — `web/assets/js/calc.js`: 빈 토큰 명시 거부(`Number('')===0` 함정) + `min<=max` 검증. node 테스트.
-7. **[LOW] 복원 원자성** — `load.py` 재시드를 임시스키마→`RENAME TABLE` 원자 스왑으로 전환하거나, 최소 run_tests.sh의 '복원 보장' 문구를 '복원 시도(비원자)'로 정정 + 실패 시 알림/헬스체크.
+3. ✅ **[LOW] L-1 HEAD 405** — 완료(`0e4b79e`). FastAPI APIRoute는 HEAD 자동추가 안 함 → 4개 라우트를 `api_route(methods=["GET","HEAD"])`로. HEAD=200 empty body(ASGI 스트립). 테스트 test_TL1·test_TR8. smoke SM-4의 f9459f9 우회 원복. 라이브 HEAD 4종 200.
+4. ✅ **[LOW] L-2 / 정규 URL 중복** — 완료(`f5ba3c1`). `location ^~ /dist/ { return 404; }` + `/company/`·`/vs/` try_files `$uri $uri.html`→`$uri.html`(직접 .html 차단, 클린 URL 200). 양쪽 conf. beta 라이브 검증: `/dist/company/*.html(.gz)`→404, 직접 `/company/*.html`→404, 클린→200. (server-if 방식은 사이클 리스크로 미채택; `/index.html` 미세중복만 보류.)
+5. ✅ **[LOW] L-3 robots 중복헤더** — 완료(`f5ba3c1`). beta.conf robots location의 `add_header Content-Type` 제거 + `default_type text/plain`. 라이브 Content-Type 1개 확인.
+6. ✅ **[LOW] L-4 parseSalRange** — 완료(`91d24a8`). 빈/공백 토큰 거부(`Number('')===0` 함정)·2토큰 강제·`min<=max` 검증, 실패 센티널 {0,0,0} 보존. node 경계 테스트 red→green.
+7. ✅ **[LOW] 복원 원자성** — 완료(`b2a8bc7`). (b) 정직화 채택: `load.py --fresh`는 DROP TABLE(DDL 암묵커밋)이라 비원자임을 명시(‘보장’→‘시도’), 재시드 후 TCOMPANY≥90 검증 + 실패 시 큰 경고. (a) 임시테이블+RENAME 원자스왑은 시드 SQL 테이블명 하드코딩 때문에 범위 커 별도 작업으로 남김.
 
 **완료 후 흐름**: 커밋·push → **수동 QA(28리프, 실제 브라우저 플로우)** → **🚦 프로덕션 컷오버**(loupit.co를 job_change→loupit으로 스왑 · nginx `loupit.conf` 활성 · 포트 8000 · 인증서 · **반드시 사용자 승인 게이트**).
 
