@@ -313,6 +313,16 @@ async def test_TR6_ttl_expiry_triggers_rebuild(client, bundle_stub):
 
 
 @pytest.mark.asyncio
+async def test_TR8_head_reference_all_ok_empty_body(client, bundle_stub):
+    """L-1 회귀: /reference/all은 HEAD도 200(405 아님)이며 본문은 비어야 한다(ASGI 바디 스트립).
+    캐시/전송 헤더는 GET과 동일하게 유지된다."""
+    resp = await client.head("/api/v1/reference/all")
+    assert resp.status_code == 200
+    assert resp.content == b""
+    assert resp.headers.get("cache-control") == "public, max-age=3600"
+
+
+@pytest.mark.asyncio
 async def test_TE1_unhandled_exception_returns_generic_500(client, bundle_stub, monkeypatch):
     from server.routers import reference as reference_router
 

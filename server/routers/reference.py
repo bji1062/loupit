@@ -18,7 +18,7 @@ router = APIRouter(tags=["reference"])
 _CACHE_KEY = "reference_all"
 
 
-@router.get("/reference/all", response_model=ReferenceBundle)
+@router.api_route("/reference/all", methods=["GET", "HEAD"], response_model=ReferenceBundle)
 async def reference_all(request: Request) -> Response:
     cache = request.app.state.reference_cache
     body: bytes | None = cache.get(_CACHE_KEY)

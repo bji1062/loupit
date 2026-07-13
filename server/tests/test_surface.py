@@ -64,6 +64,18 @@ async def test_TM1_post_to_get_only_route_is_405_with_allow_header(client):
 
 
 @pytest.mark.asyncio
+async def test_TL1_head_allowed_on_get_routes(client):
+    """L-1 회귀: GET 라우트는 HEAD도 허용(405 아님) — 헬스체크·스모크의 HEAD 요청이
+    405로 실패하던 문제 방지. CORS preflight가 광고하는 GET/HEAD/OPTIONS(test_TCORS2)와
+    실제 라우트 메서드를 일치시킨다. HEAD 응답은 본문 없이 200(ASGI가 바디 스트립).
+    (/reference/all은 bundle_stub 필요 → test_reference.py::test_TR7에서 별도 검증.)"""
+    for path in ("/api/v1/health", "/api/v1/companies/search?q=삼성", "/api/v1/companies/1"):
+        resp = await client.head(path)
+        assert resp.status_code == 200, f"HEAD {path} → {resp.status_code} (200 기대, 405 금지)"
+        assert resp.content == b"", f"HEAD {path} 본문 비어야 함"
+
+
+@pytest.mark.asyncio
 async def test_TN1_unregistered_path_is_404(client):
     resp = await client.get("/api/v1/nonexistent")
     assert resp.status_code == 404

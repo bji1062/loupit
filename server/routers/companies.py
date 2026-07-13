@@ -48,7 +48,7 @@ def _like_escape(s: str) -> str:  # LIKE 메타문자 무력화(ESCAPE '!')
     return s.replace("!", "!!").replace("%", "!%").replace("_", "!_")
 
 
-@router.get("/companies/search", response_model=list[CompanySearchItem])
+@router.api_route("/companies/search", methods=["GET", "HEAD"], response_model=list[CompanySearchItem])
 async def search_companies(
     response: Response,
     q: str = Query(..., max_length=50),  # 미제공 → 422 / >50 → 422 (FR-93)
@@ -63,7 +63,7 @@ async def search_companies(
     return [CompanySearchItem(**r) for r in rows]
 
 
-@router.get("/companies/{comp_id}", response_model=Company)
+@router.api_route("/companies/{comp_id}", methods=["GET", "HEAD"], response_model=Company)
 async def get_company(
     response: Response,
     comp_id: int = Path(..., ge=1),  # 비정수·<1 → 422 (FR-94)

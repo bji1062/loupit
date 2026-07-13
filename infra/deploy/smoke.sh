@@ -20,9 +20,10 @@ chk "SM-6 privacy 200"      "[ \"\$(code ${BASE}/privacy)\" = 200 ]"
 chk "SM-13 404"             "[ \"\$(code ${BASE}/nonexistent-xyz)\" = 404 ]"
 
 # ── 전송·보안 헤더 + 확장(SM-4·5·7·8·9) ──
-# SM-4는 반드시 GET(헤더덤프)으로 검사한다 — API 표면은 GET-only(Tier-0, test_surface TM1)라
-# HEAD(`curl -I`)는 405+no-store가 되어 오탐한다. 라이브 스모크(M8)가 포착. GET으로 헤더만 읽는다.
-chk "SM-4 ref cache-header" "curl -sD - -o /dev/null ${BASE}/api/v1/reference/all | grep -qi 'cache-control: public, max-age=3600'"
+# SM-4: HEAD로 참조 엔드포인트의 Cache-Control을 검사한다. L-1(2026-07-13, GET 라우트는
+# HEAD도 수락 — api_route methods=["GET","HEAD"]) 반영 후 HEAD가 200 + 동일 헤더를 반환하므로,
+# f9459f9의 GET-헤더덤프 우회(HEAD→405 회피)는 더 이상 불필요하다. HEAD는 본문을 안 받아 더 가볍다.
+chk "SM-4 ref cache-header" "curl -sI ${BASE}/api/v1/reference/all | grep -qi 'cache-control: public, max-age=3600'"
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung_elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 예시)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"
