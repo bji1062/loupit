@@ -5,6 +5,8 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
+import { mountUI } from './ui.js';
+import { mountAds } from './ads.js';
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
 export function createInitialState() {
@@ -99,7 +101,11 @@ export async function boot(hooks = {}) {
     const appEl = document.getElementById('app');
     if (appEl) appEl.hidden = false;
   }
-  go(parseHash() || 'search', { push: false });
+  // 통합 계층 마운트: 검색/입력/리포트 DOM 이벤트 배선 + 입력 뷰 컨트롤 렌더(SP-FE-3 이벤트 바인딩).
+  mountUI(App.state, { go, runReport, mountAds, reboot: () => boot(hooks) });
+  // 프리필로 슬롯이 채워졌으면 입력 뷰로(restoreFromPrefill의 go('input')이 아래 최종 go로 덮이지 않게 보정).
+  const prefilled = !!(App.state.matched.a || App.state.matched.b);
+  go(parseHash() || (prefilled ? 'input' : 'search'), { push: false });
 }
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
   document.addEventListener('DOMContentLoaded', () => boot());

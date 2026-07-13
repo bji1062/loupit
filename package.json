@@ -1,0 +1,13 @@
+{
+  "name": "loupit-frontend-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "loupit 프론트엔드 테스트 전용 매니페스트 — 프로덕션은 무빌드(ES 모듈 직접 서빙). jsdom은 SPA DOM 통합 테스트(ui.test.js)용 dev 의존.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test 'web/**/*.test.js'"
+  },
+  "devDependencies": {
+    "jsdom": "^24.1.0"
+  }
+}
