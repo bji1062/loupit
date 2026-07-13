@@ -10,7 +10,10 @@
 
 **문서 파이프라인(1~7단계) 완료. 8단계 구현 = M0~M8 대부분 완료.** loupit이 **`beta.loupit.co` 무중단 스테이징으로 배포·적대적 검증**된 상태(재검증 판정 GO-with-fixes).
 
-- **git**: `origin/main` 최신 = §B 1~7 완료(L-1 `0e4b79e`·L-4 `91d24a8`·L-2/L-3 `f5ba3c1`·복원 `b2a8bc7` + RESUME 갱신, push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
+> **🔴 2026-07-13 QA 발견·수정 (중요)**: gstack 헤드리스 브라우저로 MB-* 수동 QA를 대행하던 중 **비교툴(코어 기능)이 정적 셸만 뜨고 전혀 조작 불가**한 런치블로커를 발견했다 — 검색 입력이 어떤 핸들러에도 미배선(`bindGlobalUI()` 자리표시자). 순수 유닛 300개는 green이나 DOM 통합 계층(TASK/06 "후속 통합 과제")이 미구현이라 실제 브라우저에선 죽어 있었다. **`web/assets/js/ui.js` 신규로 통합 배선 계층 구현·수정 완료(`cd20712`)** + `ui.test.js`(jsdom 실DOM 통합 14개)로 재발 차단. beta 라이브 e2e 검증: 검색→선택→입력뷰→비교→리포트 전 플로우 동작(총보상·9카테고리 델타·워라밸 계산, 콘솔에러0). **완성도 정정**: 앞선 "코드 ~96%"는 이 갭 때문에 과대였고, 수정 후 코어 기능이 실제 동작한다. 남은 것은 **시각 폴리시(styles.css 옵션1)** + 잔여 수동 QA + 컷오버.
+
+- **git**: `origin/main` 최신 = §B 1~7 완료(L-1 `0e4b79e`·L-4 `91d24a8`·L-2/L-3 `f5ba3c1`·복원 `b2a8bc7`) + **비교툴 배선 `cd20712`**(+RESUME/TASK 갱신, push 완료·동기화). 다른 PC에서 `git pull`로 이어받기.
+- **⚠️ 프론트 테스트 의존성**: `ui.test.js`(jsdom 통합)는 `jsdom` dev 의존 필요(`package.json`). `node_modules`는 gitignore — fresh 클론은 `npm install`(또는 `bun install`) 후 run_tests.sh. run_tests.sh가 없으면 자동 설치 시도. 프로덕션 서빙은 여전히 무빌드(ES 모듈 직접).
 - **배포된 실행 상태 (⚠️ 서버 호스트 `158.180.79.39` 에만 존재·유지 — 로컬 클론엔 없음)**:
   - beta API: systemd `loupit-beta-api.service`, 127.0.0.1:**8001** (시스템 python3, `server/.env.beta`). 공개 `https://beta.loupit.co` (nginx + Let's Encrypt).
   - DB: MySQL 스키마 **LOUPIT** / 계정 **APP_LOUPIT** (pw는 `server/.env.beta`, gitignore — 새 환경엔 없음). 회사 95·복지 1317·프리셋 28.
