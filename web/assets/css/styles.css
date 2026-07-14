@@ -230,6 +230,9 @@ main p { margin-top:var(--sp-3); }
 /* ═══════════════════════════════════════ COMPARE TOOL(셸 3뷰 + ui.js) ══ */
 /* hidden 은 항상 display 규칙을 이겨야 한다(뷰 전환 정확성). */
 [hidden] { display:none !important; }
+/* 검색 뷰: 랜딩 히어로 아래 강조 카드(두 직장 선택 박스). 입력/리포트 뷰는 자체 카드 스타일 보유. */
+#view-search { margin-top:var(--sp-5); padding:var(--sp-5); background:var(--bg-1); border:var(--bw) solid var(--accent); border-radius:var(--r-lg); box-shadow:var(--shadow-1); }
+#view-search > h2 { margin-top:0; font-size:var(--fs-h3); }
 .search-slot { margin-top:var(--sp-4); }
 .search-slot label { display:block; font-weight:var(--fw-medium); margin-bottom:var(--sp-2); }
 .search-slot input[type="text"], #view-input input[type="number"], #view-input select {

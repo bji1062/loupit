@@ -1,5 +1,7 @@
 <!doctype html>
-<!-- web/index.html — SCR-01 랜딩(SP-FE-2·SP-DS). 무빌드·정적·인덱싱 대상. 본문은 JS 없이 읽힘(NFR12·24). -->
+<!-- web/index.html — SCR-01 랜딩 + SCR-02 비교 툴 통합 화면(SP-FE-2·SP-DS).
+     히어로·특징은 정적(무빌드·인덱싱 대상, 본문 JS 없이 읽힘 — NFR12·24). 검색/입력/리포트는
+     app.js가 부팅하는 SPA(#app). 부팅 성공 전엔 히어로·특징만 노출된다(정적 폴백). -->
 <html lang="ko">
 <head>
   <meta charset="utf-8">
@@ -9,7 +11,7 @@
   <link rel="canonical" href="/">
   <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
-<body data-page-type="content">
+<body data-page-type="landing"> <!-- 랜딩 유형(SP-ADS): 콘텐츠 하단 광고 1(예약). 입력/리포트 뷰 광고는 app.js가 명시 마운트 -->
 <header data-global>
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
@@ -19,10 +21,55 @@
 </header>
 
 <main>
+  <!-- 히어로: 정적·JS 없이 읽힘(SEO·NFR12·24). 검색 박스는 아래 SPA(#app)가 부팅 후 채운다. -->
   <h1 id="main-heading">회사 복지·연봉, 로그인 없이 비교하세요</h1>
   <p class="lede">두 회사의 실효연봉·복지·워라밸·성장성을 한 화면에서 비교합니다. 회원가입 없이 무료로, 비교 계산은 100% 브라우저에서 이뤄집니다.</p>
-  <p><a class="cta" href="/compare">비교 시작하기</a></p>
 
+  <!-- 비교 툴 SPA 셸(3뷰 상태 머신). JS 부팅 성공 시 hidden 해제(PE-1). -->
+  <div id="app" hidden>
+    <section id="view-search" class="view" data-screen="search">
+      <h2>비교할 두 직장을 선택하세요</h2>
+      <div class="search-slot" data-slot="a">
+        <label for="search-input-a">현재 직장(A)</label>
+        <input id="search-input-a" type="text" autocomplete="off" placeholder="회사명 검색">
+        <ul id="cand-a" class="cand-list" role="listbox" aria-label="A 후보"></ul>
+        <p class="search-empty" data-slot="a" hidden>검색 결과가 없습니다. 직접 입력으로 진행할 수 있습니다.</p>
+        <p class="search-error" data-slot="a" hidden>검색에 실패했습니다. <button type="button" data-retry="a">다시 시도</button></p>
+      </div>
+      <div class="search-slot" data-slot="b">
+        <label for="search-input-b">이직 후보(B)</label>
+        <input id="search-input-b" type="text" autocomplete="off" placeholder="회사명 검색">
+        <ul id="cand-b" class="cand-list" role="listbox" aria-label="B 후보"></ul>
+        <p class="search-empty" data-slot="b" hidden>검색 결과가 없습니다. 직접 입력으로 진행할 수 있습니다.</p>
+        <p class="search-error" data-slot="b" hidden>검색에 실패했습니다. <button type="button" data-retry="b">다시 시도</button></p>
+      </div>
+    </section>
+
+    <section id="view-input" class="view" data-screen="input" hidden>
+      <h2>비교 입력</h2>
+      <div id="input-slot-a" class="input-slot" data-slot="a"></div>
+      <div id="input-slot-b" class="input-slot" data-slot="b"></div>
+      <div id="priority-picker"></div>
+      <button id="btn-compare" type="button">비교하기</button>
+    </section>
+
+    <section id="view-report" class="view" data-screen="report" hidden>
+      <h2>비교 리포트</h2>
+      <div id="report-body"></div>
+      <!-- SP-ADS-9.2: report 뷰 하단 절제 광고 슬롯 정확히 1개(판정 상단·중간 삽입 금지) -->
+      <div data-ad-position="report_bottom"></div>
+      <div data-affiliate-host></div>
+      <button id="btn-edit-input" type="button">입력 수정</button>
+      <button id="btn-new-search" type="button">새 비교</button>
+    </section>
+
+    <div id="boot-error" hidden> <!-- FR-E1 참조 로드 실패 재시도 UI -->
+      <p>비교 도구를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.</p>
+      <button id="btn-boot-retry" type="button">다시 시도</button>
+    </div>
+  </div>
+
+  <!-- 특징: 정적·JS 없이 읽힘(SEO). 검색 박스가 부팅 실패해도 랜딩 가치 설명은 남는다. -->
   <section aria-label="특징">
     <h2>이런 걸 알려드립니다</h2>
     <ul>
@@ -32,9 +79,20 @@
     </ul>
   </section>
 
-  <!-- SP-ADS: 콘텐츠 유형 페이지 하단 광고 슬롯(런타임 ads.js 마운트). -->
+  <!-- SP-ADS: 랜딩 콘텐츠 하단 광고 슬롯(런타임 ads.js 마운트, 승인 전엔 예약 박스). -->
   <div data-ad-position="content_bottom"></div>
 </main>
+
+<!-- SP-ADS-9.1 동의 배너(전역, 공통 파셜). 최초 로드 시 initConsentBanner()가 hidden 상태를 결정. -->
+<div id="consent-banner" hidden>
+  <p>맞춤형 광고 표시에 동의하시겠습니까? <a href="/ads">광고·제휴 고지</a> · <a href="/privacy">개인정보처리방침</a></p>
+  <button type="button" data-consent="grant">동의</button>
+  <button type="button" data-consent="deny">거부</button>
+</div>
+
+<noscript id="nojs"> <!-- SCR-94 비-JS 폴백: 검색 도구는 JS 필요. 히어로·특징 본문은 위에서 이미 읽힌다. -->
+  <p>회사 검색·비교 도구는 자바스크립트가 필요합니다. 자바스크립트를 켜면 위에서 두 직장을 검색해 비교할 수 있습니다.</p>
+</noscript>
 
 <footer data-global>
   <nav aria-label="정책 링크">
@@ -45,5 +103,7 @@
   </nav>
   <p class="disclaimer">본 서비스의 복지·연봉 정보는 참고용이며 실제와 다를 수 있습니다. 추정 금액은 별도 표기합니다.</p>
 </footer>
+
+<script type="module" src="/assets/js/app.js" defer></script>
 </body>
 </html>
