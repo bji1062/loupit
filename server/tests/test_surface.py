@@ -16,8 +16,13 @@ def app_instance():
     return create_app()
 
 
-def test_TS1_get_four_endpoints_only_zero_write_routes(app_instance):
-    """Tier-0: API 표면 = GET 4종·쓰기 라우트 0 (INV-1)."""
+def test_TS1_get_five_endpoints_plus_single_anonymous_log_post(app_instance):
+    """Tier-0: API 표면 = GET 5종 + 익명 비교 로그 POST 정확히 1종 (INV-1 개정 2026-07-14).
+
+    "실시간 비교 TOP 10" 위젯을 위해 POST /comparisons/log 하나만 허용한다 —
+    저장은 회사쌍 comp_id + 시각뿐(사용자 식별자·입력값 무저장, test_schema_load
+    TCOMPARE_LOG 컬럼 계약이 프라이버시 가드). 그 외 쓰기 라우트가 늘어나면
+    본 게이트가 깨진다 — 추가하려면 INV-1 재개정이 선행돼야 한다."""
     write_methods = {"POST", "PUT", "PATCH", "DELETE"}
     seen_paths_methods: set[tuple[str, str]] = set()
     write_routes = []
@@ -30,13 +35,16 @@ def test_TS1_get_four_endpoints_only_zero_write_routes(app_instance):
                 write_routes.append((route.path, method))
             seen_paths_methods.add((route.path, method))
 
-    assert not write_routes, f"쓰기 라우트 발견: {write_routes}"
+    assert write_routes == [("/api/v1/comparisons/log", "POST")], (
+        f"허용된 쓰기 라우트는 익명 비교 로그 POST 1종뿐: {write_routes}"
+    )
 
     expected_get_paths = {
         "/api/v1/health",
         "/api/v1/reference/all",
         "/api/v1/companies/search",
         "/api/v1/companies/{comp_id}",
+        "/api/v1/comparisons/trending",
     }
     get_paths = {path for (path, method) in seen_paths_methods if method == "GET"}
     assert get_paths == expected_get_paths
@@ -89,7 +97,8 @@ async def test_TCORS1_allowed_origin_echoed_not_wildcard(client):
 
 
 @pytest.mark.asyncio
-async def test_TCORS2_preflight_allows_get_head_options_only(client):
+async def test_TCORS2_preflight_allows_get_head_options_post_only(client):
+    """PUT/PATCH/DELETE 미광고 — POST는 익명 비교 로그 1종용(INV-1 개정 2026-07-14)."""
     resp = await client.options(
         "/api/v1/companies/search",
         headers={
@@ -100,4 +109,4 @@ async def test_TCORS2_preflight_allows_get_head_options_only(client):
     assert resp.status_code in (200, 204)
     allow_methods = resp.headers.get("access-control-allow-methods", "")
     allowed = {m.strip() for m in allow_methods.split(",")}
-    assert allowed == {"GET", "HEAD", "OPTIONS"}
+    assert allowed == {"GET", "HEAD", "OPTIONS", "POST"}

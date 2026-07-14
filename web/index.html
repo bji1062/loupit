@@ -25,6 +25,10 @@
   <h1 id="main-heading">회사 복지·연봉, 로그인 없이 비교하세요</h1>
   <p class="lede">두 회사의 실효연봉·복지·워라밸·성장성을 한 화면에서 비교합니다. 회원가입 없이 무료로, 비교 계산은 100% 브라우저에서 이뤄집니다.</p>
 
+  <!-- 2칼럼: 본문(비교 툴+특징) + 우측 레일(실시간 비교 TOP 10, 768px 미만은 본문 아래 스택) -->
+  <div class="main-cols">
+  <div class="main-primary">
+
   <!-- 비교 툴 SPA 셸(3뷰 상태 머신). JS 부팅 성공 시 hidden 해제(PE-1). -->
   <div id="app" hidden>
     <section id="view-search" class="view" data-screen="search">
@@ -81,6 +85,14 @@
 
   <!-- SP-ADS: 랜딩 콘텐츠 하단 광고 슬롯(런타임 ads.js 마운트, 승인 전엔 예약 박스). -->
   <div data-ad-position="content_bottom"></div>
+
+  </div><!-- /.main-primary -->
+
+  <!-- 실시간 비교 TOP 10(익명 집계, INV-1 개정 2026-07-14) — trending.js가 로드 성공 시 hidden 해제.
+       접힘: 1~10위 순차 롤링 / 호버·포커스: 전체 펼침 / 클릭: 양 슬롯 프리필. -->
+  <aside id="trending" class="rail" hidden aria-label="실시간 비교 TOP 10"></aside>
+
+  </div><!-- /.main-cols -->
 </main>
 
 <!-- SP-ADS-9.1 동의 배너(전역, 공통 파셜). 최초 로드 시 initConsentBanner()가 hidden 상태를 결정. -->

@@ -71,6 +71,14 @@ EXPECTED_COLUMNS: dict[str, dict[str, dict]] = {
         "DEFAULT_CHECKED_YN": {"DATA_TYPE": "tinyint", "IS_NULLABLE": "NO", "COLUMN_DEFAULT": "1"},
         "SORT_ORDER_NO": {"DATA_TYPE": "smallint", "IS_NULLABLE": "YES", "COLUMN_DEFAULT": "0"},
     },
+    # 익명 비교 로그(INV-1 개정 2026-07-14) — 쌍 comp_id + 시각 3컬럼뿐이어야 한다.
+    # 사용자 식별자·입력값 컬럼이 추가되면 이 계약이 깨진다(프라이버시 가드).
+    "TCOMPARE_LOG": {
+        "CMP_LOG_ID": {"DATA_TYPE": "bigint", "IS_NULLABLE": "NO"},
+        "A_COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
+        "B_COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
+        "INS_DTM": {"DATA_TYPE": "timestamp", "IS_NULLABLE": "NO"},
+    },
 }
 
 AUDIT_COLUMNS = {"INS_ID", "INS_DTM", "MOD_ID", "MOD_DTM"}

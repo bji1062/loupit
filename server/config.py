@@ -46,6 +46,12 @@ class Settings(BaseSettings):
     reference_cache_ttl: int = 3600  # 인메모리 TTL(초). Cache-Control max-age와 동일값
     reference_cache_control: str = "public, max-age=3600"  # FR-92 명시값(브리프 §6)
 
+    # 실시간 비교 TOP 10 트렌딩 (INV-1 개정 2026-07-14)
+    trending_cache_ttl: int = 60  # 인메모리 TTL(초). max-age와 동일값
+    trending_cache_control: str = "public, max-age=60"
+    trending_window_days: int = 7  # 집계 윈도우(일)
+    trending_limit: int = 10  # 상위 N
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]

@@ -30,10 +30,12 @@ def test_T04_1_1_forbidden_legacy_modules_absent():
             assert stem not in FORBIDDEN_MODULE_NAMES, f"금지 모듈 발견: {os.path.join(base_dir, fname)}"
 
 
-def test_T04_1_1_routers_package_has_only_get_four_files():
-    """routers/ 는 3파일(health·reference·companies)만 예약 (+ __init__.py)."""
+def test_T04_1_1_routers_package_file_allowlist():
+    """routers/ 파일 허용목록 — health·reference·companies + trending(INV-1 개정
+    2026-07-14 익명 비교 트렌딩; 레거시 'comparisons' 모듈명은 사용자 저장 비교
+    부활 방지를 위해 계속 금지) (+ __init__.py)."""
     py_files = {f for f in os.listdir(ROUTERS_DIR) if f.endswith(".py")}
-    assert py_files == {"__init__.py", "health.py", "reference.py", "companies.py"}
+    assert py_files == {"__init__.py", "health.py", "reference.py", "companies.py", "trending.py"}
 
 
 @pytest.mark.asyncio

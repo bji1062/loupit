@@ -126,3 +126,19 @@ CREATE TABLE IF NOT EXISTS TBENEFIT_PRESET (
   FOREIGN KEY (COMP_TP_ID) REFERENCES TCOMPANY_TYPE(COMP_TP_ID),
   INDEX idx_preset_type (COMP_TP_ID, SORT_ORDER_NO)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='기업유형별 기본복지 (비교 툴 직접 입력 모드 템플릿)';
+
+-- ─────────────────────────────────────────────────────────────────────
+-- TCOMPARE_LOG — 익명 비교 실행 로그 (INV-1 개정 2026-07-14, "실시간 비교 TOP 10")
+-- 저장은 회사쌍 comp_id + 시각뿐. 사용자 식별자·IP·세션·연봉 등 입력값 무저장 —
+-- FR-07(사용자 데이터 서버 미전송)의 예외는 이 익명 쌍 카운트로 한정한다.
+-- 소비: GET /comparisons/trending (최근 7일 쌍별 COUNT 상위 10).
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS TCOMPARE_LOG (
+  CMP_LOG_ID  BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '로그 PK',
+  A_COMP_ID   INT NOT NULL COMMENT '현재 직장(A) 회사 FK (TCOMPANY.COMP_ID)',
+  B_COMP_ID   INT NOT NULL COMMENT '이직 후보(B) 회사 FK (TCOMPANY.COMP_ID)',
+  INS_DTM     TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '실행 일시 (집계 윈도우 기준)',
+  FOREIGN KEY (A_COMP_ID) REFERENCES TCOMPANY(COMP_ID) ON DELETE CASCADE,
+  FOREIGN KEY (B_COMP_ID) REFERENCES TCOMPANY(COMP_ID) ON DELETE CASCADE,
+  INDEX idx_cmp_log_dtm (INS_DTM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='익명 비교 실행 로그 (쌍+시각만 — 사용자 식별자·입력값 무저장)';

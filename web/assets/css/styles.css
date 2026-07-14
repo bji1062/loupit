@@ -327,6 +327,35 @@ main p { margin-top:var(--sp-3); }
 .rp-warnings { display:flex; flex-direction:column; gap:var(--sp-2); }
 .rp-warning-item { background:var(--badge-expired-bg); color:var(--badge-expired-fg); border-radius:var(--r-sm); padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); }
 
+/* ══════════════════════════════ TRENDING(실시간 비교 TOP 10 우측 레일) ══ */
+/* 모바일(<768px): .main-cols 블록 흐름 — 레일이 본문 아래 스택. 데스크톱은 하단 @media. */
+#trending {
+  margin-top:var(--sp-5); padding:var(--sp-4);
+  background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg);
+  box-shadow:var(--shadow-1);
+}
+#trending .trend-title {
+  margin-top:0; font-family:var(--font-sans); font-size:var(--fs-sm);
+  font-weight:var(--fw-semibold); color:var(--t2); letter-spacing:0; line-height:var(--lh-snug);
+}
+#trending .trend-caption { margin-top:var(--sp-1); font-size:var(--fs-ad); color:var(--t4); }
+.trend-current, .trend-list { margin-top:var(--sp-2); border-top:var(--bw) solid var(--border); padding-top:var(--sp-1); }
+.trend-list { list-style:none; margin-bottom:0; padding-left:0; display:none; }
+.trend-item {
+  display:flex; align-items:center; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
+  padding:var(--sp-1) var(--sp-1); background:none; border:0; cursor:pointer; text-align:left;
+  font-size:var(--fs-sm); color:var(--t1); border-radius:var(--r-sm);
+  transition:background var(--dur-fast) var(--ease-out);
+}
+.trend-item:hover { background:var(--coral-tint); }
+.trend-rank { flex:none; width:20px; text-align:center; font-weight:var(--fw-semibold); color:var(--coral); font-size:var(--fs-xs); }
+.trend-pair { display:inline-flex; flex-wrap:wrap; column-gap:var(--sp-1); align-items:baseline; }
+.trend-a, .trend-b { font-weight:var(--fw-medium); }
+.trend-vs { color:var(--t4); font-size:var(--fs-ad); }
+/* 호버·포커스 펼침: 접힘 행(롤링 1건) ↔ 전체 목록(1~10) 전환 */
+#trending.trend-expanded .trend-current { display:none; }
+#trending.trend-expanded .trend-list { display:block; }
+
 /* ══════════════════════════════════════════════════════ ADS ══ */
 .ad-slot, [data-ad-position] {
   margin-top:var(--sp-6); padding:var(--sp-5);
@@ -356,4 +385,7 @@ main p { margin-top:var(--sp-3); }
   #view-input { grid-template-columns:1fr 1fr; align-items:start; }
   #view-input > h2, #view-input #priority-picker, #view-input #btn-compare { grid-column:1 / -1; }
   .cat-delta-table th, .cat-delta-table td { padding:var(--sp-3); }
+  /* 우측 레일(실시간 비교 TOP 10): 본문 + 240px 2칼럼, 스크롤 시 sticky(헤더 56px 아래) */
+  .main-cols { display:grid; grid-template-columns:minmax(0,1fr) 240px; column-gap:var(--sp-5); align-items:start; }
+  .main-cols > .rail { position:sticky; top:72px; }
 }

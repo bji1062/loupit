@@ -18,7 +18,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 from server.cache import TTLCache
 from server.config import get_settings
 from server.database import close_pool, init_pool
-from server.routers import companies, health, reference
+from server.routers import companies, health, reference, trending
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +28,7 @@ async def lifespan(app: FastAPI):
     s = get_settings()
     await init_pool()
     app.state.reference_cache = TTLCache(s.reference_cache_ttl)
+    app.state.trending_cache = TTLCache(s.trending_cache_ttl)  # 비교 트렌딩(60s)
     yield
     await close_pool()
 
@@ -36,11 +37,12 @@ def create_app() -> FastAPI:
     s = get_settings()
     app = FastAPI(title="loupit read-only API", version="1.0.0", lifespan=lifespan)
 
-    # CORS: 허용목록만. 와일드카드+자격증명 금지. 쓰기 메서드 미포함(FR-96)
+    # CORS: 허용목록만. 와일드카드+자격증명 금지. POST는 익명 비교 로그 1종에만
+    # 사용된다(INV-1 개정 2026-07-14 — 그 외 쓰기 라우트 0은 TS-1이 고정, FR-96)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=s.cors_origin_list,
-        allow_methods=["GET", "HEAD", "OPTIONS"],
+        allow_methods=["GET", "HEAD", "OPTIONS", "POST"],
         allow_headers=["*"],
         allow_credentials=False,
     )
@@ -75,6 +77,7 @@ def create_app() -> FastAPI:
     app.include_router(health.router, prefix=p)
     app.include_router(reference.router, prefix=p)
     app.include_router(companies.router, prefix=p)
+    app.include_router(trending.router, prefix=p)
     return app
 
 

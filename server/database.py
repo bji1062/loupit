@@ -1,7 +1,9 @@
 """SP-API-3 DB 접근 계층 — aiomysql 풀 + 원시 SQL(%s 바인딩).
 
-읽기 헬퍼(fetch_all/fetch_one)만 제공한다. execute/commit/rollback 등 쓰기
-헬퍼는 두지 않는다(INV-1·NFR20) — 본 서버는 SELECT 전용.
+읽기 헬퍼(fetch_all/fetch_one)를 제공하고, 범용 쓰기 헬퍼(execute/commit/
+rollback)는 두지 않는다(INV-1·NFR20). 유일한 예외는 `insert_compare_log` —
+INV-1 개정(2026-07-14, "실시간 비교 TOP 10")으로 허용된 익명 비교 로그 단일
+INSERT다. 그 외 쓰기 경로를 추가하려면 INV-1 재개정이 선행돼야 한다.
 """
 from __future__ import annotations
 
@@ -56,6 +58,19 @@ async def fetch_one(sql: str, params: tuple = ()) -> dict | None:
         async with conn.cursor() as cur:
             await cur.execute(sql, params)
             return await cur.fetchone()
+
+
+_SQL_INSERT_COMPARE_LOG = "INSERT INTO TCOMPARE_LOG (A_COMP_ID, B_COMP_ID) VALUES (%s, %s)"
+
+
+async def insert_compare_log(a_comp_id: int, b_comp_id: int) -> None:
+    """익명 비교 로그 1행 INSERT — 본 모듈의 유일한 쓰기(모듈 docstring 참조).
+
+    풀이 autocommit=True라 별도 커밋 불필요. 쌍 comp_id 외 어떤 값도 받지
+    않는다(사용자 식별자·입력값 저장 금지 계약을 시그니처로 강제)."""
+    async with get_pool().acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(_SQL_INSERT_COMPARE_LOG, (a_comp_id, b_comp_id))
 
 
 async def ping() -> bool:

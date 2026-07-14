@@ -52,10 +52,13 @@
   | 2 | GET | `/api/v1/reference/all` | FR-92 |
   | 3 | GET | `/api/v1/companies/search` | FR-93 |
   | 4 | GET | `/api/v1/companies/{comp_id}` | FR-94 |
+  | 5 | GET | `/api/v1/comparisons/trending` | 개정 2026-07-14 |
+  | 6 | POST | `/api/v1/comparisons/log` | 개정 2026-07-14 |
 
-- 대안(비-GET 메서드): 등록된 경로에 POST/PUT/PATCH/DELETE 요청 시 **405 Method Not Allowed**를 `Allow: GET`(및 HEAD, OPTIONS) 헤더와 함께 반환한다. 쓰기 라우트가 존재하지 않으므로 어떤 사용자 데이터도 서버에 기록되지 않는다.
+- **개정(2026-07-14, "실시간 비교 TOP 10")**: 익명 비교 로그 쓰기 1종(`POST /comparisons/log`)과 그 집계 조회 1종(`GET /comparisons/trending`)을 표면에 추가한다. 로그는 **회사쌍 comp_id + 시각뿐** — 사용자 식별자·IP·세션·연봉 등 입력값은 받지도 저장하지도 않는다(`TCOMPARE_LOG` 컬럼 계약이 테스트로 고정). 이 1종 외 쓰기 라우트 0은 계속 유지된다(Tier-0 TS-1).
+- 대안(비-GET 메서드): 위 POST 1종 외 경로에 POST/PUT/PATCH/DELETE 요청 시 **405 Method Not Allowed**를 `Allow: GET`(및 HEAD, OPTIONS) 헤더와 함께 반환한다.
 - 대안(HEAD): GET 라우트는 HEAD를 함께 처리한다(본문 없이 헤더만 반환, 상태코드·캐시 헤더 동일).
-- 금지: 인증 미들웨어·세션 미들웨어·쿠키 발급·`/profiler` 계열·관리자 쓰기·비교 저장/신고/피드/통계 집계 엔드포인트를 라우터에 등록하지 않는다(§2-1·2-3·2-4, FR-D10).
+- 금지: 인증 미들웨어·세션 미들웨어·쿠키 발급·`/profiler` 계열·관리자 쓰기·비교 저장(사용자별)/신고/피드 엔드포인트를 라우터에 등록하지 않는다(§2-1·2-3·2-4, FR-D10). 통계 집계는 위 익명 쌍 카운트 1종으로 한정한다.
 
 **입력**: 없음(표면 불변식 자체). 개별 엔드포인트 입력은 FR-91~FR-94.
 

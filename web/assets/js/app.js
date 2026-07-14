@@ -5,8 +5,9 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI } from './ui.js';
+import { mountUI, reflectSlotLabel, maybeAdvance } from './ui.js';
 import { mountAds } from './ads.js';
+import { mountTrending, sendCompareLog } from './trending.js';
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
 export function createInitialState() {
@@ -102,7 +103,17 @@ export async function boot(hooks = {}) {
     if (appEl) appEl.hidden = false;
   }
   // 통합 계층 마운트: 검색/입력/리포트 DOM 이벤트 배선 + 입력 뷰 컨트롤 렌더(SP-FE-3 이벤트 바인딩).
-  mountUI(App.state, { go, runReport, mountAds, reboot: () => boot(hooks) });
+  // runReport 래핑: 비교하기 실행 시 익명 쌍 로그 1회 전송(fire-and-forget — 리포트 무손상,
+  // 직접 입력 쌍은 sendCompareLog가 자체 제외. INV-1 개정 2026-07-14).
+  const deps = {
+    go,
+    runReport: (h) => { const report = runReport(h); try { sendCompareLog(App.state); } catch { /* 무손상 */ } return report; },
+    mountAds,
+    reboot: () => boot(hooks),
+  };
+  mountUI(App.state, deps);
+  // 실시간 비교 TOP 10 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
+  mountTrending({ onPick: (item) => pickTrendingPair(item, deps) });
   // 프리필로 슬롯이 채워졌으면 입력 뷰로(restoreFromPrefill의 go('input')이 아래 최종 go로 덮이지 않게 보정).
   const prefilled = !!(App.state.matched.a || App.state.matched.b);
   go(parseHash() || (prefilled ? 'input' : 'search'), { push: false });
@@ -139,6 +150,21 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
     // 해석 실패 시 슬롯 미선택 유지(정상 검색 진입으로 폴백, P-3)
   }
   if (state.matched.a || state.matched.b) goFn('input', { push: false }); // 프리필 있으면 입력 뷰
+}
+
+// ── 실시간 비교 TOP 10 위젯 클릭 → 양 슬롯 프리필(프리필과 동일 정규화 경로) ──
+export function pickTrendingPair(item, deps = {}, state = App.state) {
+  const compA = resolveCompanyToken(String(item.a_comp_id), state);
+  const compB = resolveCompanyToken(String(item.b_comp_id), state);
+  if (!compA || !compB) return false; // REF에 없는 쌍 → 무시(위젯은 서버 집계, 프리필은 REF 기준)
+  for (const [slot, comp] of [['a', compA], ['b', compB]]) {
+    state.matched[slot] = normalizeCompany(comp); // FR-14와 동일 정규화(P-2)
+    fillBenefits(state, slot);
+    initWsState(state, slot);
+    reflectSlotLabel(slot, comp.comp_nm);
+  }
+  maybeAdvance(state, deps); // 양 슬롯 채움 → 입력뷰 렌더 + go('input')
+  return true;
 }
 
 // ── SP-FE-9.3 엔진 호출·상태 조립(assembleCompareState) ─────────────────────

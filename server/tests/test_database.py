@@ -91,11 +91,37 @@ async def test_fetch_one_returns_none_when_no_rows(monkeypatch):
 
 
 def test_write_helpers_are_absent():
-    """execute/commit/rollback(쓰기) 헬퍼 미제공 — INV-1·NFR20."""
+    """범용 쓰기 헬퍼(execute/commit/rollback 등) 미제공 — INV-1·NFR20.
+
+    유일 예외는 `insert_compare_log`(익명 비교 로그 단일 INSERT, INV-1 개정
+    2026-07-14) — 그 외 쓰기 심볼이 생기면 본 게이트가 깨진다."""
     from server import database
 
     for forbidden in ("execute", "commit", "rollback", "insert", "update", "delete"):
         assert not hasattr(database, forbidden), f"쓰기 헬퍼 발견 금지: {forbidden}"
+
+    write_symbols = [
+        name for name in dir(database)
+        if not name.startswith("_") and callable(getattr(database, name))
+        and any(kw in name.lower() for kw in ("insert", "update", "delete", "execute", "commit"))
+    ]
+    assert write_symbols == ["insert_compare_log"], (
+        f"허용된 쓰기 심볼은 insert_compare_log뿐: {write_symbols}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_insert_compare_log_binds_pair(monkeypatch):
+    """insert_compare_log — INSERT SQL + (a,b) %s 바인딩 (유일 허용 쓰기)."""
+    from server import database
+
+    pool = _FakePool([])
+    monkeypatch.setattr(database, "_pool", pool)
+    await database.insert_compare_log(1, 2)
+    sql, params = pool.conn.cursor_obj.calls[-1]
+    assert "INSERT INTO TCOMPARE_LOG" in sql
+    assert "(A_COMP_ID, B_COMP_ID)" in sql
+    assert params == (1, 2)
 
 
 @pytest.mark.asyncio

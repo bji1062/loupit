@@ -56,6 +56,7 @@ TABLE_CREATE_ORDER = [
     "TCOMPANY_ALIAS",
     "TCOMPANY_BENEFIT",
     "TBENEFIT_PRESET",
+    "TCOMPARE_LOG",  # 익명 비교 로그(INV-1 개정 2026-07-14) — FK→TCOMPANY라 자식 위치
 ]
 TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
@@ -365,6 +366,7 @@ async def client(fake_data, monkeypatch):
 
     app = create_app()
     app.state.reference_cache = TTLCache(get_settings().reference_cache_ttl)
+    app.state.trending_cache = TTLCache(get_settings().trending_cache_ttl)  # 비교 트렌딩(lifespan 대응)
 
     # raise_app_exceptions=False: Starlette의 ServerErrorMiddleware는 등록된
     # Exception 핸들러로 500 응답을 보낸 뒤에도 원 예외를 다시 raise한다(ASGI

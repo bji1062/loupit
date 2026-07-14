@@ -28,6 +28,7 @@ globalThis.window = globalThis;
 const {
   App, createInitialState, SCREENS, parseHash, go, boot, showBootError,
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
+  pickTrendingPair,
 } = await import('./app.js');
 
 beforeEach(() => {
@@ -219,6 +220,41 @@ describe('T-06.10.1 assembleCompareState (UT-ASM-1)', () => {
     assert.equal(assembleCompareState(state).curSacrifice, 'salary');
     state.curSacrifice = null;
     assert.equal(assembleCompareState(state).curSacrifice, null);
+  });
+});
+
+// ── 실시간 비교 TOP 10: pickTrendingPair(위젯 클릭 → 양 슬롯 프리필) ────────
+describe('pickTrendingPair (트렌딩 위젯 클릭 배선)', () => {
+  function refState() {
+    const state = createInitialState();
+    state.REF = {
+      company_types: [], benefit_presets: {},
+      companies: [
+        { comp_id: 1, comp_nm: '삼성전자', benefits: [] },
+        { comp_id: 2, comp_nm: 'SK하이닉스', benefits: [] },
+      ],
+    };
+    return state;
+  }
+  const ITEM = { a_comp_id: 1, a_comp_nm: '삼성전자', b_comp_id: 2, b_comp_nm: 'SK하이닉스', cnt: 5 };
+
+  test('REF 해석 성공 → 양 슬롯 매칭 + go("input")', () => {
+    const state = refState();
+    let went = null;
+    const ok = pickTrendingPair(ITEM, { go: (s) => { went = s; } }, state);
+    assert.equal(ok, true);
+    assert.equal(state.matched.a.comp_id, 1);
+    assert.equal(state.matched.b.comp_id, 2);
+    assert.equal(went, 'input');
+  });
+
+  test('REF에 없는 comp_id → 미프리필·false·go 미호출', () => {
+    const state = refState();
+    let went = false;
+    const ok = pickTrendingPair({ ...ITEM, b_comp_id: 99 }, { go: () => { went = true; } }, state);
+    assert.equal(ok, false);
+    assert.equal(state.matched.a, null);
+    assert.equal(went, false);
   });
 });
 
