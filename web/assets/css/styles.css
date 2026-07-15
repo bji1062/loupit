@@ -293,6 +293,30 @@ main p { margin-top:var(--sp-3); }
 .cat-delta-table th, .cat-delta-table td { padding:var(--sp-2); text-align:right; font-size:var(--fs-sm); border-bottom:var(--bw) solid var(--border); }
 .cat-delta-table th:first-child, .cat-delta-table td:first-child, .cat-delta-nm { text-align:left; color:var(--t3); }
 .cat-delta-diff { font-weight:var(--fw-semibold); }
+/* 복지 항목 매트릭스(매트릭스+diff 요약 하이브리드) — 같은 복지는 같은 행에 정렬 */
+.ben-diff-summary { display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-5); margin:0 0 var(--sp-3); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+.ben-diff--gained { color:var(--positive); }
+.ben-diff--lost { color:var(--negative); }
+.ben-matrix { width:100%; border-collapse:collapse; }
+.ben-matrix th, .ben-matrix td { padding:var(--sp-2); font-size:var(--fs-sm); text-align:left; vertical-align:middle; border-bottom:var(--bw) solid var(--border); }
+.ben-matrix thead th { color:var(--t3); font-weight:var(--fw-semibold); font-size:var(--fs-xs); }
+.ben-matrix .ben-col { width:31%; }
+.ben-cat-row th, .ben-cat-row td { background:var(--surface-soft); font-size:var(--fs-xs); }
+.ben-cat-nm { font-weight:var(--fw-semibold); color:var(--t2); }
+.ben-cat-sum { color:var(--t4); }
+.ben-nm { font-weight:var(--fw-regular); color:var(--t2); }
+.ben-cell .ben-amt { margin-right:var(--sp-2); font-weight:var(--fw-medium); white-space:nowrap; }
+.ben-cell.ben-win { background:var(--coral-tint); }
+.ben-cell.ben-win .ben-amt { font-weight:var(--fw-semibold); color:var(--coral-active); }
+.ben-none { color:var(--t4); }
+.ben-mark { display:inline-block; margin-left:var(--sp-2); font-size:var(--fs-ad); font-weight:var(--fw-medium); }
+.ben-mark--lost { color:var(--negative); }
+.ben-mark--gained { color:var(--positive); }
+.ben-qual { color:var(--t2); }
+/* report.js badgeClass의 이중대시 변형(badge--official 등) 정합 — 단일대시와 동일 팔레트 */
+.badge--official { background:var(--badge-official-bg); color:var(--badge-official-fg); }
+.badge--est { background:var(--badge-est-bg); color:var(--badge-est-fg); }
+.badge--expired { background:var(--badge-expired-bg); color:var(--badge-expired-fg); }
 /* 버터플라이(back-to-back) 카테고리 차트 — 예전 loupit 디자인 이식. A는 중앙축서 왼쪽, B는 오른쪽. */
 .rp-catbfly { margin:var(--sp-3) 0 var(--sp-5); }
 .bfly-legend { display:flex; gap:var(--sp-4); justify-content:center; margin-bottom:var(--sp-3); font-size:var(--fs-xs); color:var(--t3); }

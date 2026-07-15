@@ -55,6 +55,7 @@ globalThis.localStorage = new FakeLocalStorage();
 const {
   renderReport, renderVdCard, renderCatDelta, renderCatButterfly, renderBands,
   WARN_COPY, warnCopy, renderRecentUI, buildRecentRecord, saveRecentComparison,
+  matchBenefitRows, benefitDiffSummary, renderBenefitMatrix,
 } = await import('./report.js');
 const { recent } = await import('./store.js');
 
@@ -291,5 +292,164 @@ describe('T-06.11.6 최근 비교 저장/불러오기 UI', () => {
     const removeBtn = items.children[0].children.find((c) => c.className === 'rp-recent-remove');
     removeBtn.dispatch('click');
     assert.equal(recent.list().length, 0);
+  });
+});
+
+// ── 복지 항목 매트릭스(매트릭스+diff 요약 하이브리드, FR-40 개편 2026-07-15) ──
+function benItem(over = {}) {
+  return {
+    benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 100, benefit_ctgr_cd: 'perks',
+    checked: true, qual_yn: false, amt_source: 'stated', badge_cd: 'official', expires_dtm: null,
+    ...over,
+  };
+}
+
+describe('matchBenefitRows — 항목 정렬 매칭', () => {
+  test('동일 benefit_cd → 같은 행에 a·b 정렬', () => {
+    const rows = matchBenefitRows(
+      [benItem({ benefit_amt: 240 })],
+      [benItem({ benefit_amt: 180 })],
+    );
+    assert.equal(rows.length, 1);
+    assert.equal(rows[0].a.benefit_amt, 240);
+    assert.equal(rows[0].b.benefit_amt, 180);
+    assert.equal(rows[0].nm, '식대');
+  });
+
+  test('단독 항목 → 반대편 null', () => {
+    const rows = matchBenefitRows(
+      [benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 })],
+      [benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' })],
+    );
+    const bus = rows.find((r) => r.key === 'bus');
+    const edu = rows.find((r) => r.key === 'edu');
+    assert.ok(bus.a && bus.b === null, '통근버스는 A만');
+    assert.ok(edu.b && edu.a === null, '자기계발비는 B만');
+  });
+
+  test('unchecked 항목 제외(엔진 합계와 동일 모집단)', () => {
+    const rows = matchBenefitRows([benItem({ checked: false })], []);
+    assert.equal(rows.length, 0);
+  });
+
+  test('카테고리 고정 순서 그룹 + 미지 카테고리 → perks', () => {
+    const rows = matchBenefitRows(
+      [
+        benItem({ benefit_cd: 'p1', benefit_ctgr_cd: 'perks' }),
+        benItem({ benefit_cd: 'c1', benefit_ctgr_cd: 'compensation' }),
+        benItem({ benefit_cd: 'zz', benefit_ctgr_cd: 'unknown_cat' }),
+      ],
+      [],
+    );
+    assert.equal(rows[0].ctgr, 'compensation', 'compensation이 perks보다 먼저');
+    assert.deepEqual(rows.slice(1).map((r) => r.ctgr), ['perks', 'perks'], '미지 카테고리는 perks로 정규화');
+  });
+
+  test('카테고리 내: 금액 내림차순, 정성은 마지막', () => {
+    const rows = matchBenefitRows(
+      [
+        benItem({ benefit_cd: 'q1', benefit_nm: '수평 문화', benefit_amt: null, qual_yn: true }),
+        benItem({ benefit_cd: 'small', benefit_nm: '소액', benefit_amt: 10 }),
+        benItem({ benefit_cd: 'big', benefit_nm: '고액', benefit_amt: 500 }),
+      ],
+      [],
+    );
+    assert.deepEqual(rows.map((r) => r.key), ['big', 'small', 'q1']);
+  });
+});
+
+describe('benefitDiffSummary — 새로 생김/사라짐 집계', () => {
+  test('gained·lost 개수/합계, 정성은 count만·common 집계', () => {
+    const rows = matchBenefitRows(
+      [
+        benItem({ benefit_cd: 'meal', benefit_amt: 240 }),                       // 공통
+        benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 }), // lost(금액)
+        benItem({ benefit_cd: 'daycare', benefit_nm: '어린이집', benefit_amt: null, qual_yn: true }), // lost(정성)
+      ],
+      [
+        benItem({ benefit_cd: 'meal', benefit_amt: 180 }),
+        benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' }), // gained
+      ],
+    );
+    const s = benefitDiffSummary(rows);
+    assert.deepEqual(s, { gained: { count: 1, sum: 300 }, lost: { count: 2, sum: 120 }, common: 1 });
+  });
+});
+
+describe('renderBenefitMatrix — 표 렌더·마커·우세 하이라이트', () => {
+  function fixtureRows() {
+    return matchBenefitRows(
+      [
+        benItem({ benefit_cd: 'meal', benefit_amt: 240 }),
+        benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 }),
+      ],
+      [
+        benItem({ benefit_cd: 'meal', benefit_amt: 180, badge_cd: 'est' }),
+        benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' }),
+      ],
+    );
+  }
+
+  test('diff 요약 + 헤더(회사명) + 카테고리 소계(엔진 catDelta 표기)', () => {
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(fixtureRows(), mount, {
+      labels: { a: '삼성전자', b: '네이버' },
+      catDelta: [{ ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 }, { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 }],
+    });
+    const text = mount.allText();
+    assert.ok(text.includes('새로 생기는 복지 1개'), 'gained 요약');
+    assert.ok(text.includes('+300만원'), 'gained 금액 합');
+    assert.ok(text.includes('사라지는 복지 1개'), 'lost 요약');
+    assert.ok(text.includes('삼성전자') && text.includes('네이버'), '헤더 회사명');
+    assert.ok(text.includes('360만원'), '카테고리 소계(엔진 값)');
+  });
+
+  test('단독 항목: 빈 셀 "—" + 사라짐/새로 생김 마커', () => {
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(fixtureRows(), mount, {});
+    const marks = mount.findAll((n) => n.className && String(n.className).includes('ben-mark'));
+    const markTexts = marks.map((m) => m.textContent);
+    assert.ok(markTexts.includes('사라짐'));
+    assert.ok(markTexts.includes('새로 생김'));
+    assert.ok(mount.findAll((n) => n.className && String(n.className).includes('ben-none')).length >= 2, '빈 셀 —');
+  });
+
+  test('우세 하이라이트: 양쪽 금액 존재·차이 → 큰 셀에 ben-win', () => {
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(fixtureRows(), mount, {});
+    const wins = mount.findAll((n) => n.className && String(n.className).includes('ben-win'));
+    assert.equal(wins.length, 1, '식대 행에서만 1개');
+    assert.ok(wins[0].allText().includes('240'), 'A(240) 셀이 우세');
+  });
+
+  test('만료 항목 → 만료 배지(기존 badgeLabel 재사용)', () => {
+    const rows = matchBenefitRows([benItem({ expires_dtm: '2000-01-01T00:00:00Z' })], []);
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(rows, mount, {});
+    assert.ok(mount.allText().includes('만료'));
+  });
+
+  test('빈 rows → 무크래시·표 생략', () => {
+    const mount = new FakeElement('div');
+    assert.doesNotThrow(() => renderBenefitMatrix([], mount, {}));
+    assert.equal(mount.children.length, 0);
+  });
+});
+
+describe('renderReport — 복지 비교 섹션에 매트릭스 포함', () => {
+  test('ctx.benS 전달 시 rp-catdelta 블록 안에 ben-matrix 렌더', () => {
+    const state = fixtureState();
+    const report = compare(state);
+    const mount = new FakeElement('div');
+    renderReport(report, mount, { benS: state.benS, matched: state.matched });
+    const block = mount.children.find((c) => c.className && c.className.includes('rp-catdelta'));
+    assert.ok(block, 'rp-catdelta 블록 존재');
+    assert.ok(block.find((n) => n.className && String(n.className).includes('ben-matrix')), '매트릭스 표 존재');
+  });
+
+  test('ctx 없이 호출해도 무크래시(매트릭스 생략)', () => {
+    const report = compare(fixtureState());
+    const mount = new FakeElement('div');
+    assert.doesNotThrow(() => renderReport(report, mount));
   });
 });
