@@ -56,6 +56,7 @@ const {
   renderReport, renderVdCard, renderCatDelta, renderCatButterfly, renderBands,
   WARN_COPY, warnCopy, renderRecentUI, buildRecentRecord, saveRecentComparison,
   matchBenefitRows, benefitDiffSummary, renderBenefitMatrix,
+  benefitTotals, renderBenefitHeadline,
 } = await import('./report.js');
 const { recent } = await import('./store.js');
 
@@ -390,18 +391,46 @@ describe('renderBenefitMatrix — 표 렌더·마커·우세 하이라이트', (
     );
   }
 
-  test('diff 요약 + 헤더(회사명) + 카테고리 소계(엔진 catDelta 표기)', () => {
+  test('헤더(회사명) + 카테고리 소계(엔진 catDelta 표기) + 차이 열 헤더', () => {
     const mount = new FakeElement('div');
     renderBenefitMatrix(fixtureRows(), mount, {
       labels: { a: '삼성전자', b: '네이버' },
       catDelta: [{ ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 }, { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 }],
     });
     const text = mount.allText();
-    assert.ok(text.includes('새로 생기는 복지 1개'), 'gained 요약');
-    assert.ok(text.includes('+300만원'), 'gained 금액 합');
-    assert.ok(text.includes('사라지는 복지 1개'), 'lost 요약');
     assert.ok(text.includes('삼성전자') && text.includes('네이버'), '헤더 회사명');
     assert.ok(text.includes('360만원'), '카테고리 소계(엔진 값)');
+    assert.ok(text.includes('차이'), '차이 열 헤더');
+  });
+
+  test('차이 칩: 항목별 승자 방향(A/B)·카테고리 행은 엔진 delta', () => {
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(fixtureRows(), mount, {
+      catDelta: [{ ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 }, { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 }],
+    });
+    const chips = mount.findAll((n) => n.className && String(n.className).includes('ben-delta')).map((c) => c.textContent);
+    assert.ok(chips.includes('A +60'), '식대(240 vs 180) → A +60');
+    assert.ok(chips.includes('A +120'), '통근버스(A만) → A +120');
+    assert.ok(chips.includes('B +300'), '자기계발비(B만) → B +300');
+    assert.ok(chips.includes('A +180'), '복리후생 카테고리 행(엔진 delta -180)');
+  });
+
+  test('동일 금액 → "=" 칩', () => {
+    const rows = matchBenefitRows([benItem({ benefit_amt: 60 })], [benItem({ benefit_amt: 60 })]);
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(rows, mount, {});
+    const chips = mount.findAll((n) => n.className && String(n.className).includes('ben-delta')).map((c) => c.textContent);
+    assert.ok(chips.includes('='), '동일 금액 항목 행');
+  });
+
+  test('행내 미니바: 금액 셀에 폭% 인라인 바(최대 금액 = 100%)', () => {
+    const mount = new FakeElement('div');
+    renderBenefitMatrix(fixtureRows(), mount, {});
+    const bars = mount.findAll((n) => n.className && String(n.className).includes('ben-bar'));
+    assert.ok(bars.length >= 3, '금액 항목마다 바');
+    const widths = bars.map((b) => b.attributes.style || '');
+    assert.ok(widths.some((w) => /width:\s*100(\.0)?%/.test(w)), '최대 금액(자기계발비 300) = 100%');
+    assert.ok(widths.every((w) => /width:\s*[\d.]+%/.test(w)), '전부 폭% 스타일');
   });
 
   test('단독 항목: 빈 셀 "—" + 사라짐/새로 생김 마커', () => {
@@ -412,14 +441,6 @@ describe('renderBenefitMatrix — 표 렌더·마커·우세 하이라이트', (
     assert.ok(markTexts.includes('사라짐'));
     assert.ok(markTexts.includes('새로 생김'));
     assert.ok(mount.findAll((n) => n.className && String(n.className).includes('ben-none')).length >= 2, '빈 셀 —');
-  });
-
-  test('우세 하이라이트: 양쪽 금액 존재·차이 → 큰 셀에 ben-win', () => {
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(fixtureRows(), mount, {});
-    const wins = mount.findAll((n) => n.className && String(n.className).includes('ben-win'));
-    assert.equal(wins.length, 1, '식대 행에서만 1개');
-    assert.ok(wins[0].allText().includes('240'), 'A(240) 셀이 우세');
   });
 
   test('만료 항목 → 만료 배지(기존 badgeLabel 재사용)', () => {
@@ -436,6 +457,42 @@ describe('renderBenefitMatrix — 표 렌더·마커·우세 하이라이트', (
   });
 });
 
+describe('benefitTotals·renderBenefitHeadline — 총액 헤드라인(결론 먼저)', () => {
+  const CAT_DELTA = [
+    { ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 },
+    { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 },
+  ];
+
+  test('benefitTotals: catDelta 표시용 합산(엔진 값 그대로)', () => {
+    assert.deepEqual(benefitTotals(CAT_DELTA), { a: 360, b: 480, delta: 120 });
+    assert.deepEqual(benefitTotals([]), { a: 0, b: 0, delta: 0 });
+    assert.deepEqual(benefitTotals(null), { a: 0, b: 0, delta: 0 });
+  });
+
+  test('헤드라인: 양사 총액·판정문·분할 바 폭%·diff 요약 포함', () => {
+    const rows = matchBenefitRows(
+      [benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 })],
+      [benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' })],
+    );
+    const mount = new FakeElement('div');
+    renderBenefitHeadline(CAT_DELTA, rows, mount, { labels: { a: '삼성전자', b: '네이버' } });
+    const text = mount.allText();
+    assert.ok(text.includes('360만원') && text.includes('480만원'), '양사 총액');
+    assert.ok(text.includes('네이버') && text.includes('120만원 더'), 'B 우위 판정문');
+    assert.ok(text.includes('새로 생기는 복지 1개'), 'diff 요약 흡수');
+    const segs = mount.findAll((n) => n.className && String(n.className).includes('ben-split-'));
+    assert.equal(segs.length, 2, '분할 바 2조각');
+    assert.ok(segs.every((s) => /width:\s*[\d.]+%/.test(s.attributes.style || '')), '비중 폭%');
+  });
+
+  test('총액 동일 → "비슷" 판정문', () => {
+    const even = [{ ctgr: 'perks', sumA: 100, sumB: 100, delta: 0 }];
+    const mount = new FakeElement('div');
+    renderBenefitHeadline(even, [], mount, {});
+    assert.ok(mount.allText().includes('비슷'));
+  });
+});
+
 describe('renderReport — 복지 비교 섹션에 매트릭스 포함', () => {
   test('ctx.benS 전달 시 rp-catdelta 블록 안에 ben-matrix 렌더', () => {
     const state = fixtureState();
@@ -444,7 +501,9 @@ describe('renderReport — 복지 비교 섹션에 매트릭스 포함', () => {
     renderReport(report, mount, { benS: state.benS, matched: state.matched });
     const block = mount.children.find((c) => c.className && c.className.includes('rp-catdelta'));
     assert.ok(block, 'rp-catdelta 블록 존재');
+    assert.ok(block.find((n) => n.className && String(n.className).includes('ben-headline')), '총액 헤드라인 존재');
     assert.ok(block.find((n) => n.className && String(n.className).includes('ben-matrix')), '매트릭스 표 존재');
+    assert.equal(block.find((n) => n.className && String(n.className).includes('bfly')), null, '버터플라이 제거(세로 중복 해소)');
   });
 
   test('ctx 없이 호출해도 무크래시(매트릭스 생략)', () => {

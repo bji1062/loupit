@@ -293,26 +293,48 @@ main p { margin-top:var(--sp-3); }
 .cat-delta-table th, .cat-delta-table td { padding:var(--sp-2); text-align:right; font-size:var(--fs-sm); border-bottom:var(--bw) solid var(--border); }
 .cat-delta-table th:first-child, .cat-delta-table td:first-child, .cat-delta-nm { text-align:left; color:var(--t3); }
 .cat-delta-diff { font-weight:var(--fw-semibold); }
-/* 복지 항목 매트릭스(매트릭스+diff 요약 하이브리드) — 같은 복지는 같은 행에 정렬 */
-.ben-diff-summary { display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-5); margin:0 0 var(--sp-3); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+/* 복지 비교 v2("한눈에") — 총액 헤드라인(결론 먼저) + 항목 매트릭스(차이 열·행내 미니바) */
+.ben-headline { margin-top:var(--sp-3); padding-bottom:var(--sp-4); border-bottom:var(--bw) solid var(--border); }
+.ben-headline-vals { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); flex-wrap:wrap; }
+.ben-headline-side { display:inline-flex; align-items:baseline; gap:var(--sp-2); }
+.ben-headline-nm { font-size:var(--fs-sm); color:var(--t3); font-weight:var(--fw-medium); }
+.ben-headline-amt { font-family:var(--font-serif); font-weight:var(--fw-regular); font-size:var(--fs-h3); letter-spacing:var(--ls-tight); }
+.ben-headline-side--a .ben-headline-amt { color:var(--blue); }
+.ben-headline-side--b .ben-headline-amt { color:var(--coral); }
+.ben-headline-vs { color:var(--t4); font-size:var(--fs-xs); }
+.ben-split { display:flex; height:10px; margin-top:var(--sp-2); border-radius:var(--r-pill); overflow:hidden; background:var(--bg-2); }
+.ben-split-a { background:var(--blue); }
+.ben-split-b { background:var(--coral); }
+.ben-headline-verdict { margin-top:var(--sp-2); font-weight:var(--fw-semibold); }
+.ben-diff-summary { display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-5); margin-top:var(--sp-1); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 .ben-diff--gained { color:var(--positive); }
 .ben-diff--lost { color:var(--negative); }
-.ben-matrix { width:100%; border-collapse:collapse; }
-.ben-matrix th, .ben-matrix td { padding:var(--sp-2); font-size:var(--fs-sm); text-align:left; vertical-align:middle; border-bottom:var(--bw) solid var(--border); }
+.ben-matrix { width:100%; border-collapse:collapse; margin-top:var(--sp-3); }
+.ben-matrix th, .ben-matrix td { padding:var(--sp-1) var(--sp-2); font-size:var(--fs-sm); text-align:left; vertical-align:middle; border-bottom:var(--bw) solid var(--border); }
 .ben-matrix thead th { color:var(--t3); font-weight:var(--fw-semibold); font-size:var(--fs-xs); }
-.ben-matrix .ben-col { width:31%; }
+.ben-matrix .ben-col { width:28%; }
+.ben-matrix .ben-col-delta { width:14%; text-align:right; }
 .ben-cat-row th, .ben-cat-row td { background:var(--surface-soft); font-size:var(--fs-xs); }
 .ben-cat-nm { font-weight:var(--fw-semibold); color:var(--t2); }
-.ben-cat-sum { color:var(--t4); }
+.ben-cat-sum { color:var(--t4); white-space:nowrap; }
 .ben-nm { font-weight:var(--fw-regular); color:var(--t2); }
-.ben-cell .ben-amt { margin-right:var(--sp-2); font-weight:var(--fw-medium); white-space:nowrap; }
-.ben-cell.ben-win { background:var(--coral-tint); }
-.ben-cell.ben-win .ben-amt { font-weight:var(--fw-semibold); color:var(--coral-active); }
-.ben-none { color:var(--t4); }
-.ben-mark { display:inline-block; margin-left:var(--sp-2); font-size:var(--fs-ad); font-weight:var(--fw-medium); }
+.ben-cell-top { display:inline-flex; align-items:center; gap:var(--sp-2); white-space:nowrap; }
+.ben-cell .ben-amt { font-weight:var(--fw-medium); white-space:nowrap; }
+/* 행내 미니바 — 표 최대 금액 대비 폭%(구 버터플라이 대체, 세로 추가 0에 가까움) */
+.ben-bar { display:block; height:4px; margin-top:2px; border-radius:var(--r-xs); }
+.ben-bar--a { background:var(--blue); }
+.ben-bar--b { background:var(--coral); }
+.ben-none { color:var(--t4); white-space:nowrap; }
+.ben-mark { display:inline-block; margin-left:var(--sp-1); font-size:var(--fs-ad); font-weight:var(--fw-medium); white-space:nowrap; }
 .ben-mark--lost { color:var(--negative); }
 .ben-mark--gained { color:var(--positive); }
-.ben-qual { color:var(--t2); }
+.ben-qual { color:var(--t2); white-space:nowrap; }
+/* 차이 열 — 세로로 훑으면 전 항목 승부가 보이는 축 */
+.ben-row-delta, .ben-cat-delta { text-align:right; }
+.ben-delta { display:inline-block; white-space:nowrap; font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
+.ben-delta--a { color:var(--blue); }
+.ben-delta--b { color:var(--coral); }
+.ben-delta--eq { color:var(--t4); }
 /* report.js badgeClass의 이중대시 변형(badge--official 등) 정합 — 단일대시와 동일 팔레트 */
 .badge--official { background:var(--badge-official-bg); color:var(--badge-official-fg); }
 .badge--est { background:var(--badge-est-bg); color:var(--badge-est-fg); }

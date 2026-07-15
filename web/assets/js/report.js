@@ -188,12 +188,102 @@ export function benefitDiffSummary(rows) {
   return s;
 }
 
-function benCell(item, now) {
+// 표시용 총액 합산(엔진 catDelta 값 그대로 더함 — 원시 항목 재계산 없음, RP-1)
+export function benefitTotals(catDelta) {
+  const t = { a: 0, b: 0, delta: 0 };
+  for (const r of (catDelta || [])) { t.a += r.sumA || 0; t.b += r.sumB || 0; t.delta += r.delta || 0; }
+  return t;
+}
+
+// 차이 칩: delta(B-A) → "A +N"(파랑)/"B +N"(코랄)/"="(muted). null → 빈 칩 없음.
+function deltaChip(delta) {
+  if (delta == null) return null;
+  if (delta === 0) return el('span', { class: 'ben-delta ben-delta--eq', text: '=' });
+  const side = delta > 0 ? 'b' : 'a';
+  return el('span', {
+    class: 'ben-delta ben-delta--' + side,
+    text: (side === 'a' ? 'A +' : 'B +') + Math.abs(delta),
+  });
+}
+
+// diff 요약 한 줄(헤드라인에 흡수) — 새로 생김/사라짐
+function diffSummaryLine(rows) {
+  const s = benefitDiffSummary(rows);
+  if (!s.gained.count && !s.lost.count) return null;
+  const sum = el('p', { class: 'ben-diff-summary' });
+  if (s.gained.count) {
+    sum.append(el('span', {
+      class: 'ben-diff ben-diff--gained',
+      text: '＋ 새로 생기는 복지 ' + s.gained.count + '개' + (s.gained.sum ? ' (+' + s.gained.sum + '만원)' : ''),
+    }));
+  }
+  if (s.lost.count) {
+    sum.append(el('span', {
+      class: 'ben-diff ben-diff--lost',
+      text: '－ 사라지는 복지 ' + s.lost.count + '개' + (s.lost.sum ? ' (−' + s.lost.sum + '만원)' : ''),
+    }));
+  }
+  return sum;
+}
+
+// ── 총액 헤드라인(결론 먼저): 양사 총액 + 분할 바 + 한 줄 판정 + diff 요약 ──
+export function renderBenefitHeadline(catDelta, rows, mountEl, ctx = {}) {
+  mountEl.replaceChildren();
+  const t = benefitTotals(catDelta);
+  const nmA = (ctx.labels && ctx.labels.a) || '현재 직장';
+  const nmB = (ctx.labels && ctx.labels.b) || '이직처';
+  const head = el('div', { class: 'ben-headline' });
+
+  const vals = el('div', { class: 'ben-headline-vals' });
+  const sideA = el('span', { class: 'ben-headline-side ben-headline-side--a' });
+  sideA.append(el('span', { class: 'ben-headline-nm', text: nmA }));
+  sideA.append(el('strong', { class: 'ben-headline-amt', text: t.a + '만원' }));
+  const sideB = el('span', { class: 'ben-headline-side ben-headline-side--b' });
+  sideB.append(el('span', { class: 'ben-headline-nm', text: nmB }));
+  sideB.append(el('strong', { class: 'ben-headline-amt', text: t.b + '만원' }));
+  vals.append(sideA, el('span', { class: 'ben-headline-vs', text: 'vs' }), sideB);
+  head.append(vals);
+
+  const total = t.a + t.b;
+  if (total > 0) { // 비중 분할 바(A 파랑/B 코랄 — 구 버터플라이 범례 색 계승)
+    const bar = el('div', { class: 'ben-split', role: 'img', 'aria-label': '복지 총액 비중 — 왼쪽 ' + nmA + ', 오른쪽 ' + nmB });
+    bar.append(el('span', { class: 'ben-split-a', style: 'width:' + ((t.a / total) * 100).toFixed(1) + '%' }));
+    bar.append(el('span', { class: 'ben-split-b', style: 'width:' + ((t.b / total) * 100).toFixed(1) + '%' }));
+    head.append(bar);
+  }
+
+  const verdict = t.delta === 0
+    ? '두 회사의 복지 총액이 비슷합니다.'
+    : (t.delta > 0 ? nmB : nmA) + ' 복지가 연 ' + Math.abs(t.delta) + '만원 더 큽니다.';
+  head.append(el('p', { class: 'ben-headline-verdict', text: verdict }));
+
+  const diff = diffSummaryLine(rows);
+  if (diff) head.append(diff);
+  mountEl.append(head);
+  return mountEl;
+}
+
+function benCell(item, now, side, maxAmt, mark) {
   const td = el('td', { class: item ? 'ben-cell' : 'ben-cell ben-none' });
-  if (!item) { td.append(el('span', { text: '—' })); return td; }
-  if (item.qual_yn) { td.append(el('span', { class: 'ben-qual', text: '✓ 정성' })); return td; }
-  td.append(el('span', { class: 'ben-amt', text: item.benefit_amt != null ? '연 ' + item.benefit_amt + '만원' : '—' }));
-  td.append(el('span', { class: badgeClass(item, now), text: badgeLabel(item, now) })); // 공식/추정/만료(FR-41 재사용)
+  if (!item) {
+    td.append(el('span', { text: '—' }));
+    if (mark) td.append(mark); // 빈 셀 마커(사라짐 등) — 인라인
+    return td;
+  }
+  if (item.qual_yn) {
+    td.append(el('span', { class: 'ben-qual', text: '✓ 정성' }));
+    if (mark) td.append(mark);
+    return td;
+  }
+  const top = el('span', { class: 'ben-cell-top' });
+  top.append(el('span', { class: 'ben-amt', text: item.benefit_amt != null ? '연 ' + item.benefit_amt + '만원' : '—' }));
+  top.append(el('span', { class: badgeClass(item, now), text: badgeLabel(item, now) })); // 공식/추정/만료(FR-41 재사용)
+  if (mark) top.append(mark); // 마커는 금액과 같은 줄(미니바 아래로 밀리지 않게)
+  td.append(top);
+  if (item.benefit_amt != null && maxAmt > 0) { // 행내 미니바 — 표 최대 금액 대비 폭%(별도 차트 대체)
+    const pct = Math.max(3, (item.benefit_amt / maxAmt) * 100);
+    td.append(el('span', { class: 'ben-bar ben-bar--' + side, style: 'width:' + pct.toFixed(1) + '%' }));
+  }
   return td;
 }
 
@@ -201,34 +291,21 @@ export function renderBenefitMatrix(rows, mountEl, ctx = {}) {
   mountEl.replaceChildren(); // 멱등
   if (!rows || !rows.length) return mountEl; // 항목 없음 → 표 생략(무크래시)
   const now = ctx.now != null ? ctx.now : Date.now();
-
-  // 상단 diff 요약 — 해당 0개면 절 생략, 둘 다 0(전부 공통)이면 요약 자체 생략
-  const s = benefitDiffSummary(rows);
-  if (s.gained.count || s.lost.count) {
-    const sum = el('p', { class: 'ben-diff-summary' });
-    if (s.gained.count) {
-      sum.append(el('span', {
-        class: 'ben-diff ben-diff--gained',
-        text: '＋ 새로 생기는 복지 ' + s.gained.count + '개' + (s.gained.sum ? ' (+' + s.gained.sum + '만원)' : ''),
-      }));
-    }
-    if (s.lost.count) {
-      sum.append(el('span', {
-        class: 'ben-diff ben-diff--lost',
-        text: '－ 사라지는 복지 ' + s.lost.count + '개' + (s.lost.sum ? ' (−' + s.lost.sum + '만원)' : ''),
-      }));
-    }
-    mountEl.append(sum);
-  }
+  // 행내 미니바 정규화 기준 — 표 전체 최대 금액(버터플라이 maxSum 방식 계승)
+  const maxAmt = Math.max(0, ...rows.flatMap((r) => [
+    (r.a && !r.a.qual_yn && r.a.benefit_amt != null) ? r.a.benefit_amt : 0,
+    (r.b && !r.b.qual_yn && r.b.benefit_amt != null) ? r.b.benefit_amt : 0,
+  ]));
 
   const table = el('table', { class: 'ben-matrix' });
-  table.append(el('caption', { class: 'sr-only', text: '복지 항목별 비교 — 같은 복지는 같은 행에 정렬됩니다.' }));
+  table.append(el('caption', { class: 'sr-only', text: '복지 항목별 비교 — 같은 복지는 같은 행, 차이 열에 우세 방향이 표시됩니다.' }));
   const thead = el('thead');
   const hr = el('tr');
   hr.append(
     el('th', { scope: 'col', text: '복지 항목' }),
     el('th', { scope: 'col', class: 'ben-col', text: (ctx.labels && ctx.labels.a) || '현재 직장' }),
     el('th', { scope: 'col', class: 'ben-col', text: (ctx.labels && ctx.labels.b) || '이직처' }),
+    el('th', { scope: 'col', class: 'ben-col-delta', text: '차이' }),
   );
   thead.append(hr);
   table.append(thead);
@@ -246,20 +323,28 @@ export function renderBenefitMatrix(rows, mountEl, ctx = {}) {
       el('td', { class: 'ben-cat-sum', text: cd ? cd.sumA + '만원' : '' }),
       el('td', { class: 'ben-cat-sum', text: cd ? cd.sumB + '만원' : '' }),
     );
+    const catDeltaTd = el('td', { class: 'ben-cat-delta' });
+    const catChip = cd ? deltaChip(cd.delta) : null;
+    if (catChip) catDeltaTd.append(catChip);
+    catTr.append(catDeltaTd);
     tbody.append(catTr);
     for (const r of catRows) {
       const tr = el('tr', { class: 'ben-row' });
       tr.append(el('th', { scope: 'row', class: 'ben-nm', text: r.nm }));
-      const tdA = benCell(r.a, now);
-      const tdB = benCell(r.b, now);
-      if (r.a && !r.b) tdB.append(el('span', { class: 'ben-mark ben-mark--lost', text: '사라짐' }));
-      if (!r.a && r.b) tdB.append(el('span', { class: 'ben-mark ben-mark--gained', text: '새로 생김' }));
-      const amtA = (r.a && !r.a.qual_yn) ? r.a.benefit_amt : null;
-      const amtB = (r.b && !r.b.qual_yn) ? r.b.benefit_amt : null;
-      if (amtA != null && amtB != null && amtA !== amtB) {
-        (amtA > amtB ? tdA : tdB).className += ' ben-win'; // 우세 금액 하이라이트
-      }
+      const markB = (r.a && !r.b) ? el('span', { class: 'ben-mark ben-mark--lost', text: '사라짐' })
+        : (!r.a && r.b) ? el('span', { class: 'ben-mark ben-mark--gained', text: '새로 생김' }) : null;
+      const tdA = benCell(r.a, now, 'a', maxAmt, null);
+      const tdB = benCell(r.b, now, 'b', maxAmt, markB);
       tr.append(tdA, tdB);
+      // 차이 열: 세로로 훑으면 전 항목 승부가 보인다. 정성-정성 행은 공백.
+      const amtA = (r.a && !r.a.qual_yn && r.a.benefit_amt != null) ? r.a.benefit_amt : null;
+      const amtB = (r.b && !r.b.qual_yn && r.b.benefit_amt != null) ? r.b.benefit_amt : null;
+      const deltaTd = el('td', { class: 'ben-row-delta' });
+      if (amtA != null || amtB != null) {
+        const chip = deltaChip((amtB != null ? amtB : 0) - (amtA != null ? amtA : 0));
+        if (chip) deltaTd.append(chip);
+      }
+      tr.append(deltaTd);
       tbody.append(tr);
     }
     table.append(tbody);
@@ -422,21 +507,24 @@ export function renderReport(report, mountEl, ctx = {}) {
   if (commuteTxt) wlbSection.append(el('p', { class: 'rp-commute', text: commuteTxt }));
   mountEl.append(wlbSection);
 
-  // 5) 복지 비교 — 버터플라이(카테고리 시각 요약) + 항목 매트릭스(diff 요약 포함).
-  // 기존 숫자 델타표(renderCatDelta)는 소계가 매트릭스 카테고리 행에 흡수되어 미사용
-  // (함수·테스트는 SP-GEN 재사용 여지로 유지 — 2026-07-15 개편).
+  // 5) 복지 비교 — "한눈에" v2(2026-07-15): 총액 헤드라인(결론 먼저) + 항목 매트릭스
+  // (차이 열·행내 미니바). 버터플라이·숫자 델타표는 정보가 헤드라인/매트릭스에 흡수되어
+  // 미사용 — renderCatButterfly/renderCatDelta 함수·테스트는 SP-GEN 재사용 여지로 유지.
   const catSection = el('section', { class: 'rp-block rp-catdelta' });
   catSection.append(el('h3', { text: '복지 비교' }));
-  const bflyBody = el('div', { class: 'rp-catbfly' });
-  catSection.append(bflyBody);
-  renderCatButterfly(report.catDelta, bflyBody);
-  const matrixBody = el('div', { class: 'rp-benmatrix' });
-  catSection.append(matrixBody);
   const benRows = matchBenefitRows((ctx.benS && ctx.benS.a) || [], (ctx.benS && ctx.benS.b) || []);
-  renderBenefitMatrix(benRows, matrixBody, {
-    labels: { a: slotLabel('a', ctx), b: slotLabel('b', ctx) },
-    catDelta: report.catDelta, // 엔진 소계 표기(재계산 금지)
-  });
+  const labels = { a: slotLabel('a', ctx), b: slotLabel('b', ctx) };
+  if (benRows.length) { // 항목 없으면 헤드라인·표 모두 생략(무크래시)
+    const headBody = el('div', { class: 'rp-benheadline' });
+    catSection.append(headBody);
+    renderBenefitHeadline(report.catDelta, benRows, headBody, { labels });
+    const matrixBody = el('div', { class: 'rp-benmatrix' });
+    catSection.append(matrixBody);
+    renderBenefitMatrix(benRows, matrixBody, {
+      labels,
+      catDelta: report.catDelta, // 엔진 소계 표기(재계산 금지)
+    });
+  }
   mountEl.append(catSection);
 
   // 6) 정성 복지 표
