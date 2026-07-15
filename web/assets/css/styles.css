@@ -327,6 +327,43 @@ main p { margin-top:var(--sp-3); }
 .rp-warnings { display:flex; flex-direction:column; gap:var(--sp-2); }
 .rp-warning-item { background:var(--badge-expired-bg); color:var(--badge-expired-fg); border-radius:var(--r-sm); padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); }
 
+/* ══════════════════════ COMPANY DIRECTORY(등록 회사 수 → 전체 목록) ══ */
+/* 카운트 버튼: 모바일은 h2 아래 우측 정렬, 데스크톱(768+)은 카드 우측 상단 absolute. */
+#view-search { position:relative; }
+#company-directory { text-align:right; }
+.dir-count {
+  display:inline-flex; align-items:center; gap:var(--sp-1);
+  min-height:var(--tap-min); padding:var(--sp-1) var(--sp-2);
+  background:none; border:0; cursor:pointer;
+  font-size:var(--fs-sm); color:var(--t3); border-radius:var(--r-sm);
+}
+.dir-count:hover { color:var(--t1); background:var(--coral-tint); }
+.dir-count .dir-count-n { color:var(--coral); font-weight:var(--fw-bold); }
+.dir-panel {
+  margin-top:var(--sp-2); text-align:left;
+  background:var(--surface-soft); border:var(--bw) solid var(--border); border-radius:var(--r-md);
+  padding:var(--sp-3) var(--sp-4);
+  max-height:420px; overflow-y:auto; /* 회사 ~96개 — 카드 안에서 스크롤 */
+}
+.dir-hint { margin-top:0; font-size:var(--fs-xs); color:var(--t4); }
+.dir-list { list-style:none; margin:var(--sp-2) 0 0; padding:0; }
+.dir-row { border-bottom:var(--bw) solid var(--border); }
+.dir-row:last-child { border-bottom:0; }
+.dir-comp {
+  display:flex; align-items:baseline; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
+  padding:var(--sp-2) var(--sp-1); background:none; border:0; cursor:pointer; text-align:left;
+  font-size:var(--fs-sm); color:var(--t1); border-radius:var(--r-sm);
+  transition:background var(--dur-fast) var(--ease-out);
+}
+.dir-comp:hover { background:var(--coral-tint); }
+.dir-comp-nm { font-weight:var(--fw-medium); }
+.dir-comp-meta { font-size:var(--fs-xs); color:var(--t4); }
+.dir-benefits { padding:0 var(--sp-2) var(--sp-3); }
+.dir-ben-list { list-style:none; margin:0; padding:0; }
+.dir-ben-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:var(--sp-1) 0; font-size:var(--fs-sm); }
+.dir-ben-nm { color:var(--t2); }
+.dir-ben-empty { margin-top:0; font-size:var(--fs-sm); color:var(--t4); }
+
 /* ══════════════════════════════ TRENDING(실시간 비교 TOP 10 우측 레일) ══ */
 /* 모바일(<768px): .main-cols 블록 흐름 — 레일이 본문 아래 스택. 데스크톱은 하단 @media. */
 #trending {
@@ -388,4 +425,8 @@ main p { margin-top:var(--sp-3); }
   /* 우측 레일(실시간 비교 TOP 10): 본문 + 240px 2칼럼, 스크롤 시 sticky(헤더 56px 아래) */
   .main-cols { display:grid; grid-template-columns:minmax(0,1fr) 240px; column-gap:var(--sp-5); align-items:start; }
   .main-cols > .rail { position:sticky; top:72px; }
+  /* 등록 회사 수: 카드 우측 상단(h2와 같은 줄) */
+  #company-directory { position:static; }
+  .dir-count { position:absolute; top:var(--sp-3); right:var(--sp-4); }
+  .dir-panel { margin-top:var(--sp-3); }
 }

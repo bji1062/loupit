@@ -8,6 +8,7 @@ import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.j
 import { mountUI, reflectSlotLabel, maybeAdvance } from './ui.js';
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
+import { mountDirectory } from './directory.js';
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
 export function createInitialState() {
@@ -114,6 +115,8 @@ export async function boot(hooks = {}) {
   mountUI(App.state, deps);
   // 실시간 비교 TOP 10 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
   mountTrending({ onPick: (item) => pickTrendingPair(item, deps) });
+  // 등록 회사 디렉토리(검색 카드 카운트 → 가나다순 목록 → 복지 펼침) — REF 재사용, 실패 무해.
+  try { mountDirectory(App.state); } catch { /* 디렉토리 실패는 비교 툴 무손상 */ }
   // 프리필로 슬롯이 채워졌으면 입력 뷰로(restoreFromPrefill의 go('input')이 아래 최종 go로 덮이지 않게 보정).
   const prefilled = !!(App.state.matched.a || App.state.matched.b);
   go(parseHash() || (prefilled ? 'input' : 'search'), { push: false });
