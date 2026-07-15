@@ -91,9 +91,16 @@ export function mountDirectory(state) {
   panel.append(list);
   host.append(panel);
 
+  function resetAccordion() { // 재클릭 = 새로고침: 펼쳐진 복지 전부 접힘
+    if (openBen) openBen.hidden = true;
+    if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
+    openBen = null;
+    openBtn = null;
+  }
   count.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     count.setAttribute('aria-expanded', String(!panel.hidden));
+    resetAccordion(); // 열든 닫든 목록은 항상 초기 상태로
   });
   return { count: companies.length };
 }

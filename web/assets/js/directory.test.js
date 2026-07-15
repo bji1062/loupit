@@ -116,6 +116,20 @@ describe('mountDirectory — 카운트·패널 토글·복지 아코디언', () 
     assert.match(opens[0].textContent, /식대/);
   });
 
+  test('카운트 재클릭(닫기→열기) → 펼쳐진 복지 초기화(전부 접힘)', () => {
+    mountDirectory(refState());
+    const count = document.querySelector('.dir-count');
+    count.dispatchEvent(new window.Event('click', { bubbles: true })); // 열기
+    const rows = document.querySelectorAll('.dir-comp');
+    rows[0].dispatchEvent(new window.Event('click', { bubbles: true })); // 복지 펼침
+    assert.ok(document.querySelector('.dir-benefits:not([hidden])'), '펼침 상태 전제');
+    count.dispatchEvent(new window.Event('click', { bubbles: true })); // 닫기 → 초기화
+    count.dispatchEvent(new window.Event('click', { bubbles: true })); // 다시 열기
+    assert.equal(document.querySelectorAll('.dir-benefits:not([hidden])').length, 0, '복지 전부 접힘');
+    const expanded = [...document.querySelectorAll('.dir-comp')].filter((b) => b.getAttribute('aria-expanded') === 'true');
+    assert.equal(expanded.length, 0, 'aria-expanded 전부 false');
+  });
+
   test('복지 없는 회사 → "등록된 복지 정보가 없습니다"', () => {
     mountDirectory(refState());
     document.querySelector('.dir-count').dispatchEvent(new window.Event('click', { bubbles: true }));
