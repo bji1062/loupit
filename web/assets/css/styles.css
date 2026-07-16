@@ -456,6 +456,35 @@ main p { margin-top:var(--sp-3); }
 #trending.trend-expanded .trend-current { display:none; }
 #trending.trend-expanded .trend-list { display:block; }
 
+/* ══════════════════ COMPANY PAGE(#company 뷰 — GNB 검색 직행) ══ */
+.cp-page { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-5); }
+.cp-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--sp-3); }
+.cp-nm { margin-top:0; font-size:var(--fs-h2); }
+.cp-meta { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+.cp-cat { margin-top:var(--sp-5); }
+.cp-cat-head { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3); padding-bottom:var(--sp-2); border-bottom:var(--bw) solid var(--border); }
+.cp-cat-nm { margin-top:0; font-size:var(--fs-h3); }
+.cp-cat-sum { color:var(--brand); font-weight:var(--fw-semibold); font-size:var(--fs-sm); white-space:nowrap; }
+.cp-ben-list { list-style:none; margin:0; padding:0; }
+.cp-ben-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); padding:var(--sp-2) 0; border-bottom:var(--bw) solid var(--bg-2); font-size:var(--fs-sm); }
+.cp-ben-row:last-child { border-bottom:0; }
+.cp-ben-nm { color:var(--t2); }
+.cp-total { margin-top:var(--sp-5); padding:var(--sp-3) var(--sp-4); background:var(--brand-tint); border-radius:var(--r-md); font-weight:var(--fw-medium); }
+.cp-total-amt { color:var(--brand); font-family:var(--font-serif); font-size:var(--fs-h3); font-weight:var(--fw-regular); margin-left:var(--sp-2); }
+.cp-note { margin-top:var(--sp-2); font-size:var(--fs-xs); color:var(--t4); }
+.cp-empty { margin-top:var(--sp-4); color:var(--t3); }
+.cp-actions { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-4); margin-top:var(--sp-5); }
+.cp-home { font-size:var(--fs-sm); }
+.cp-cand-list { list-style:none; margin:var(--sp-4) 0 0; padding:0; }
+.cp-cand {
+  display:flex; align-items:baseline; gap:var(--sp-3); width:100%; min-height:var(--tap-min);
+  padding:var(--sp-2) var(--sp-2); background:none; border:0; border-bottom:var(--bw) solid var(--border);
+  cursor:pointer; text-align:left; font-size:var(--fs-base); color:var(--t1); transition:background var(--dur-fast) var(--ease-out);
+}
+.cp-cand:hover { background:var(--brand-tint); }
+.cp-cand-nm { font-weight:var(--fw-medium); }
+.cp-cand-meta { font-size:var(--fs-xs); color:var(--t4); }
+
 /* ══════════════════════════════════════════════════════ ADS ══ */
 .ad-slot, [data-ad-position] {
   margin-top:var(--sp-6); padding:var(--sp-5);

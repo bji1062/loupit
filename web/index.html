@@ -19,7 +19,7 @@
     <a href="/" class="brand"><img class="brand-logo" src="/assets/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
     <a href="#trending" class="gnb-link">실시간 비교</a>
     <form class="gnb-search" role="search" aria-label="회사 검색"> <!-- 제출 → A 슬롯 주입(ui.js bindHeaderSearch) -->
-      <input type="search" placeholder="회사명 검색" aria-label="회사명 검색" autocomplete="off">
+      <input type="search" placeholder="회사명으로 복지 찾기" aria-label="회사명으로 복지 찾기" autocomplete="off">
       <button type="submit" aria-label="검색">→</button>
     </form>
   </nav>
@@ -72,6 +72,13 @@
       <div data-affiliate-host></div>
       <button id="btn-edit-input" type="button">입력 수정</button>
       <button id="btn-new-search" type="button">새 비교</button>
+    </section>
+
+
+    <section id="view-company" class="view" data-screen="company" hidden>
+      <!-- 회사 복지 페이지(GNB 검색 직행) — company.js가 #company-page를 렌더(카테고리별 복지) -->
+      <h2 class="sr-only">회사 복지 정보</h2>
+      <div id="company-page"></div>
     </section>
 
     <div id="boot-error" hidden> <!-- FR-E1 참조 로드 실패 재시도 UI -->

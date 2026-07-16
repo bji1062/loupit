@@ -190,30 +190,42 @@ describe('UI-4 선택 → 입력뷰 전진 + 비교하기 배선(MB-8·15)', () 
   });
 });
 
-describe('UI-6 헤더 검색(bindHeaderSearch — GNB 검색창 → A 슬롯)', () => {
+describe('UI-6 헤더 검색(bindHeaderSearch — GNB 검색 → 회사 복지 페이지 직행)', () => {
   beforeEach(() => loadShell());
 
-  test('제출 → A 슬롯 값 주입 + onSearchInput 발화(loading) + go("search")', () => {
+  test('제출 → deps.showCompany(term) 호출(트림된 검색어)', () => {
+    const state = createInitialState();
+    const shown = [];
+    mountUI(state, { showCompany: (t) => shown.push(t) });
+    const form = document.querySelector('.gnb-search');
+    assert.ok(form, '셸에 GNB 검색 폼 존재');
+    form.querySelector('input[type="search"]').value = '  삼성전자 ';
+    form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.deepEqual(shown, ['삼성전자'], '회사 복지 페이지 훅 호출');
+    assert.equal(state.ui.searchState.a, 'idle', 'A 슬롯 검색 미발화(직행 경로)');
+  });
+
+  test('showCompany 훅 부재 → 폴백: A 슬롯 주입 + onSearchInput 발화 + go("search")', () => {
     const state = createInitialState();
     state.REF = { companies: [], company_types: [], benefit_presets: {} };
     const calls = [];
     mountUI(state, { go: (s) => calls.push(s) });
     const form = document.querySelector('.gnb-search');
-    assert.ok(form, '셸에 GNB 검색 폼 존재');
-    const q = form.querySelector('input[type="search"]');
-    q.value = '삼성';
+    form.querySelector('input[type="search"]').value = '삼성';
     form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
     assert.equal(document.getElementById('search-input-a').value, '삼성', 'A 슬롯 검색창에 주입');
     assert.equal(state.ui.searchState.a, 'loading', 'onSearchInput 경로 발화');
     assert.ok(calls.includes('search'), '검색 뷰로 전환');
   });
 
-  test('빈 검색어 제출 → 무해(no-op, 상태 idle 유지)', () => {
+  test('빈 검색어 제출 → 무해(no-op)', () => {
     const state = createInitialState();
-    mountUI(state, {});
+    const shown = [];
+    mountUI(state, { showCompany: (t) => shown.push(t) });
     const form = document.querySelector('.gnb-search');
     form.querySelector('input[type="search"]').value = '   ';
     form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.deepEqual(shown, []);
     assert.equal(state.ui.searchState.a, 'idle');
   });
 });

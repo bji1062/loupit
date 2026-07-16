@@ -253,20 +253,24 @@ export function bindReportNav(state, deps) {
   });
 }
 
-// ── GNB 헤더 검색(나무위키식 상단 바) — 제출 → A 슬롯 주입·검색 뷰 전환 ────────
+// ── GNB 헤더 검색(나무위키식 상단 바) — 제출 → 회사 복지 페이지 직행 ──────────
+// deps.showCompany(term)가 정본(app.js showCompanyPage 연결, 2026-07-16).
+// 훅 부재 시 구 동작(A 슬롯 주입) 폴백 — 하위호환.
 export function bindHeaderSearch(state, deps) {
   const form = qs('.gnb-search');
   if (!form) return;
   form.addEventListener('submit', (e) => {
     if (e && typeof e.preventDefault === 'function') e.preventDefault(); // 페이지 리로드 방지
     const q = form.querySelector('input[type="search"]');
-    const target = byId('search-input-a');
-    if (!q || !target) return;
+    if (!q) return;
     const term = String(q.value || '').trim();
     if (!term) return; // 빈 검색어 → 무해 no-op
-    if (typeof deps.go === 'function') deps.go('search'); // 입력/리포트 뷰에 있어도 검색 뷰로
+    if (typeof deps.showCompany === 'function') { deps.showCompany(term); return; } // 복지 페이지 직행
+    // 폴백: A 슬롯 주입 + 검색 뷰(구 동작)
+    const target = byId('search-input-a');
+    if (!target) return;
+    if (typeof deps.go === 'function') deps.go('search');
     target.value = term;
-    // 대상 문서의 Event 생성자 사용(jsdom 포함) — 기존 검색 배선(onSearchInput) 재사용
     const win = (target.ownerDocument && target.ownerDocument.defaultView)
       || (typeof window !== 'undefined' ? window : null);
     const EventCtor = (win && typeof win.Event === 'function') ? win.Event

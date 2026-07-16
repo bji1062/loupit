@@ -9,6 +9,7 @@ import { mountUI, reflectSlotLabel, maybeAdvance } from './ui.js';
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
+import { findCompanies, renderCompanyView } from './company.js';
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
 export function createInitialState() {
@@ -37,7 +38,8 @@ export function createInitialState() {
 export const App = { state: createInitialState() };
 
 // ── SP-FE-3 화면 라우팅(go·해시/History) ────────────────────────────────────
-export const SCREENS = ['search', 'input', 'report'];
+// 'company': 회사 복지 페이지(GNB 검색 직행, 2026-07-16) — REF 기반, 서버 라우트 없음.
+export const SCREENS = ['search', 'input', 'report', 'company'];
 
 export function parseHash() { // '#input' → 'input'
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
@@ -112,6 +114,7 @@ export async function boot(hooks = {}) {
     mountAds,
     reboot: () => boot(hooks),
   };
+  deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
   // 실시간 비교 TOP 10 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
   mountTrending({ onPick: (item) => pickTrendingPair(item, deps) });
@@ -167,6 +170,27 @@ export function pickTrendingPair(item, deps = {}, state = App.state) {
     reflectSlotLabel(slot, comp.comp_nm);
   }
   maybeAdvance(state, deps); // 양 슬롯 채움 → 입력뷰 렌더 + go('input')
+  return true;
+}
+
+// ── 회사 복지 페이지(GNB 검색 직행, #company 뷰) ─────────────────────────────
+export function showCompanyPage(term, deps = {}, state = App.state) {
+  const mountEl = (typeof document !== 'undefined' && document.getElementById)
+    ? document.getElementById('company-page') : null;
+  if (!mountEl) return false;
+  const matches = findCompanies((state.REF && state.REF.companies) || [], term);
+  renderCompanyView({ term: String(term || '').trim(), matches }, mountEl, {
+    onCompare: (company) => { // "이 회사와 비교 시작" → A 슬롯 프리필 후 검색 뷰(B 선택 유도)
+      state.matched.a = normalizeCompany(company);
+      fillBenefits(state, 'a');
+      initWsState(state, 'a');
+      reflectSlotLabel('a', company.comp_nm);
+      const goFn = typeof deps.go === 'function' ? deps.go : go;
+      goFn('search');
+    },
+  });
+  const goFn = typeof deps.go === 'function' ? deps.go : go;
+  goFn('company');
   return true;
 }
 
