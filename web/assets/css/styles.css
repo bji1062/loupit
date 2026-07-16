@@ -135,12 +135,12 @@ header:not([data-global]), header[data-global] nav {
 header:not([data-global]) .site-logo, header[data-global] .brand { margin-right:var(--sp-2); }
 header:not([data-global]) nav { display:flex; align-items:center; gap:var(--sp-4); }
 .brand, .site-logo {
-  display:inline-flex; align-items:center; gap:var(--sp-2);
+  display:inline-flex; align-items:center; /* gap 제거: 텍스트 조각(jobcho/./wiki)이 flex 아이템이라 gap이 자간처럼 벌어짐 — 간격은 로고 img margin으로만 */
   font-family:var(--font-sans); font-size:var(--fs-lg); font-weight:var(--fw-bold);
   color:var(--on-brand); letter-spacing:-0.01em;
 }
 .brand:hover, .site-logo:hover { text-decoration:none; }
-.brand-logo { display:block; width:34px; height:22px; }
+.brand-logo { display:block; width:34px; height:22px; margin-right:var(--sp-2); }
 .brand-dot { color:var(--grass); }
 header nav a:not(.brand):not(.site-logo) { color:var(--on-brand-soft); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 header nav a:not(.brand):hover { color:var(--on-brand); text-decoration:none; }
