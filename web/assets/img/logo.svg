@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 42" role="img" aria-label="jobcho.wiki 잡초 로고">
+  <!-- jobcho.wiki(잡초) 풀잎 마크 — 연두 그라데이션 풀잎 5갈래 + 진초록 베이스라인 -->
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#a8d94e"/>
+      <stop offset="1" stop-color="#79b93c"/>
+    </linearGradient>
+    <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#b7e06a"/>
+      <stop offset="1" stop-color="#8bc34a"/>
+    </linearGradient>
+  </defs>
+  <!-- 풀잎(가운데 큰 잎 기준 좌우 대칭에 가깝게, 살짝 기울임) -->
+  <polygon fill="url(#g2)" points="6,36 12,14 16,36"/>
+  <polygon fill="url(#g)"  points="15,36 22,4 26,36"/>
+  <polygon fill="url(#g2)" points="26,36 32,10 37,36"/>
+  <polygon fill="url(#g)"  points="37,36 43,2 48,36"/>
+  <polygon fill="url(#g2)" points="48,36 55,16 58,36"/>
+  <!-- 베이스라인(땅) -->
+  <rect x="2" y="35" width="60" height="4" rx="2" fill="#23421f"/>
+</svg>

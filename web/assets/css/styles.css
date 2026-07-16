@@ -1,9 +1,8 @@
-/* web/assets/css/styles.css — 디자인 시스템(SP-DS). "Claude.com 에디토리얼" 방향
-   (따뜻한 크림 캔버스 + 코랄 + 다크 네이비, 세리프 디스플레이). 무빌드, :root 토큰 + 컴포넌트.
-   정본: docs/SPEC/10-디자인-토큰.md. 색 토큰은 :root에만, 컴포넌트는 var(--*)만(UT-NO-LITERAL).
-   사용자 결정(2026-07-13): Anthropic/Claude.com 브랜드 시스템 채택(크림 #faf9f5·코랄 #cc785c·잉크 #141413).
-   폰트: 디스플레이는 시스템 세리프 스택(외부 폰트 CDN 금지 — CSP/무빌드), 본문은 자체호스팅
-   Pretendard/시스템 sans. font-display:swap이 폴백해 FOIT 방지(NFR5). */
+/* web/assets/css/styles.css — 디자인 시스템(SP-DS). "jobcho.wiki(잡초) 위키" 방향
+   (나무위키 대문 참조: 그린 상단 바 + 라이트 그레이 캔버스 + 흰 라운드 카드). 무빌드,
+   :root 토큰 + 컴포넌트. 색 토큰은 :root에만, 컴포넌트는 var(--*)만(UT-NO-LITERAL).
+   사용자 결정(2026-07-16): jobcho.wiki 리브랜딩 — 풀잎 연두(#8bc34a)·진초록 브랜드(--brand)·
+   그레이 캔버스. 폰트: 세리프 디스플레이 + 자체호스팅 Pretendard 유지(FOIT 방지 NFR5). */
 
 @font-face {
   font-family: 'Pretendard';
@@ -14,44 +13,45 @@
 }
 
 :root {
-  /* ── 1) 원시 배경/텍스트 — 크림 캔버스(Anthropic) ──
-     bg-0 캔버스 · bg-1 카드(화이트) · bg-2 소프트 크림 · bg-3 헤어라인 · bg-4 강한 경계 */
-  --bg-0:#faf9f5; --bg-1:#ffffff; --bg-2:#f5f0e8; --bg-3:#e6dfd8; --bg-4:#d9cfc0;
-  --t1:#141413; --t2:#3d3d3a; --t3:#6c6a64; --t4:#8e8b82;
+  /* ── 1) 원시 배경/텍스트 — 라이트 그레이 캔버스(나무위키 대문) ──
+     bg-0 캔버스 · bg-1 카드(화이트) · bg-2 소프트 그레이 · bg-3 헤어라인 · bg-4 강한 경계 */
+  --bg-0:#f6f7f8; --bg-1:#ffffff; --bg-2:#eef0f2; --bg-3:#e1e4e8; --bg-4:#cfd4d9;
+  --t1:#1f2328; --t2:#3b3f45; --t3:#5f646b; --t4:#878c93;
 
-  /* ── 1b) 기능 액센트(배지·상태용) + dim — 크림 위 대비 AA 유지 ── */
+  /* ── 1b) 기능 액센트(배지·상태용) + dim — 그레이 캔버스 위 대비 AA 유지 ── */
   --blue:#2563eb;  --amber:#b45309; --green:#047857;
   --red:#c02626;   --purple:#6d28d9; --gold:#7a5a06;
   --blue-dim:rgb(37 99 235 / .10);   --amber-dim:rgb(180 83 9 / .12);
   --green-dim:rgb(4 120 87 / .12);   --red-dim:rgb(192 38 38 / .10);
   --purple-dim:rgb(109 40 217 / .10); --gold-dim:rgb(122 90 6 / .12);
 
-  /* ── 1c) Anthropic 브랜드색(코랄) + 서피스 ── */
-  --coral:#cc785c; --coral-active:#a9583e; --coral-tint:#f5ece7;
-  --surface-card:#efe9de; --surface-soft:#f5f0e8;
-  --surface-dark:#181715; --surface-dark-elevated:#252320;
-  --on-dark:#faf9f5; --on-dark-soft:#a09d96;
+  /* ── 1c) jobcho.wiki 브랜드색(풀잎 연두 + 진초록) + 서피스 ── */
+  --grass:#8bc34a; --brand:#2f7d43; --brand-active:#266336; --brand-tint:#e9f4ec;
+  --brand-bar:var(--brand); --on-brand:#ffffff; --on-brand-soft:rgb(255 255 255 / .85);
+  --surface-card:#eef0f2; --surface-soft:#f3f5f6;
+  --surface-dark:#1d2620; --surface-dark-elevated:#2a352d;
+  --on-dark:#f4f6f4; --on-dark-soft:#9aa39c;
 
   /* ── 2) 시맨틱 색 별칭 ── */
-  --accent:var(--coral); --accent-hover:var(--coral-active); --accent-ink:#ffffff; --link:var(--coral);
-  --accent-tint:var(--coral-tint);
+  --accent:var(--brand); --accent-hover:var(--brand-active); --accent-ink:#ffffff; --link:var(--brand);
+  --accent-tint:var(--brand-tint);
   --positive:var(--green); --negative:var(--red); --warning:var(--amber);
   --brand-axis:var(--purple);
   --text:var(--t1); --text-muted:var(--t3);
   --surface:var(--bg-1); --surface-raised:var(--bg-2);
   --border:var(--bg-3); --border-strong:var(--bg-4);
-  --focus:var(--coral); --focus-width:2px; --focus-offset:2px;
+  --focus:var(--brand); --focus-width:2px; --focus-offset:2px;
 
   /* ── 2b) 다크 테마 확장 훅(후속) — 현재 기본=라이트/크림(UT-LIGHT-DEFAULT) ── */
 
-  /* ── 3) 배지·밴드·광고 라벨 색(warm 틴트, --bg-1 위 대비 AA) ── */
+  /* ── 3) 배지·밴드·광고 라벨 색(--bg-1 위 대비 AA) ── */
   --badge-official-fg:#046a4e; --badge-official-bg:#e6f6ee;
   --badge-est-fg:#9a5108;      --badge-est-bg:#fbefdb;
   --badge-expired-fg:#b23a0b;  --badge-expired-bg:#fceadd;
-  --badge-qual-fg:var(--t2);   --badge-qual-bg:#efe9de;
+  --badge-qual-fg:var(--t2);   --badge-qual-bg:#eef0f2;
   --band-label-fg:var(--t3);   --band-expired-fg:var(--amber);
-  --ad-label-fg:#6c6a64; --ad-label-fs:12px;
-  --ad-slot-bg:#f5f0e8; --ad-slot-border:var(--bg-3);
+  --ad-label-fg:#5f646b; --ad-label-fs:12px;
+  --ad-slot-bg:#f0f2f4; --ad-slot-border:var(--bg-3);
 
   /* ── 4) 타이포 — 세리프 디스플레이 + 휴머니스트 sans 본문 ── */
   --font-sans:'Pretendard',system-ui,-apple-system,'Apple SD Gothic Neo','Malgun Gothic','Noto Sans KR',sans-serif;
@@ -122,25 +122,42 @@ main, .company-page, .policy-page, body > main {
 }
 
 /* ═══════════════════════════════════════════════════ HEADER / FOOTER ══ */
+/* GNB — 나무위키식 그린 상단 바(로고 + 메뉴 + 우측 검색; 최근토론·특수기능·로그인 없음) */
 header, header[data-global] {
   position:sticky; top:0; z-index:40;
-  background:var(--bg-0); border-bottom:var(--bw) solid var(--border);
+  background:var(--brand-bar); border-bottom:var(--bw) solid var(--brand-active);
 }
 header:not([data-global]), header[data-global] nav {
   display:flex; align-items:center; gap:var(--sp-4); min-height:56px;
-  padding-block:var(--sp-3);
+  padding-block:var(--sp-2);
   padding-inline:max(var(--gutter-mobile), calc((100% - var(--container-max)) / 2));
 }
-header:not([data-global]) .site-logo, header[data-global] .brand { margin-right:auto; }
+header:not([data-global]) .site-logo, header[data-global] .brand { margin-right:var(--sp-2); }
 header:not([data-global]) nav { display:flex; align-items:center; gap:var(--sp-4); }
 .brand, .site-logo {
+  display:inline-flex; align-items:center; gap:var(--sp-2);
   font-family:var(--font-sans); font-size:var(--fs-lg); font-weight:var(--fw-bold);
-  color:var(--coral); letter-spacing:-0.01em;
+  color:var(--on-brand); letter-spacing:-0.01em;
 }
-header nav a:not(.brand):not(.site-logo) { color:var(--t2); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
-header nav a:not(.brand):hover { color:var(--t1); text-decoration:none; }
+.brand:hover, .site-logo:hover { text-decoration:none; }
+.brand-logo { display:block; width:34px; height:22px; }
+.brand-dot { color:var(--grass); }
+header nav a:not(.brand):not(.site-logo) { color:var(--on-brand-soft); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+header nav a:not(.brand):hover { color:var(--on-brand); text-decoration:none; }
+/* GNB 검색(우측) — 제출 시 A 슬롯 주입(ui.js bindHeaderSearch) */
+.gnb-search { display:flex; align-items:center; margin-left:auto; background:var(--bg-1); border-radius:var(--r-sm); overflow:hidden; }
+.gnb-search input[type="search"] {
+  width:150px; max-width:38vw; border:0; background:none; color:var(--t1);
+  padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); font-family:var(--font-sans);
+}
+.gnb-search input[type="search"]::placeholder { color:var(--t4); }
+.gnb-search button {
+  border:0; background:none; color:var(--brand); cursor:pointer;
+  padding:var(--sp-2) var(--sp-3); font-size:var(--fs-base); font-weight:var(--fw-bold);
+}
+.gnb-search button:hover { color:var(--brand-active); }
 
-/* 다크 네이비 푸터(Anthropic — 절대 반전 안 함) */
+/* 다크 그린 푸터(절대 반전 안 함) */
 footer, footer[data-global] {
   margin-top:var(--sp-8); background:var(--surface-dark); color:var(--on-dark-soft);
 }
@@ -204,7 +221,7 @@ main p { margin-top:var(--sp-3); }
   background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-pill);
   padding:var(--sp-1) var(--sp-3);
 }
-.stability { color:var(--coral); font-weight:var(--fw-medium); }
+.stability { color:var(--brand); font-weight:var(--fw-medium); }
 .work-style { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-4); }
 .work-style li { background:var(--surface-card); color:var(--t1); border-radius:var(--r-pill); padding:var(--sp-1) var(--sp-3); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 .benefits, .benefit-group { margin-top:var(--sp-5); }
@@ -213,7 +230,7 @@ main p { margin-top:var(--sp-3); }
 .benefit-table tr { border-bottom:var(--bw) solid var(--border); }
 .benefit-table td, .benefit-table th { padding:var(--sp-3) var(--sp-2); text-align:left; vertical-align:top; font-size:var(--fs-sm); }
 .benefit-name { font-weight:var(--fw-semibold); color:var(--t1); }
-.benefit-amount { color:var(--coral); font-weight:var(--fw-semibold); white-space:nowrap; }
+.benefit-amount { color:var(--brand); font-weight:var(--fw-semibold); white-space:nowrap; }
 .benefit-note { color:var(--t3); }
 .benefit-src, .benefit-verified { color:var(--t4); font-size:var(--fs-xs); }
 
@@ -246,7 +263,7 @@ main p { margin-top:var(--sp-3); }
 .cand-list:empty { display:none; }
 .cand-list .cand { display:flex; flex-direction:column; gap:2px; padding:var(--sp-3); cursor:pointer; border-bottom:var(--bw) solid var(--border); }
 .cand-list .cand:last-child { border-bottom:0; }
-.cand-list .cand:hover, .cand-list .cand:focus { background:var(--coral-tint); }
+.cand-list .cand:hover, .cand-list .cand:focus { background:var(--brand-tint); }
 .cand-nm { font-weight:var(--fw-semibold); }
 .cand-meta { font-size:var(--fs-xs); color:var(--t3); }
 .search-empty, .search-error { margin-top:var(--sp-2); font-size:var(--fs-sm); color:var(--t3); }
@@ -276,7 +293,7 @@ main p { margin-top:var(--sp-3); }
 #report-body { display:grid; gap:var(--sp-5); margin-top:var(--sp-4); }
 .rp-block { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-5); }
 .rp-block h3 { margin-top:0; margin-bottom:var(--sp-3); }
-.rp-vdcard { background:var(--coral-tint); border-color:var(--border); }
+.rp-vdcard { background:var(--brand-tint); border-color:var(--border); }
 .vd-persp { display:flex; flex-wrap:wrap; gap:var(--sp-2); align-items:baseline; margin-bottom:var(--sp-2); }
 .vd-axis-label, .vd-persp-label { font-weight:var(--fw-semibold); color:var(--t3); font-size:var(--fs-sm); }
 .vd-persp-text { font-weight:var(--fw-semibold); }
@@ -284,7 +301,7 @@ main p { margin-top:var(--sp-3); }
 .rp-total-slot, .rp-wlb-slot, .rp-hourly-slot { display:flex; justify-content:space-between; gap:var(--sp-3); padding:var(--sp-2) 0; border-bottom:var(--bw) solid var(--border); }
 .rp-slot-label { color:var(--t3); }
 .rp-slot-total { font-family:var(--font-serif); font-weight:var(--fw-regular); font-size:var(--fs-h3); }
-.rp-total-delta { margin-top:var(--sp-2); font-weight:var(--fw-semibold); color:var(--coral); }
+.rp-total-delta { margin-top:var(--sp-2); font-weight:var(--fw-semibold); color:var(--brand); }
 .rp-band-body { color:var(--band-label-fg); font-size:var(--fs-xs); padding:var(--sp-1) 0 var(--sp-2); }
 .band-list { margin-top:var(--sp-2); }
 .band-item { display:flex; justify-content:space-between; gap:var(--sp-3); padding:var(--sp-1) 0; font-size:var(--fs-sm); }
@@ -300,11 +317,11 @@ main p { margin-top:var(--sp-3); }
 .ben-headline-nm { font-size:var(--fs-sm); color:var(--t3); font-weight:var(--fw-medium); }
 .ben-headline-amt { font-family:var(--font-serif); font-weight:var(--fw-regular); font-size:var(--fs-h3); letter-spacing:var(--ls-tight); }
 .ben-headline-side--a .ben-headline-amt { color:var(--blue); }
-.ben-headline-side--b .ben-headline-amt { color:var(--coral); }
+.ben-headline-side--b .ben-headline-amt { color:var(--brand); }
 .ben-headline-vs { color:var(--t4); font-size:var(--fs-xs); }
 .ben-split { display:flex; height:10px; margin-top:var(--sp-2); border-radius:var(--r-pill); overflow:hidden; background:var(--bg-2); }
 .ben-split-a { background:var(--blue); }
-.ben-split-b { background:var(--coral); }
+.ben-split-b { background:var(--brand); }
 .ben-headline-verdict { margin-top:var(--sp-2); font-weight:var(--fw-semibold); }
 .ben-diff-summary { display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-5); margin-top:var(--sp-1); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 .ben-diff--gained { color:var(--positive); }
@@ -323,7 +340,7 @@ main p { margin-top:var(--sp-3); }
 /* 행내 미니바 — 표 최대 금액 대비 폭%(구 버터플라이 대체, 세로 추가 0에 가까움) */
 .ben-bar { display:block; height:4px; margin-top:2px; border-radius:var(--r-xs); }
 .ben-bar--a { background:var(--blue); }
-.ben-bar--b { background:var(--coral); }
+.ben-bar--b { background:var(--brand); }
 .ben-none { color:var(--t4); white-space:nowrap; }
 .ben-mark { display:inline-block; margin-left:var(--sp-1); font-size:var(--fs-ad); font-weight:var(--fw-medium); white-space:nowrap; }
 .ben-mark--lost { color:var(--negative); }
@@ -333,7 +350,7 @@ main p { margin-top:var(--sp-3); }
 .ben-row-delta, .ben-cat-delta { text-align:right; }
 .ben-delta { display:inline-block; white-space:nowrap; font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
 .ben-delta--a { color:var(--blue); }
-.ben-delta--b { color:var(--coral); }
+.ben-delta--b { color:var(--brand); }
 .ben-delta--eq { color:var(--t4); }
 /* report.js badgeClass의 이중대시 변형(badge--official 등) 정합 — 단일대시와 동일 팔레트 */
 .badge--official { background:var(--badge-official-bg); color:var(--badge-official-fg); }
@@ -345,7 +362,7 @@ main p { margin-top:var(--sp-3); }
 .bfly-key { display:inline-flex; align-items:center; gap:var(--sp-1); }
 .bfly-key::before { content:""; width:10px; height:10px; border-radius:var(--r-xs); }
 .bfly-key.a::before { background:var(--blue); }
-.bfly-key.b::before { background:var(--coral); }
+.bfly-key.b::before { background:var(--brand); }
 .bfly { display:flex; flex-direction:column; gap:var(--sp-2); }
 .bfly-row { display:grid; grid-template-columns:52px 1fr 104px 1fr 52px; align-items:center; gap:var(--sp-2); }
 .bfly-val { font-size:var(--fs-xs); color:var(--t3); }
@@ -356,19 +373,19 @@ main p { margin-top:var(--sp-3); }
 .bfly-wing.b { justify-content:flex-start; }
 .bfly-bar { height:100%; border-radius:var(--r-xs); }
 .bfly-bar.a { background:var(--blue); }
-.bfly-bar.b { background:var(--coral); }
+.bfly-bar.b { background:var(--brand); }
 .bfly-center { text-align:center; display:flex; flex-direction:column; align-items:center; gap:2px; }
 .bfly-label { font-size:var(--fs-xs); font-weight:var(--fw-medium); color:var(--t2); }
 .bfly-diff { font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
 .bfly-diff.a { color:var(--blue); }
-.bfly-diff.b { color:var(--coral); }
+.bfly-diff.b { color:var(--brand); }
 .bfly-diff.eq { color:var(--t4); }
 .rp-qual-list { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-2); }
 .rp-qual-item { background:var(--surface-card); border:var(--bw) solid var(--border); border-radius:var(--r-pill); padding:var(--sp-1) var(--sp-3); font-size:var(--fs-sm); }
 .rp-recent { margin-top:var(--sp-2); }
 .rp-recent-item { display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-2) 0; border-bottom:var(--bw) solid var(--border); }
 .rp-recent-empty { color:var(--t3); font-size:var(--fs-sm); }
-.rp-recent-restore { color:var(--coral); font-weight:var(--fw-medium); }
+.rp-recent-restore { color:var(--brand); font-weight:var(--fw-medium); }
 .rp-recent-remove { color:var(--negative); }
 .rp-warnings { display:flex; flex-direction:column; gap:var(--sp-2); }
 .rp-warning-item { background:var(--badge-expired-bg); color:var(--badge-expired-fg); border-radius:var(--r-sm); padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); }
@@ -383,8 +400,8 @@ main p { margin-top:var(--sp-3); }
   background:none; border:0; cursor:pointer;
   font-size:var(--fs-sm); color:var(--t3); border-radius:var(--r-sm);
 }
-.dir-count:hover { color:var(--t1); background:var(--coral-tint); }
-.dir-count .dir-count-n { color:var(--coral); font-weight:var(--fw-bold); }
+.dir-count:hover { color:var(--t1); background:var(--brand-tint); }
+.dir-count .dir-count-n { color:var(--brand); font-weight:var(--fw-bold); }
 .dir-panel {
   margin-top:var(--sp-2); text-align:left;
   background:var(--surface-soft); border:var(--bw) solid var(--border); border-radius:var(--r-md);
@@ -401,7 +418,7 @@ main p { margin-top:var(--sp-3); }
   font-size:var(--fs-sm); color:var(--t1); border-radius:var(--r-sm);
   transition:background var(--dur-fast) var(--ease-out);
 }
-.dir-comp:hover { background:var(--coral-tint); }
+.dir-comp:hover { background:var(--brand-tint); }
 .dir-comp-nm { font-weight:var(--fw-medium); }
 .dir-comp-meta { font-size:var(--fs-xs); color:var(--t4); }
 .dir-benefits { padding:0 var(--sp-2) var(--sp-3); }
@@ -430,8 +447,8 @@ main p { margin-top:var(--sp-3); }
   font-size:var(--fs-sm); color:var(--t1); border-radius:var(--r-sm);
   transition:background var(--dur-fast) var(--ease-out);
 }
-.trend-item:hover { background:var(--coral-tint); }
-.trend-rank { flex:none; width:20px; text-align:center; font-weight:var(--fw-semibold); color:var(--coral); font-size:var(--fs-xs); }
+.trend-item:hover { background:var(--brand-tint); }
+.trend-rank { flex:none; width:20px; text-align:center; font-weight:var(--fw-semibold); color:var(--brand); font-size:var(--fs-xs); }
 .trend-pair { display:inline-flex; flex-wrap:wrap; column-gap:var(--sp-1); align-items:baseline; }
 .trend-a, .trend-b { font-weight:var(--fw-medium); }
 .trend-vs { color:var(--t4); font-size:var(--fs-ad); }
@@ -475,4 +492,6 @@ main p { margin-top:var(--sp-3); }
   #company-directory { position:static; }
   .dir-count { position:absolute; top:var(--sp-3); right:var(--sp-4); }
   .dir-panel { margin-top:var(--sp-3); }
+  /* GNB 검색: 데스크톱에서 여유 폭 */
+  .gnb-search input[type="search"] { width:240px; }
 }

@@ -6,18 +6,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>연봉·복지 비교 — loupit</title>
+  <title>연봉·복지 비교 — jobcho.wiki 잡초</title>
   <meta name="description" content="두 회사의 실효연봉·복지·워라밸·성장성을 한 화면에서 비교합니다. 로그인 없이 무료로 사용하세요.">
   <link rel="canonical" href="/compare">
   <meta name="robots" content="noindex, follow"> <!-- 상태 의존 SPA — 인덱싱은 정적 페이지(SP-GEN)가 담당 -->
+  <link rel="icon" type="image/svg+xml" href="/assets/img/logo.svg">
   <link rel="stylesheet" href="/assets/css/styles.css">
 </head>
 <body data-page-type="input"> <!-- 기본 input(무광고, SP-ADS-9.1). report 뷰 진입 시 app.js가 mountAds('result') 명시 호출 -->
-<header data-global>
+<header data-global class="gnb"> <!-- 나무위키식 그린 상단 바(최근토론·특수기능·로그인 없음) -->
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
-    <a href="/" class="brand">loupit</a>
-    <a href="/privacy">개인정보처리방침</a>
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <a href="#trending" class="gnb-link">실시간 비교</a>
+    <form class="gnb-search" role="search" aria-label="회사 검색"> <!-- 제출 → A 슬롯 주입(ui.js bindHeaderSearch) -->
+      <input type="search" placeholder="회사명 검색" aria-label="회사명 검색" autocomplete="off">
+      <button type="submit" aria-label="검색">→</button>
+    </form>
   </nav>
 </header>
 
@@ -106,7 +111,7 @@
 <noscript id="nojs"> <!-- SCR-94 비-JS 폴백: 검색 도구는 JS 필요. 히어로·특징 본문은 위에서 이미 읽힌다(NFR12·NFR24). -->
   <p>회사 검색·비교 도구는 자바스크립트가 필요합니다. 회사 정보는 아래 정적 페이지에서 확인할 수 있습니다.</p>
   <ul>
-    <li><a href="/">loupit 소개로 이동</a></li>
+    <li><a href="/">jobcho.wiki 대문으로 이동</a></li>
     <li><a href="/privacy">개인정보처리방침</a></li>
   </ul>
   <!-- 개별 회사 상세(/company/*)·인기 조합(/vs/*) 링크는 SP-GEN(05) 생성물에서 목록으로 채워진다 -->

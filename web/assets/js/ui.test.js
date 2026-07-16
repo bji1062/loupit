@@ -190,6 +190,34 @@ describe('UI-4 선택 → 입력뷰 전진 + 비교하기 배선(MB-8·15)', () 
   });
 });
 
+describe('UI-6 헤더 검색(bindHeaderSearch — GNB 검색창 → A 슬롯)', () => {
+  beforeEach(() => loadShell());
+
+  test('제출 → A 슬롯 값 주입 + onSearchInput 발화(loading) + go("search")', () => {
+    const state = createInitialState();
+    state.REF = { companies: [], company_types: [], benefit_presets: {} };
+    const calls = [];
+    mountUI(state, { go: (s) => calls.push(s) });
+    const form = document.querySelector('.gnb-search');
+    assert.ok(form, '셸에 GNB 검색 폼 존재');
+    const q = form.querySelector('input[type="search"]');
+    q.value = '삼성';
+    form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.equal(document.getElementById('search-input-a').value, '삼성', 'A 슬롯 검색창에 주입');
+    assert.equal(state.ui.searchState.a, 'loading', 'onSearchInput 경로 발화');
+    assert.ok(calls.includes('search'), '검색 뷰로 전환');
+  });
+
+  test('빈 검색어 제출 → 무해(no-op, 상태 idle 유지)', () => {
+    const state = createInitialState();
+    mountUI(state, {});
+    const form = document.querySelector('.gnb-search');
+    form.querySelector('input[type="search"]').value = '   ';
+    form.dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }));
+    assert.equal(state.ui.searchState.a, 'idle');
+  });
+});
+
 describe('UI-5 리포트 내비 배선', () => {
   beforeEach(() => loadShell());
 
