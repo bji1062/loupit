@@ -334,8 +334,8 @@ describe('UT-SPACING', () => {
     assert.equal(tokens.get('--gutter-desktop'), '24px');
   });
 
-  test('--container-max === 960px', () => {
-    assert.equal(tokens.get('--container-max'), '960px');
+  test('--container-max === 1400px(2026-07-16 개정 — 나무위키 대문급 광폭)', () => {
+    assert.equal(tokens.get('--container-max'), '1400px');
   });
 
   test('--tap-min === 44px', () => {

@@ -1,21 +1,25 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 42" role="img" aria-label="jobcho.wiki 잡초 로고">
-  <!-- jobcho.wiki(잡초) 풀잎 마크 — 연두 그라데이션 풀잎 5갈래 + 진초록 베이스라인 -->
+  <!-- jobcho.wiki(잡초) 풀잎 마크 v2 — 둥근 꽃잎형 잎 5개(부채꼴, 가운데 최대) + 얇은 진초록 스우시.
+       확정 로고 이미지(2026-07-16 첨부)의 SVG 재현 — 원본 벡터를 받으면 이 파일만 교체. -->
   <defs>
     <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#a8d94e"/>
-      <stop offset="1" stop-color="#79b93c"/>
+      <stop offset="0" stop-color="#a9d84f"/>
+      <stop offset="1" stop-color="#7ab63f"/>
     </linearGradient>
     <linearGradient id="g2" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#b7e06a"/>
+      <stop offset="0" stop-color="#bfe273"/>
       <stop offset="1" stop-color="#8bc34a"/>
     </linearGradient>
   </defs>
-  <!-- 풀잎(가운데 큰 잎 기준 좌우 대칭에 가깝게, 살짝 기울임) -->
-  <polygon fill="url(#g2)" points="6,36 12,14 16,36"/>
-  <polygon fill="url(#g)"  points="15,36 22,4 26,36"/>
-  <polygon fill="url(#g2)" points="26,36 32,10 37,36"/>
-  <polygon fill="url(#g)"  points="37,36 43,2 48,36"/>
-  <polygon fill="url(#g2)" points="48,36 55,16 58,36"/>
-  <!-- 베이스라인(땅) -->
-  <rect x="2" y="35" width="60" height="4" rx="2" fill="#23421f"/>
+  <!-- 잎(둥근 꽃잎): 회전 타원 — 좌우로 갈수록 작고 바깥으로 기욺 -->
+  <g>
+    <ellipse cx="12" cy="27" rx="3.4" ry="10.5" fill="url(#g2)" transform="rotate(-26 12 27)"/>
+    <ellipse cx="22" cy="23" rx="3.9" ry="13.5" fill="url(#g)"  transform="rotate(-13 22 23)"/>
+    <ellipse cx="32" cy="20" rx="4.3" ry="16"   fill="url(#g2)"/>
+    <ellipse cx="42" cy="23" rx="3.9" ry="13.5" fill="url(#g)"  transform="rotate(13 42 23)"/>
+    <ellipse cx="52" cy="27" rx="3.4" ry="10.5" fill="url(#g2)" transform="rotate(26 52 27)"/>
+  </g>
+  <!-- 베이스라인 스우시(얇고 끝이 뾰족한 가로 곡선) -->
+  <path d="M3 37.4 Q32 33.8 61 37.4 Q32 36.6 3 37.4 Z" fill="#23421f"/>
+  <path d="M3 37.4 Q32 34.2 61 37.4 L61 38.2 Q32 36.2 3 38.2 Z" fill="#23421f"/>
 </svg>
