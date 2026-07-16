@@ -107,7 +107,7 @@ def _company_view(c: dict, ctx, now) -> dict:
 def _company_seo(c: dict, ctx, url: str) -> dict:
     """title·description·OG·canonical·JSON-LD 뷰모델 (SP-GEN-6.1)."""
     t = ctx.types_by_cd.get(c["comp_tp_cd"], {})
-    title = f"{c['comp_nm']} 복지·연봉·근무조건 | loupit"
+    title = f"{c['comp_nm']} 복지·연봉·근무조건 | jobcho.wiki"
     parts = [p for p in (t.get("comp_tp_nm"), c.get("industry_nm")) if p]
     top = ", ".join(b["benefit_nm"] for b in c["benefits"][:3])
     desc = (

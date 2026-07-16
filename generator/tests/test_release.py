@@ -19,7 +19,7 @@ _GOOD_HTML = "<html><body><h1>회사</h1>" + ("복지 항목 설명 텍스트 �
 def _valid_page(path="company/x.html", html=_GOOD_HTML):
     return Page(
         path=path,
-        url=f"https://loupit.co/{path[:-5]}",
+        url=f"https://jobcho.wiki/{path[:-5]}",
         html=html,
         title="t",
         description="d",

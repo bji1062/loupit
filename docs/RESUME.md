@@ -8,7 +8,7 @@
 
 ## A. 현재 상태 (2026-07-12) ⬅ 여기부터
 
-**문서 파이프라인(1~7단계) 완료. 8단계 구현 = M0~M8 대부분 완료.** loupit이 **`beta.loupit.co` 무중단 스테이징으로 배포·적대적 검증**된 상태(재검증 판정 GO-with-fixes).
+**문서 파이프라인(1~7단계) 완료. 8단계 구현 = M0~M8 대부분 완료.** loupit이 **`beta.jobcho.wiki` 무중단 스테이징으로 배포·적대적 검증**된 상태(재검증 판정 GO-with-fixes).
 
 > **🔴 2026-07-13 QA 발견·수정 (중요)**: gstack 헤드리스 브라우저로 MB-* 수동 QA를 대행하던 중 **비교툴(코어 기능)이 정적 셸만 뜨고 전혀 조작 불가**한 런치블로커를 발견했다 — 검색 입력이 어떤 핸들러에도 미배선(`bindGlobalUI()` 자리표시자). 순수 유닛 300개는 green이나 DOM 통합 계층(TASK/06 "후속 통합 과제")이 미구현이라 실제 브라우저에선 죽어 있었다. **`web/assets/js/ui.js` 신규로 통합 배선 계층 구현·수정 완료(`cd20712`)** + `ui.test.js`(jsdom 실DOM 통합 14개)로 재발 차단. beta 라이브 e2e 검증: 검색→선택→입력뷰→비교→리포트 전 플로우 동작(총보상·9카테고리 델타·워라밸 계산, 콘솔에러0).
 >
@@ -18,15 +18,15 @@
   - **다음 착수 후보**: (1) 잔여 수동 QA — MD-2~6(포커스링·axe/Lighthouse·200%확대·reduced-motion·광고라벨) + MB-7(직접입력 UI 미구현), (2) 한글 명조 woff2 자체호스팅(선택, 세리프 또렷하게), (3) AdSense 실 client-id 승인 대기, (4) 🚦 **프로덕션 컷오버**(승인 게이트, §B 끝). **테스트는 `bash infra/deploy/run_tests.sh`로만**(C-1). 프론트 테스트는 `jsdom` dev의존 필요(`bun install`/`npm install`; run_tests.sh가 없으면 자동설치). beta 자산은 no-cache라 갱신 자동반영이나, 기존 브라우저는 1회 하드리프레시 필요.
 - **⚠️ 프론트 테스트 의존성**: `ui.test.js`(jsdom 통합)는 `jsdom` dev 의존 필요(`package.json`). `node_modules`는 gitignore — fresh 클론은 `npm install`(또는 `bun install`) 후 run_tests.sh. run_tests.sh가 없으면 자동 설치 시도. 프로덕션 서빙은 여전히 무빌드(ES 모듈 직접).
 - **배포된 실행 상태 (⚠️ 서버 호스트 `158.180.79.39` 에만 존재·유지 — 로컬 클론엔 없음)**:
-  - beta API: systemd `loupit-beta-api.service`, 127.0.0.1:**8001** (시스템 python3, `server/.env.beta`). 공개 `https://beta.loupit.co` (nginx + Let's Encrypt).
+  - beta API: systemd `loupit-beta-api.service`, 127.0.0.1:**8001** (시스템 python3, `server/.env.beta`). 공개 `https://beta.jobcho.wiki` (nginx + Let's Encrypt).
   - DB: MySQL 스키마 **LOUPIT** / 계정 **APP_LOUPIT** (pw는 `server/.env.beta`, gitignore — 새 환경엔 없음). 회사 95·복지 1317·프리셋 28.
   - nginx: `/etc/nginx/sites-available/loupit-beta.conf`(리포 `infra/nginx/loupit-beta.conf`) + 보안스니펫 `/etc/nginx/snippets/loupit-beta-security.conf`(✅ B-1로 커밋됨 — 리포 `infra/nginx/snippets/`, 배치는 `infra/deploy/deploy-beta.sh`).
-  - 라이브 `loupit.co` = 예전 **job_change**(별개 DB, 무손상). 프로덕션 컷오버는 **승인 게이트**(§B 끝).
+  - 라이브 `jobcho.wiki` = 예전 **job_change**(별개 DB, 무손상). 프로덕션 컷오버는 **승인 게이트**(§B 끝).
 - **⚠️ 다른 PC에서 이어갈 때**: 실행 상태·이전 세션 AI의 로컬 메모리는 이 서버/PC에만 있다(안 넘어옴). **서버 접촉 작업(nginx·systemd·LOUPIT 재시드·라이브 검증)은 반드시 이 서버에 접속해서** 하라. 순수 코드 편집만 로컬 클론에서 가능. **이 RESUME.md가 유일한 인수인계원.**
 - **⚠️ 테스트 안전규칙(C-1 수정 결과)**: 서빙 스키마 LOUPIT을 테스트에도 재사용한다. **테스트는 반드시 `bash infra/deploy/run_tests.sh` 로만 실행**(끝나면 trap이 `load.py --fresh`로 서빙 자동 복원). 맨 `pytest`로 DB 테스트를 돌리면 conftest 가드가 `[C-1 안전장치]`로 차단한다. **`LOUPIT_ALLOW_SERVING_SCHEMA=1` 설정 후 맨 pytest 실행 절대 금지**(서빙 비운 채 복원 안 됨). 서빙 깨지면 수동 복구: `python3 db/seed/load.py --fresh` + `sudo systemctl restart loupit-beta-api`.
 
 ### 이번 세션(2026-07-11~12) 한 일
-1. **beta.loupit.co 무중단 스테이징 배포** (포트 8001, nginx vhost, TLS, X-Robots noindex).
+1. **beta.jobcho.wiki 무중단 스테이징 배포** (포트 8001, nginx vhost, TLS, X-Robots noindex).
 2. **7차원 적대적 종합검증** → 치명결함 **C-1** 발견·실발현(`run_tests.sh`가 서빙 스키마 DROP → 라이브 API 다운, 즉시 복구).
 3. **결함 7건 수정·커밋**(회귀 테스트 포함, run_tests.sh ALL GREEN 백엔드175·생성152·node·nginx):
    - **C-1**(e4ce20a): 별도 TEST DB 불가(APP_LOUPIT 권한) → LOUPIT 재사용+테스트후 자동복원(run_tests.sh trap) + `server/tests/schema_guard.py` 가드.
@@ -45,14 +45,14 @@
 > **진행(2026-07-12~13 이어서)**: **1~7 전부 완료.** 1·2(우선순위) 이후 3~7(L-1~4·복원원자성)까지 TDD로 처리·커밋·push. 남은 것은 아래 '완료 후 흐름'의 **수동 QA(28리프) → 🚦 프로덕션 컷오버(승인 게이트)** 뿐.
 
 1. ✅ **[HIGH] `loupit-beta-security.conf` 커밋** — 완료(커밋 `624223d`). 리포 `infra/nginx/snippets/loupit-beta-security.conf` + base `loupit-security.conf`(기존) + 배치 스크립트 `infra/deploy/deploy-beta.sh`(provision.sh는 프로덕션 전용이라 신설). 검증 통과: `git ls-files | grep beta-security` → 존재, `nginx -t` PASS.
-2. ✅ **[MED] kakao_bank child_edu 금액 + 월→연 전수 스윕** — 완료(커밋 `6c013f1`). `child_edu` AMT 10→**120** + note '(연 120만원)' 명시. **95개 시드 SQL 전수 감사(8배치 병렬 스캔 + 적대적 재검증)** 결과 확정 실버그는 이 1건뿐(크래프톤·파크는 M-5 처리분, LS fitness 30은 이미 연값이라 기각). 회귀 `test_SI_B2_monthly_amount_annualized` 추가(red→green). 재시드+생성기 재빌드+beta-api 재시작 후 라이브 `/api/v1/reference/all` child_edu=120·`beta.loupit.co/company/kakao-bank` 200 검증.
+2. ✅ **[MED] kakao_bank child_edu 금액 + 월→연 전수 스윕** — 완료(커밋 `6c013f1`). `child_edu` AMT 10→**120** + note '(연 120만원)' 명시. **95개 시드 SQL 전수 감사(8배치 병렬 스캔 + 적대적 재검증)** 결과 확정 실버그는 이 1건뿐(크래프톤·파크는 M-5 처리분, LS fitness 30은 이미 연값이라 기각). 회귀 `test_SI_B2_monthly_amount_annualized` 추가(red→green). 재시드+생성기 재빌드+beta-api 재시작 후 라이브 `/api/v1/reference/all` child_edu=120·`beta.jobcho.wiki/company/kakao-bank` 200 검증.
 3. ✅ **[LOW] L-1 HEAD 405** — 완료(`0e4b79e`). FastAPI APIRoute는 HEAD 자동추가 안 함 → 4개 라우트를 `api_route(methods=["GET","HEAD"])`로. HEAD=200 empty body(ASGI 스트립). 테스트 test_TL1·test_TR8. smoke SM-4의 f9459f9 우회 원복. 라이브 HEAD 4종 200.
 4. ✅ **[LOW] L-2 / 정규 URL 중복** — 완료(`f5ba3c1`). `location ^~ /dist/ { return 404; }` + `/company/`·`/vs/` try_files `$uri $uri.html`→`$uri.html`(직접 .html 차단, 클린 URL 200). 양쪽 conf. beta 라이브 검증: `/dist/company/*.html(.gz)`→404, 직접 `/company/*.html`→404, 클린→200. (server-if 방식은 사이클 리스크로 미채택; `/index.html` 미세중복만 보류.)
 5. ✅ **[LOW] L-3 robots 중복헤더** — 완료(`f5ba3c1`). beta.conf robots location의 `add_header Content-Type` 제거 + `default_type text/plain`. 라이브 Content-Type 1개 확인.
 6. ✅ **[LOW] L-4 parseSalRange** — 완료(`91d24a8`). 빈/공백 토큰 거부(`Number('')===0` 함정)·2토큰 강제·`min<=max` 검증, 실패 센티널 {0,0,0} 보존. node 경계 테스트 red→green.
 7. ✅ **[LOW] 복원 원자성** — 완료(`b2a8bc7`). (b) 정직화 채택: `load.py --fresh`는 DROP TABLE(DDL 암묵커밋)이라 비원자임을 명시(‘보장’→‘시도’), 재시드 후 TCOMPANY≥90 검증 + 실패 시 큰 경고. (a) 임시테이블+RENAME 원자스왑은 시드 SQL 테이블명 하드코딩 때문에 범위 커 별도 작업으로 남김.
 
-**완료 후 흐름**: 커밋·push → **수동 QA(28리프, 실제 브라우저 플로우)** → **🚦 프로덕션 컷오버**(loupit.co를 job_change→loupit으로 스왑 · nginx `loupit.conf` 활성 · 포트 8000 · 인증서 · **반드시 사용자 승인 게이트**).
+**완료 후 흐름**: 커밋·push → **수동 QA(28리프, 실제 브라우저 플로우)** → **🚦 프로덕션 컷오버**(jobcho.wiki를 job_change→loupit으로 스왑 · nginx `loupit.conf` 활성 · 포트 8000 · 인증서 · **반드시 사용자 승인 게이트**).
 
 > **참고**: `docs/TASK.md`(마일스톤·진행 롤업)·`docs/TASK/00~12`가 리프 정본. 재검증 리포트 원본은 세션 임시파일이라 소실될 수 있어 위 §B에 요지를 남김.
 

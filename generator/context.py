@@ -16,7 +16,7 @@ class Page:
     """생성기의 단일 산출 단위 (SP-GEN-2.2)."""
 
     path: str  # dist 상대 경로 (예: "company/samsung-elec.html")
-    url: str  # 절대 canonical URL (예: "https://loupit.co/company/samsung-elec")
+    url: str  # 절대 canonical URL (예: "https://jobcho.wiki/company/samsung-elec")
     html: str  # 완성 HTML(또는 sitemap/robots는 xml/txt) 문자열
     title: str  # <title> 텍스트(중복 검증용, FR-59)
     description: str  # meta description(중복 검증용)

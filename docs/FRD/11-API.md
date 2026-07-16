@@ -17,7 +17,7 @@
 | 항목 | 규약 | 근거 |
 |------|------|------|
 | 기본 경로 | 모든 엔드포인트는 버전 접두사 `/api/v1/` 아래에 위치한다. | §6·§8 |
-| 배치 | 정적 자산은 Nginx가, `/api/v1/*`는 Uvicorn(FastAPI)이 서빙하며 Nginx가 프록시한다. **동일 오리진**(`https://loupit.co`). | §8 |
+| 배치 | 정적 자산은 Nginx가, `/api/v1/*`는 Uvicorn(FastAPI)이 서빙하며 Nginx가 프록시한다. **동일 오리진**(`https://jobcho.wiki`). | §8 |
 | 메서드 | **GET만** 제공(+ GET 라우트에 자동 부여되는 HEAD, CORS 프리플라이트 OPTIONS). 쓰기 메서드(POST/PUT/PATCH/DELETE) 라우트 0. | §2-4, NFR20 |
 | 인증 | 없음. `Authorization` 헤더·쿠키·세션·CSRF 토큰을 요구하지 않는다(무상태). | §2-1, NFR16 |
 | 응답 형식 | `Content-Type: application/json; charset=utf-8`(헬스 포함). 본문은 UTF-8, 한국어 콘텐츠 포함(DB utf8mb4). | §8 |
@@ -253,7 +253,7 @@
 
 ## [FR-96] CORS·전송 헤더·캐시 정책
 
-**설명**: 4개 엔드포인트의 CORS 정책, 공통 응답 헤더, 엔드포인트별 캐시(Cache-Control) 정책을 한곳에 통합한다. 프로덕션은 **동일 오리진**(정적=Nginx, `/api/v1/*`=Uvicorn 프록시, 동일 `loupit.co`)이므로 CORS는 방어적·개발용 성격이 크다(§8).
+**설명**: 4개 엔드포인트의 CORS 정책, 공통 응답 헤더, 엔드포인트별 캐시(Cache-Control) 정책을 한곳에 통합한다. 프로덕션은 **동일 오리진**(정적=Nginx, `/api/v1/*`=Uvicorn 프록시, 동일 `jobcho.wiki`)이므로 CORS는 방어적·개발용 성격이 크다(§8).
 
 **상세 동작 — CORS**
 - 정상: 브라우저의 GET 요청은 커스텀 요청 헤더·자격증명이 없는 **단순 요청(simple request)**이므로 프리플라이트를 유발하지 않는다. 동일 오리진 프로덕션에서는 CORS 헤더가 필수는 아니다.
@@ -261,7 +261,7 @@
 
   | CORS 항목 | 값 |
   |-----------|----|
-  | `Access-Control-Allow-Origin` | `https://loupit.co`(및 필요 시 `https://www.loupit.co`) — 허용목록. **와일드카드 `*`+자격증명 금지** |
+  | `Access-Control-Allow-Origin` | `https://jobcho.wiki`(및 필요 시 `https://www.jobcho.wiki`) — 허용목록. **와일드카드 `*`+자격증명 금지** |
   | `Access-Control-Allow-Methods` | `GET, HEAD, OPTIONS` (쓰기 메서드 미포함) |
   | `Access-Control-Allow-Credentials` | 미설정(false). 인증·쿠키가 없으므로 자격증명 허용 불필요(§2-1) |
   | `Access-Control-Allow-Headers` | 불필요(커스텀 요청 헤더 미사용). 요청 시 최소 허용 |

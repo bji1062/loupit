@@ -101,7 +101,7 @@ def test_gc22_reversed_pair_produces_same_canonical_and_single_file(fake_bundle,
     pages = combo.render_all(env, ctx, CFG)
     assert len(pages) == 1
     assert pages[0].path == "vs/samsung-elec-sk-hynix.html"
-    assert pages[0].url == "https://loupit.co/vs/samsung-elec-sk-hynix"
+    assert pages[0].url == "https://jobcho.wiki/vs/samsung-elec-sk-hynix"
 
 
 # ── GC-23: 무효 조합 스킵(빌드 성공, 경고 로그) ─────────────────────────────

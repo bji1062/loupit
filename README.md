@@ -1,6 +1,6 @@
-# loupit
+# loupit — 서비스명 jobcho.wiki(잡초)
 
-로그인 없는 한국 회사 **복지·연봉·근무조건 비교 도구** + 회사별 정보 페이지. Google AdSense·제휴로 수익화.
+로그인 없는 한국 회사 **복지·연봉·근무조건 비교 도구** + 회사별 정보 페이지(도메인 `jobcho.wiki`). Google AdSense·제휴로 수익화. `loupit`은 저장소·패키지·인프라 식별자로 유지되는 코드네임이다.
 
 > 기존 `job_change`("직장 선택 OS")를 로그인·회원·소셜피드·프로파일러를 전면 제거하고 **광고 수익 모델**로 재설계한 프로젝트. 코드는 새로 작성하되 큐레이션된 회사·복지 데이터(기업유형 6종·회사 200개·상세 복지 96개)는 보존한다.
 
@@ -32,7 +32,7 @@
 - **백엔드**: FastAPI(async) + aiomysql + 원시 SQL (no ORM)
 - **DB**: MySQL 8.0 (utf8mb4)
 - **정적 생성**: 파이썬 빌드 스크립트 (회사/조합 페이지 + sitemap)
-- **인프라**: Oracle Cloud ARM(Always Free) + Nginx + systemd + Let's Encrypt (loupit.co)
+- **인프라**: Oracle Cloud ARM(Always Free) + Nginx + systemd + Let's Encrypt (jobcho.wiki)
 
 ## 개발 원칙
 

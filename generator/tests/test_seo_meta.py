@@ -75,7 +75,7 @@ def test_gc8_combo_canonical_equals_og_url_equals_self_url(fake_bundle, fake_now
     p = combo.render_all(env, ctx, CFG)[0]
     canonical = re.search(r'<link rel="canonical" href="([^"]+)">', p.html).group(1)
     og_url = re.search(r'<meta property="og:url" content="([^"]+)">', p.html).group(1)
-    assert canonical == og_url == p.url == "https://loupit.co/vs/samsung-elec-sk-hynix"
+    assert canonical == og_url == p.url == "https://jobcho.wiki/vs/samsung-elec-sk-hynix"
 
 
 # ── GC-9: JSON-LD 파싱 오류 0·필드 정확·부재 키 확인 ────────────────────────

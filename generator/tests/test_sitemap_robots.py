@@ -34,7 +34,7 @@ def test_gc18_sitemap_includes_all_company_combo_policy_and_landing(
     locs = set(re.findall(r"<loc>([^<]+)</loc>", sitemap_page.html))
 
     expected = {p.url for p in all_pages if p.in_sitemap}
-    expected.add("https://loupit.co/")
+    expected.add("https://jobcho.wiki/")
     assert locs == expected
 
 
@@ -69,7 +69,7 @@ def test_gc18_sitemap_content_type_is_xml(fake_bundle, fake_now, fake_combinatio
 
 def test_gc19_robots_has_sitemap_line(fake_bundle, fake_now):
     _, _, robots_page = _build_all(fake_bundle, fake_now)
-    assert "Sitemap: https://loupit.co/sitemap.xml" in robots_page.html
+    assert "Sitemap: https://jobcho.wiki/sitemap.xml" in robots_page.html
 
 
 def test_gc19_robots_allows_root_disallows_api(fake_bundle, fake_now):

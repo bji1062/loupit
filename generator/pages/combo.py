@@ -116,7 +116,7 @@ def _related(eng_first: str, eng_second: str, ctx, all_pairs):
 
 def _combo_seo(a: dict, b: dict, url: str, cfg) -> dict:
     """조합 SEO head·canonical 정규화 (FR-64)."""
-    title = f"{a['comp_nm']} vs {b['comp_nm']} 복지·연봉 비교 | loupit"
+    title = f"{a['comp_nm']} vs {b['comp_nm']} 복지·연봉 비교 | jobcho.wiki"
     desc = (
         f"{a['comp_nm']}과 {b['comp_nm']}의 복지·연봉·근무형태를 한눈에 비교합니다. "
         f"기업정보·근무형태·복지 카테고리별 항목을 대조하고, 비교 툴에서 직접 입력해 확인해 보세요."

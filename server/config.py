@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     # CORS 허용목록 (콤마 구분). 와일드카드 '*' 금지(FR-96)
-    cors_allow_origins: str = "https://loupit.co,https://www.loupit.co"
+    cors_allow_origins: str = "https://jobcho.wiki,https://www.jobcho.wiki"
 
     # 참조 번들 캐시
     reference_cache_ttl: int = 3600  # 인메모리 TTL(초). Cache-Control max-age와 동일값

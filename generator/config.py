@@ -35,14 +35,14 @@ class GenConfig:
     legal_reviewed: bool = os.environ.get("POLICY_LEGAL_REVIEWED", "false") == "true"
 
     # SP-GEN-1.3 사이트 상수 (FR-50, NFR22, SP-ARCH-6)
-    site_origin: str = os.environ.get("SITE_ORIGIN", "https://loupit.co")
+    site_origin: str = os.environ.get("SITE_ORIGIN", "https://jobcho.wiki")
     out_dir: str = os.environ.get("GEN_OUT_DIR", "web/dist")
     default_og_image: str = "/assets/og-default.png"  # 사이트 기본 공유 이미지(회사별 없음, FR-55)
     adsense_client_id: str = os.environ.get(
         "ADSENSE_CLIENT_ID", "ca-pub-XXXXXXXXXXXXXXXX"
     )  # placeholder(NFR22)
     compare_path: str = "/compare"  # CTA 진입 경로(SP-FE 셸)
-    site_name: str = "loupit"
+    site_name: str = "jobcho.wiki"
     lang: str = "ko"
     desc_max: int = 155  # meta description 절단 상한
     # sitemap에 포함되는 비-생성 정적 URL(랜딩 등). /compare(툴 셸)는 색인 대상 제외.

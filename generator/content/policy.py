@@ -34,7 +34,7 @@ class PolicyDoc:
     key: str  # "privacy" | "terms" | "disclaimer" | "ads"
     route: str  # "/privacy" …            (canonical, SP-POL-1)
     filename: str  # "privacy.html" …        (dist 파일)
-    title: str  # <h1> 및 <title> 기반 정책명(SP-GEN이 " | loupit" 접미)
+    title: str  # <h1> 및 <title> 기반 정책명(SP-GEN이 " | jobcho.wiki" 접미)
     meta_description: str  # meta description 초안(SP-GEN이 desc_max로 절단)
     sections: tuple[PolicySection, ...]
     related: tuple[tuple[str, str], ...]  # C3 상호 링크 [(라벨, route)]
@@ -98,14 +98,14 @@ def _privacy(cfg) -> PolicyDoc:
         filename="privacy.html",
         title="개인정보처리방침",
         meta_description=(
-            "loupit은 로그인·회원이 없어 개인정보를 서버에 저장하지 않습니다. "
+            "jobcho.wiki(잡초)는 로그인·회원이 없어 개인정보를 서버에 저장하지 않습니다. "
             "브라우저 저장 항목·광고 쿠키·제3자 처리·개인화 동의를 안내합니다."
         ),
         sections=(
             _S(
                 "P1", "p1", "수집·저장 안 함", "수집·저장하지 않는 정보",
                 (
-                    "loupit은 회원가입·로그인·계정 기능이 없습니다. 이용자를 식별하는 "
+                    "jobcho.wiki(잡초)는 회원가입·로그인·계정 기능이 없습니다. 이용자를 식별하는 "
                     "개인정보(이름·이메일·전화번호 등)를 서버에 수집하거나 저장하지 "
                     "않습니다.",
                 ),
@@ -114,7 +114,7 @@ def _privacy(cfg) -> PolicyDoc:
                 "P2", "p2", "localStorage 한정", "브라우저에만 저장되는 항목",
                 (
                     "비교 입력값(연봉·통근시간·복지 선택 등)과 '최근 비교' 기록은 "
-                    "이용자의 브라우저 localStorage에만 저장되며, loupit 서버로 "
+                    "이용자의 브라우저 localStorage에만 저장되며, jobcho.wiki 서버로 "
                     "전송·저장되지 않습니다. 다른 기기와 동기화되지 않고, 브라우저 "
                     "데이터를 지우면 함께 삭제됩니다.",
                     "예외로, '실시간 비교 TOP 10' 집계를 위해 비교 실행 시 선택한 "
@@ -126,7 +126,7 @@ def _privacy(cfg) -> PolicyDoc:
             _S(
                 "P3", "p3", "광고 쿠키", "광고 쿠키(Google AdSense)",
                 (
-                    "loupit은 Google AdSense 광고를 게재하며, 광고 제공을 위해 Google이 "
+                    "jobcho.wiki(잡초)는 Google AdSense 광고를 게재하며, 광고 제공을 위해 Google이 "
                     "쿠키 및 유사 기술을 사용할 수 있습니다.",
                 ),
             ),
@@ -167,14 +167,14 @@ def _terms(cfg) -> PolicyDoc:
         filename="terms.html",
         title="이용약관",
         meta_description=(
-            "loupit 이용약관 — 복지·연봉·근무조건 비교 정보 도구(비-채용 플랫폼), "
+            "jobcho.wiki(잡초) 이용약관 — 복지·연봉·근무조건 비교 정보 도구(비-채용 플랫폼), "
             "로그인·회원 없음, 참고용 정보 제공과 일반 이용 조건을 안내합니다."
         ),
         sections=(
             _S(
                 "T1", "t1", "서비스 성격", "서비스 성격",
                 (
-                    "loupit은 한국 회사의 복지·연봉·근무조건을 비교·열람하는 정보 "
+                    "jobcho.wiki(잡초)는 한국 회사의 복지·연봉·근무조건을 비교·열람하는 정보 "
                     "도구입니다. 채용 공고 탐색·지원을 제공하는 채용 플랫폼이 "
                     "아닙니다.",
                 ),
@@ -222,7 +222,7 @@ def _disclaimer(cfg) -> PolicyDoc:
         filename="disclaimer.html",
         title="데이터 정확성 면책조항",
         meta_description=(
-            "loupit 데이터 정확성 면책조항 — 복지·연봉 정보는 참고용이며, 출처 "
+            "jobcho.wiki(잡초) 데이터 정확성 면책조항 — 복지·연봉 정보는 참고용이며, 출처 "
             "신뢰도 배지와 금액 신뢰도 기준 불확실성 밴드·정정 요청 경로를 "
             "안내합니다."
         ),
@@ -270,7 +270,7 @@ def _disclaimer(cfg) -> PolicyDoc:
             _S(
                 "D-6", "d6", "계산·우열 무단정", "브라우저 계산·우열 무단정",
                 (
-                    "비교 계산은 이용자의 브라우저에서 수행되며, loupit은 특정 "
+                    "비교 계산은 이용자의 브라우저에서 수행되며, jobcho.wiki(잡초)는 특정 "
                     "회사가 절대적으로 유리하다고 단정하지 않습니다.",
                 ),
             ),
@@ -296,7 +296,7 @@ def _ads(cfg) -> PolicyDoc:
         filename="ads.html",
         title="광고·제휴 고지",
         meta_description=(
-            "loupit 광고·제휴 고지 — Google AdSense 광고와 제휴 링크로 운영되며, "
+            "jobcho.wiki(잡초) 광고·제휴 고지 — Google AdSense 광고와 제휴 링크로 운영되며, "
             "모든 광고·제휴 영역에 '광고' 라벨을 표기하고 제3자 쿠키·개인화 동의를 "
             "안내합니다."
         ),
@@ -304,7 +304,7 @@ def _ads(cfg) -> PolicyDoc:
             _S(
                 "A-1", "a1", "수익 모델", "수익 모델",
                 (
-                    "loupit은 Google AdSense 광고와 제휴(affiliate) 링크로 운영 "
+                    "jobcho.wiki(잡초)는 Google AdSense 광고와 제휴(affiliate) 링크로 운영 "
                     "비용을 충당합니다. 유료 구독이나 결제 기능은 없습니다.",
                 ),
             ),

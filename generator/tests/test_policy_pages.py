@@ -83,10 +83,10 @@ def test_pc4_each_policy_page_has_single_h1_and_lang_charset(fake_bundle, fake_n
         assert '<meta charset="utf-8">' in html
 
 
-def test_pc4_titles_have_loupit_suffix_and_are_unique(fake_bundle, fake_now):
+def test_pc4_titles_have_site_suffix_and_are_unique(fake_bundle, fake_now):
     pages = _render_policy_pages(fake_bundle, fake_now)
     titles = [pages[f].title for f in POLICY_FILES]
-    assert all(t.endswith(" | loupit") for t in titles)
+    assert all(t.endswith(" | jobcho.wiki") for t in titles)
     assert len(titles) == len(set(titles))
 
 
@@ -153,19 +153,19 @@ def test_pc9_placeholder_contact_renders_as_plain_text_without_link(fake_bundle,
 
 
 def test_pc9_email_contact_renders_as_mailto_link_with_nofollow(fake_bundle, fake_now, monkeypatch):
-    custom_cfg = dataclasses.replace(CFG, policy_contact="ops@loupit.co")
+    custom_cfg = dataclasses.replace(CFG, policy_contact="ops@jobcho.wiki")
     monkeypatch.setattr(policy_module, "CFG", custom_cfg)
     pages = _render_policy_pages(fake_bundle, fake_now)
     html = pages["disclaimer.html"].html
-    assert 'href="mailto:ops@loupit.co" rel="nofollow"' in html
+    assert 'href="mailto:ops@jobcho.wiki" rel="nofollow"' in html
 
 
 def test_pc9_https_contact_renders_as_direct_link(fake_bundle, fake_now, monkeypatch):
-    custom_cfg = dataclasses.replace(CFG, policy_contact="https://loupit.co/contact")
+    custom_cfg = dataclasses.replace(CFG, policy_contact="https://jobcho.wiki/contact")
     monkeypatch.setattr(policy_module, "CFG", custom_cfg)
     pages = _render_policy_pages(fake_bundle, fake_now)
     html = pages["disclaimer.html"].html
-    assert 'href="https://loupit.co/contact" rel="nofollow"' in html
+    assert 'href="https://jobcho.wiki/contact" rel="nofollow"' in html
 
 
 # ── PC-10: 동의 배너↔정책 단일 진실(링크 대상 존재·도달, 사실 일치) ────────

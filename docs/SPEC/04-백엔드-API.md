@@ -79,7 +79,7 @@ class Settings(BaseSettings):
     api_prefix: str = "/api/v1"
 
     # CORS 허용목록 (콤마 구분). 와일드카드 '*' 금지(FR-96)
-    cors_allow_origins: str = "https://loupit.co,https://www.loupit.co"
+    cors_allow_origins: str = "https://jobcho.wiki,https://www.jobcho.wiki"
 
     # 참조 번들 캐시
     reference_cache_ttl: int = 3600      # 인메모리 TTL(초). Cache-Control max-age와 동일값
@@ -102,7 +102,7 @@ def get_settings() -> Settings:
 | `DB_USER`/`DB_PASSWORD`/`DB_NAME` | `loupit`/``/`loupit` | 읽기 전용 계정 권장(SELECT만) | NFR22 |
 | `DB_POOL_MIN`/`DB_POOL_MAX` | `1`/`10` | aiomysql 풀 크기 | SP-API-3 |
 | `API_PREFIX` | `/api/v1` | 버전 접두 | FR-90·§6 |
-| `CORS_ALLOW_ORIGINS` | `https://loupit.co,https://www.loupit.co` | 허용목록(콤마) | FR-96 |
+| `CORS_ALLOW_ORIGINS` | `https://jobcho.wiki,https://www.jobcho.wiki` | 허용목록(콤마) | FR-96 |
 | `REFERENCE_CACHE_TTL` | `3600` | 서버 인메모리 캐시 TTL | SP-API-4 |
 | `REFERENCE_CACHE_CONTROL` | `public, max-age=3600` | `reference/all`·`companies/{id}` 헤더 | FR-92·FR-96 |
 
@@ -670,7 +670,7 @@ async def unhandled(request: Request, exc: Exception):
 
 | 항목 | 값 |
 |------|----|
-| `Access-Control-Allow-Origin` | 허용목록(`https://loupit.co`, `https://www.loupit.co`). 와일드카드 `*`+자격증명 금지 |
+| `Access-Control-Allow-Origin` | 허용목록(`https://jobcho.wiki`, `https://www.jobcho.wiki`). 와일드카드 `*`+자격증명 금지 |
 | `Access-Control-Allow-Methods` | `GET, HEAD, OPTIONS`(쓰기 미포함) |
 | `Access-Control-Allow-Credentials` | `false`(무설정) — 인증·쿠키 없음(§2-1) |
 | 프리플라이트 `OPTIONS` | CORSMiddleware가 처리 |
@@ -753,7 +753,7 @@ async def client(fake_data, monkeypatch):
 | **TC-4** | detail | `GET /companies/0`(<1) | **422**(`ge=1`) |
 | **TM-1** | 메서드 | `POST /api/v1/companies/search` | **405**, `Allow` 헤더에 `GET` 포함 |
 | **TN-1** | 라우팅 | `GET /api/v1/nonexistent` | **404** |
-| **TCORS-1** | CORS | `Origin: https://loupit.co` 요청 | `Access-Control-Allow-Origin: https://loupit.co`. 와일드카드 아님 |
+| **TCORS-1** | CORS | `Origin: https://jobcho.wiki` 요청 | `Access-Control-Allow-Origin: https://jobcho.wiki`. 와일드카드 아님 |
 | **TCORS-2** | CORS | `OPTIONS` 프리플라이트 | 200/204 + `Allow-Methods: GET, HEAD, OPTIONS`, 쓰기 메서드 부재 |
 | **TE-1** | 오류 | 데이터 계층에서 예외 발생 patch | **500**, `{"detail":"일시적인 오류가 발생했습니다."}`, 스택/SQL 미노출 |
 

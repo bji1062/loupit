@@ -65,8 +65,8 @@
   - 테스트: TS-2 (pytest — `server/tests/test_surface.py`) — 미들웨어 클래스 목록 검사, 인증/세션 미들웨어 부재·CORSMiddleware 존재 — RED 먼저
   - refs: SP-API-14·SP-API-5 · INV-1 · NFR16·NFR20 (SP-ARCH T2 위임 수신)
 - [v] T-04.5.4 CORS 허용목록·프리플라이트 (TCORS-1·TCORS-2)
-  - 구현: `CORSMiddleware` 설정 검증 — `Origin: https://loupit.co` 요청 시 `Access-Control-Allow-Origin`=해당 오리진(와일드카드 `*` 아님), `OPTIONS` 프리플라이트 → `Access-Control-Allow-Methods: GET, HEAD, OPTIONS`(쓰기 메서드 부재), `allow_credentials=false`. 구현은 T-04.5.1 미들웨어, 본 리프는 CORS 계약 검증.
-  - 테스트: TCORS-1(Origin loupit.co → ACAO 일치·비와일드카드)·TCORS-2(OPTIONS → 200/204 + Allow-Methods GET,HEAD,OPTIONS) (pytest client) — RED 먼저
+  - 구현: `CORSMiddleware` 설정 검증 — `Origin: https://jobcho.wiki` 요청 시 `Access-Control-Allow-Origin`=해당 오리진(와일드카드 `*` 아님), `OPTIONS` 프리플라이트 → `Access-Control-Allow-Methods: GET, HEAD, OPTIONS`(쓰기 메서드 부재), `allow_credentials=false`. 구현은 T-04.5.1 미들웨어, 본 리프는 CORS 계약 검증.
+  - 테스트: TCORS-1(Origin jobcho.wiki → ACAO 일치·비와일드카드)·TCORS-2(OPTIONS → 200/204 + Allow-Methods GET,HEAD,OPTIONS) (pytest client) — RED 먼저
   - refs: SP-API-13·SP-API-5 · FR-96 · INV-7 · NFR17
 - [v] T-04.5.5 미등록 경로 404·등록 경로 비-GET 405 (TN-1·TM-1)
   - 구현: 라우터가 GET만 선언 → 미등록 `/api/v1/*`=404(FastAPI 기본), 등록 경로 비-GET=405 + `Allow: GET`. 별도 코드 없음(FastAPI 라우팅 파생), 상태코드 회귀만 소유. SP-ARCH T2가 TM-1로 위임됨.

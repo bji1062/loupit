@@ -72,7 +72,7 @@ def test_gc2_company_count_is_never_200_guard_rejects_it():
     from generator.context import Page
 
     fake_200_pages = [
-        Page(path=f"company/c{i}.html", url=f"https://loupit.co/company/c{i}", html="<h1>x</h1>복지", title="t", description="d")
+        Page(path=f"company/c{i}.html", url=f"https://jobcho.wiki/company/c{i}", html="<h1>x</h1>복지", title="t", description="d")
         for i in range(200)
     ]
     with pytest.raises(BuildError):
@@ -126,7 +126,7 @@ def test_gc10_check_non_js_body_rejects_missing_content():
 
     bad_page = Page(
         path="company/empty.html",
-        url="https://loupit.co/company/empty",
+        url="https://jobcho.wiki/company/empty",
         html="<html><body>no h1 no keyword</body></html>",
         title="t",
         description="d",

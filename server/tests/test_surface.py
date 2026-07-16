@@ -91,8 +91,8 @@ async def test_TN1_unregistered_path_is_404(client):
 
 @pytest.mark.asyncio
 async def test_TCORS1_allowed_origin_echoed_not_wildcard(client):
-    resp = await client.get("/api/v1/health", headers={"Origin": "https://loupit.co"})
-    assert resp.headers.get("access-control-allow-origin") == "https://loupit.co"
+    resp = await client.get("/api/v1/health", headers={"Origin": "https://jobcho.wiki"})
+    assert resp.headers.get("access-control-allow-origin") == "https://jobcho.wiki"
     assert resp.headers.get("access-control-allow-origin") != "*"
 
 
@@ -102,7 +102,7 @@ async def test_TCORS2_preflight_allows_get_head_options_post_only(client):
     resp = await client.options(
         "/api/v1/companies/search",
         headers={
-            "Origin": "https://loupit.co",
+            "Origin": "https://jobcho.wiki",
             "Access-Control-Request-Method": "GET",
         },
     )

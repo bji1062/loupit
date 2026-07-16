@@ -93,7 +93,7 @@
 
 **핵심: 두 가지 신뢰도를 분리한다.**
 
-| 축 | 의미 | 필드 | loupit 96개 적용 |
+| 축 | 의미 | 필드 | jobcho.wiki 96개 적용 |
 | --- | --- | --- | --- |
 | **출처 신뢰도** | 이 회사가 이 복지를 제공한다는 사실의 확실성 | `BADGE_CD` (`official`/`est`) | **`official`** (공식 페이지 기반, DEC-2) |
 | **금액 신뢰도** | 금액 수치가 공식 명시값인지 추정인지 | `amt_source` (`stated`/`estimated`/`none`) | 명시=`stated`, 앵커추정=`estimated`, 정성=`none` |
