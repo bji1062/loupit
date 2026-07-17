@@ -24,7 +24,7 @@ chk "SM-13 404"             "[ \"\$(code ${BASE}/nonexistent-xyz)\" = 404 ]"
 # HEAD도 수락 — api_route methods=["GET","HEAD"]) 반영 후 HEAD가 200 + 동일 헤더를 반환하므로,
 # f9459f9의 GET-헤더덤프 우회(HEAD→405 회피)는 더 이상 불필요하다. HEAD는 본문을 안 받아 더 가볍다.
 chk "SM-4 ref cache-header" "curl -sI ${BASE}/api/v1/reference/all | grep -qi 'cache-control: public, max-age=3600'"
-chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung_elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 예시)
+chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"
 chk "SM-9 gzip_static"      "curl -sI -H 'Accept-Encoding: gzip' ${BASE}/assets/js/app.js | grep -qi 'content-encoding: gzip'"
