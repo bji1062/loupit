@@ -1,9 +1,13 @@
 """SP-API-3 DB 접근 계층 — aiomysql 풀 + 원시 SQL(%s 바인딩).
 
 읽기 헬퍼(fetch_all/fetch_one)를 제공하고, 범용 쓰기 헬퍼(execute/commit/
-rollback)는 두지 않는다(INV-1·NFR20). 유일한 예외는 `insert_compare_log` —
-INV-1 개정(2026-07-14, "실시간 비교 TOP 10")으로 허용된 익명 비교 로그 단일
-INSERT다. 그 외 쓰기 경로를 추가하려면 INV-1 재개정이 선행돼야 한다.
+rollback)는 두지 않는다(INV-1·NFR20). 허용 쓰기는 정확히 2종뿐이며 둘 다
+익명 비교 로그(TCOMPARE_LOG) 전용이다:
+  - `insert_compare_log` — INV-1 개정(2026-07-14, "실시간 비교 TOP 10")으로
+    허용된 익명 비교 로그 단일 INSERT.
+  - `purge_compare_log` — #7b 보존 퍼지. 무인증 POST가 무한 축적시키는 로그를
+    보존기간 경과분 DELETE로 상한한다(트렌딩 소비 윈도우 밖 행만 삭제).
+그 외 쓰기 경로(다른 테이블·다른 DML)를 추가하려면 INV-1 재개정이 선행돼야 한다.
 """
 from __future__ import annotations
 
@@ -71,6 +75,35 @@ async def insert_compare_log(a_comp_id: int, b_comp_id: int) -> None:
     async with get_pool().acquire() as conn:
         async with conn.cursor() as cur:
             await cur.execute(_SQL_INSERT_COMPARE_LOG, (a_comp_id, b_comp_id))
+
+
+# INTERVAL·LIMIT은 %s 바인딩(원시 SQL 규약, SP-API-3). SQL 텍스트에 값 삽입 금지.
+_SQL_PURGE_COMPARE_LOG = (
+    "DELETE FROM TCOMPARE_LOG WHERE INS_DTM < NOW() - INTERVAL %s DAY LIMIT %s"
+)
+
+
+async def purge_compare_log(retention_days: int, batch_limit: int) -> int:
+    """보존기간 경과 익명 비교 로그를 배치 삭제한다 — 모듈의 두 번째 허용 쓰기(#7b).
+
+    무인증 POST /comparisons/log가 무한 축적시키는 TCOMPARE_LOG를 상한한다. 소비
+    쿼리(trending.py)는 최근 trending_window_days(7일)만 읽으므로 retention_days
+    (기본 30일)를 넘긴 행은 어떤 응답에도 쓰이지 않아 삭제해도 무영향이다.
+
+    `LIMIT %s` 배치 루프로 1회 삭제 행 수를 제한해 장기 테이블 락을 피한다
+    (풀 autocommit=True → 배치마다 즉시 커밋). 삭제 대상이 batch_limit 미만이
+    되면(더 지울 행 없음) 종료한다. WHERE의 cutoff가 매 배치 대상 집합을 줄이므로
+    반드시 종료한다. 반환값은 총 삭제 행 수(운영 로깅용)."""
+    total = 0
+    async with get_pool().acquire() as conn:
+        async with conn.cursor() as cur:
+            while True:
+                await cur.execute(_SQL_PURGE_COMPARE_LOG, (retention_days, batch_limit))
+                deleted = cur.rowcount or 0  # None → 0(안전). 음수/미상도 아래 < 비교로 종료.
+                total += deleted
+                if deleted < batch_limit:  # 마지막 배치(더 지울 행 없음) → 종료. 무한루프 불가.
+                    break
+    return total
 
 
 async def ping() -> bool:

@@ -5,8 +5,9 @@
 """
 from __future__ import annotations
 
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.encoders import jsonable_encoder
@@ -15,12 +16,37 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from server import database
 from server.cache import TTLCache
-from server.config import get_settings
+from server.config import Settings, get_settings
 from server.database import close_pool, init_pool
 from server.routers import companies, health, reference, trending
 
 logger = logging.getLogger(__name__)
+
+
+async def _purge_compare_log_safe(settings: Settings) -> None:
+    """보존 퍼지 1회 — DB 장애가 앱을 죽이지 않도록 예외를 로깅 후 삼킨다(#7b).
+
+    `database`를 모듈 참조로 호출한다(monkeypatch 테스트 가능성)."""
+    try:
+        deleted = await database.purge_compare_log(
+            settings.compare_log_retention_days, settings.compare_log_purge_batch
+        )
+        if deleted:
+            logger.info(
+                "TCOMPARE_LOG 보존 퍼지: %d행 삭제(보존 %d일 초과분)",
+                deleted, settings.compare_log_retention_days,
+            )
+    except Exception:  # DB 장애·권한 오류 등 — 앱 계속(다음 주기 재시도)
+        logger.exception("TCOMPARE_LOG 보존 퍼지 실패 — 앱 계속")
+
+
+async def _retention_scheduler(settings: Settings) -> None:
+    """일 1회 보존 퍼지 루프. lifespan 종료 시 task.cancel()로 취소된다(#7b)."""
+    while True:
+        await _purge_compare_log_safe(settings)
+        await asyncio.sleep(settings.compare_log_purge_interval_seconds)
 
 
 @asynccontextmanager
@@ -29,8 +55,16 @@ async def lifespan(app: FastAPI):
     await init_pool()
     app.state.reference_cache = TTLCache(s.reference_cache_ttl)
     app.state.trending_cache = TTLCache(s.trending_cache_ttl)  # 비교 트렌딩(60s)
-    yield
-    await close_pool()
+    # #7b: TCOMPARE_LOG 보존 퍼지 백그라운드 스케줄러(일 1회). 실패는 안에서 삼켜
+    # 앱을 죽이지 않는다. 종료 시 취소하고 CancelledError를 흡수한다.
+    retention_task = asyncio.create_task(_retention_scheduler(s))
+    try:
+        yield
+    finally:
+        retention_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await retention_task
+        await close_pool()
 
 
 def create_app() -> FastAPI:

@@ -93,20 +93,25 @@ async def test_fetch_one_returns_none_when_no_rows(monkeypatch):
 def test_write_helpers_are_absent():
     """범용 쓰기 헬퍼(execute/commit/rollback 등) 미제공 — INV-1·NFR20.
 
-    유일 예외는 `insert_compare_log`(익명 비교 로그 단일 INSERT, INV-1 개정
-    2026-07-14) — 그 외 쓰기 심볼이 생기면 본 게이트가 깨진다."""
+    허용 쓰기는 정확히 2종, 둘 다 익명 비교 로그(TCOMPARE_LOG) 전용:
+      - `insert_compare_log` (단일 INSERT, INV-1 개정 2026-07-14)
+      - `purge_compare_log`  (보존 퍼지 DELETE, #7b)
+    그 외 쓰기 심볼(다른 테이블·다른 DML)이 생기면 본 게이트가 깨진다."""
     from server import database
 
     for forbidden in ("execute", "commit", "rollback", "insert", "update", "delete"):
         assert not hasattr(database, forbidden), f"쓰기 헬퍼 발견 금지: {forbidden}"
 
+    # 쓰기 의미 키워드에 'purge'를 포함해 보존 퍼지류 DELETE도 게이트가 잡게 한다
+    # (이전 목록은 purge를 놓쳐 사각지대였음 — 새 쓰기가 이름만 바꿔 빠져나가지 못하게).
     write_symbols = [
         name for name in dir(database)
         if not name.startswith("_") and callable(getattr(database, name))
-        and any(kw in name.lower() for kw in ("insert", "update", "delete", "execute", "commit"))
+        and any(kw in name.lower() for kw in ("insert", "update", "delete", "execute", "commit", "purge"))
     ]
-    assert write_symbols == ["insert_compare_log"], (
-        f"허용된 쓰기 심볼은 insert_compare_log뿐: {write_symbols}"
+    # dir()은 정렬 반환 → insert_compare_log < purge_compare_log.
+    assert write_symbols == ["insert_compare_log", "purge_compare_log"], (
+        f"허용된 쓰기 심볼은 insert_compare_log·purge_compare_log 2종뿐: {write_symbols}"
     )
 
 

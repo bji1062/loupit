@@ -52,6 +52,14 @@ class Settings(BaseSettings):
     trending_window_days: int = 7  # 집계 윈도우(일)
     trending_limit: int = 10  # 상위 N
 
+    # TCOMPARE_LOG 보존 퍼지 (#7b 남용 방어 — 무인증 익명 로그 무한 증가 차단).
+    # 트렌딩 윈도우(7일)를 훨씬 넘는 여유 배수만 보관하고 그 이전 행은 일 1회 삭제한다.
+    # 소비 쿼리는 최근 7일만 읽으므로(trending.py) 이보다 오래된 행은 어떤 응답에도
+    # 쓰이지 않는다. 삭제는 배치 LIMIT 루프로 장기 락을 피한다(database.purge_compare_log).
+    compare_log_retention_days: int = 30  # 보관 일수(윈도우 7일의 여유 배수)
+    compare_log_purge_batch: int = 5000  # 1회 DELETE 상한(락 시간 억제)
+    compare_log_purge_interval_seconds: int = 86400  # 퍼지 주기(일 1회)
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
