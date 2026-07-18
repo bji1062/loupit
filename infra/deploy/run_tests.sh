@@ -25,10 +25,55 @@ else PY="python"; fi
 # LOUPIT_ALLOW_SERVING_SCHEMA=1 이 conftest 가드에 "복원 책임을 지는 래퍼"임을 신호한다
 # (맨 pytest 직접 실행은 이 신호가 없어 차단됨).
 export LOUPIT_ALLOW_SERVING_SCHEMA=1
-_restore_done=0
+# LOUPIT_ALLOW_FRESH=1 은 load.py --fresh 파괴 가드(#14)를 통과시킨다 — run_tests.sh 는
+# 재시드 + TCOMPARE_LOG 재주입으로 복원 책임을 지는 래퍼이므로 명시적으로 허용한다.
+export LOUPIT_ALLOW_FRESH=1
+
+# ── #1 안전장치(2026-07-18): TCOMPARE_LOG(트렌딩 원천, 시드로 재현 불가한 유일한 운영 데이터)는
+# conftest 가 테스트 격리를 위해 DROP/CREATE 하므로 게이트 실행마다 비워진다. 참조 5테이블과 달리
+# load.py --fresh 재시드로는 복원되지 않는다(오히려 --fresh 는 이 로그를 TRUNCATE 해 #15 오귀속을
+# 막는다). 그래서 백엔드 pytest 이전에 원본 행을 mysqldump 로 임시 백업하고, 재시드(restore_serving)
+# 이후 그 덤프를 재주입해 서빙 로그를 원상복구한다. creds 는 server/.env 파싱 — 이 계정 그랜트가
+# 127.0.0.1 한정·PROCESS 권한 없음이라 mysqldump 를 --protocol=TCP -h 127.0.0.1 --no-tablespaces
+# --single-transaction 로 고정한다.
+command -v mysqldump >/dev/null 2>&1 || export PATH="/data/mysql/bin:$PATH"  # 배포 호스트는 비표준 경로 설치
+_env_get() { grep -E "^$1=" "$ROOT/server/.env" | cut -d= -f2- || true; }  # .env KEY=value (키 고유)
+DB_USER_V="$(_env_get DB_USER)"; DB_PASS_V="$(_env_get DB_PASSWORD)"
+DB_NAME_V="$(_env_get DB_NAME)"; DB_PORT_V="$(_env_get DB_PORT)"; DB_PORT_V="${DB_PORT_V:-3306}"
+CMP_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_tcompare_log.XXXXXX.sql")"
+_restore_done=0       # set -u 하에서 restore_serving 첫 호출 전 초기화 필수
+_cmp_dump_ok=0
+_cmp_reinject_done=0
+
+backup_compare_log() {
+  # 트랩 무장 전에 먼저 실행 — 실패하면 아직 아무것도 파괴하지 않은 상태에서 게이트를 멈춘다
+  # (데이터 보호가 게이트보다 우선). --single-transaction 일관 스냅샷, 데이터만(--no-create-info).
+  echo "  [backup] TCOMPARE_LOG 덤프 → $CMP_DUMP"
+  # --skip-add-locks·--skip-disable-keys: 덤프를 순수 데이터 INSERT 로 축소해 재주입이 INSERT
+  # 권한만 요구하게 한다(LOCK TABLES·ALTER 불요). #6 그랜트 정합(SELECT-only 주장 vs 실제 ALL)이
+  # 서버 필수 쓰기 최소권한으로 축소되더라도 재주입이 깨지지 않도록 방어.
+  if ! MYSQL_PWD="$DB_PASS_V" mysqldump --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
+        -u "$DB_USER_V" --no-tablespaces --single-transaction --no-create-info \
+        --skip-add-drop-table --skip-add-locks --skip-disable-keys --complete-insert \
+        "$DB_NAME_V" TCOMPARE_LOG \
+        > "$CMP_DUMP" 2>"$CMP_DUMP.err"; then
+    echo "  ⚠⚠⚠ [backup] TCOMPARE_LOG 백업 실패 — 데이터 보호를 위해 게이트를 중단한다(재시드 미실행)." >&2
+    sed 's/^/        /' "$CMP_DUMP.err" >&2 || true
+    rm -f "$CMP_DUMP" "$CMP_DUMP.err"
+    exit 4
+  fi
+  rm -f "$CMP_DUMP.err"
+  _cmp_dump_ok=1
+  if grep -q 'INSERT INTO' "$CMP_DUMP"; then
+    echo "  [backup] OK — 원본 행 백업 완료(재시드 후 재주입 예정)"
+  else
+    echo "  [backup] OK — TCOMPARE_LOG 비어 있음(재주입 불필요)"
+  fi
+}
+
 _restore_fail_msg() {
   echo "  ⚠⚠⚠ [restore] 서빙(LOUPIT) 복원 실패 — 비었거나 깨진 상태일 수 있다. 즉시 수동 복구:" >&2
-  echo "        python3 db/seed/load.py --fresh && sudo systemctl restart loupit-beta-api" >&2
+  echo "        LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh && sudo systemctl restart loupit-api loupit-beta-api" >&2
 }
 restore_serving() {
   [ "$_restore_done" = 1 ] && return 0
@@ -41,11 +86,46 @@ restore_serving() {
   _restore_done=1
   echo "  [restore] OK — 서빙 검증 통과"
 }
-trap restore_serving EXIT
 
-echo "[1/5] 백엔드(API·스키마·시드) — pytest (LOUPIT, 종료 후 자동 재시드)"
+reinject_compare_log() {
+  # restore_serving(=load.py --fresh, TCOMPARE_LOG 를 TRUNCATE) 이후 원본 행을 되돌린다. 덤프는
+  # 데이터만(빈 테이블에 INSERT)이라 중복 없이 정확히 복원된다. 게이트 경로는 로스터가 불변이라
+  # COMP_ID 가 일치하므로 FK 검증을 켠 채 재주입한다(오귀속 행을 일부러 막는다 — 불일치 시 전량
+  # 거부 후 덤프 보존).
+  [ "$_cmp_reinject_done" = 1 ] && return 0
+  [ "$_cmp_dump_ok" = 1 ] || { echo "  [reinject] 백업 없음 — 재주입 생략(백업 단계 미실행)"; return 0; }
+  if ! grep -q 'INSERT INTO' "$CMP_DUMP"; then
+    echo "  [reinject] 백업에 데이터 행 없음(빈 TCOMPARE_LOG) — 재주입 불필요"
+    _cmp_reinject_done=1; rm -f "$CMP_DUMP"; return 0
+  fi
+  echo "  [reinject] TCOMPARE_LOG 원본 행 재주입 ← $CMP_DUMP"
+  if ! MYSQL_PWD="$DB_PASS_V" mysql --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
+        -u "$DB_USER_V" "$DB_NAME_V" < "$CMP_DUMP" 2>"$CMP_DUMP.rerr"; then
+    echo "  ⚠⚠⚠ [reinject] TCOMPARE_LOG 재주입 실패 — 트렌딩 로그가 비었거나 일부만 복원됐을 수 있다." >&2
+    sed 's/^/        /' "$CMP_DUMP.rerr" >&2 || true
+    echo "        백업 원본 보존됨: $CMP_DUMP" >&2
+    echo "        수동 복구: MYSQL_PWD=... mysql --protocol=TCP -h 127.0.0.1 -u $DB_USER_V $DB_NAME_V < $CMP_DUMP" >&2
+    echo "        복원 확인 후: sudo systemctl restart loupit-api loupit-beta-api" >&2
+    rm -f "$CMP_DUMP.rerr"
+    return 1
+  fi
+  rm -f "$CMP_DUMP.rerr"
+  _cmp_reinject_done=1
+  echo "  [reinject] OK — TCOMPARE_LOG 원본 복원 완료"
+  rm -f "$CMP_DUMP"
+}
+
+# 트랩: 실패·중단(set -e) 시에도 (1) 참조 5테이블 재시드 → (2) TCOMPARE_LOG 원본 재주입 순서로
+# 서빙을 원상복구 '시도'한다(기존 trap 의미 유지). 두 단계 모두 자체 done-가드로 멱등하다.
+_on_exit() { restore_serving || true; reinject_compare_log || true; }
+
+backup_compare_log      # 반드시 트랩 무장 전에(백업 실패 시 파괴 경로 진입 금지 — exit 4)
+trap _on_exit EXIT
+
+echo "[1/5] 백엔드(API·스키마·시드) — pytest (LOUPIT, 종료 후 자동 재시드 + 로그 재주입)"
 "$PY" -m pytest server/tests/ -q
-restore_serving   # 백엔드 테스트 직후 즉시 복원 → 서빙 다운타임 최소화(이후 단계는 DB 무접촉)
+restore_serving       # 백엔드 테스트 직후 즉시 복원 → 서빙 다운타임 최소화(이후 단계는 DB 무접촉)
+reinject_compare_log  # 재시드로 비워진 TCOMPARE_LOG 에 원본 행 재주입(#1)
 
 echo "[2/5] 정적 생성물·정책 — pytest (fake 번들)"
 "$PY" -m pytest generator/tests/ -q

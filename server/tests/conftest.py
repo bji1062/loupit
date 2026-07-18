@@ -50,6 +50,11 @@ def pytest_configure(config):
         pytest.exit(f"[C-1 안전장치] {exc}", returncode=3)
 
 # 생성 순서(FK 부모→자식, SP-DB-8). DROP은 이 역순(자식→부모)으로 수행한다.
+# 역할분담(#1, 2026-07-18): 이 계층은 테스트 격리를 위해 TCOMPARE_LOG 를 계속 DROP/CREATE
+# 한다(테스트가 이 테이블을 필요로 하고, 격리는 빈 상태에서 시작해야 한다). 서빙 로그의 실데이터
+# 보호(게이트 실행마다 비워지는 것을 막는 백업/재주입)는 이 계층이 아니라 상위 래퍼
+# infra/deploy/run_tests.sh 가 담당한다 — pytest 이전 mysqldump 백업 → 재시드 이후 재주입.
+# 여기서 TCOMPARE_LOG 를 빼면 스키마가 미완성돼 테스트가 깨지므로, 드랍 목록에는 그대로 둔다.
 TABLE_CREATE_ORDER = [
     "TCOMPANY_TYPE",
     "TCOMPANY",
