@@ -62,6 +62,11 @@ if [ "${RESTORE_CONFIRM:-}" != "1" ]; then
   esac
 fi
 
+# mysql 경로 해석: systemd/크론 최소 PATH엔 tarball 설치(/data/mysql/bin)가 없다(backup.sh와 동일 함정).
+MYSQL_BIN="${MYSQL_BIN:-$(command -v mysql || true)}"
+[ -n "${MYSQL_BIN}" ] || MYSQL_BIN=/data/mysql/bin/mysql
+[ -x "${MYSQL_BIN}" ] || { echo "복원 실패: mysql 없음(PATH·/data/mysql/bin 모두) — MYSQL_BIN env로 지정" >&2; exit 1; }
+
 # 비밀을 프로세스 목록에 노출하지 않도록 임시 defaults 파일(mode 600)로 전달.
 DEFAULTS_FILE="$(mktemp "${TMPDIR:-/tmp}/loupit-restore.XXXXXX.cnf")"
 PART_SQL=""
@@ -79,7 +84,7 @@ CNF
 
 if [ "${#TABLES[@]}" -eq 0 ]; then
   # 전체 복원: 덤프는 단일 DB(positional)라 CREATE DATABASE/USE 문이 없음 → 대상 DB를 명시해 주입.
-  gunzip -c "${SRC}" | mysql --defaults-extra-file="${DEFAULTS_FILE}" "${DB_NAME}"
+  gunzip -c "${SRC}" | "${MYSQL_BIN}" --defaults-extra-file="${DEFAULTS_FILE}" "${DB_NAME}"
 else
   # 부분 복원(best-effort): 덤프에서 지정 테이블 섹션(구조+데이터)만 추출.
   # 대상 테이블의 부모(FK 참조 대상, 예: TCOMPARE_LOG→TCOMPANY)는 이미 존재한다고 가정한다.
@@ -109,7 +114,7 @@ else
     printf '%s\n' "${section}" >> "${PART_SQL}"
   done
   echo "SET FOREIGN_KEY_CHECKS=1;" >> "${PART_SQL}"
-  mysql --defaults-extra-file="${DEFAULTS_FILE}" "${DB_NAME}" < "${PART_SQL}"
+  "${MYSQL_BIN}" --defaults-extra-file="${DEFAULTS_FILE}" "${DB_NAME}" < "${PART_SQL}"
 fi
 
 echo "restore done: ${SRC} → ${DB_NAME}"

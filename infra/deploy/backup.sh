@@ -45,9 +45,15 @@ password=${DB_PASSWORD}
 protocol=TCP
 CNF
 
+# mysqldump 경로 해석: systemd 최소 PATH엔 tarball 설치(/data/mysql/bin)가 없다(첫 설치 검증에서 실발현).
+# PATH 탐색 → tarball 경로 폴백, 둘 다 없으면 명확히 실패.
+MYSQLDUMP="${MYSQLDUMP:-$(command -v mysqldump || true)}"
+[ -n "${MYSQLDUMP}" ] || MYSQLDUMP=/data/mysql/bin/mysqldump
+[ -x "${MYSQLDUMP}" ] || { echo "backup FAILED: mysqldump 없음(PATH·/data/mysql/bin 모두) — MYSQLDUMP env로 지정" >&2; exit 1; }
+
 # 덤프 → 임시 파일. --no-tablespaces(PROCESS 권한 회피)·--single-transaction(InnoDB 일관 스냅숏, 락 없음).
 # 파이프 실패(mysqldump 비0)는 pipefail+set -e로 즉시 중단되고 trap이 TMP를 정리한다.
-mysqldump --defaults-extra-file="${DEFAULTS_FILE}" \
+"${MYSQLDUMP}" --defaults-extra-file="${DEFAULTS_FILE}" \
   --no-tablespaces --single-transaction --default-character-set=utf8mb4 \
   "${DB_NAME}" | gzip -9 > "${TMP}"
 
