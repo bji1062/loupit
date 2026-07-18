@@ -23,7 +23,7 @@
   - nginx: `/etc/nginx/sites-available/loupit-beta.conf`(리포 `infra/nginx/loupit-beta.conf`) + 보안스니펫 `/etc/nginx/snippets/loupit-beta-security.conf`(✅ B-1로 커밋됨 — 리포 `infra/nginx/snippets/`, 배치는 `infra/deploy/deploy-beta.sh`).
   - 라이브 `jobcho.wiki` = 예전 **job_change**(별개 DB, 무손상). 프로덕션 컷오버는 **승인 게이트**(§B 끝).
 - **⚠️ 다른 PC에서 이어갈 때**: 실행 상태·이전 세션 AI의 로컬 메모리는 이 서버/PC에만 있다(안 넘어옴). **서버 접촉 작업(nginx·systemd·LOUPIT 재시드·라이브 검증)은 반드시 이 서버에 접속해서** 하라. 순수 코드 편집만 로컬 클론에서 가능. **이 RESUME.md가 유일한 인수인계원.**
-- **⚠️ 테스트 안전규칙(C-1 수정 결과)**: 서빙 스키마 LOUPIT을 테스트에도 재사용한다. **테스트는 반드시 `bash infra/deploy/run_tests.sh` 로만 실행**(끝나면 trap이 `load.py --fresh`로 서빙 자동 복원). 맨 `pytest`로 DB 테스트를 돌리면 conftest 가드가 `[C-1 안전장치]`로 차단한다. **`LOUPIT_ALLOW_SERVING_SCHEMA=1` 설정 후 맨 pytest 실행 절대 금지**(서빙 비운 채 복원 안 됨). 서빙 깨지면 수동 복구: `python3 db/seed/load.py --fresh` + `sudo systemctl restart loupit-beta-api`.
+- **⚠️ 테스트 안전규칙(C-1 수정 결과)**: 서빙 스키마 LOUPIT을 테스트에도 재사용한다. **테스트는 반드시 `bash infra/deploy/run_tests.sh` 로만 실행**(끝나면 trap이 `load.py --fresh`로 서빙 자동 복원). 맨 `pytest`로 DB 테스트를 돌리면 conftest 가드가 `[C-1 안전장치]`로 차단한다. **`LOUPIT_ALLOW_SERVING_SCHEMA=1` 설정 후 맨 pytest 실행 절대 금지**(서빙 비운 채 복원 안 됨). 서빙 깨지면 수동 복구: `LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh`(가드 계약 — env로 의도 명시) + `sudo systemctl restart loupit-api loupit-beta-api`(양쪽 참조 캐시 무효화, 동일 서빙 DB).
 
 ### 이번 세션(2026-07-11~12) 한 일
 1. **beta.jobcho.wiki 무중단 스테이징 배포** (포트 8001, nginx vhost, TLS, X-Robots noindex).
