@@ -9,6 +9,13 @@ Type=oneshot
 User=ubuntu
 Group=ubuntu
 WorkingDirectory=/home/ubuntu/loupit
-# SEED_PW는 오퍼레이터 환경(별도 EnvironmentFile, server/.env에는 미상주 — SP-INFRA-6.2·7.2)
+# DB 크레덴셜은 오퍼레이터 환경(별도 EnvironmentFile, server/.env에는 미상주 — SP-INFRA-6.2·7.2).
+# '-' 접두: 파일 부재여도 유닛은 기동하고 backup.sh 가 DB_PASSWORD 미설정을 명확히 로그하며 실패한다.
+# 키: DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/BACKUP_DIR/RETENTION_DAYS (infra/env/backup.env.example 참고).
 EnvironmentFile=-/home/ubuntu/loupit/infra/env/backup.env
 ExecStart=/usr/bin/bash /home/ubuntu/loupit/infra/deploy/backup.sh
+
+# 관측: journalctl -u loupit-backup 로 성공/실패 확인
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=loupit-backup
