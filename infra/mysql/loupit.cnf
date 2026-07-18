@@ -1,4 +1,7 @@
-# SP-INFRA-6.1 — /etc/mysql/mysql.conf.d/loupit.cnf(정본)
+# SP-INFRA-6.1 — MySQL 튜닝(정본 위치는 설치 방식에 따라 다름)
+# ⚠ 실호스트(2026-07 감사): MySQL 8.0.42가 tarball 설치(/data/mysql)라 /etc/my.cnf 만 읽는다.
+#    /etc/mysql/ 디렉토리는 부재 → 이 파일은 apt 설치 경로(/etc/mysql/mysql.conf.d/loupit.cnf)에서만
+#    자동 적용되며, tarball 실호스트에는 아래 항목을 /etc/my.cnf 에 수동 병합해야 반영된다.
 # 읽기 위주 소규모 참조 DB(회사 ~95 · 복지 행 ~1,330, SP-SEED)에 맞춘 보수적 튜닝. 비밀값 없음.
 [mysqld]
 # ── 네트워크: loopback 전용(외부차단, INV-7·NFR22) ──

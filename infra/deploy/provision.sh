@@ -46,9 +46,19 @@ sudo ln -sf /etc/nginx/sites-available/loupit.conf /etc/nginx/sites-enabled/loup
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-api.service" /etc/systemd/system/loupit-api.service
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-backup.service" /etc/systemd/system/loupit-backup.service
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-backup.timer" /etc/systemd/system/loupit-backup.timer
-sudo cp "${ROOT_DIR}/infra/mysql/loupit.cnf" /etc/mysql/mysql.conf.d/loupit.cnf
+# MySQL 설정: apt 설치 경로만 /etc/mysql/mysql.conf.d 를 읽는다. 이 호스트처럼 tarball 설치
+# (/data/mysql, /etc/my.cnf 만 읽음)면 디렉토리가 없어 cp 가 set -e 로 전체 abort 하므로 스킵·경고.
+if [ -d /etc/mysql/mysql.conf.d ]; then
+  sudo cp "${ROOT_DIR}/infra/mysql/loupit.cnf" /etc/mysql/mysql.conf.d/loupit.cnf
+else
+  echo "  ⚠ /etc/mysql/mysql.conf.d 부재(tarball 설치 추정) — loupit.cnf 복사 스킵."
+  echo "    실호스트는 /etc/my.cnf 만 읽으므로 infra/mysql/loupit.cnf 항목을 수동 반영할 것."
+fi
 sudo cp "${ROOT_DIR}/infra/deploy/sshd-hardening.conf" /etc/ssh/sshd_config.d/loupit.conf
 sudo systemctl daemon-reload
+# 백업 타이머 가동(일 1회 03:00). 전제: /var/backups/loupit 는 [3/6]에서 생성·chown 완료 +
+# infra/env/backup.env(크레덴셜)가 이미 존재해야 첫 실행이 성공한다(docs/OPS-backup.md 설치 순서 참고).
+sudo systemctl enable --now loupit-backup.timer
 
 echo "[5/6] certbot·방화벽 부트스트랩 호출 (SP-INFRA-4·8, 별도 스크립트)"
 echo "  최초 인증서 발급은 :80이 활성화된 뒤 수동 실행: infra/deploy 문서(SP-INFRA-4.1) 참고"
