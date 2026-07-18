@@ -26,12 +26,11 @@ class GenConfig:
     """
 
     # SP-POL-2.2 정책 설정 키 (SP-POL 요구, FR-85 · NFR22)
-    policy_contact: str = os.environ.get(
-        "POLICY_CONTACT", "{운영자 정정·문의 연락처}"
-    )
-    policy_last_modified: str = os.environ.get(
-        "POLICY_LAST_MODIFIED", "{게시 시 운영자 확정}"
-    )
+    # 실값 기본(발견 #8, 2026-07-18 사용자 결정): 플레이스홀더 중괄호가 라이브에 노출되던
+    # 문제를 없앤다. env(POLICY_CONTACT/POLICY_LAST_MODIFIED)로 여전히 override 가능.
+    policy_contact: str = os.environ.get("POLICY_CONTACT", "bji1062@gmail.com")
+    policy_last_modified: str = os.environ.get("POLICY_LAST_MODIFIED", "2026-07-18")
+    # legal_reviewed 기본 false 유지 — 법률 검토 전이라 초안 배너를 계속 노출한다(사용자 결정).
     legal_reviewed: bool = os.environ.get("POLICY_LEGAL_REVIEWED", "false") == "true"
 
     # SP-GEN-1.3 사이트 상수 (FR-50, NFR22, SP-ARCH-6)

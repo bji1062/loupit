@@ -142,11 +142,16 @@ def test_pc9_no_form_action_or_client_mutation_calls(fake_bundle, fake_now):
         assert "XMLHttpRequest" not in html
 
 
-def test_pc9_placeholder_contact_renders_as_plain_text_without_link(fake_bundle, fake_now):
-    """기본(env 미주입) `policy_contact`는 플레이스홀더 — 링크 미생성(PC-12와 접점)."""
+def test_pc9_nonlinkable_contact_renders_as_plain_text_without_link(fake_bundle, fake_now, monkeypatch):
+    """스킴·'@' 없는 연락처(플레이스홀더 등)는 링크 없이 평문으로 렌더된다(PC-12와 접점).
+
+    기본값은 실 이메일(발견 #8)이라 이 평문 분기는 명시적으로 비링크 값을 주입해 검증한다.
+    """
+    custom_cfg = dataclasses.replace(CFG, policy_contact="{운영자 정정·문의 연락처}")
+    monkeypatch.setattr(policy_module, "CFG", custom_cfg)
     pages = _render_policy_pages(fake_bundle, fake_now)
     html = pages["disclaimer.html"].html
-    assert CFG.policy_contact in html
+    assert "{운영자 정정·문의 연락처}" in html
     correction_start = html.index('id="correction"')
     correction_html = html[correction_start : html.index("</section>", correction_start)]
     assert "<a href=" not in correction_html
@@ -222,8 +227,19 @@ def test_pc12_content_and_config_modules_have_no_real_secrets():
         assert "BEGIN PRIVATE KEY" not in src
 
 
-def test_pc12_policy_contact_env_unset_yields_placeholder(monkeypatch):
+def test_pc12_policy_contact_env_unset_yields_real_email_default(monkeypatch):
+    """env 미주입 시 기본 연락처는 실 이메일(발견 #8) — mailto 링크가 생성된다."""
     monkeypatch.delenv("POLICY_CONTACT", raising=False)
     cfg = GenConfig()
-    assert cfg.policy_contact == "{운영자 정정·문의 연락처}"
-    assert policy_module._correction_href(cfg.policy_contact) is None
+    assert cfg.policy_contact == "bji1062@gmail.com"
+    assert policy_module._correction_href(cfg.policy_contact) == "mailto:bji1062@gmail.com"
+
+
+def test_pc12_default_policy_values_leave_no_placeholder_braces(fake_bundle, fake_now):
+    """발견 #8: 기본 CFG 렌더 시 중괄호 플레이스홀더가 남지 않는다(연락처·최종수정일)."""
+    pages = _render_policy_pages(fake_bundle, fake_now)
+    html = pages["disclaimer.html"].html
+    assert "bji1062@gmail.com" in html
+    assert "최종 수정일: 2026-07-18" in html
+    assert "{운영자 정정·문의 연락처}" not in html
+    assert "{게시 시 운영자 확정}" not in html
