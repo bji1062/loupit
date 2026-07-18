@@ -13,7 +13,9 @@ WorkingDirectory=/home/ubuntu/loupit
 # venv 미프로비저닝 → 시스템 python3 사용(fastapi/uvicorn/pymysql 설치 확인됨)
 EnvironmentFile=-/home/ubuntu/loupit/server/.env.beta
 ExecStart=/usr/bin/python3 -m uvicorn server.main:app --host 127.0.0.1 --port 8001
-ExecReload=/bin/kill -HUP $MAINPID
+# ExecReload 미정의 — uvicorn은 SIGHUP를 처리하지 않아(기본동작=종료) HUP 리로드가
+# 강제종료+~5초 502 를 유발하는데 systemctl reload 는 0으로 보고돼 다운타임을 은폐한다
+# (발견 low #11, loupit-api와 동일). 배포는 restart 만 쓴다. reload 는 명시적으로 실패한다.
 Restart=always
 RestartSec=5
 TimeoutStopSec=10
