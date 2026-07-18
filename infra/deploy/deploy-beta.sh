@@ -17,14 +17,18 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 
-echo "[1/5] 전제조건 점검"
+echo "[1/5] 전제조건 점검(파일 배치 전 — 전부 통과해야 진행)"
 if [ ! -f "${ROOT_DIR}/server/.env.beta" ]; then
   echo "  ✗ server/.env.beta 없음 — 베타 API 환경파일을 먼저 생성하라(gitignore)." >&2
   exit 1
 fi
+# 인증서 부재 시 '경고 후 진행'은 반배포다(발견 #17): loupit-beta.conf 는 존재하지 않는
+# 인증서 파일을 참조하므로, 심링크를 sites-enabled 에 걸어두면 이후 모든 nginx -t·reload가
+# (무관한 프로덕션·certbot deploy-hook 포함) 실패한다. 그래서 배치 전에 즉시 중단한다.
 if [ ! -f /etc/letsencrypt/live/beta.jobcho.wiki/fullchain.pem ]; then
-  echo "  ⚠ beta.jobcho.wiki 인증서 없음 — certbot 최초 발급 필요(위 헤더 참고)." >&2
-  echo "    인증서 없이도 nginx -t는 실패하므로, 발급 후 재실행하라." >&2
+  echo "  ✗ beta.jobcho.wiki 인증서 없음 — 파일을 배치하지 않고 중단한다." >&2
+  echo "    최초 발급: sudo certbot --nginx -d beta.jobcho.wiki (:80 활성 상태에서 1회), 후 재실행." >&2
+  exit 1
 fi
 
 echo "[2/5] nginx 보안 스니펫 배치(base + beta noindex)"
@@ -48,6 +52,14 @@ if sudo nginx -t; then
   sudo systemctl reload nginx
   echo "  ✓ 베타 스테이징 적용 완료 — https://beta.jobcho.wiki"
 else
-  echo "  ✗ nginx -t 실패 — 설정 검토 후 수동 reload. 서비스는 재시작하지 않았다." >&2
+  # 이 실행이 방금 배치한 beta vhost 심링크가 sites-enabled 에 남으면 이후 모든 nginx -t·
+  # reload 가 막힌다(반배포). 프로덕션·공유 스니펫은 건드리지 않고 beta 전용 아티팩트만 롤백.
+  echo "  ✗ nginx -t 실패 — 방금 배치한 beta vhost 를 롤백한다(프로덕션 무영향)." >&2
+  sudo rm -f /etc/nginx/sites-enabled/loupit-beta.conf /etc/nginx/sites-available/loupit-beta.conf
+  if sudo nginx -t; then
+    echo "  ✓ 롤백 후 nginx -t 통과 — beta 미적용. 설정 수정 후 재실행하라. 서비스 재시작 안 함." >&2
+  else
+    echo "  ⚠ 롤백 후에도 nginx -t 실패 — beta 외 기존 설정 문제일 수 있다. 즉시 수동 점검." >&2
+  fi
   exit 1
 fi
