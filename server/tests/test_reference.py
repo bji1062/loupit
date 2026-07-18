@@ -340,6 +340,59 @@ async def test_TE1_unhandled_exception_returns_generic_500(client, bundle_stub, 
 
 
 @pytest.mark.asyncio
+async def test_TR9_low1_extra_columns_stripped_not_leaked(client, bundle_stub, monkeypatch):
+    """low#1: 과거엔 model_validate로 검증만 하고 **원시 dict**를 직렬화해, DB 컬럼 추가·
+    타입 드리프트로 생긴 계약 밖 필드가 그대로 응답·캐시·CDN까지 새어 나갔다. 이제 검증된
+    모델의 model_dump를 직렬화하므로 계약에 없는 필드(top-level·company·benefit)는 탈락한다.
+    (정상 데이터의 바이트 동일성은 라이브 606,531B 실측으로 별도 확인 — reference.py 주석.)"""
+    from server.routers import reference as reference_router
+
+    async def _drifted(conn):
+        return {
+            "company_types": [],
+            "benefit_presets": {},
+            "companies": [
+                {
+                    "comp_id": 1,
+                    "comp_eng_nm": "testco",
+                    "comp_nm": "테스트기업",
+                    "comp_tp_cd": "large",
+                    "industry_nm": "IT",
+                    "logo_nm": "T",
+                    "work_style_val": {"remote": True},
+                    "careers_benefit_url": None,
+                    "aliases": ["테스트기업"],
+                    "benefits": [
+                        {
+                            "benefit_cd": "meal", "benefit_nm": "식대", "benefit_amt": 220,
+                            "benefit_ctgr_cd": "compensation", "badge_cd": "official",
+                            "amt_source": "stated", "qual_yn": False,
+                            "qual_desc_ctnt": None, "note_ctnt": None,
+                            "verified_dtm": None, "expires_dtm": None,
+                            "badge_src_cd": None, "badge_src_url_ctnt": None, "sort_order_no": 1,
+                            "INTERNAL_SECRET_COL": "benefit-leak",  # 계약 밖(신규 컬럼 드리프트 모사)
+                        },
+                    ],
+                    "EMP_SALARY_INTERNAL": "company-leak",  # 계약 밖
+                },
+            ],
+            "TOP_LEVEL_DRIFT": "top-leak",  # 계약 밖 최상위 키
+        }
+
+    monkeypatch.setattr(reference_router, "build_reference_bundle", _drifted)
+    resp = await client.get("/api/v1/reference/all")
+    assert resp.status_code == 200
+    text = resp.text
+    assert "INTERNAL_SECRET_COL" not in text and "benefit-leak" not in text
+    assert "EMP_SALARY_INTERNAL" not in text and "company-leak" not in text
+    assert "TOP_LEVEL_DRIFT" not in text and "top-leak" not in text
+    # 계약 필드는 정상 유지(과차단 아님)
+    body = resp.json()
+    assert body["companies"][0]["comp_nm"] == "테스트기업"
+    assert body["companies"][0]["benefits"][0]["benefit_cd"] == "meal"
+
+
+@pytest.mark.asyncio
 async def test_TR7_contract_violation_returns_500(client, bundle_stub, monkeypatch):
     """H-1: raw Response 반환이라 response_model이 런타임 미적용 → 조립 결과가
     ReferenceBundle 계약을 위반하면 200으로 잘못된 형태를 내보내지 않고 500(전역 핸들러)."""

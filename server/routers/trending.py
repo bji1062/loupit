@@ -52,9 +52,12 @@ async def log_comparison(body: CompareLogIn) -> Response:
 async def trending_comparisons(request: Request, response: Response) -> dict:
     s = get_settings()
     cache = request.app.state.trending_cache
-    items = cache.get(_CACHE_KEY)
-    if items is None:  # 캐시 미스 → 집계 조회
-        items = await database.fetch_all(_SQL_TRENDING, (s.trending_window_days, s.trending_limit))
-        cache.set(_CACHE_KEY, items)
+
+    async def _build():  # 캐시 미스(dogpile 락 하) 1회만 집계 조회
+        return await database.fetch_all(_SQL_TRENDING, (s.trending_window_days, s.trending_limit))
+
+    # 60s 만료 경계 동시요청의 중복 집계를 asyncio.Lock 이중검사로 억제(low#2).
+    # 집계 0건([])도 캐시된다(빈 목록은 위젯이 숨김 처리 — 오류 아님).
+    items = await cache.get_or_set(_CACHE_KEY, _build)
     response.headers["Cache-Control"] = s.trending_cache_control
     return {"items": items}
