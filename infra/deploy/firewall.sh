@@ -25,6 +25,9 @@ table inet loupit_filter {
     ct state established,related accept
     iif lo accept
     ip protocol icmp accept
+    # IPv6 필수 ICMPv6 허용(policy drop 하에서 NDP·PMTUD·MLD가 막히면 IPv6 전면 불통 — 감사 low #13).
+    # icmpv6 매치는 nft가 자동으로 nfproto ipv6 로 한정한다. NDP는 MLD(Hop-by-Hop) 때문에 nexthdr 미사용.
+    icmpv6 type { destination-unreachable, packet-too-big, time-exceeded, parameter-problem, echo-request, echo-reply, nd-router-solicit, nd-router-advert, nd-neighbor-solicit, nd-neighbor-advert, mld-listener-query, mld-listener-report, mld-listener-done } accept
 
     tcp dport 22 ip saddr ${MGMT_CIDR} accept
     tcp dport { 80, 443 } accept
