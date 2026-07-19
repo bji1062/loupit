@@ -15,7 +15,10 @@ code(){ curl -s -o /dev/null -w '%{http_code}' "$1"; }
 # ── 기본 라우팅(SM-1·2·3·6·13) ──
 chk "SM-1 landing 200"      "[ \"\$(code ${BASE}/)\" = 200 ]"
 chk "SM-2 http->https 301"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' http://jobcho.wiki/)\" = 301 ]"
-chk "SM-3 health ok"        "curl -s ${BASE}/api/v1/health | grep -q '\"status\":\"ok\"'"
+# SM-3: release.sh가 [5/7] API 재시작 직후 스모크를 호출하므로 uvicorn 기동 창(1~2초)을
+# 흡수하는 유한 재시도(최대 10회×1초) — 무한 대기 아님, 10초 내 미기동이면 실패가 맞다.
+# (chk의 eval은 현재 셸에서 돌므로 exit 금지 — 플래그+최종 [ ] 판정으로 실패를 전달한다.)
+chk "SM-3 health ok"        "_ok=0; for _i in 1 2 3 4 5 6 7 8 9 10; do curl -s ${BASE}/api/v1/health | grep -q '\"status\":\"ok\"' && { _ok=1; break; }; sleep 1; done; [ \"\$_ok\" = 1 ]"
 chk "SM-6 privacy 200"      "[ \"\$(code ${BASE}/privacy)\" = 200 ]"
 chk "SM-13 404"             "[ \"\$(code ${BASE}/nonexistent-xyz)\" = 404 ]"
 
