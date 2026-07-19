@@ -18,6 +18,7 @@ import {
   initConsentBanner,
 } from './ads.js';
 import { adsConfig } from './adsConfig.js';
+import { JSDOM } from 'jsdom';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ADS_URL = pathToFileURL(join(HERE, 'ads.js')).href;
@@ -344,5 +345,44 @@ describe('T-08.7.3 applyConsentSignal (window.adsbygoogle 비개인화 신호)',
   test('미선택(null, 첫 방문) → 비개인화 폴백(===1, FR-79)', () => {
     applyConsentSignal();
     assert.equal(globalThis.window.adsbygoogle.requestNonPersonalizedAds, 1);
+  });
+});
+
+// ── #12: mountAds 수동 슬롯 렌더 — 승인 전 빈 "광고" 점선 박스 억제(jsdom) ──────
+describe('#12 mountAds 슬롯 렌더 — placeholder 빈 광고 박스 억제', () => {
+  const savedDoc = globalThis.document;
+  const savedWin = globalThis.window;
+  function withDom(html, fn) {
+    const dom = new JSDOM(html);
+    globalThis.document = dom.window.document;
+    globalThis.window = dom.window;
+    try { fn(dom); } finally { globalThis.document = savedDoc; globalThis.window = savedWin; }
+  }
+
+  test('placeholder client(기본) → content_bottom 컨테이너 hidden·빈(.ad-slot 미생성)', () => {
+    withDom('<div data-ad-position="content_bottom"></div>', (dom) => {
+      mountAds('landing', dom.window.document);
+      const host = dom.window.document.querySelector('[data-ad-position="content_bottom"]');
+      assert.equal(host.children.length, 0, '승인 전 광고 박스 미생성');
+      assert.equal(host.hidden, true, '빈 컨테이너 hidden(빈 점선박스 노출 방지)');
+    });
+  });
+
+  test('실 client id 주입 시 → .ad-slot 렌더·hidden 해제', () => {
+    const savedClient = adsConfig.AD_CLIENT;
+    const savedSlot = adsConfig.AD_SLOT.landing_bottom;
+    adsConfig.AD_CLIENT = 'ca-pub-1234567890123456';
+    adsConfig.AD_SLOT.landing_bottom = '1234567890';
+    try {
+      withDom('<div data-ad-position="content_bottom"></div>', (dom) => {
+        mountAds('landing', dom.window.document);
+        const host = dom.window.document.querySelector('[data-ad-position="content_bottom"]');
+        assert.equal(host.hidden, false, '실 광고 시 컨테이너 표시');
+        assert.ok(host.querySelector('.ad-slot'), '.ad-slot 박스 렌더');
+      });
+    } finally {
+      adsConfig.AD_CLIENT = savedClient;
+      adsConfig.AD_SLOT.landing_bottom = savedSlot;
+    }
   });
 });

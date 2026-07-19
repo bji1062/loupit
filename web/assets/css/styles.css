@@ -486,13 +486,15 @@ main p { margin-top:var(--sp-3); }
 .cp-cand-meta { font-size:var(--fs-xs); color:var(--t4); }
 
 /* ══════════════════════════════════════════════════════ ADS ══ */
-.ad-slot, [data-ad-position] {
+/* 광고 박스는 JS가 실 슬롯(.ad-slot)을 주입했을 때만 그린다. 빈 [data-ad-position] 컨테이너는
+   무스타일(승인 전 placeholder 동안 내용 없는 "광고" 점선 박스 상시 노출 방지, #12). */
+.ad-slot {
   margin-top:var(--sp-6); padding:var(--sp-5);
   background:var(--ad-slot-bg); border:var(--bw) dashed var(--ad-slot-border); border-radius:var(--r-md);
   min-height:96px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--sp-2);
   position:relative;
 }
-.ad-slot::before, [data-ad-position]::before {
+.ad-slot::before {
   content:"광고"; position:absolute; top:var(--sp-2); left:var(--sp-3);
   font-size:var(--ad-label-fs); font-weight:var(--fw-medium); color:var(--ad-label-fg);
 }

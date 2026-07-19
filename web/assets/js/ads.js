@@ -108,9 +108,19 @@ function mountManualSlot(root, pageType, position) {
   const host = root.querySelector('[data-ad-position="' + position + '"]');   // SP-ADS-9 계약 위치
   if (!host) return;                                                          // 위치 없으면 미렌더(무크래시)
   const slotId = resolveSlotId(pageType, position);
-  const reserve = SLOT_RESERVE[position] || { mobile: 250, desktop: 250 };
 
-  // 컨테이너: "광고" 라벨 + 예약 높이 박스(CLS). 색/여백은 SP-DSN(.ad-slot*).
+  // 승인 전(placeholder)·슬롯 미상·거부폴백(suppress)에는 빈 "광고" 점선 박스를 노출하지 않는다(#12):
+  // 실 client id 주입 전까지 랜딩에 내용 없는 광고 자리가 상시 보이던 함정 제거 — host를 비우고 hidden.
+  if (isPlaceholder(adsConfig.AD_CLIENT) || !slotId
+      || (adsConfig.DENY_FALLBACK === 'suppress' && !isPersonalized())) {
+    host.replaceChildren();
+    host.hidden = true;
+    return;
+  }
+
+  // 실 client id 주입 후: "광고" 라벨 + 예약 높이 박스(CLS) 렌더. 색/여백은 SP-DSN(.ad-slot*).
+  const reserve = SLOT_RESERVE[position] || { mobile: 250, desktop: 250 };
+  host.hidden = false;
   host.replaceChildren();
   host.append(el('span', { class: 'ad-label', text: AD_LABEL_TEXT }));        // FR-76: 은폐 금지·textContent
   const box = el('div', {
@@ -119,9 +129,6 @@ function mountManualSlot(root, pageType, position) {
     'data-reserve-desktop': String(reserve.desktop),
   });
   host.append(box);
-
-  if (isPlaceholder(adsConfig.AD_CLIENT) || !slotId) return;                  // 승인 전/슬롯 미상 → 예약만(폴백 M-4)
-  if (adsConfig.DENY_FALLBACK === 'suppress' && !isPersonalized()) return;     // 거부·미선택 시 미노출 폴백(CS-4)
 
   // AdSense 수동 유닛: <ins class="adsbygoogle"> 삽입 후 push
   const ins = document.createElement('ins');
