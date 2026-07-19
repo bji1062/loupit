@@ -136,8 +136,13 @@ def _combo_seo(a: dict, b: dict, url: str, cfg) -> dict:
     }
 
 
-def render_all(env, ctx, cfg) -> list[Page]:
-    """인기 조합 로드·무효 스킵·경로 검증·렌더 (SP-GEN-7.2)."""
+def load_pairs(ctx) -> list[tuple[str, str]]:
+    """큐레이션 목록 → 유효 조합 쌍(미등록·자기쌍 스킵, FR-60 R1).
+
+    company.py가 회사 페이지의 조합 링크를 그리려면 같은 목록이 필요해
+    build.py가 이 함수로 한 번 로드해 양쪽에 전달한다(생성되지 않는 /vs/
+    경로를 링크하지 않기 위한 단일 진실).
+    """
     raw = json.loads(COMBINATIONS_PATH.read_text(encoding="utf-8"))
     pairs: list[tuple[str, str]] = []
     for item in raw.get("combinations", []):
@@ -146,6 +151,13 @@ def render_all(env, ctx, cfg) -> list[Page]:
             log.warning("combo skip: invalid/absent %s,%s", a, b)
             continue
         pairs.append((a, b))
+    return pairs
+
+
+def render_all(env, ctx, cfg, pairs=None) -> list[Page]:
+    """인기 조합 로드·무효 스킵·경로 검증·렌더 (SP-GEN-7.2)."""
+    if pairs is None:
+        pairs = load_pairs(ctx)
 
     validate_combo_paths(pairs, ctx.slugs)  # 경로 충돌 → BuildError(SP-GEN-3)
 

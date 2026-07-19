@@ -18,6 +18,23 @@ export function benefitLine(b) {
   return (b ? b.benefit_nm : '') + amt;
 }
 
+// ── 순수: comp_eng_nm → 회사 상세 페이지 slug (FR-51) ────────────────────────
+// ⚠ 정본은 generator/slug.py `slug_of()` — 정적 페이지 경로를 만드는 쪽이 소유한다.
+// REF 번들이 slug를 싣지 않아 여기서 같은 규칙을 미러링하며, 실데이터 95개사 전량이
+// 양쪽에서 일치함을 directory.test.js가 검증한다(드리프트 시 테스트 실패).
+export function slugOf(compEngNm) {
+  const s = String(compEngNm || '').trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/-{2,}/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return s || null;                       // 빈 slug → 링크 미생성(무크래시)
+}
+
+export function companyHref(compEngNm) {
+  const s = slugOf(compEngNm);
+  return s ? '/company/' + s : null;
+}
+
 function badgeFor(b) {
   // 기존 배지 체계(SP-DS .badge-official/.badge-est) 재사용 — 출처 신뢰도 정직 표기(FR-05)
   if (b.badge_cd === 'official') return el('span', { class: 'badge badge-official', text: '공식' });
@@ -30,16 +47,23 @@ function benefitsPanel(company) {
   const items = Array.isArray(company.benefits) ? company.benefits : [];
   if (!items.length) {
     box.append(el('p', { class: 'dir-ben-empty', text: '등록된 복지 정보가 없습니다.' }));
-    return box;
+  } else {
+    const ul = el('ul', { class: 'dir-ben-list' });
+    for (const b of items) {
+      const li = el('li', { class: 'dir-ben-row' });
+      li.append(el('span', { class: 'dir-ben-nm', text: benefitLine(b) }));
+      li.append(badgeFor(b));
+      ul.append(li);
+    }
+    box.append(ul);
   }
-  const ul = el('ul', { class: 'dir-ben-list' });
-  for (const b of items) {
-    const li = el('li', { class: 'dir-ben-row' });
-    li.append(el('span', { class: 'dir-ben-nm', text: benefitLine(b) }));
-    li.append(badgeFor(b));
-    ul.append(li);
+  // 정적 상세 페이지 진입점(2026-07-19 고아 페이지 해소): 회사 95·조합 3 페이지로
+  // 가는 내부 링크가 사이트 전체에 0건이라 sitemap 외 도달 경로가 없었다. 상세에는
+  // 출처·확인일·만료 배지 등 이 패널에 없는 정보가 있다.
+  const href = companyHref(company.comp_eng_nm);
+  if (href) {
+    box.append(el('a', { class: 'dir-detail-link', href, text: company.comp_nm + ' 상세 보기 →' }));
   }
-  box.append(ul);
   return box;
 }
 

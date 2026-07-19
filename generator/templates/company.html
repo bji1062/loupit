@@ -31,6 +31,25 @@
   </section>
   <p class="cta"><a href="{{ compare_href }}">이 회사로 비교하기</a></p>
   {{ ad_slot("content_mid") }}
+  {#- 내부 링크(FR-63 확장, 2026-07-19): 회사·조합 페이지가 sitemap 외 진입 경로가
+      없는 고아 상태였다. 관련 회사는 같은 업종 우선 + 가나다순 인접 폴백이라 전
+      회사가 하나의 링크 체인으로 이어진다. -#}
+  {% if related_companies %}
+  <section class="related-companies" aria-label="관련 회사">
+    <h2>다른 회사 복지도 확인해 보세요</h2>
+    <ul>
+    {% for label, href in related_companies %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+  {% if related_combos %}
+  <section class="related-combos" aria-label="관련 비교">
+    <h2>이 회사가 포함된 비교</h2>
+    <ul>
+    {% for label, href in related_combos %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
   {% include "partials/_disclaimer.html" %}
   {{ ad_slot("content_bottom") }}
   <div data-affiliate-host></div>

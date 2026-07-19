@@ -10,10 +10,12 @@ import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { JSDOM } from 'jsdom';
 
-import { sortCompanies, benefitLine, mountDirectory } from './directory.js';
+import { readdirSync, readFileSync } from 'node:fs';
+
+import { sortCompanies, benefitLine, mountDirectory, slugOf, companyHref } from './directory.js';
 
 function comp(id, nm, benefits = []) {
-  return { comp_id: id, comp_nm: nm, comp_tp_cd: 'large', industry_nm: 'IT', benefits };
+  return { comp_id: id, comp_eng_nm: 'co' + id, comp_nm: nm, comp_tp_cd: 'large', industry_nm: 'IT', benefits };
 }
 const BEN_MEAL = { benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 120, benefit_ctgr_cd: 'perks', qual_yn: false, amt_source: 'stated', badge_cd: 'official' };
 const BEN_QUAL = { benefit_cd: 'culture', benefit_nm: '수평 문화', benefit_amt: null, benefit_ctgr_cd: 'work_env', qual_yn: true, amt_source: 'none', badge_cd: 'est' };
@@ -149,5 +151,73 @@ describe('mountDirectory — 카운트·패널 토글·복지 아코디언', () 
   test('host 부재(다른 페이지) → no-op', () => {
     document.getElementById('company-directory').remove();
     assert.doesNotThrow(() => mountDirectory(refState()));
+  });
+});
+
+// ── 상세 페이지 링크(2026-07-19 고아 페이지 해소) ───────────────────────────
+// REF 번들이 slug를 싣지 않아 slugOf가 generator/slug.py 규칙을 미러링한다.
+// 아래 테스트가 규칙 일치·유일성을 커밋된 시드 SQL 95개사로 실검증한다.
+describe('회사 상세 링크(slugOf·companyHref)', () => {
+  beforeEach(() => loadDom());   // DOM 케이스는 위 블록과 동일한 jsdom 셸을 쓴다
+
+  test('slug 규칙: 소문자·비영숫자→하이픈·연속축약·양끝제거', () => {
+    assert.equal(slugOf('samsung_elec'), 'samsung-elec');
+    assert.equal(slugOf('sk_hynix'), 'sk-hynix');
+    assert.equal(slugOf('cj'), 'cj');
+    assert.equal(slugOf('HMM'), 'hmm');
+    assert.equal(slugOf('a__b'), 'a-b');
+    assert.equal(slugOf('_lead_trail_'), 'lead-trail');
+  });
+
+  test('빈·무효 입력 → null(링크 미생성, 무크래시)', () => {
+    for (const v of ['', '   ', '___', null, undefined]) assert.equal(slugOf(v), null);
+    assert.equal(companyHref(''), null);
+    assert.equal(companyHref('naver'), '/company/naver');
+  });
+
+  test('실데이터 95개사: slug 패턴 적합 + 유일(경로 충돌 0)', () => {
+    const dir = new URL('../../../db/seed/benefit/sql/', import.meta.url);
+    const files = readdirSync(dir).filter((f) => f.endsWith('.sql'));
+    assert.ok(files.length >= 90, `시드 SQL ${files.length}개(≥90 기대)`);
+    const slugs = new Set();
+    for (const f of files) {
+      const sql = readFileSync(new URL(f, dir), 'utf8');
+      const m = sql.match(/COMP_ENG_NM\s*=\s*'([^']+)'/);
+      if (!m) continue;
+      const s = slugOf(m[1]);
+      assert.ok(s && /^[a-z0-9]+(-[a-z0-9]+)*$/.test(s), `${m[1]} → ${s} 패턴 불일치`);
+      assert.ok(!slugs.has(s), `slug 충돌: ${s}`);
+      slugs.add(s);
+    }
+    assert.ok(slugs.size >= 90, `추출 slug ${slugs.size}개`);
+  });
+
+  test('복지 패널에 상세 링크 렌더(정적 페이지 진입점)', () => {
+    mountDirectory(refState());
+    document.querySelector('.dir-count').dispatchEvent(new window.Event('click', { bubbles: true }));
+    const rows = document.querySelectorAll('.dir-comp');
+    rows[0].dispatchEvent(new window.Event('click', { bubbles: true }));
+    const link = document.querySelector('.dir-benefits:not([hidden]) .dir-detail-link');
+    assert.ok(link, '상세 링크 미렌더');
+    assert.ok(link.getAttribute('href').startsWith('/company/'), link.getAttribute('href'));
+    assert.match(link.textContent, /상세 보기/);
+  });
+
+  test('복지 0건 회사도 상세 링크는 제공', () => {
+    mountDirectory(refState());
+    document.querySelector('.dir-count').dispatchEvent(new window.Event('click', { bubbles: true }));
+    const rows = document.querySelectorAll('.dir-comp');
+    rows[1].dispatchEvent(new window.Event('click', { bubbles: true })); // 네이버(복지 0)
+    const open = document.querySelector('.dir-benefits:not([hidden])');
+    assert.match(open.textContent, /등록된 복지 정보가 없습니다/);
+    assert.ok(open.querySelector('.dir-detail-link'), '복지 0건이어도 링크 제공');
+  });
+
+  test('comp_eng_nm 부재 → 링크 미생성(무크래시)', () => {
+    const state = { REF: { companies: [{ comp_id: 9, comp_nm: '무영문사', benefits: [] }] } };
+    assert.doesNotThrow(() => mountDirectory(state));
+    document.querySelector('.dir-count').dispatchEvent(new window.Event('click', { bubbles: true }));
+    document.querySelector('.dir-comp').dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(document.querySelector('.dir-detail-link'), null);
   });
 });

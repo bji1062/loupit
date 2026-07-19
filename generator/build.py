@@ -40,9 +40,12 @@ def run(
     """
     env = make_env()
     ctx = build_context(bundle)  # 인덱스·slug 충돌 검증(BuildError, SP-GEN-3)
+    # 조합 쌍은 한 번만 로드해 양쪽에 전달한다 — 회사 페이지의 /vs/ 링크와 실제
+    # 생성되는 조합 페이지가 같은 목록에서 나와야 죽은 링크가 생기지 않는다(GC-20).
+    combo_pairs = combo.load_pairs(ctx)
     pages = []
-    pages += company.render_all(env, ctx)  # 회사 ~95 (SP-GEN-5·6)
-    pages += combo.render_all(env, ctx, CFG)  # 조합 N (SP-GEN-7)
+    pages += company.render_all(env, ctx, combo_pairs=combo_pairs)  # 회사 ~95 (SP-GEN-5·6)
+    pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     if only:  # 개발용 경로 접두 필터
         pages = [p for p in pages if any(p.path.startswith(o) for o in only)]

@@ -241,3 +241,74 @@ def test_M2_qualitative_benefit_null_desc_no_none_token():
     ctx = build_context(bundle, now=datetime(2026, 7, 11))
     html = company.render_all(env, ctx)[0].html
     assert ">None<" not in html, "정성복지 qual_desc NULL이 'None'으로 렌더됨(M-2 회귀)"
+
+
+# ── GC-25: 관련 회사·조합 내부 링크(2026-07-19 고아 페이지 해소) ─────────────
+# 배경: 회사 95·조합 3 페이지로 가는 내부 링크가 사이트 전체에 0건이라 sitemap
+# 으로만 발견 가능한 고아 상태였다(크롤 우선순위·탐색 가능성·심사 신호 저하).
+
+
+def _related_hrefs(html: str) -> list[str]:
+    """관련 회사 섹션의 href만 추출(다른 구획 링크와 분리)."""
+    start = html.find('class="related-companies"')
+    if start < 0:
+        return []
+    end = html.index("</section>", start)
+    return re.findall(r'href="([^"]+)"', html[start:end])
+
+
+def test_gc25_company_page_links_to_related_companies(fake_bundle, fake_now):
+    """모든 회사 페이지가 다른 회사 상세로 가는 링크를 최소 1개 갖는다."""
+    for path, p in _render(fake_bundle, fake_now).items():
+        hrefs = _related_hrefs(p.html)
+        assert hrefs, f"{path}: 관련 회사 링크 0건(고아)"
+        assert all(h.startswith("/company/") for h in hrefs), f"{path}: {hrefs}"
+        self_slug = "/" + path[: -len(".html")]
+        assert self_slug not in hrefs, f"{path}: 자기 자신 링크"
+        assert len(hrefs) == len(set(hrefs)), f"{path}: 중복 링크 {hrefs}"
+
+
+def test_gc25_same_industry_company_is_preferred(fake_bundle, fake_now):
+    """같은 업종(반도체) 회사가 관련 목록 선두에 온다 — 관련성 우선."""
+    hrefs = _related_hrefs(_samsung(fake_bundle, fake_now).html)
+    assert hrefs[0] == "/company/sk-hynix"
+
+
+def test_gc25_isolated_industry_still_gets_links(fake_bundle, fake_now):
+    """업종 단독사(네이버=IT)도 가나다순 인접 폴백으로 링크를 받는다.
+    실데이터 95개 중 48개가 업종 단독사라 폴백 없이는 절반이 고아로 남는다."""
+    hrefs = _related_hrefs(_naver(fake_bundle, fake_now).html)
+    assert len(hrefs) >= 1
+    assert "/company/naver" not in hrefs
+
+
+def test_gc25_combo_links_rendered_when_pairs_given(fake_bundle, fake_now):
+    """이 회사가 등장하는 조합 페이지로 링크한다(조합 목록 주입 시)."""
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    pairs = [("samsung_elec", "sk_hynix")]
+    pages = {p.path: p for p in company.render_all(env, ctx, combo_pairs=pairs)}
+    html = pages["company/samsung-elec.html"].html
+    assert 'class="related-combos"' in html
+    assert 'href="/vs/samsung-elec-sk-hynix"' in html
+    # 조합에 없는 회사는 조합 구획 자체를 방출하지 않는다
+    assert 'class="related-combos"' not in pages["company/naver.html"].html
+
+
+def test_gc25_no_combo_section_without_pairs(fake_bundle, fake_now):
+    """조합 목록 미주입(기본) → 조합 구획 없음. 관련 회사 링크는 그대로."""
+    p = _samsung(fake_bundle, fake_now)
+    assert 'class="related-combos"' not in p.html
+    assert _related_hrefs(p.html)
+
+
+def test_gc25_industry_tokens_bridge_free_text_variants():
+    """업종이 자유 텍스트라 '전자/반도체'와 '반도체'는 완전일치로는 남남이다.
+    구분자 토큰이 겹치면 같은 업종군으로 본다(실데이터 삼성전자↔SK하이닉스,
+    네이버↔카카오가 이 경로로 연결된다)."""
+    tok = company._industry_tokens
+    assert tok("전자/반도체") & tok("반도체")
+    assert tok("IT/포털") & tok("IT/플랫폼")
+    assert not tok("게임") & tok("바이오")
+    assert tok(None) == set() and tok("") == set()
+    assert tok(" 전자 / 반도체 ") == {"전자", "반도체"}

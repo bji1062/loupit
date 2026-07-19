@@ -429,6 +429,8 @@ main p { margin-top:var(--sp-3); }
 .dir-ben-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:var(--sp-1) 0; font-size:var(--fs-sm); }
 .dir-ben-nm { color:var(--t2); }
 .dir-ben-empty { margin-top:0; font-size:var(--fs-sm); color:var(--t4); }
+/* 정적 상세 페이지 진입점(고아 페이지 해소, 2026-07-19) */
+.dir-detail-link { display:inline-block; margin-top:var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 
 /* ══════════════════════════════ TRENDING(실시간 비교 TOP 10 우측 레일) ══ */
 /* 모바일(<768px): .main-cols 블록 흐름 — 레일이 본문 아래 스택. 데스크톱은 하단 @media. */
