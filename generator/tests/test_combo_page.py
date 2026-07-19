@@ -50,22 +50,32 @@ def test_gc16_combo_cta_has_no_prefill_or_slot_param(fake_bundle, fake_now, fake
             assert "slot=" not in href
 
 
-# ── GC-17: 광고 슬롯(company와 동일 규약) ────────────────────────────────
+# ── GC-17: 광고 슬롯(company와 동일 규약 — SP-ADS-9 빈 호스트, 2026-07-19 개정) ──
 
 
-def test_gc17_combo_page_has_content_mid_and_content_bottom(fake_bundle, fake_now, fake_combinations_path):
+def test_gc17_combo_page_has_ad_position_hosts(fake_bundle, fake_now, fake_combinations_path):
     pages = _render(fake_bundle, fake_now)
     p = pages[0]
-    assert p.html.count('class="ad-slot"') == 2
-    assert 'data-slot="content_mid"' in p.html
-    assert 'data-slot="content_bottom"' in p.html
+    assert 'data-ad-position="content_mid"' in p.html
+    assert 'data-ad-position="content_bottom"' in p.html
+    assert p.html.count("data-ad-position=") == 2
+    assert 'class="ad-slot"' not in p.html   # 박스·라벨은 ads.js 렌더 전용(감사 #12)
+    assert "ad-label" not in p.html
 
 
-def test_gc17_no_ad_slot_inside_combo_benefit_summary(fake_bundle, fake_now, fake_combinations_path):
+def test_gc17_no_ad_host_inside_combo_benefit_summary(fake_bundle, fake_now, fake_combinations_path):
     p = _render(fake_bundle, fake_now)[0]
     start = p.html.index('class="combo-benefits"')
     end = p.html.index("</section>", start)
-    assert "ad-slot" not in p.html[start:end]
+    assert "data-ad-position" not in p.html[start:end]
+
+
+def test_gc24_combo_static_ads_wiring(fake_bundle, fake_now, fake_combinations_path):
+    p = _render(fake_bundle, fake_now)[0]
+    assert '<body data-page-type="combo">' in p.html
+    assert 'id="consent-banner"' in p.html
+    assert '/assets/v2/js/static-ads.js' in p.html
+    assert "data-affiliate-host" in p.html
 
 
 # ── GC-20: 내부 링크 404 없음(관련 링크는 실제 생성 페이지로만) ────────────

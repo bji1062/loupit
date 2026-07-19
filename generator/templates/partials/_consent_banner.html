@@ -1,0 +1,8 @@
+{# _consent_banner.html — SP-ADS-9.1 동의 배너(정적 페이지 공통, SCR-61).
+   셸(web/index.html·compare/index.html)과 동일 마크업 — 노출/저장 배선은
+   static-ads.js(initConsentBanner)가 담당하고, 최초 로드 시 hidden 상태를 결정한다. #}
+<div id="consent-banner" hidden>
+  <p>맞춤형 광고 표시에 동의하시겠습니까? <a href="/ads">광고·제휴 고지</a> · <a href="/privacy">개인정보처리방침</a></p>
+  <button type="button" data-consent="grant">동의</button>
+  <button type="button" data-consent="deny">거부</button>
+</div>

@@ -29,11 +29,16 @@ def test_gc21_script_tag_in_comp_nm_is_escaped_in_h1(fake_bundle_xss, fake_now):
 
 def test_gc21_no_executable_script_alert_anywhere_in_page(fake_bundle_xss, fake_now):
     p = _render_xss_company(fake_bundle_xss, fake_now)
-    # 유일한 실제 <script> 태그는 JSON-LD(application/ld+json)뿐이어야 한다.
+    # 허용 <script>는 두 가지 고정형뿐: JSON-LD와 base.html의 정적 광고·동의 진입점
+    # (SP-ADS-9, 자체호스팅 고정 리터럴 — 사용자 데이터 비경유). 그 외는 전부 XSS 누수.
     import re
 
+    static_ads_tag = '<script type="module" src="/assets/v2/js/static-ads.js" defer>'
     script_tags = re.findall(r"<script[^>]*>", p.html)
-    assert all('type="application/ld+json"' in tag for tag in script_tags)
+    assert all(
+        'type="application/ld+json"' in tag or tag == static_ads_tag
+        for tag in script_tags
+    ), script_tags
 
 
 def test_gc21_rendered_title_tag_content_is_escaped(fake_bundle_xss, fake_now):

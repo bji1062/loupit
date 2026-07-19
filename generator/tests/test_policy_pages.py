@@ -243,3 +243,22 @@ def test_pc12_default_policy_values_leave_no_placeholder_braces(fake_bundle, fak
     assert "최종 수정일: 2026-07-18" in html
     assert "{운영자 정정·문의 연락처}" not in html
     assert "{게시 시 운영자 확정}" not in html
+
+
+# ── GC-24: 정책 페이지 정적 광고·동의 배선(SP-ADS-9, 2026-07-19) ────────────
+
+
+def test_gc24_policy_static_wiring_no_ads_but_consent(fake_bundle, fake_now):
+    """정책 페이지: page_type=policy(무광고 게이팅)·광고 호스트 0. 동의 배너와
+    static-ads.js는 base 공통 — 개인정보처리방침이 약속한 동의 선택 경로를
+    모든 정적 페이지에서 제공한다(감사 #12 후속). render_all이 함께 렌더하는
+    404.html은 page_type 미선언(→ ads.js 'default' 무광고)이 설계 의도."""
+    for path, p in _render_policy_pages(fake_bundle, fake_now).items():
+        if path == "404.html":
+            assert "data-page-type" not in p.html, path    # 미선언 = default 무광고
+        else:
+            assert '<body data-page-type="policy">' in p.html, path
+        assert 'id="consent-banner"' in p.html, path
+        assert "/assets/v2/js/static-ads.js" in p.html, path
+        assert "data-ad-position" not in p.html, path      # 무광고: 호스트 자체 미방출
+        assert 'class="ad-slot"' not in p.html, path

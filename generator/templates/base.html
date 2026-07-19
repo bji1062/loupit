@@ -9,7 +9,9 @@
 {% block jsonld %}{% endblock %}
 {% endblock %}
 </head>
-<body>
+{#- page_type: 자식 템플릿이 최상위 {% set page_type = '...' %}로 선언(SP-ADS-3.2 게이팅 값:
+    company/combo/policy). 미선언(404 등) → 속성 미방출 = ads.js 'default'(무광고). -#}
+<body{% if page_type is defined and page_type %} data-page-type="{{ page_type }}"{% endif %}>
 <header>
 {% include "partials/_header.html" %}
 </header>
@@ -19,5 +21,9 @@
 <footer>
 {% include "partials/_footer.html" %}
 </footer>
+{# SP-ADS-9 정적 배선(2026-07-19, 감사 #12): 동의 배너 + 광고·동의 진입점. 본문 표시·색인은
+   JS 없이 완성(NFR24)이며 이 스크립트는 enhancement 전용 — 실패해도 본문 무손상. #}
+{% include "partials/_consent_banner.html" %}
+<script type="module" src="/assets/v2/js/static-ads.js" defer></script>
 </body>
 </html>

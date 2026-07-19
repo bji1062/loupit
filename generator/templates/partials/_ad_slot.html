@@ -1,7 +1,8 @@
-{# _ad_slot.html — 광고 슬롯 자리·표기·CLS 예약(SP-GEN-8). 자리·예약·"광고"
-   표기만 소유 — 실 콘텐츠는 SP-ADS `ads.js`가 런타임에 주입한다(NFR24). #}
-{% macro ad_slot(slot_name, h, cfg) -%}
-<aside class="ad-slot" data-slot="{{ slot_name }}" data-ad-client="{{ cfg.adsense_client_id }}" style="min-height:{{ h }}px">
-  <span class="ad-label">광고</span>
-</aside>
+{# _ad_slot.html — 광고 슬롯 자리(SP-GEN-8, 2026-07-19 개정 — SP-ADS-9 계약 정렬).
+   빈 [data-ad-position] 컨테이너만 방출한다(셸 index/compare와 동일 계약). 라벨·
+   예약 높이·<ins> 렌더는 전부 SP-ADS ads.js가 런타임 주입하고, 승인 전(placeholder
+   client)에는 호스트를 숨겨 빈 '광고' 박스를 노출하지 않는다(감사 #12). client id는
+   adsConfig.js 단일 소유(A-2) — 정적 마크업에 data-ad-client를 넣지 않는다. #}
+{% macro ad_slot(slot_name) -%}
+<div data-ad-position="{{ slot_name }}"></div>
 {%- endmacro %}

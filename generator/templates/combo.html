@@ -1,6 +1,7 @@
 {# combo.html — 인기 조합 본문(SP-GEN-7): 사전요약 M1~M5 + 양사 CTA V +
    내부링크 L + 광고 content_mid/content_bottom. JSON-LD 필수 아님(SP-GEN-7.6). #}
 {% extends "base.html" %}
+{% set page_type = 'combo' %}
 {% from "partials/_ad_slot.html" import ad_slot %}
 {% from "partials/_badge.html" import badge %}
 {% block main %}
@@ -76,7 +77,7 @@
   <p class="prefill-notice">본 요약은 개인 입력 없는 사전값 기준입니다. 나에게 맞는 비교는 아래 비교 툴에서 직접 입력해 확인하세요.</p>
   <p class="cta"><a href="{{ compare_href }}">비교 툴에서 열기</a></p>
 
-  {{ ad_slot("content_mid", 250, cfg) }}
+  {{ ad_slot("content_mid") }}
 
   <section class="related-links" aria-label="관련 링크">
     <h2>관련 링크</h2>
@@ -90,7 +91,8 @@
     {% endif %}
   </section>
 
-  {{ ad_slot("content_bottom", 250, cfg) }}
+  {{ ad_slot("content_bottom") }}
+  <div data-affiliate-host></div>
   {% include "partials/_disclaimer.html" %}
 </article>
 {% endblock %}

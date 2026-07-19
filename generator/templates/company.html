@@ -1,6 +1,7 @@
 {# company.html — 회사 상세 본문(SP-GEN-5): 기업정보 G2 + 근무형태 G3 +
    복지표 G4 + CTA C1 + 면책 B6 + 광고 슬롯 content_mid/content_bottom. #}
 {% extends "base.html" %}
+{% set page_type = 'company' %}
 {% from "partials/_ad_slot.html" import ad_slot %}
 {% from "partials/_benefit_table.html" import benefit_table %}
 {% block jsonld %}{% include "partials/_jsonld_org.html" %}{% endblock %}
@@ -29,8 +30,9 @@
     {{ benefit_table(benefit_groups) }}
   </section>
   <p class="cta"><a href="{{ compare_href }}">이 회사로 비교하기</a></p>
-  {{ ad_slot("content_mid", 250, cfg) }}
+  {{ ad_slot("content_mid") }}
   {% include "partials/_disclaimer.html" %}
-  {{ ad_slot("content_bottom", 250, cfg) }}
+  {{ ad_slot("content_bottom") }}
+  <div data-affiliate-host></div>
 </article>
 {% endblock %}

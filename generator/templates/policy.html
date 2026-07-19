@@ -3,6 +3,7 @@
    `PolicySection.paragraphs`로 삽입되며 autoescape만 적용(`|safe` 없음,
    PC-13 계약). #}
 {% extends "base.html" %}
+{% set page_type = 'policy' %}
 {% block main %}
 <article class="policy-page">
   <h1>{{ title }}</h1>

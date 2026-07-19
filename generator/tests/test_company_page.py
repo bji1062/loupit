@@ -172,29 +172,44 @@ def test_gc16_no_prefill_or_slot_param_emitted(fake_bundle, fake_now):
             assert "slot=" not in href
 
 
-# ── GC-17: 광고 슬롯 자리·표기·min-height, 복지표 내부 슬롯 0 ──────────────
+# ── GC-17: 광고 슬롯 자리(2026-07-19 개정 — SP-ADS-9 계약 정렬) ─────────────
+# 정적 HTML은 빈 [data-ad-position] 호스트만 방출하고 라벨·예약·<ins>는 ads.js가
+# 런타임 주입한다. 승인 전(placeholder client) 빈 '광고' 박스를 정적으로 그리지
+# 않는다(감사 #12 — 구 계약은 회사 98페이지에 빈 점선 박스 2개씩 상시 렌더했다).
 
 
-def test_gc17_company_page_has_content_mid_and_content_bottom_ad_slots(fake_bundle, fake_now):
+def test_gc17_company_page_has_ad_position_hosts(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
-    assert p.html.count('class="ad-slot"') == 2
-    assert 'data-slot="content_mid"' in p.html
-    assert 'data-slot="content_bottom"' in p.html
-    assert p.html.count('class="ad-label">광고</span>') == 2
-    assert re.search(r'ad-slot"[^>]*style="min-height:\d+px"', p.html)
+    assert 'data-ad-position="content_mid"' in p.html
+    assert 'data-ad-position="content_bottom"' in p.html
+    assert p.html.count("data-ad-position=") == 2
 
 
-def test_gc17_ad_client_id_is_placeholder(fake_bundle, fake_now):
+def test_gc17_static_html_has_no_prerendered_ad_box(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
-    assert f'data-ad-client="{CFG.adsense_client_id}"' in p.html
-    assert "ca-pub-XXXX" in p.html or CFG.adsense_client_id in p.html
+    assert 'class="ad-slot"' not in p.html   # 광고 박스는 ads.js 렌더 전용
+    assert "ad-label" not in p.html          # '광고' 라벨도 렌더 시에만(span+::before 이중 라벨 방지)
+    assert "data-ad-client" not in p.html    # client id는 adsConfig.js 단일 소유(A-2)
+    assert "data-slot=" not in p.html        # 구 계약 마크업 잔존 금지
 
 
-def test_gc17_no_ad_slot_inside_benefit_table(fake_bundle, fake_now):
+def test_gc17_no_ad_host_inside_benefit_table(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
     table_start = p.html.index('class="benefit-table"')
     table_end = p.html.index("</section>", table_start)
-    assert "ad-slot" not in p.html[table_start:table_end]
+    assert "data-ad-position" not in p.html[table_start:table_end]
+
+
+# ── GC-24: 정적 광고·동의 배선(SP-ADS-9 — body page-type·배너·진입 스크립트) ──
+
+
+def test_gc24_company_static_ads_wiring(fake_bundle, fake_now):
+    p = _samsung(fake_bundle, fake_now)
+    assert '<body data-page-type="company">' in p.html
+    assert 'id="consent-banner"' in p.html
+    assert 'data-consent="grant"' in p.html and 'data-consent="deny"' in p.html
+    assert '/assets/v2/js/static-ads.js' in p.html
+    assert "data-affiliate-host" in p.html
 
 
 def test_M2_qualitative_benefit_null_desc_no_none_token():
