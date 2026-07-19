@@ -24,6 +24,13 @@
   <section id="{{ s.anchor }}">
     <h2>{{ s.heading }}</h2>
     {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+    {% if s.external_links %}
+    <ul class="policy-ext-links">
+    {%- for label, url in s.external_links %}
+      <li><a href="{{ url }}" rel="noopener nofollow" target="_blank">{{ label }}</a></li>
+    {%- endfor %}
+    </ul>
+    {% endif %}
     {% if s.cross_route %}<p><a href="{{ s.cross_route }}">자세히 보기</a></p>{% endif %}
   </section>
   {% endfor %}

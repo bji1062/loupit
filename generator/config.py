@@ -29,9 +29,11 @@ class GenConfig:
     # 실값 기본(발견 #8, 2026-07-18 사용자 결정): 플레이스홀더 중괄호가 라이브에 노출되던
     # 문제를 없앤다. env(POLICY_CONTACT/POLICY_LAST_MODIFIED)로 여전히 override 가능.
     policy_contact: str = os.environ.get("POLICY_CONTACT", "bji1062@gmail.com")
-    policy_last_modified: str = os.environ.get("POLICY_LAST_MODIFIED", "2026-07-18")
-    # legal_reviewed 기본 false 유지 — 법률 검토 전이라 초안 배너를 계속 노출한다(사용자 결정).
-    legal_reviewed: bool = os.environ.get("POLICY_LEGAL_REVIEWED", "false") == "true"
+    policy_last_modified: str = os.environ.get("POLICY_LAST_MODIFIED", "2026-07-19")
+    # 2026-07-19 사용자 결정: 개인 프로젝트 수준으로 확정 게시(초안 배너 해제). 정식 법률
+    # 검토는 실수익 발생 시점으로 유예 — 문안이 스스로 '검토 안 된 초안'을 선언하는 상태가
+    # 고지 효력·심사·신뢰 모두에 더 해롭다는 판단. env로 여전히 재점등 가능.
+    legal_reviewed: bool = os.environ.get("POLICY_LEGAL_REVIEWED", "true") == "true"
 
     # SP-GEN-1.3 사이트 상수 (FR-50, NFR22, SP-ARCH-6)
     site_origin: str = os.environ.get("SITE_ORIGIN", "https://jobcho.wiki")

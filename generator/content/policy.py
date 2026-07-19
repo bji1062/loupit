@@ -25,6 +25,9 @@ class PolicySection:
     heading: str  # 본문 <h2> 제목
     paragraphs: tuple[str, ...]  # 초안 한국어 문단(≥1). Jinja autoescape로 안전 삽입
     cross_route: str | None = None  # 본문 내 정책 상호 링크 대상 라우트(예: "/disclaimer")
+    # 외부 안내 링크 [(라벨, https URL)] — 코드 상수만 허용(사용자 데이터 비경유, PC-13 정합).
+    # 용도: 행태정보 옵트아웃 등 제3자 관리 페이지 안내(KISA 맞춤형 광고 가이드라인 취지).
+    external_links: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -50,6 +53,7 @@ def _S(
     heading: str,
     paragraphs: tuple[str, ...],
     cross_route: str | None = None,
+    external_links: tuple[tuple[str, str], ...] = (),
 ) -> PolicySection:
     """PolicySection 생성 헬퍼 (SP-POL-2.1)."""
     return PolicySection(
@@ -59,7 +63,17 @@ def _S(
         heading=heading,
         paragraphs=paragraphs,
         cross_route=cross_route,
+        external_links=external_links,
     )
+
+
+# 개인화 광고 옵트아웃 외부 링크 정본(P4·A-4 공용) — 2026-07-19 애드센스 심사 대비:
+# '거부할 수 있다'는 안내만 있고 실제 관리 경로 링크가 0건이던 갭을 해소한다.
+OPT_OUT_LINKS = (
+    ("Google 광고 설정(개인화 광고 관리·해제)", "https://adssettings.google.com"),
+    ("Google 파트너 사이트에서의 데이터 사용 안내", "https://policies.google.com/technologies/partner-sites"),
+    ("DAA 맞춤형 광고 옵트아웃(aboutads.info)", "https://optout.aboutads.info"),
+)
 
 
 # 상위 필수 항목 ID 집합(검증 PC-2): 문안 누락 방지의 계약
@@ -136,8 +150,11 @@ def _privacy(cfg) -> PolicyDoc:
                     "Google 등 제3자가 쿠키를 통해 광고·분석 목적의 정보를 처리할 수 "
                     "있습니다. 이용자는 사이트의 광고·쿠키 동의 안내에서 개인화 광고에 "
                     "대한 동의 또는 거부를 선택할 수 있습니다.",
+                    "개인화 광고는 아래 외부 페이지에서도 직접 관리하거나 거부할 수 "
+                    "있습니다.",
                 ),
                 cross_route="/ads",
+                external_links=OPT_OUT_LINKS,
             ),
             _S(
                 "P5", "p5", "거부해도 이용", "거부해도 이용 가능",
@@ -328,8 +345,11 @@ def _ads(cfg) -> PolicyDoc:
                     "광고 게재를 위해 Google 등 제3자가 쿠키를 사용할 수 있으며, "
                     "개인화 광고 동의/거부를 선택할 수 있습니다. 자세한 내용은 "
                     "개인정보처리방침과 사이트의 동의 안내를 확인해 주세요.",
+                    "개인화 광고는 아래 외부 페이지에서도 직접 관리하거나 거부할 수 "
+                    "있습니다.",
                 ),
                 cross_route="/privacy",
+                external_links=OPT_OUT_LINKS,
             ),
             _S(
                 "A-5", "a5", "공정위 표시·광고 규정", "공정위 표시·광고 규정 정합",

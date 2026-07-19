@@ -240,7 +240,7 @@ def test_pc12_default_policy_values_leave_no_placeholder_braces(fake_bundle, fak
     pages = _render_policy_pages(fake_bundle, fake_now)
     html = pages["disclaimer.html"].html
     assert "bji1062@gmail.com" in html
-    assert "최종 수정일: 2026-07-18" in html
+    assert "최종 수정일: 2026-07-19" in html
     assert "{운영자 정정·문의 연락처}" not in html
     assert "{게시 시 운영자 확정}" not in html
 
@@ -262,3 +262,31 @@ def test_gc24_policy_static_wiring_no_ads_but_consent(fake_bundle, fake_now):
         assert "/assets/v2/js/static-ads.js" in p.html, path
         assert "data-ad-position" not in p.html, path      # 무광고: 호스트 자체 미방출
         assert 'class="ad-slot"' not in p.html, path
+
+
+# ── PC-14: 확정 게시(초안 배너 해제) + 옵트아웃 외부 링크 (2026-07-19 사용자 결정) ──
+
+
+def test_pc14_default_render_has_no_draft_banner(fake_bundle, fake_now):
+    """기본 CFG(legal_reviewed=True)에서 정책 4종·404 어디에도 초안 배너가 없다.
+    배너 메커니즘 자체는 유지(PC-11) — env POLICY_LEGAL_REVIEWED=false로 재점등 가능."""
+    for path, p in _render_policy_pages(fake_bundle, fake_now).items():
+        assert "본 문서는 초안입니다" not in p.html, path
+        assert 'class="policy-draft"' not in p.html, path
+
+
+def test_pc14_privacy_and_ads_have_opt_out_links(fake_bundle, fake_now):
+    """개인화 광고 옵트아웃 외부 링크 3종이 /privacy(P4)·/ads(A-4)에 렌더된다 —
+    '거부할 수 있다' 안내만 있고 관리 경로가 0건이던 갭 해소(애드센스 심사 대비)."""
+    pages = _render_policy_pages(fake_bundle, fake_now)
+    for fname in ("privacy.html", "ads.html"):
+        html = pages[fname].html
+        for url in (
+            "https://adssettings.google.com",
+            "https://policies.google.com/technologies/partner-sites",
+            "https://optout.aboutads.info",
+        ):
+            assert f'href="{url}"' in html, f"{fname}: {url} 부재"
+        assert html.count('rel="noopener nofollow" target="_blank"') >= 3, fname
+    # 무관 문서에는 미방출
+    assert "adssettings.google.com" not in pages["terms.html"].html
