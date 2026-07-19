@@ -14,7 +14,7 @@ from datetime import date
 from generator.bundle import load_bundle, load_bundle_json
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, policy
+from generator.pages import combo, company, company_index, policy
 from generator.pages import sitemap as sitemap_page
 from generator.release import stage_and_swap, write_manifest
 from generator.render import make_env
@@ -45,6 +45,7 @@ def run(
     combo_pairs = combo.load_pairs(ctx)
     pages = []
     pages += company.render_all(env, ctx, combo_pairs=combo_pairs)  # 회사 ~95 (SP-GEN-5·6)
+    pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     if only:  # 개발용 경로 접두 필터

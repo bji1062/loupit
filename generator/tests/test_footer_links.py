@@ -32,14 +32,28 @@ LANDING_SHELL = REPO_ROOT / "web" / "index.html"
 COMPARE_SHELL = REPO_ROOT / "web" / "compare" / "index.html"
 
 _FOOTER_BLOCK_RE = re.compile(r"<footer[^>]*>(.*?)</footer>", re.S | re.I)
+# 정책 링크 nav만 추출한다 — PC-5의 계약은 "정책 4종 라벨·라우트 정합"이지
+# "푸터에 다른 링크가 없음"이 아니다(2026-07-19 푸터에 회사 인덱스 진입문 nav 추가).
+_POLICY_NAV_RE = re.compile(r'<nav aria-label="정책 링크"[^>]*>(.*?)</nav>', re.S)
+_SITE_NAV_RE = re.compile(r'<nav aria-label="사이트 탐색"[^>]*>(.*?)</nav>', re.S)
 _LINK_RE = re.compile(r'<a href="([^"]+)">([^<]*)</a>')
 
 
 def _extract_footer_links(html: str) -> list[tuple[str, str]]:
-    """`<footer>…</footer>` 내부 `<a href>` 목록 → `[(label, route)]`."""
-    m = _FOOTER_BLOCK_RE.search(html)
-    assert m, "footer 요소를 찾을 수 없음"
-    return [(label.strip(), href) for href, label in _LINK_RE.findall(m.group(1))]
+    """푸터의 **정책 링크 nav** 내부 `<a href>` 목록 → `[(label, route)]`."""
+    footer = _FOOTER_BLOCK_RE.search(html)
+    assert footer, "footer 요소를 찾을 수 없음"
+    nav = _POLICY_NAV_RE.search(footer.group(1))
+    assert nav, '푸터에 <nav aria-label="정책 링크"> 없음'
+    return [(label.strip(), href) for href, label in _LINK_RE.findall(nav.group(1))]
+
+
+def _extract_site_nav_links(html: str) -> list[tuple[str, str]]:
+    """푸터의 사이트 탐색 nav(회사 인덱스 진입문) → `[(label, route)]`."""
+    footer = _FOOTER_BLOCK_RE.search(html)
+    assert footer, "footer 요소를 찾을 수 없음"
+    nav = _SITE_NAV_RE.search(footer.group(1))
+    return [(label.strip(), href) for href, label in _LINK_RE.findall(nav.group(1))] if nav else []
 
 
 # ── (a) 생성 페이지(SP-GEN) 푸터 — POLICY_FOOTER_LINKS 순회 렌더 일치 ───────
@@ -109,3 +123,26 @@ def test_pc5_landing_shell_footer_matches_policy_footer_links():
     html = LANDING_SHELL.read_text(encoding="utf-8")
     links = _extract_footer_links(html)
     assert links == list(POLICY_FOOTER_LINKS)
+
+
+# ── GC-27b: 회사 인덱스 진입문이 전 페이지 푸터에 있는가 (2026-07-19) ────────
+# 검수 반증: 회사 페이지끼리는 이어졌으나 랜딩·비교툴에서 그 덩어리로 들어가는
+# 정적 링크가 0건이라 진입 경로가 sitemap 뿐이었다. 푸터 진입문이 그 문이다.
+
+_INDEX_LINK = ("등록 회사 목록", "/companies")
+
+
+def test_gc27b_generated_pages_footer_has_company_index_link(fake_bundle, fake_now, fake_combinations_path):
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    pages = company.render_all(env, ctx) + combo.render_all(env, ctx, CFG) + policy.render_all(env, ctx)
+    for p in pages:
+        assert _INDEX_LINK in _extract_site_nav_links(p.html), f"{p.path}: 회사 인덱스 진입문 없음"
+
+
+def test_gc27b_hand_written_shells_have_company_index_link():
+    """수기 셸(랜딩·비교툴)은 상수 import가 불가한 무빌드 HTML이라 하드코딩 —
+    크롤러가 루트로 들어왔을 때의 유일한 정적 진입문이므로 여기서 강제한다."""
+    for shell in (LANDING_SHELL, COMPARE_SHELL):
+        html = shell.read_text(encoding="utf-8")
+        assert _INDEX_LINK in _extract_site_nav_links(html), f"{shell.name}: 회사 인덱스 진입문 없음"

@@ -312,3 +312,96 @@ def test_gc25_industry_tokens_bridge_free_text_variants():
     assert not tok("게임") & tok("바이오")
     assert tok(None) == set() and tok("") == set()
     assert tok(" 전자 / 반도체 ") == {"전자", "반도체"}
+
+
+# ── GC-26: 링크 그래프 도달성(2026-07-19 검수 반증 반영) ────────────────────
+# 반증 내용: 업종 매칭이 상한을 채우면 폴백이 실행되지 않아 큰 업종군이 폐쇄
+# 싱크가 됐다(실데이터 게임 8사 — 그 안으로 들어온 크롤러는 나머지 87개를 못 봄).
+# 당시 연결이 유지된 유일한 이유는 ncsoft의 수동 메타 '게임/IT' 한 줄이었다.
+# 이제 가나다순 앞·뒤 이웃을 선예약해 전 회사가 양방향 링으로 이어진다.
+
+
+def _reach_all(bundle, now):
+    """관련 회사 링크만으로 만든 방향 그래프에서 시작점별 도달 회사 수."""
+    from collections import deque
+
+    ctx = build_context(bundle, now=now)
+    rev = {v: k for k, v in ctx.slugs.items()}
+    adj = {
+        c["comp_eng_nm"]: [rev[h.rsplit("/", 1)[1]] for _, h in company._related_companies(c, ctx)]
+        for c in ctx.companies
+    }
+
+    def reach(start):
+        seen, q = {start}, deque([start])
+        while q:
+            for nxt in adj[q.popleft()]:
+                if nxt not in seen:
+                    seen.add(nxt)
+                    q.append(nxt)
+        return seen
+
+    return adj, {e: reach(e) for e in adj}
+
+
+def _bundle_with_saturated_industry(n_same=9, n_other=4):
+    """한 업종에 상한(6) 초과 회사가 몰린 번들 — 폐쇄 싱크 재현용."""
+    companies = []
+    for i in range(n_same):
+        companies.append(_mk_company(f"game{i}", f"가게임{i:02d}", "게임"))
+    for i in range(n_other):
+        companies.append(_mk_company(f"bio{i}", f"하바이오{i:02d}", "바이오"))
+    return {"company_types": [], "benefit_presets": {}, "companies": companies}
+
+
+def _mk_company(eng, nm, industry):
+    return {
+        "comp_id": abs(hash(eng)) % 100000,
+        "comp_eng_nm": eng,
+        "comp_nm": nm,
+        "comp_tp_cd": "large",
+        "industry_nm": industry,
+        "logo_nm": nm[0],
+        "work_style_val": {},
+        "aliases": [],
+        "benefits": [
+            {
+                "benefit_nm": "복지",
+                "benefit_amt": 10,
+                "benefit_ctgr_cd": "perks",
+                "badge_cd": "official",
+                "amt_source": "stated",
+                "qual_yn": False,
+                "verified_dtm": "2026-01-01",
+                "expires_dtm": "2099-12-31",
+            }
+        ],
+    }
+
+
+def test_gc26_saturated_industry_does_not_create_closed_sink(fake_now):
+    """업종 포화 클러스터에서 시작해도 전 회사에 도달한다(체인 슬롯 선예약)."""
+    bundle = _bundle_with_saturated_industry()
+    adj, reach = _reach_all(bundle, fake_now)
+    total = len(adj)
+    unreached = {e: sorted(set(adj) - r) for e, r in reach.items() if len(r) < total}
+    assert not unreached, f"폐쇄 싱크 발생: {unreached}"
+
+
+def test_gc26_every_company_emits_both_alphabetical_neighbours(fake_now):
+    """전 회사가 가나다순 앞·뒤 이웃을 항상 방출 → 인바운드 ≥2(단일 페이지 제거 내성)."""
+    bundle = _bundle_with_saturated_industry()
+    adj, _ = _reach_all(bundle, fake_now)
+    indeg = {e: 0 for e in adj}
+    for targets in adj.values():
+        for t in targets:
+            indeg[t] += 1
+    assert min(indeg.values()) >= 2, f"인바운드 1 이하 존재: {indeg}"
+
+
+def test_gc26_related_selection_is_deterministic(fake_bundle, fake_now):
+    """같은 번들 → 빌드마다 동일 링크(동명 회사 동점도 comp_eng_nm으로 안정 정렬)."""
+    ctx = build_context(fake_bundle, now=fake_now)
+    first = [company._related_companies(c, ctx) for c in ctx.companies]
+    second = [company._related_companies(c, ctx) for c in ctx.companies]
+    assert first == second

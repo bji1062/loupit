@@ -1,0 +1,18 @@
+{# companies.html — 회사 인덱스(SP-GEN-5.3). 등록 회사 전량 링크 = 크롤러 진입문
+   이자 사용자 탐색 경로. page_type 미선언 → 광고 없음(ads.js 'default'). #}
+{% extends "base.html" %}
+{% block main %}
+<article class="company-index">
+  <h1>등록 회사 {{ total }}곳</h1>
+  <p class="index-lead">복지 데이터가 확인된 회사만 등록합니다. 회사를 고르면 복지 항목·출처·확인일을 볼 수 있습니다.</p>
+  <ul class="company-index-list">
+  {% for it in items %}
+    <li>
+      <a href="{{ it.href }}">{{ it.comp_nm }}</a>
+      {%- if it.industry_nm %} <span class="index-industry">{{ it.industry_nm }}</span>{% endif %}
+    </li>
+  {% endfor %}
+  </ul>
+  <p class="cta"><a href="{{ cfg.compare_path }}">두 회사 비교하기</a></p>
+</article>
+{% endblock %}

@@ -111,12 +111,27 @@ def _company_view(c: dict, ctx, now) -> dict:
 
 
 def _industry_tokens(industry_nm) -> set[str]:
-    """업종 문자열 → 토큰 집합. `INDUSTRY_NM`이 자유 텍스트라 완전일치만으로는
-    '전자/반도체'와 '반도체', 'IT/포털'과 'IT/플랫폼'이 서로 남남이 된다
-    (실데이터 95개사 중 48개가 업종 단독사로 잡힌 원인). 구분자로 쪼개
-    토큰이 하나라도 겹치면 같은 업종군으로 본다.
+    """업종 문자열 → 토큰 집합(casefold 정규화). `INDUSTRY_NM`이 자유 텍스트라
+    완전일치만으로는 '전자/반도체'와 '반도체', 'IT/포털'과 'it/플랫폼'이 서로
+    남남이 된다. 구분자로 쪼개고 대소문자를 접어 비교한다.
+    실데이터 구분자는 '/' 뿐이며 나머지는 예방적 수용이다.
     """
-    return {t.strip() for t in re.split(r"[/·,]", industry_nm or "") if t.strip()}
+    return {
+        t.strip().casefold()
+        for t in re.split(r"[/·,&]", industry_nm or "")
+        if t.strip()
+    }
+
+
+def _industry_related(tokens: set[str], other: set[str]) -> bool:
+    """업종군 일치 판정 — 토큰 완전일치 또는 한쪽이 다른 쪽의 접두.
+
+    접두까지 보는 이유: '반도체장비'(6개사)·'반도체소재'(2)가 '반도체'(3)와
+    완전일치로는 영영 안 붙어 업종 이웃 0인 회사가 22개 남았다.
+    """
+    if tokens & other:
+        return True
+    return any(a.startswith(b) or b.startswith(a) for a in tokens for b in other)
 
 
 def _related_companies(c: dict, ctx) -> list[tuple[str, str]]:
@@ -129,32 +144,45 @@ def _related_companies(c: dict, ctx) -> list[tuple[str, str]]:
     정렬·순회가 결정적이라 같은 번들이면 빌드마다 동일 결과다.
     """
     eng = c["comp_eng_nm"]
-    ordered = sorted(ctx.companies, key=lambda x: x["comp_nm"])
-    picked: list[dict] = []
-    seen = {eng}
+    ordered = sorted(ctx.companies, key=lambda x: (x["comp_nm"], x["comp_eng_nm"]))
+    idx = next(i for i, x in enumerate(ordered) if x["comp_eng_nm"] == eng)
+    n = len(ordered)
 
+    # (1) 체인 슬롯 선예약 — 가나다순 앞·뒤 이웃을 **항상** 방출한다(링 구조).
+    # 예약이 필수인 이유: 업종 매칭만으로 상한을 채우면 폴백이 실행되지 않아
+    # 큰 업종군(게임 8사 등)이 폐쇄 싱크가 되고, 그 안으로 들어온 크롤러가
+    # 나머지 전부를 못 본다. 양쪽 이웃을 고정하면 전 회사가 하나의 양방향 링으로
+    # 이어져 도달성이 데이터가 아니라 구조로 보장된다(GC-26 회귀 검증).
+    chain = []
+    for j in ((idx + 1) % n, (idx - 1) % n):
+        x = ordered[j]
+        if x["comp_eng_nm"] != eng and x not in chain:
+            chain.append(x)
+
+    # (2) 남는 슬롯을 업종군으로 채운다(표시 순서는 업종 먼저 — 관련성 우선).
+    chain_engs = {x["comp_eng_nm"] for x in chain}
+    seen = {eng} | chain_engs
+    industry: list[dict] = []
     tokens = _industry_tokens(c.get("industry_nm"))
     if tokens:
         for x in ordered:
-            if len(picked) >= RELATED_COMPANY_MAX:
+            if len(industry) >= RELATED_COMPANY_MAX - len(chain):
                 break
-            if x["comp_eng_nm"] not in seen and tokens & _industry_tokens(x.get("industry_nm")):
-                picked.append(x)
+            if x["comp_eng_nm"] not in seen and _industry_related(
+                tokens, _industry_tokens(x.get("industry_nm"))
+            ):
+                industry.append(x)
                 seen.add(x["comp_eng_nm"])
 
-    if len(picked) < RELATED_COMPANY_MAX:
-        idx = next(i for i, x in enumerate(ordered) if x["comp_eng_nm"] == eng)
-        for offset in range(1, len(ordered)):
-            for j in (idx + offset, idx - offset):  # 뒤 → 앞 순서로 번갈아
-                if 0 <= j < len(ordered) and len(picked) < RELATED_COMPANY_MAX:
-                    x = ordered[j]
-                    if x["comp_eng_nm"] not in seen:
-                        picked.append(x)
-                        seen.add(x["comp_eng_nm"])
-            if len(picked) >= RELATED_COMPANY_MAX:
-                break
+    picked = industry + chain
+    return [(_related_label(x, picked), f"/company/{ctx.slugs[x['comp_eng_nm']]}") for x in picked]
 
-    return [(x["comp_nm"], f"/company/{ctx.slugs[x['comp_eng_nm']]}") for x in picked]
+
+def _related_label(x: dict, picked: list[dict]) -> str:
+    """앵커 텍스트 — 동명이사가 함께 뽑히면 업종을 덧붙여 구분한다(현 시드엔 없음)."""
+    if sum(1 for y in picked if y["comp_nm"] == x["comp_nm"]) > 1 and x.get("industry_nm"):
+        return f"{x['comp_nm']}({x['industry_nm']})"
+    return x["comp_nm"]
 
 
 def _related_combos(eng: str, ctx, combo_pairs) -> list[tuple[str, str]]:
@@ -164,12 +192,14 @@ def _related_combos(eng: str, ctx, combo_pairs) -> list[tuple[str, str]]:
     존재하지 않는 /vs/ 경로를 링크하지 않기 위한 계약(GC-20 정합).
     """
     links: list[tuple[str, str]] = []
+    rev = {ctx.slugs[e]: e for e in (ctx.by_eng or {})}
     for a, b in combo_pairs or ():
         if eng not in (a, b):
             continue
-        path, _first, _second = combo_slug(a, b, ctx.slugs)
-        other = b if a == eng else a
-        label = f"{ctx.by_eng[eng]['comp_nm']} vs {ctx.by_eng[other]['comp_nm']}"
+        path, first, second = combo_slug(a, b, ctx.slugs)
+        # 앵커 텍스트를 조합 페이지의 h1·title과 같은 순서(slug 사전식)로 맞춘다 —
+        # 역순 라벨은 클릭 후 제목이 뒤바뀐 것처럼 보인다(2026-07-19 검수).
+        label = f"{ctx.by_eng[rev[first]]['comp_nm']} vs {ctx.by_eng[rev[second]]['comp_nm']}"
         links.append((label, f"/vs/{path}"))
     return links
 
