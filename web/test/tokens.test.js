@@ -297,8 +297,8 @@ describe('UT-FONT-DISPLAY', () => {
     assert.match(fontFaceBody, /font-display\s*:\s*swap/);
   });
 
-  test('src가 self-host /assets/fonts/…woff2 경로', () => {
-    assert.match(fontFaceBody, /src\s*:\s*url\(['"]?\/assets\/fonts\/[^)'"]+\.woff2['"]?\)/);
+  test('src가 self-host /assets/v2/fonts/…woff2 경로(캐시버스팅 v2 세대)', () => {
+    assert.match(fontFaceBody, /src\s*:\s*url\(['"]?\/assets\/v2\/fonts\/[^)'"]+\.woff2['"]?\)/);
   });
 
   test('외부 CDN URL 0개(http(s):// 부재)', () => {
