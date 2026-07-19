@@ -6,6 +6,10 @@
 set -uo pipefail
 BASE="${BASE:-https://jobcho.wiki}"
 fail=0
+# 헤더 덤프용 임시 디렉터리 — 고정 /tmp 파일명은 sticky-bit /tmp에서 타 사용자 잔존 파일을
+# 못 덮어 영구 false-FAIL을 만들고(sudo↔일반 교차 실행), `curl | tee | grep -q`는 pipefail
+# 아래 SIGPIPE 플레이크 창이 있다 — mktemp + 파이프 분해로 회피(2026-07-19 검수).
+SMOKE_TMP="$(mktemp -d)"; trap 'rm -rf "${SMOKE_TMP}"' EXIT
 
 chk(){ # $1=이름 $2=조건(0/1 반환 명령)
   if eval "$2" >/dev/null 2>&1; then echo "  OK  $1"; else echo "  FAIL $1" >&2; fail=1; fi
@@ -33,15 +37,19 @@ chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-secu
 # SM-9: 반드시 200과 gzip을 함께 검사한다 — 404 폴백(/404.html)도 gzip으로 나와서
 # 경로 검사를 빼면 자산 404가 통과해 버린다(2026-07-19 설계 반증에서 발견된 false-pass).
 # 대상은 v2 세대 경로(자산 캐시버스팅 — nginx alias /assets/v2/ → web/assets/, 런타임 gzip).
-chk "SM-9 asset gzip(runtime)" "curl -s -o /dev/null -H 'Accept-Encoding: gzip' -w '%{http_code} %{content_type}' -D /tmp/loupit-sm9.h ${BASE}/assets/v2/js/app.js | grep -q '^200 ' && grep -qi 'content-encoding: gzip' /tmp/loupit-sm9.h"
+chk "SM-9 asset gzip(runtime)" "curl -s -o /dev/null -H 'Accept-Encoding: gzip' -D ${SMOKE_TMP}/sm9.h ${BASE}/assets/v2/js/app.js && grep -q '^HTTP.* 200' ${SMOKE_TMP}/sm9.h && grep -qi 'content-encoding: gzip' ${SMOKE_TMP}/sm9.h"
 
 # ── 자산 v2 세대 검증(SM-15, 2026-07-19 캐시버스팅) ──
 # v2 자산이 200 + no-cache(재검증 캐시)로 서빙되는지 — nginx conf 미배치·alias 오타는
 # 문법검사(-t)로 안 잡히므로 스모크가 유일한 라이브 검증선이다.
-chk "SM-15a v2 css 200+no-cache"  "curl -sI ${BASE}/assets/v2/css/styles.css | tee /tmp/loupit-sm15a.h | grep -q '^HTTP.* 200' && grep -qi 'cache-control: no-cache' /tmp/loupit-sm15a.h"
-chk "SM-15b v2 json 200+no-cache" "curl -sI ${BASE}/assets/v2/data/affiliate.json | tee /tmp/loupit-sm15b.h | grep -q '^HTTP.* 200' && grep -qi 'cache-control: no-cache' /tmp/loupit-sm15b.h"
-chk "SM-15c 구경로 no-cache 강등"  "curl -sI ${BASE}/assets/js/app.js | tee /tmp/loupit-sm15c.h | grep -q '^HTTP.* 200' && grep -qi 'cache-control: no-cache' /tmp/loupit-sm15c.h"
+sm15(){ # $1=파일명 $2=URL — 헤더를 파일로 받아 200 + no-cache 를 파이프 없이 판정
+  curl -s -o /dev/null -D "${SMOKE_TMP}/$1" "$2" && grep -q '^HTTP.* 200' "${SMOKE_TMP}/$1" && grep -qi 'cache-control: no-cache' "${SMOKE_TMP}/$1"
+}
+chk "SM-15a v2 css 200+no-cache"  "sm15 a.h ${BASE}/assets/v2/css/styles.css"
+chk "SM-15b v2 json 200+no-cache" "sm15 b.h ${BASE}/assets/v2/data/affiliate.json"
+chk "SM-15c 구경로 no-cache 강등"  "sm15 c.h ${BASE}/assets/js/app.js"
 chk "SM-15d HTML의 v2 참조"       "curl -s ${BASE}/compare/ | grep -q '/assets/v2/js/app.js'"
+chk "SM-15e v2 font 200+no-cache" "sm15 e.h ${BASE}/assets/v2/fonts/PretendardVariable.woff2"
 
 # ── TLS 유효성(SM-10) ──
 chk "SM-10 tls valid" "echo | openssl s_client -connect jobcho.wiki:443 -servername jobcho.wiki 2>/dev/null | openssl x509 -noout -checkend 0"
