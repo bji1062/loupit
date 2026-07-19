@@ -36,7 +36,7 @@ class GenConfig:
     # SP-GEN-1.3 사이트 상수 (FR-50, NFR22, SP-ARCH-6)
     site_origin: str = os.environ.get("SITE_ORIGIN", "https://jobcho.wiki")
     out_dir: str = os.environ.get("GEN_OUT_DIR", "web/dist")
-    default_og_image: str = "/assets/og-default.png"  # 사이트 기본 공유 이미지(회사별 없음, FR-55)
+    default_og_image: str = "/assets/v2/og-default.png"  # 사이트 기본 공유 이미지(회사별 없음, FR-55)
     adsense_client_id: str = os.environ.get(
         "ADSENSE_CLIENT_ID", "ca-pub-XXXXXXXXXXXXXXXX"
     )  # placeholder(NFR22)

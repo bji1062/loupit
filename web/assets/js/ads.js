@@ -147,7 +147,7 @@ let _affiliateCache = null;
 export async function loadAffiliate() {
   if (_affiliateCache) return _affiliateCache;
   try {
-    const res = await fetch('/assets/data/affiliate.json', { credentials: 'omit' });   // 동일 오리진·무자격증명
+    const res = await fetch('/assets/v2/data/affiliate.json', { credentials: 'omit' }); // 동일 오리진·무자격증명(v2 세대 — no-cache 재검증)
     const data = await res.json();
     _affiliateCache = (data && Array.isArray(data.items)) ? data : { version: 1, items: [] };
   } catch { _affiliateCache = { version: 1, items: [] }; }                              // 실패 → 빈 목록(무크래시, AF-7)

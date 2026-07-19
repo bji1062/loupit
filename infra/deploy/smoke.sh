@@ -27,7 +27,18 @@ chk "SM-4 ref cache-header" "curl -sI ${BASE}/api/v1/reference/all | grep -qi 'c
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"
-chk "SM-9 gzip_static"      "curl -sI -H 'Accept-Encoding: gzip' ${BASE}/assets/js/app.js | grep -qi 'content-encoding: gzip'"
+# SM-9: 반드시 200과 gzip을 함께 검사한다 — 404 폴백(/404.html)도 gzip으로 나와서
+# 경로 검사를 빼면 자산 404가 통과해 버린다(2026-07-19 설계 반증에서 발견된 false-pass).
+# 대상은 v2 세대 경로(자산 캐시버스팅 — nginx alias /assets/v2/ → web/assets/, 런타임 gzip).
+chk "SM-9 asset gzip(runtime)" "curl -s -o /dev/null -H 'Accept-Encoding: gzip' -w '%{http_code} %{content_type}' -D /tmp/loupit-sm9.h ${BASE}/assets/v2/js/app.js | grep -q '^200 ' && grep -qi 'content-encoding: gzip' /tmp/loupit-sm9.h"
+
+# ── 자산 v2 세대 검증(SM-15, 2026-07-19 캐시버스팅) ──
+# v2 자산이 200 + no-cache(재검증 캐시)로 서빙되는지 — nginx conf 미배치·alias 오타는
+# 문법검사(-t)로 안 잡히므로 스모크가 유일한 라이브 검증선이다.
+chk "SM-15a v2 css 200+no-cache"  "curl -sI ${BASE}/assets/v2/css/styles.css | tee /tmp/loupit-sm15a.h | grep -q '^HTTP.* 200' && grep -qi 'cache-control: no-cache' /tmp/loupit-sm15a.h"
+chk "SM-15b v2 json 200+no-cache" "curl -sI ${BASE}/assets/v2/data/affiliate.json | tee /tmp/loupit-sm15b.h | grep -q '^HTTP.* 200' && grep -qi 'cache-control: no-cache' /tmp/loupit-sm15b.h"
+chk "SM-15c 구경로 no-cache 강등"  "curl -sI ${BASE}/assets/js/app.js | tee /tmp/loupit-sm15c.h | grep -q '^HTTP.* 200' && grep -qi 'cache-control: no-cache' /tmp/loupit-sm15c.h"
+chk "SM-15d HTML의 v2 참조"       "curl -s ${BASE}/compare/ | grep -q '/assets/v2/js/app.js'"
 
 # ── TLS 유효성(SM-10) ──
 chk "SM-10 tls valid" "echo | openssl s_client -connect jobcho.wiki:443 -servername jobcho.wiki 2>/dev/null | openssl x509 -noout -checkend 0"
