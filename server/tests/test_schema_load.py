@@ -206,11 +206,27 @@ def test_SC3_verified_by_id_absent(schema_db, db_name):
 
 
 # ── SC-4: 감사 4종 컬럼 ──
-@pytest.mark.parametrize("table", TABLE_CREATE_ORDER)
+# TCOMPARE_LOG 면제: 익명 로그 설계(INV-1 개정 2026-07-14) — 사용자 식별 감사 컬럼(INS_ID·MOD_ID)을
+# 두지 않고 append-only 라 MOD_DTM 도 없다. 익명 계약은 아래 SC-4b 가 적극 검증한다.
+AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG"}
+
+
+@pytest.mark.parametrize("table", [t for t in TABLE_CREATE_ORDER if t not in AUDIT_EXEMPT_TABLES])
 def test_SC4_audit_columns_present(schema_db, db_name, table):
     cols = set(_columns(schema_db, db_name, table))
     missing = AUDIT_COLUMNS - cols
     assert not missing, f"{table} 감사 컬럼 누락: {missing}"
+
+
+def test_SC4b_compare_log_anonymity_contract(schema_db, db_name):
+    """TCOMPARE_LOG 익명 계약(INV-1·FR-07 예외 한정): 쌍+시각 외 컬럼이 늘어나면 실패.
+
+    사용자 식별자·IP·세션·입력값 컬럼 추가를 스키마 수준에서 차단하는 가드.
+    """
+    cols = set(_columns(schema_db, db_name, "TCOMPARE_LOG"))
+    assert cols == {"CMP_LOG_ID", "A_COMP_ID", "B_COMP_ID", "INS_DTM"}, (
+        f"TCOMPARE_LOG 컬럼이 익명 계약과 다름: {sorted(cols)}"
+    )
 
 
 # ── SC-5: 문자셋/엔진 ──
