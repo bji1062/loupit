@@ -228,12 +228,46 @@ export function renderInputView(state, deps) {
   renderPriorityPicker(state);
 }
 
+// ── 결측 안내(#3): 어느 슬롯의 어느 필수값이 비었는지 특정해 안내(role="alert") ──────────────
+export const MISSING_LABEL = {
+  salary: '현재 직장(A)의 현재 연봉',
+  raise: '이직 후보(B)의 연봉 상승률',
+};
+
+// 결측 코드 배열 → 사용자 안내 문구.
+export function missingMessage(missing) {
+  const names = (missing || []).map((k) => MISSING_LABEL[k] || k);
+  return names.length
+    ? names.join(', ') + '을(를) 입력해야 비교할 수 있습니다.'
+    : '필수 입력값이 비어 있습니다.';
+}
+
+function showMissingAlert(missing) {
+  if (typeof document === 'undefined') return;
+  let box = byId('input-missing-alert');
+  if (!box) { // 셸에 없으면 비교하기 버튼 앞에 동적 생성(index/compare 공통 — JS 소유)
+    box = el('p', { id: 'input-missing-alert', role: 'alert', class: 'input-missing-alert' });
+    const btn = byId('btn-compare');
+    if (btn && btn.parentNode && typeof btn.parentNode.insertBefore === 'function') btn.parentNode.insertBefore(box, btn);
+    else { const view = byId('view-input'); if (view && view.append) view.append(box); }
+  }
+  box.textContent = missingMessage(missing);
+  box.hidden = false;
+}
+
+function clearMissingAlert() {
+  const box = byId('input-missing-alert');
+  if (box) { box.textContent = ''; box.hidden = true; }
+}
+
 // ── 입력 뷰 배선(비교하기) ───────────────────────────────────────────────────
 export function bindInputView(state, deps) {
   const btn = byId('btn-compare');
   if (btn) {
     btn.addEventListener('click', () => {
-      if (typeof deps.runReport === 'function') deps.runReport({ state, mountEl: byId('report-body') });
+      const report = (typeof deps.runReport === 'function') ? deps.runReport({ state, mountEl: byId('report-body') }) : null;
+      if (report && report.ok === false) { showMissingAlert(report.missing); return; } // 결측 → 리포트 이동 차단·안내(#3)
+      clearMissingAlert();
       if (typeof deps.go === 'function') deps.go('report');
       if (typeof deps.mountAds === 'function') { try { deps.mountAds('result'); } catch { /* 광고 실패 무손상(MON6) */ } }
     });
@@ -284,7 +318,10 @@ export function bindHeaderSearch(state, deps) {
 // ── 부팅 재시도 ──────────────────────────────────────────────────────────────
 export function bindBootRetry(state, deps) {
   const btn = byId('btn-boot-retry');
-  if (btn && typeof deps.reboot === 'function') btn.addEventListener('click', () => deps.reboot());
+  if (!btn || typeof deps.reboot !== 'function') return;
+  if (btn.dataset && btn.dataset.bootRetryBound === '1') return; // 재시도 반복 시 중복 리스너 방지(#10)
+  if (btn.dataset) btn.dataset.bootRetryBound = '1';
+  btn.addEventListener('click', () => deps.reboot());
 }
 
 // ── 진입점 ───────────────────────────────────────────────────────────────────

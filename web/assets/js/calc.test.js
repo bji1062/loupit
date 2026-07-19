@@ -9,13 +9,13 @@ import { dirname, join } from 'node:path';
 
 import {
   // 상수
-  OT_HRS, LEGAL_WEEK_HRS, REMOTE_SAVE, FLEX_BONUS, PTO_BONUS, MONTHLY_STD_HRS,
+  OT_HRS, LEGAL_WEEK_HRS, AUTONOMY_LABELS, MONTHLY_STD_HRS,
   OT_MULT, WEEKS_PER_MONTH, WEEKS_PER_YEAR, WON_PER_MANWON, COMMUTE_ROUND_TRIP,
   COMMUTE_WORKDAYS, WORKDAY_HRS, PROJECTION_YEARS, BENEFIT_SAT_THRESHOLD,
   GROWTH_RATE_FALLBACK, BAND_BASE, BAND_EXPIRE, BENEFIT_CATEGORIES,
   // 함수
   parseSalRange, deriveOfferRange, benTotal, benByCat, benCatCompare, qualCompare,
-  effSalary, getWSHours, getOTPay, hourlyValue, autonomyScore, commuteCompare,
+  effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks, commuteCompare,
   bandCoeff, sumBand, getCompanyType, brandProjection, buildVdCard, sacrificeCost,
   compare, calc, restSummary,
 } from './calc.js';
@@ -46,9 +46,7 @@ describe('T-05.1.1 모듈 골격·상수 스모크', () => {
   test('상수 전량 export', () => {
     assert.deepEqual(OT_HRS, { low: 40, mid: 45, high: 54 });
     assert.equal(LEGAL_WEEK_HRS, 40);
-    assert.deepEqual(REMOTE_SAVE, { none: 0, partial: 72, hybrid: 120, free: 180 });
-    assert.equal(FLEX_BONUS, 50);
-    assert.equal(PTO_BONUS, 80);
+    assert.deepEqual(AUTONOMY_LABELS, { remote: '재택근무', flex: '유연근무', unlimitedPTO: '무제한휴가' });
     assert.equal(MONTHLY_STD_HRS, 209);
     assert.equal(OT_MULT, 1.5);
     assert.equal(WEEKS_PER_MONTH, 4.33);
@@ -68,7 +66,7 @@ describe('T-05.1.1 모듈 골격·상수 스모크', () => {
 
   test('함수 전량 export', () => {
     for (const fn of [parseSalRange, deriveOfferRange, benTotal, benByCat, benCatCompare,
-      qualCompare, effSalary, getWSHours, getOTPay, hourlyValue, autonomyScore,
+      qualCompare, effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks,
       commuteCompare, bandCoeff, sumBand, getCompanyType, brandProjection, buildVdCard,
       sacrificeCost, compare, calc, restSummary]) {
       assert.equal(typeof fn, 'function');
@@ -122,6 +120,11 @@ describe('T-05.2 연봉 Range', () => {
     assert.deepEqual(deriveOfferRange({ min: 5000, max: 7000, mid: 6000 }, null), { min: 0, max: 0, mid: 0 });
   });
 
+  test('T-ENGINE-5b (#8): 연봉 하한 0("0-5000") → B 연봉 붕괴 없음(min=0은 유효값)', () => {
+    // 구현 전엔 !baseRange.min(0 falsy)이 결측 취급해 {0,0,0}으로 붕괴했다.
+    assert.deepEqual(deriveOfferRange({ min: 0, max: 5000, mid: 2500 }, 10), { min: 0, max: 5500, mid: 2750 });
+  });
+
   test('T-ENGINE-48: deriveOfferRange 반올림 경계', () => {
     const base = { min: 5001, max: 7005, mid: 6003 };
     const rate = 33;
@@ -163,13 +166,18 @@ describe('T-05.3 복지 합산·카테고리·정성', () => {
     assert.equal(perksRow.sumA, 50);
   });
 
-  test('T-ENGINE-9: qualCompare — 정성 항목 a1/b0', () => {
-    const listA = [{ checked: true, qual_yn: true, benefit_nm: '유연근무', benefit_ctgr_cd: 'flexibility', qual_desc: '자율 출퇴근' }];
+  test('T-ENGINE-9: qualCompare — 정성 항목 a1/b0(소스 qual_desc_ctnt → 출력 qual_desc, #11)', () => {
+    const listA = [{ checked: true, qual_yn: true, benefit_nm: '유연근무', benefit_ctgr_cd: 'flexibility', qual_desc_ctnt: '자율 출퇴근' }];
     const result = qualCompare(listA, []);
     assert.deepEqual(result, {
       a: [{ benefit_nm: '유연근무', benefit_ctgr_cd: 'flexibility', qual_desc: '자율 출퇴근' }],
       b: [],
     });
+  });
+
+  test('T-ENGINE-9b (#11): qual_desc_ctnt 없으면 빈 문자열, 구 qual_desc 키는 무시', () => {
+    const listA = [{ checked: true, qual_yn: true, benefit_nm: '재택', benefit_ctgr_cd: 'flexibility', qual_desc: '무시되는 구필드' }];
+    assert.equal(qualCompare(listA, []).a[0].qual_desc, ''); // 구 qual_desc는 소스가 아님(#11)
   });
 });
 
@@ -213,12 +221,20 @@ describe('T-05.4 실효연봉·근무시간·야근·시간가치', () => {
 
 // ── T-05.5: 워라밸·통근 ───────────────────────────────────────────────
 describe('T-05.5 워라밸·통근', () => {
-  test('T-ENGINE-18: autonomyScore 만점 조합', () => {
-    assert.equal(autonomyScore({ remote: 'hybrid', flex: 'flexible' }, { work_style_val: { unlimitedPTO: true } }), 250);
+  test('T-ENGINE-18: autonomyPerks — enum 문자열/불리언 계약 모두 수용, 3요소 전부 보유', () => {
+    assert.deepEqual(autonomyPerks({ remote: 'hybrid', flex: 'flexible' }, { work_style_val: { unlimitedPTO: true } }),
+      ['재택근무', '유연근무', '무제한휴가']);
+    assert.deepEqual(autonomyPerks({ remote: true, flex: true }, { work_style_val: { unlimitedPTO: true } }),
+      ['재택근무', '유연근무', '무제한휴가']); // 실데이터·UI 불리언 계약도 동일 결과
   });
 
-  test('T-ENGINE-19: autonomyScore 미선택·회사없음 → 0', () => {
-    assert.equal(autonomyScore({ remote: 'none', flex: 'none' }, null), 0);
+  test('T-ENGINE-18b (#2 회귀): 불리언 remote=true가 반영(구현 전엔 항상 0/누락)', () => {
+    assert.deepEqual(autonomyPerks({ remote: true, flex: false }, null), ['재택근무']);
+  });
+
+  test('T-ENGINE-19: autonomyPerks — none/false/회사없음 → 빈 배열', () => {
+    assert.deepEqual(autonomyPerks({ remote: 'none', flex: 'none' }, null), []);
+    assert.deepEqual(autonomyPerks({ remote: false, flex: false }, { work_style_val: { unlimitedPTO: false } }), []);
   });
 
   test('T-ENGINE-20: commuteCompare', () => {
@@ -315,18 +331,27 @@ describe('T-05.7 vdCard·브랜드·희생', () => {
     assert.equal(card.p2.detail.missing, true);
   });
 
-  test('T-ENGINE-33: buildVdCard(wlb) — 적게 일하기/자율성', () => {
-    const m = { wsHoursA: 40, wsHoursB: 45, autoA: 50, autoB: 250 };
+  test('T-ENGINE-33: buildVdCard(wlb) — 적게 일하기(a) · 시간 자율성 엄격 우세(b가 상위집합)', () => {
+    const m = { wsHoursA: 40, wsHoursB: 45, autoA: ['유연근무'], autoB: ['재택근무', '유연근무'] };
     const card = buildVdCard('wlb', m);
     assert.equal(card.p1.winner, 'a');
-    assert.equal(card.p2.winner, 'b');
+    assert.equal(card.p2.winner, 'b');            // B가 A를 진부분집합으로 초과 → 승(#2)
+    assert.deepEqual(card.p2.detail, { perksA: ['유연근무'], perksB: ['재택근무', '유연근무'] });
+  });
+
+  test('T-ENGINE-33b (#2): 시간 자율성 — 동일 집합·비교불가는 tie', () => {
+    const eq = buildVdCard('wlb', { wsHoursA: 45, wsHoursB: 45, autoA: ['재택근무'], autoB: ['재택근무'] });
+    assert.equal(eq.p2.winner, 'tie');            // 동일 집합
+    const incomp = buildVdCard('wlb', { wsHoursA: 45, wsHoursB: 45, autoA: ['재택근무'], autoB: ['유연근무'] });
+    assert.equal(incomp.p2.winner, 'tie');        // 비교불가(각자 다른 항목)
   });
 
   test('T-ENGINE-34: buildVdCard(wlb) — wsA=0 미입력 → p1 tie/missing', () => {
-    const m = { wsHoursA: 0, wsHoursB: 45, autoA: 50, autoB: 250 };
+    const m = { wsHoursA: 0, wsHoursB: 45, autoA: [], autoB: ['재택근무'] };
     const card = buildVdCard('wlb', m);
     assert.equal(card.p1.winner, 'tie');
     assert.equal(card.p1.detail.missing, true);
+    assert.equal(card.p2.winner, 'b');            // A 빈 집합 ⊂ B → B 승
   });
 
   test('T-ENGINE-35: buildVdCard(benefits) — benA>benB, |diff|<1200 satisfy', () => {
@@ -375,7 +400,7 @@ function makeState(overrides = {}) {
       a: [
         { benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 300, benefit_ctgr_cd: 'compensation', badge_cd: 'official', amt_source: 'stated', checked: true, qual_yn: false, expires_dtm: null },
         { benefit_cd: 'gym', benefit_nm: '헬스비', benefit_amt: 100, benefit_ctgr_cd: 'health', badge_cd: 'est', amt_source: 'estimated', checked: true, qual_yn: false, expires_dtm: null },
-        { benefit_cd: 'culture', benefit_nm: '자기계발', benefit_amt: null, benefit_ctgr_cd: 'growth', badge_cd: 'est', amt_source: 'none', checked: true, qual_yn: true, qual_desc: '도서구매 지원', expires_dtm: null },
+        { benefit_cd: 'culture', benefit_nm: '자기계발', benefit_amt: null, benefit_ctgr_cd: 'growth', badge_cd: 'est', amt_source: 'none', checked: true, qual_yn: true, qual_desc_ctnt: '도서구매 지원', expires_dtm: null },
       ],
       b: [
         { benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 200, benefit_ctgr_cd: 'compensation', badge_cd: 'official', amt_source: 'stated', checked: true, qual_yn: false, expires_dtm: null },
@@ -443,8 +468,25 @@ describe('T-05.8 오케스트레이터', () => {
     assert.doesNotThrow(() => {
       const result = compare(state, NOW);
       assert.equal(result.ok, false);
-      assert.deepEqual(result.missing, ['salary']);
+      assert.ok(result.missing.includes('salary'));
     });
+  });
+
+  test('T-ENGINE-41b (#3): 상승률 미입력(selectedRate null) → ok:false·missing raise', () => {
+    const result = compare(makeState({ selectedRate: null }), NOW);
+    assert.equal(result.ok, false);
+    assert.ok(result.missing.includes('raise'));
+  });
+
+  test('T-ENGINE-41c (#3): 상승률 0(동결)은 유효값 → raise 결측 아님', () => {
+    const result = compare(makeState({ selectedRate: 0 }), NOW);
+    assert.equal(result.missing.includes('raise'), false);
+  });
+
+  test('T-ENGINE-40b (#2): compare — 슬롯 autonomy는 보유 자율성 요소 라벨 배열', () => {
+    const result = compare(makeState(), NOW);
+    assert.deepEqual(result.a.autonomy, ['재택근무', '유연근무']);              // hybrid+flexible, PTO false
+    assert.deepEqual(result.b.autonomy, ['재택근무', '유연근무', '무제한휴가']); // free+stagger + PTO true
   });
 
   test('T-ENGINE-42: compare warnings — 양쪽 포괄+야근 → both_inclusive', () => {

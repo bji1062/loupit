@@ -270,6 +270,9 @@ main p { margin-top:var(--sp-3); }
 .search-error { color:var(--negative); }
 .ui-notify { margin:var(--sp-3) 0; padding:var(--sp-3) var(--sp-4); background:var(--badge-expired-bg); color:var(--badge-expired-fg); border-radius:var(--r-md); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 .ui-notify:empty { display:none; }
+/* 결측 안내(#3): 비교하기 전 어느 슬롯의 어느 필수값이 비었는지 알림 */
+.input-missing-alert { margin:var(--sp-3) 0; padding:var(--sp-3) var(--sp-4); background:var(--badge-expired-bg); color:var(--badge-expired-fg); border-radius:var(--r-md); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+.input-missing-alert:empty { display:none; }
 
 #view-input { display:grid; gap:var(--sp-5); }
 .input-slot { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-5); }

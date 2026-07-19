@@ -5,8 +5,8 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, maybeAdvance } from './ui.js';
-import { mountAds } from './ads.js';
+import { mountUI, reflectSlotLabel, maybeAdvance, bindBootRetry } from './ui.js';
+import { mountAds, initConsentBanner } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
 import { findCompanies, renderCompanyView } from './company.js';
@@ -93,29 +93,44 @@ export function showBootError(err) {
 }
 
 export async function boot(hooks = {}) {
-  const { loadReferenceFn = loadReference, bindGlobalUIFn = bindGlobalUI } = hooks;
+  const {
+    loadReferenceFn = loadReference, bindGlobalUIFn = bindGlobalUI,
+    mountAdsFn = mountAds, initConsentBannerFn = initConsentBanner,
+  } = hooks;
   bindGlobalUIFn();
   try {
     App.state.REF = await loadReferenceFn(); // boot.js: GET /api/v1/reference/all (부팅당 1회, B-1)
   } catch (err) {
-    return showBootError(err); // FR-E1 — #app 계속 hidden, 크래시 없음
+    showBootError(err); // FR-E1 — #app 밖 오류 박스 노출(#10)
+    bindBootRetry(App.state, { reboot: () => boot(hooks) }); // 실패 경로에서도 재시도 버튼 배선(#10)
+    return err;
   }
   restoreFromPrefill(); // SP-FE-11 URL 파라미터 → 슬롯 프리필(있으면)
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
     const appEl = document.getElementById('app');
     if (appEl) appEl.hidden = false;
+    const errEl = document.getElementById('boot-error');
+    if (errEl) errEl.hidden = true; // 재시도 성공 시 오류 박스 숨김(#10)
   }
+  // 최근 비교 복원 컨텍스트(C1): '불러오기' 클릭 → 레코드로 상태 복원 후 리포트 재실행·이동.
+  const recentCtx = { onRestore: (record) => restoreComparison(record, deps) };
   // 통합 계층 마운트: 검색/입력/리포트 DOM 이벤트 배선 + 입력 뷰 컨트롤 렌더(SP-FE-3 이벤트 바인딩).
-  // runReport 래핑: 비교하기 실행 시 익명 쌍 로그 1회 전송(fire-and-forget — 리포트 무손상,
-  // 직접 입력 쌍은 sendCompareLog가 자체 제외. INV-1 개정 2026-07-14).
+  // runReport 래핑: 성공 비교만 익명 쌍 로그 1회 전송(fire-and-forget — 직접 입력 쌍은 sendCompareLog가
+  // 자체 제외. INV-1 개정 2026-07-14). 결측(ok:false)이면 로그 미전송(#3).
   const deps = {
     go,
-    runReport: (h) => { const report = runReport(h); try { sendCompareLog(App.state); } catch { /* 무손상 */ } return report; },
-    mountAds,
+    runReport: (h) => {
+      const report = runReport({ ...h, recentCtx });
+      if (report && report.ok !== false) { try { sendCompareLog(App.state); } catch { /* 무손상 */ } }
+      return report;
+    },
+    mountAds: mountAdsFn,
     reboot: () => boot(hooks),
   };
   deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
+  try { initConsentBannerFn(); } catch { /* 동의 배너 실패 무손상 */ } // 광고 동의 배너 배선(#12)
+  try { mountAdsFn(); } catch { /* 광고 마운트 실패 무손상(MON6) */ } // page_type별 광고 배선(랜딩 등, #12)
   // 실시간 비교 TOP 10 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
   mountTrending({ onPick: (item) => pickTrendingPair(item, deps) });
   // 등록 회사 디렉토리(검색 카드 카운트 → 가나다순 목록 → 복지 펼침) — REF 재사용, 실패 무해.
@@ -218,19 +233,55 @@ export function assembleCompareState(state) { // App.state → CompareState(SP-E
 
 // ── 리포트 진입·재계산(FR-42): 조립 → 계산 → 렌더 ───────────────────────────
 export function runReport(hooks = {}) {
-  const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl } = hooks;
+  const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl, recentCtx } = hooks;
   const report = compareFn(assembleCompareState(state)); // SP-ENGINE-2.2 Report
+  if (report && report.ok === false) return report; // 필수값 결측 → 렌더·이동 차단(호출부가 안내, #3)
+  saveRecentComparison(state, report); // 성공 비교 자동 저장(C1) — 저장 불가 시 store가 조용히 무시
   // 마운트 지점: #report-body(리포트 콘텐츠 전용) — #view-report 자체는 광고 슬롯·버튼·헤딩을
   // 포함하므로 replaceChildren 대상에서 제외한다(compare/index.html 셸 계약).
   const el2 = mountEl || (typeof document !== 'undefined' && document.getElementById ? document.getElementById('report-body') : null);
   if (el2) {
-    renderReportFn(report, el2, { benS: state.benS, matched: state.matched }); // 배지·표시명 컨텍스트(SP-FE-9.4)
+    renderReportFn(report, el2, { benS: state.benS, matched: state.matched, recentCtx }); // 배지·표시명·최근비교 콜백(SP-FE-9.4, C1)
   }
   return report;
 }
 
-// 최근 비교 저장 진입점(리포트 하단 UI가 호출) — 필드 구성은 report.js(FR-43 경계) 소유.
+// 최근 비교 저장 진입점(외부 호출용) — 필드 구성은 report.js(FR-43 경계) 소유.
+// 통상 저장은 runReport가 자동 수행(C1). 이 헬퍼는 명시 저장이 필요한 호출부용으로 유지.
 export function saveCurrentComparison(state = App.state, report) {
   const r = report || runReport({ state, mountEl: null });
   return saveRecentComparison(state, r);
+}
+
+// ── 최근 비교 복원(C1): 저장 레코드 → App.state 재구성 후 리포트 재실행·이동 ────────────────
+// 레코드(FR-43)는 benS(체크 상태·금액)를 저장하지 않으므로, 회사 슬롯은 REF에서 복지를 재적재한다
+// (전체 체크). REF에 없는 comp_id(직접입력 등)는 슬롯 미선택으로 복원한다.
+export function restoreComparison(record, deps = {}, state = App.state) {
+  if (!record || !record.input) return false;
+  const inp = record.input;
+  state.salS = inp.salS || { a: { low: null, high: null } };
+  state.selectedRate = inp.selectedRate ?? null;
+  state.cmtS = inp.cmtS || { a: null, b: null };
+  state.wsState = inp.wsState || { a: blankWs(), b: blankWs() };
+  state.curPri = inp.curPri || '워라밸';
+  state.curSacrifice = inp.curSacrifice || null;
+  state.chosenType = inp.chosenType || { a: null, b: null };
+  state.inputMode = inp.inputMode || { a: 'company', b: 'company' };
+  for (const slot of ['a', 'b']) {
+    const s = record.slots && record.slots[slot];
+    const comp = (s && s.comp_id != null) ? resolveCompanyToken(String(s.comp_id), state) : null;
+    if (comp) {
+      state.matched[slot] = normalizeCompany(comp); // FR-14와 동일 정규화(P-2)
+      fillBenefits(state, slot); // benS 재적재(레코드 미저장분 — 전체 체크로 복원)
+    } else {
+      state.matched[slot] = null;
+      state.benS[slot] = [];
+    }
+    reflectSlotLabel(slot, state.matched[slot] ? state.matched[slot].comp_nm : '');
+  }
+  const goFn = typeof deps.go === 'function' ? deps.go : go;
+  if (typeof deps.runReport === 'function') deps.runReport({ state, mountEl: null });
+  else runReport({ state });
+  goFn('report');
+  return true;
 }

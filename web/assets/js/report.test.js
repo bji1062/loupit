@@ -512,3 +512,47 @@ describe('renderReport — 복지 비교 섹션에 매트릭스 포함', () => {
     assert.doesNotThrow(() => renderReport(report, mount));
   });
 });
+
+// ── #2: 자율성 정성 재설계 — 점수 폐기, 보유 요소 나열 ─────────────────────────
+describe('#2 워라밸 카드 자율성 요소 나열(점수 표기 폐기)', () => {
+  test('renderReport wlb 섹션: "자율성 요소" 나열, 구 "자율성 점수" 문구 부재', () => {
+    const state = fixtureState(); // wsState.a remote:hybrid·flex:flexible → ['재택근무','유연근무'], b 없음
+    const report = compare(state);
+    const mount = new FakeElement('div');
+    renderReport(report, mount, { benS: state.benS, matched: state.matched });
+    const txt = mount.allText();
+    assert.ok(txt.includes('자율성 요소'), '점수 대신 보유 요소를 나열');
+    assert.ok(txt.includes('재택근무'), 'A 슬롯 자율성 요소(재택근무) 표시');
+    assert.ok(txt.includes('해당 없음'), 'B 슬롯 보유 0개 → 해당 없음');
+    assert.equal(txt.includes('자율성 점수'), false, '구 "자율성 점수" 문구 제거');
+  });
+
+  test('시간 자율성 판정 텍스트: 보유 항목을 문장으로(perspText #2)', () => {
+    const state = fixtureState(); // p2 winner a(A ⊇ B)
+    const report = compare(state);
+    const mount = new FakeElement('div');
+    renderReport(report, mount, { benS: state.benS, matched: state.matched });
+    const persp = mount.find((n) => n.className && String(n.className).includes('vd-persp-text')
+      && n.allText().includes('시간 자율성'));
+    assert.ok(persp, '시간 자율성 판정 텍스트 존재');
+    assert.ok(persp.allText().includes('재택근무'), '판정 텍스트에 보유 항목 포함');
+  });
+});
+
+// ── #11: 정성 복지 설명(qual_desc_ctnt)이 리포트에 표시 ────────────────────────
+describe('#11 정성 복지 설명 표시', () => {
+  test('qual_desc_ctnt 보유 정성 항목의 설명이 렌더에 포함', () => {
+    const state = fixtureState({
+      benS: {
+        a: [{ benefit_cd: 'Q1', benefit_nm: '재택근무', benefit_amt: null, benefit_ctgr_cd: 'flexibility', checked: true, qual_yn: true, amt_source: 'none', badge_cd: 'est', expires_dtm: null, qual_desc_ctnt: '주 2일 이상 재택근무 지향' }],
+        b: [],
+      },
+    });
+    const report = compare(state);
+    const mount = new FakeElement('div');
+    renderReport(report, mount, { benS: state.benS, matched: state.matched });
+    const qualBlock = mount.children.find((c) => c.className && String(c.className).includes('rp-qual'));
+    assert.ok(qualBlock, '정성 복지 섹션 존재');
+    assert.ok(qualBlock.allText().includes('주 2일 이상 재택근무 지향'), '설명 텍스트가 표시됨(구현 전엔 필드명 불일치로 탈락)');
+  });
+});

@@ -20,8 +20,9 @@ import { JSDOM } from 'jsdom';
 import {
   mountUI, renderInputView, renderInputSlot, renderPriorityPicker,
   bindSearchView, bindInputView, bindReportNav, reflectSearchUI, reflectSlotLabel, maybeAdvance,
+  missingMessage,
 } from './ui.js';
-import { createInitialState } from './app.js';
+import { createInitialState, boot } from './app.js';
 import { setSearchState } from './search.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -249,5 +250,76 @@ describe('UI-5 리포트 내비 배선', () => {
     bindReportNav(state, { go: (v) => { dest = v; } });
     document.getElementById('btn-edit-input').dispatchEvent(new window.Event('click', { bubbles: true }));
     assert.equal(dest, 'input');
+  });
+});
+
+describe('UI-7 결측 안내(#3) — 필수값 비면 리포트 이동 차단', () => {
+  beforeEach(() => loadShell());
+
+  test('runReport ok:false → go 미호출 + input-missing-alert(role=alert) 노출·값 특정', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    let went = null, ads = 0;
+    bindInputView(state, {
+      runReport: () => ({ ok: false, missing: ['salary', 'raise'] }),
+      go: (v) => { went = v; },
+      mountAds: () => { ads += 1; },
+    });
+    document.getElementById('btn-compare').dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(went, null, '리포트 이동 차단');
+    assert.equal(ads, 0, '광고 마운트도 안 함');
+    const box = document.getElementById('input-missing-alert');
+    assert.ok(box, '결측 안내 박스 생성');
+    assert.equal(box.getAttribute('role'), 'alert');
+    assert.equal(box.hidden, false);
+    assert.ok(box.textContent.includes('현재 연봉'), '어느 슬롯의 어느 값이 비었는지 특정(A 연봉)');
+    assert.ok(box.textContent.includes('상승률'), 'B 상승률도 안내');
+  });
+
+  test('결측 해소 후 재클릭 → 이동 허용 + 안내 숨김', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    let okReport = false, went = null;
+    bindInputView(state, {
+      runReport: () => (okReport ? { ok: true } : { ok: false, missing: ['salary'] }),
+      go: (v) => { went = v; },
+      mountAds: () => {},
+    });
+    const btn = document.getElementById('btn-compare');
+    btn.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(went, null);
+    okReport = true;
+    btn.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(went, 'report');
+    assert.equal(document.getElementById('input-missing-alert').hidden, true, '결측 해소 시 안내 숨김');
+  });
+
+  test('missingMessage: 결측 코드 → 한국어 필드 안내(pure)', () => {
+    assert.ok(missingMessage(['salary']).includes('현재 연봉'));
+    assert.ok(missingMessage(['raise']).includes('상승률'));
+    assert.ok(missingMessage([]).length > 0);
+  });
+});
+
+describe('UI-8 부트 실패 오류 UI + 재시도(#10)', () => {
+  test('#boot-error는 #app(hidden) 밖에 위치(조상 hidden 무관하게 가시화 가능)', () => {
+    loadShell();
+    const box = document.getElementById('boot-error');
+    const app = document.getElementById('app');
+    assert.ok(box && app);
+    assert.equal(app.contains(box), false, '#boot-error가 #app 밖에 있어야 부팅 실패 시 실제로 보인다');
+  });
+
+  test('부트 실패 → boot-error 가시 + 재시도 클릭 시 재부팅(loadReference 재호출)', async () => {
+    loadShell();
+    let calls = 0;
+    const failing = async () => { calls += 1; throw new Error('net'); };
+    await boot({ loadReferenceFn: failing, mountAdsFn: () => {}, initConsentBannerFn: () => {} });
+    const box = document.getElementById('boot-error');
+    assert.equal(box.hidden, false, '오류 박스 가시');
+    assert.equal(calls, 1);
+    document.getElementById('btn-boot-retry').dispatchEvent(new window.Event('click', { bubbles: true }));
+    await new Promise((r) => setTimeout(r, 0));
+    assert.equal(calls, 2, '재시도 버튼 → 재부팅');
   });
 });

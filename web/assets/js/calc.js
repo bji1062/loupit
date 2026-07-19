@@ -38,8 +38,8 @@
 /** @typedef {{
  *   ot:     'low'|'mid'|'high'|null,     // 야근 빈도 → 주간근무시간
  *   wage:   'inclusive'|'separate'|null, // 포괄/비포괄
- *   remote: 'none'|'partial'|'hybrid'|'free'|null,
- *   flex:   'none'|'stagger'|'flexible'|null
+ *   remote: boolean|'none'|'partial'|'hybrid'|'free'|null, // 실데이터·UI는 불리언, 레거시 enum도 수용(#2)
+ *   flex:   boolean|'none'|'stagger'|'flexible'|null
  * }} WorkStyle */
 
 /** @typedef {{
@@ -80,7 +80,7 @@
  *   otPay:     number,       // 야근수당(만원/년, ≥0) FR-34
  *   total:     number,       // eff.mid + otPay  FR-34/32
  *   hourly:    number|null,  // 원/시간(null=미산출) FR-35
- *   autonomy:  number,       // 자율성 점수 FR-36
+ *   autonomy:  string[],     // 보유 자율성 요소 라벨(#2 정성 재설계, 구 점수 폐기)
  *   sumBand:   number,       // ± 만원(불확실성) FR-38
  *   totalRange:[number,number], // [total-sumBand, total+sumBand]
  *   commuteMin:number        // 편도 분
@@ -88,7 +88,7 @@
 
 /** @typedef {{
  *   ok:        boolean,      // false면 필수값 결측(missing 참조)
- *   missing:   string[],     // 예 ['salary']
+ *   missing:   string[],     // 결측 필드 코드. 'salary'(슬롯 a 연봉)·'raise'(슬롯 b 상승률)
  *   a:         SlotResult,
  *   b:         SlotResult,
  *   deltas:    { effMid:number, effMin:number, effMax:number, salMid:number,
@@ -117,9 +117,8 @@
 
 export const OT_HRS          = { low: 40, mid: 45, high: 54 };      // 주당 총 근무시간(h)
 export const LEGAL_WEEK_HRS  = 40;                                  // 법정 기준주(초과=연장근로)
-export const REMOTE_SAVE     = { none: 0, partial: 72, hybrid: 120, free: 180 }; // 연간 통근절약(만원)
-export const FLEX_BONUS      = 50;   // flex≠none 자율성 가산
-export const PTO_BONUS       = 80;   // unlimitedPTO 자율성 가산
+// 자율성 요소 라벨(#2 재설계 2026-07-18): 점수 합산을 폐기하고 보유 집합을 정성 비교한다.
+export const AUTONOMY_LABELS = { remote: '재택근무', flex: '유연근무', unlimitedPTO: '무제한휴가' };
 export const MONTHLY_STD_HRS = 209;  // 월 소정근로시간(통상시급 분모)
 export const OT_MULT         = 1.5;  // 연장근로 가산율
 export const WEEKS_PER_MONTH = 4.33; // 월 평균 주수
@@ -163,7 +162,8 @@ export function parseSalRange(salStr) {
 
 /** 슬롯 b 연봉 = 슬롯 a range × (1+rate/100). base 미입력·rate null → {0,0,0}. */
 export function deriveOfferRange(baseRange, selectedRate) {
-  if (!baseRange || !baseRange.min || selectedRate == null) return { min: 0, max: 0, mid: 0 };
+  // 하한 0("0-5000")은 유효 연봉이므로 min·max가 모두 0(무입력 센티넬)일 때만 결측 취급(#8).
+  if (!baseRange || (!baseRange.min && !baseRange.max) || selectedRate == null) return { min: 0, max: 0, mid: 0 };
   const mult = 1 + selectedRate / 100;
   return {
     min: Math.round(baseRange.min * mult),
@@ -211,7 +211,7 @@ export function benCatCompare(listA, listB) {
 export function qualCompare(listA, listB) {
   const pick = list => (list || [])
     .filter(b => b.checked && b.qual_yn)
-    .map(b => ({ benefit_nm: b.benefit_nm, benefit_ctgr_cd: b.benefit_ctgr_cd, qual_desc: b.qual_desc || '' }));
+    .map(b => ({ benefit_nm: b.benefit_nm, benefit_ctgr_cd: b.benefit_ctgr_cd, qual_desc: b.qual_desc_ctnt || '' }));
   return { a: pick(listA), b: pick(listB) };
 }
 
@@ -260,13 +260,33 @@ export function hourlyValue(effMid, otPay, wsHours) {
 // 10. 워라밸·자율성 — SP-ENGINE-10 (FR-36)
 // ─────────────────────────────────────────────────────────────────────
 
-/** 자율성 점수 = REMOTE_SAVE[remote] + (flex≠none?50) + (unlimitedPTO?80). */
-export function autonomyScore(ws, slotMeta) {
-  const remote = (ws && REMOTE_SAVE[ws.remote]) || 0;
-  const flex   = (ws && ws.flex && ws.flex !== 'none') ? FLEX_BONUS : 0;
-  const pto    = (slotMeta && slotMeta.work_style_val && slotMeta.work_style_val.unlimitedPTO)
-    ? PTO_BONUS : 0;
-  return remote + flex + pto;
+// 진리값 해석(#2): 불리언은 그대로, 레거시 enum 문자열은 'none'→false·그 외 truthy 문자열→true.
+// 실데이터·UI는 불리언(재택 true/false)을 주고 구 프리셋·테스트는 enum('hybrid' 등)을 줄 수 있어 양쪽 계약을 모두 수용한다.
+function autonomyTruthy(v) {
+  if (typeof v === 'string') return v !== '' && v !== 'none';
+  return !!v;
+}
+
+/** 자율성 요소 보유 목록(한국어 라벨 배열). 재택근무·유연근무·무제한휴가 순. 점수 합산 폐기(#2). */
+export function autonomyPerks(ws, slotMeta) {
+  const perks = [];
+  if (ws && autonomyTruthy(ws.remote)) perks.push(AUTONOMY_LABELS.remote);
+  if (ws && autonomyTruthy(ws.flex)) perks.push(AUTONOMY_LABELS.flex);
+  const meta = slotMeta && slotMeta.work_style_val;
+  if (meta && autonomyTruthy(meta.unlimitedPTO)) perks.push(AUTONOMY_LABELS.unlimitedPTO);
+  return perks;
+}
+
+/** '시간 자율성' 판정 — 엄격 우세만 승(#2): 한쪽 보유 집합이 상대를 진부분집합으로 초과(모두 포함+더 보유)할 때만 승.
+ *  집합 동일 → tie, 서로 비교불가(각자 다른 항목 보유) → tie. */
+function autonomyWinner(perksA, perksB) {
+  const A = new Set(Array.isArray(perksA) ? perksA : []); // 비배열 방어(무크래시)
+  const B = new Set(Array.isArray(perksB) ? perksB : []);
+  const aCoversB = [...B].every((x) => A.has(x)); // A ⊇ B
+  const bCoversA = [...A].every((x) => B.has(x)); // B ⊇ A
+  if (aCoversB && !bCoversA) return 'a';           // A가 B를 전부 포함 + 더 보유
+  if (bCoversA && !aCoversB) return 'b';
+  return 'tie';                                    // 동일 집합 또는 비교불가
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -338,8 +358,8 @@ function vdWlb(m) {
   };
   const p2 = {
     label: '시간 자율성',
-    winner: m.autoA > m.autoB ? 'a' : m.autoB > m.autoA ? 'b' : 'tie',
-    detail: { autoA: m.autoA, autoB: m.autoB },
+    winner: autonomyWinner(m.autoA, m.autoB),                 // #2: 점수 비교 폐기 → 보유 집합 엄격 우세
+    detail: { perksA: m.autoA || [], perksB: m.autoB || [] }, // 한국어 라벨 배열(렌더가 문장화)
   };
   return { axis: 'wlb', p1, p2, tie: p1.winner === 'tie' && p2.winner === 'tie' };
 }
@@ -466,7 +486,8 @@ export function compare(state, now = Date.now()) {
   const salA = parseSalRange(state.salStr);
   const salB = deriveOfferRange(salA, state.selectedRate);
   const missing = [];
-  if (!salA.min && !salA.max) missing.push('salary');   // 연봉 필수(UC-30 2a)
+  if (!salA.min && !salA.max) missing.push('salary');    // 슬롯 a 현재 연봉 필수(UC-30 2a)
+  if (state.selectedRate == null) missing.push('raise'); // 슬롯 b 상승률 필수(#3) — 0(동결)은 유효값이라 == null 만 결측
 
   const R = {};   // 슬롯 원시 결과
   for (const s of ['a', 'b']) {
@@ -478,7 +499,7 @@ export function compare(state, now = Date.now()) {
     const otPay   = getOTPay(ws, sal);
     const total   = eff.mid + otPay;
     const hourly  = hourlyValue(eff.mid, otPay, wsHours);
-    const auto    = autonomyScore(ws, state.matched[s]);
+    const auto    = autonomyPerks(ws, state.matched[s]);   // #2: 보유 자율성 요소 라벨 배열
     const band    = sumBand(state.benS[s], now);
     R[s] = {
       salRange: sal, ben, net, eff, wsHours, otPay, total, hourly,

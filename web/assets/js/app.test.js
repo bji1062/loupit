@@ -24,15 +24,26 @@ globalThis.document = makeDocument();
 globalThis.history = { _calls: [], pushState(state, title, url) { this._calls.push({ state, title, url }); } };
 globalThis.location = { origin: 'https://loupit.example', hash: '', search: '' };
 globalThis.window = globalThis;
+// C1 최근 비교 저장/복원 테스트용 in-memory localStorage(store.test/report.test와 동일 패턴).
+class FakeLocalStorage {
+  constructor() { this._data = new Map(); }
+  getItem(k) { return this._data.has(k) ? this._data.get(k) : null; }
+  setItem(k, v) { this._data.set(k, String(v)); }
+  removeItem(k) { this._data.delete(k); }
+  clear() { this._data.clear(); }
+}
+globalThis.localStorage = new FakeLocalStorage();
 
 const {
   App, createInitialState, SCREENS, parseHash, go, boot, showBootError,
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
-  pickTrendingPair,
+  pickTrendingPair, restoreComparison,
 } = await import('./app.js');
+const { recent } = await import('./store.js');
 
 beforeEach(() => {
   App.state = createInitialState();
+  globalThis.localStorage.clear();
   globalThis.location.hash = '';
   globalThis.location.search = '';
   globalThis.history._calls = [];
@@ -277,5 +288,92 @@ describe('T-06.10.2 runReport', () => {
     assert.equal(renderArgs.r, fakeReport);
     assert.deepEqual(renderArgs.mountEl, { fake: true });
     assert.equal(renderArgs.ctx.benS, state.benS);
+  });
+
+  test('#3: 필수값 결측(ok:false) → 렌더·저장 차단, report 반환', () => {
+    const state = createInitialState(); // salS 미입력·selectedRate null → salary·raise 결측
+    state.REF = { company_types: [], benefit_presets: {}, companies: [] };
+    let rendered = 0;
+    const report = runReport({ state, renderReportFn: () => { rendered += 1; }, mountEl: { fake: true } });
+    assert.equal(report.ok, false);
+    assert.equal(rendered, 0, '결측 시 렌더 차단');
+    assert.equal(recent.list().length, 0, '결측 시 저장 안 함');
+  });
+});
+
+// ── C1: 최근 비교 배선(저장 자동 호출·recentCtx 주입·복원) ───────────────────
+describe('C1 최근 비교 배선', () => {
+  function reportReadyState() {
+    const state = createInitialState();
+    state.salS.a = { low: 5000, high: 5000 };
+    state.selectedRate = 10;
+    state.REF = {
+      company_types: [
+        { comp_tp_cd: 'large', growth_rate_val: 0.04, stability_score_no: 90 },
+        { comp_tp_cd: 'startup', growth_rate_val: 0.1, stability_score_no: 40 },
+      ],
+      benefit_presets: {},
+      companies: [
+        { comp_id: 1, comp_nm: 'A사', comp_tp_cd: 'large', benefits: [] },
+        { comp_id: 2, comp_nm: 'B사', comp_tp_cd: 'startup', benefits: [] },
+      ],
+    };
+    state.matched.a = { comp_id: 1, comp_nm: 'A사', comp_tp_cd: 'large', work_style_val: {} };
+    state.matched.b = { comp_id: 2, comp_nm: 'B사', comp_tp_cd: 'startup', work_style_val: {} };
+    return state;
+  }
+
+  test('runReport(성공) → recent 자동 저장 + recentCtx 렌더 주입', () => {
+    const state = reportReadyState();
+    const rc = { onRestore() {} };
+    let ctxSeen = null;
+    runReport({ state, recentCtx: rc, renderReportFn: (r, m, ctx) => { ctxSeen = ctx; }, mountEl: { fake: true } });
+    assert.equal(ctxSeen.recentCtx, rc, 'recentCtx가 렌더 컨텍스트에 주입됨');
+    assert.equal(recent.list().length, 1, '성공 비교 1건 저장');
+    assert.equal(recent.list()[0].slots.a.comp_id, 1);
+  });
+
+  test('restoreComparison — 레코드 입력 복원 + 리포트 재실행·이동', () => {
+    const state = reportReadyState();
+    const record = {
+      id: 'r1', savedAt: '2026-07-18T00:00:00Z',
+      slots: { a: { comp_id: 1 }, b: { comp_id: 2 } },
+      input: {
+        salS: { a: { low: 4000, high: 6000 } }, selectedRate: 7, cmtS: { a: 10, b: 20 },
+        wsState: { a: { ot: 'mid', wage: 'separate', remote: true, flex: false }, b: { ot: 'low', wage: 'inclusive', remote: false, flex: false } },
+        curPri: '연봉', curSacrifice: null, chosenType: { a: null, b: null }, inputMode: { a: 'company', b: 'company' },
+      },
+      result: {},
+    };
+    let ran = 0, dest = null;
+    const ok = restoreComparison(record, { runReport: () => { ran += 1; }, go: (v) => { dest = v; } }, state);
+    assert.equal(ok, true);
+    assert.deepEqual(state.salS, { a: { low: 4000, high: 6000 } });
+    assert.equal(state.selectedRate, 7);
+    assert.equal(state.curPri, '연봉');
+    assert.equal(state.matched.a.comp_id, 1, 'A 슬롯 REF에서 복원');
+    assert.equal(state.matched.b.comp_id, 2, 'B 슬롯 REF에서 복원');
+    assert.equal(ran, 1, '리포트 재실행');
+    assert.equal(dest, 'report', '리포트 뷰 이동');
+  });
+
+  test('restoreComparison — 레코드/입력 없으면 false(무크래시)', () => {
+    assert.equal(restoreComparison(null, {}, createInitialState()), false);
+    assert.equal(restoreComparison({}, {}, createInitialState()), false);
+  });
+});
+
+// ── #12: 광고·동의 배너 배선(dead code 해소) ────────────────────────────────
+describe('#12 boot() 광고·동의 배선', () => {
+  test('boot 성공 → mountAds·initConsentBanner 각 1회 호출', async () => {
+    const ref = { company_types: [], benefit_presets: {}, companies: [] };
+    let ads = 0, consent = 0;
+    await boot({
+      loadReferenceFn: async () => ref,
+      mountAdsFn: () => { ads += 1; },
+      initConsentBannerFn: () => { consent += 1; },
+    });
+    assert.equal(ads, 1, 'mountAds 배선(랜딩 등 page_type)');
+    assert.equal(consent, 1, 'initConsentBanner 배선');
   });
 });

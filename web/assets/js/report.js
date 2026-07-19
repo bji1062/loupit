@@ -28,8 +28,21 @@ function slotLabel(slot, ctx) {
 
 // ── T-06.11.2 renderVdCard — 판정카드·승자색(클래스만)·tie/limited ─────────
 function perspText(p) {
+  if (p.detail && 'perksA' in p.detail) return autonomyPerspText(p); // 시간 자율성: 점수 대신 보유 항목 나열(#2)
   if (p.winner === 'tie') return p.label + ': 거의 비슷합니다'; // tie/근소차 단정 회피(UC-33 3a)
   return p.label + ' 우위: ' + (p.winner === 'a' ? '현재 직장' : '이직처');
+}
+
+// 자율성 요소 라벨 배열 → 표시 문자열. 보유 0개면 '해당 없음'.
+function perkListText(arr) {
+  return (arr && arr.length) ? arr.join('·') : '해당 없음';
+}
+
+// 시간 자율성(p2): 양쪽 보유 항목을 나열해 승패를 문장으로 설명(#2 — 점수 표시 폐기).
+function autonomyPerspText(p) {
+  const body = '현재 직장 ' + perkListText(p.detail.perksA) + ', 이직처 ' + perkListText(p.detail.perksB);
+  if (p.winner === 'tie') return p.label + ': ' + body;
+  return p.label + ' 우위: ' + (p.winner === 'a' ? '현재 직장' : '이직처') + ' (' + body + ')';
 }
 
 function renderSacrificeNote(sacrifice) {
@@ -501,7 +514,9 @@ export function renderReport(report, mountEl, ctx = {}) {
   const wlbSection = el('section', { class: 'rp-block rp-wlb' });
   wlbSection.append(el('h3', { text: '워라밸·자율성' }));
   for (const slot of ['a', 'b']) {
-    wlbSection.append(el('p', { class: 'rp-wlb-slot', 'data-slot': slot, text: slotLabel(slot, ctx) + ' 자율성 점수: ' + report[slot].autonomy }));
+    const perks = report[slot].autonomy || [];   // #2: 점수 폐기 → 보유 자율성 요소 나열(재택·유연·무제한휴가)
+    const txt = perks.length ? perks.join('·') : '해당 없음';
+    wlbSection.append(el('p', { class: 'rp-wlb-slot', 'data-slot': slot, text: slotLabel(slot, ctx) + ' 자율성 요소: ' + txt }));
   }
   const commuteTxt = commuteText(report.commute, ctx);
   if (commuteTxt) wlbSection.append(el('p', { class: 'rp-commute', text: commuteTxt }));
