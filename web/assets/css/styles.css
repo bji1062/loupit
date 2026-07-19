@@ -497,10 +497,8 @@ main p { margin-top:var(--sp-3); }
   min-height:96px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:var(--sp-2);
   position:relative;
 }
-.ad-slot::before {
-  content:"광고"; position:absolute; top:var(--sp-2); left:var(--sp-3);
-  font-size:var(--ad-label-fs); font-weight:var(--fw-medium); color:var(--ad-label-fg);
-}
+/* '광고' 라벨(FR-76)은 ads.js가 방출하는 span.ad-label이 단일 소유 — ::before 중복 표기 금지
+   (2026-07-19 검수: 구 ::before 라벨이 span과 겹쳐 승인 후 수동 슬롯마다 이중 표기됐다). */
 .ad-label { font-size:var(--ad-label-fs); font-weight:var(--fw-medium); color:var(--ad-label-fg); }
 
 /* ══════════════════════════════════════════════════════ POLICY ══ */
