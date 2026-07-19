@@ -163,6 +163,25 @@ describe('T-06.8.4 selectCompany·sameCompanyGuard·clearSlot', () => {
     assert.equal(sameCompanyGuard(state, 'a', 2), false);
   });
 
+  test('#9: 폴백 fetch 연타 — 늦게 도착한 이전 응답이 최신 선택을 덮지 않음', async () => {
+    const state = freshState(); // REF.companies 비어 있어 두 선택 모두 폴백 fetch 경로
+    let resolveSlow;
+    const slow = new Promise((r) => { resolveSlow = r; });
+    // 1) comp 99 클릭 — fetch 보류(늦은 응답)
+    const call1 = selectCompany(state, 'a', 99, { getCompanyFn: () => slow });
+    // 2) comp 88 클릭 — 즉시 응답(최신 선택)
+    const ok2 = await selectCompany(state, 'a', 88, {
+      getCompanyFn: async (id) => ({ comp_id: id, comp_nm: '최신회사', benefits: [] }),
+    });
+    assert.equal(ok2, true);
+    assert.equal(state.matched.a.comp_id, 88);
+    // 3) 이제 첫(늦은) 응답 도착 — 최신 선택을 덮으면 안 됨
+    resolveSlow({ comp_id: 99, comp_nm: '늦은회사', benefits: [] });
+    const ok1 = await call1;
+    assert.equal(ok1, false, '늦은 응답은 폐기(최신성 가드)');
+    assert.equal(state.matched.a.comp_id, 88, '최신 선택 유지');
+  });
+
   test('clearSlot: 초기값 복귀', () => {
     const state = freshState();
     state.matched.a = normalizeCompany({ comp_id: 1, comp_nm: 'X' });

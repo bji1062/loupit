@@ -100,6 +100,20 @@ export function clearSlot(state, slot, reflectSlotLabel) {
   if (typeof reflectSlotLabel === 'function') reflectSlotLabel(slot, '');
 }
 
+// 폴백 fetch 최신성 시퀀스(#9): state별로 슬롯 선택 호출 순번을 기록해, 연타 시 늦게 도착한
+// 이전 폴백 응답이 최신 선택을 덮지 못하게 막는다. state shape을 건드리지 않도록 WeakMap에 보관.
+const _selectSeq = new WeakMap();
+function bumpSelectSeq(state, slot) {
+  let bag = _selectSeq.get(state);
+  if (!bag) { bag = { a: 0, b: 0 }; _selectSeq.set(state, bag); }
+  bag[slot] = (bag[slot] || 0) + 1;
+  return bag[slot];
+}
+function currentSelectSeq(state, slot) {
+  const bag = _selectSeq.get(state);
+  return bag ? (bag[slot] || 0) : 0;
+}
+
 // ── SP-FE-8.1 selectCompany·sameCompanyGuard(FR-14·15·16, FR-D7·D11) ───────
 // notify/reflectSlotLabel/closeCandidates/maybeAdvance는 호출부(search.js/app.js)가 주입하는 선택적 콜백.
 export function sameCompanyGuard(state, slot, compId, notify) {
@@ -113,6 +127,7 @@ export function sameCompanyGuard(state, slot, compId, notify) {
 
 export async function selectCompany(state, slot, compId, hooks = {}) {
   const { notify, reflectSlotLabel, closeCandidates, maybeAdvance, showSlotError, getCompanyFn = getCompany } = hooks;
+  const seq = bumpSelectSeq(state, slot); // 이 호출을 이 슬롯의 최신으로 등록(연타 폴백 방어, #9)
   let raw = (state.REF && state.REF.companies || []).find((c) => c.comp_id === compId); // REF 인라인 우선(호출 0)
   if (!raw) {
     try {
@@ -121,6 +136,7 @@ export async function selectCompany(state, slot, compId, hooks = {}) {
       if (typeof showSlotError === 'function') showSlotError(slot, '회사 정보를 불러올 수 없습니다.');
       return false; // FR-D11: 미선택 유지
     }
+    if (seq !== currentSelectSeq(state, slot)) return false; // 더 최신 선택이 진행됨 → 늦은 응답 폐기(#9)
   }
   if (sameCompanyGuard(state, slot, compId, notify)) return false; // 양 슬롯 동일 회사 방지(FR-15)
 
