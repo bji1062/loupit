@@ -119,14 +119,14 @@ function workStyleControls(state, slot) {
   const wrap = el('fieldset', { class: 'in-ws' });
   wrap.append(el('legend', { text: '근무 형태' }));
   const ws = state.wsState[slot] || {};
-  // 야근 빈도
+  // 야근 빈도 — 첫 옵션은 안내용 placeholder(선택 불가): disabled+hidden으로 재선택 방지
   const otSel = el('select', { 'aria-label': '야근 빈도(' + slot + ')' });
-  OT_OPTS.forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (ws.ot === v || (ws.ot == null && v === '')) o.selected = true; otSel.append(o); });
+  OT_OPTS.forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === '') { o.disabled = true; o.hidden = true; } if (ws.ot === v || (ws.ot == null && v === '')) o.selected = true; otSel.append(o); });
   otSel.addEventListener('change', () => { state.wsState[slot].ot = otSel.value || null; });
   wrap.append(otSel);
-  // 임금 형태
+  // 임금 형태 — 첫 옵션은 안내용 placeholder(선택 불가): disabled+hidden으로 재선택 방지
   const wageSel = el('select', { 'aria-label': '임금 형태(' + slot + ')' });
-  WAGE_OPTS.forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (ws.wage === v || (ws.wage == null && v === '')) o.selected = true; wageSel.append(o); });
+  WAGE_OPTS.forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === '') { o.disabled = true; o.hidden = true; } if (ws.wage === v || (ws.wage == null && v === '')) o.selected = true; wageSel.append(o); });
   wageSel.addEventListener('change', () => { state.wsState[slot].wage = wageSel.value || null; });
   wrap.append(wageSel);
   // 재택·유연근무(회사 제안값 초기 반영)
