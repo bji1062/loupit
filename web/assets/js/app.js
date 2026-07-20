@@ -105,13 +105,15 @@ export function resolveBootScreen({ want = null, hasSlotState: slots = false, ha
 }
 
 export function onPopState(e) {
-  // go()가 만든 항목은 뷰 DOM이 그대로 살아 있으므로 현행대로 신뢰한다(세션 내 뒤로/앞으로 보존).
-  if (e && e.state && e.state.screen) { go(e.state.screen, { push: false }); return; }
-  // 네이티브 앵커·크로스도큐먼트 복원 등 무상태 항목 → 강등만 적용한다(자동 복원은 하지 않는다).
-  const want = parseHash();
-  // 해시가 없으면 기존 계약대로 search. resolveBootScreen의 폴백(슬롯 있으면 input)은 **부팅** 규칙이라
-  // 여기 적용하면 뒤로가기가 현재 입력 뷰에 눌러앉아 먹통으로 보인다.
+  // e.state.screen(=go가 남긴 항목)을 우선 쓰되 **무조건 신뢰하지는 않는다**(2026-07-20 개정).
+  // 뷰 DOM이 살아 있다는 보장이 없기 때문이다 — "새 비교"가 상태와 렌더를 함께 비우고 나면
+  // 그 뒤 뒤로가기로 돌아온 report 항목은 보여줄 것이 없다. 신뢰하면 빈 리포트(B-1 재현)가,
+  // 비우지 않으면 유령 리포트(오정보)가 된다. → 부팅과 동일한 상태 술어로 판정한다.
+  const want = (e && e.state && e.state.screen) || parseHash();
+  // 해시도 상태도 없으면 기존 계약대로 search. resolveBootScreen의 폴백(슬롯 있으면 input)은
+  // **부팅** 규칙이라 여기 적용하면 뒤로가기가 현재 입력 뷰에 눌러앉아 먹통으로 보인다.
   if (!want) { go('search', { push: false }); return; }
+  // recentCount:0 고정 — popstate는 자동 복원하지 않는다(사용자가 뒤로 간 것이지 재진입이 아니다).
   const d = resolveBootScreen({
     want, hasSlotState: hasSlotState(), hasReport: hasRenderedReport(), recentCount: 0,
   });

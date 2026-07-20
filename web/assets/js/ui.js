@@ -274,6 +274,16 @@ export function bindInputView(state, deps) {
   }
 }
 
+// 렌더된 뷰 콘텐츠를 비운다("새 비교" 등 상태 초기화와 짝). 상태와 DOM이 어긋나면
+// 뒤로가기 시 유령 리포트가 남으므로, 상태를 비우는 쪽이 DOM도 함께 책임진다.
+// 셸 컨테이너 자체는 남기고 내용만 비운다(광고 슬롯·버튼은 셸 소유, SP-ADS-9.2).
+export function clearRenderedViews() {
+  for (const id of ['report-body', 'input-slot-a', 'input-slot-b', 'priority-picker']) {
+    const el = byId(id);
+    if (el && typeof el.replaceChildren === 'function') el.replaceChildren();
+  }
+}
+
 // ── 리포트 뷰 배선(입력 수정·새 비교) ───────────────────────────────────────
 export function bindReportNav(state, deps) {
   const edit = byId('btn-edit-input');
@@ -283,6 +293,10 @@ export function bindReportNav(state, deps) {
     for (const slot of ['a', 'b']) { clearSlot(state, slot, reflectSlotLabel); clearCandidatesDom(slot); }
     state.salS = { a: { low: null, high: null } };
     state.selectedRate = null;
+    state.cmtS = { a: null, b: null }; // 눈에 안 보이는 잔존 입력도 초기화("새" 비교)
+    // 렌더된 DOM까지 비운다. 상태만 비우면 뒤로가기로 돌아왔을 때 초기화된 상태와 무관한
+    // 옛 리포트가 그대로 보인다 — 빈 화면보다 위험한 오정보다(유령 리포트, 2026-07-20).
+    clearRenderedViews();
     if (typeof deps.go === 'function') deps.go('search');
   });
 }

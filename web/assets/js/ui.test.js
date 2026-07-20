@@ -251,6 +251,32 @@ describe('UI-5 리포트 내비 배선', () => {
     document.getElementById('btn-edit-input').dispatchEvent(new window.Event('click', { bubbles: true }));
     assert.equal(dest, 'input');
   });
+
+  // ── 유령 리포트(2026-07-20): "새 비교"가 상태만 비우고 렌더된 DOM을 남기면,
+  // 뒤로가기로 돌아왔을 때 초기화된 상태와 무관한 옛 리포트가 그대로 보인다.
+  // 빈 화면(B-1)보다 위험한 **오정보**다 — 실제 회사명·숫자가 든 완전한 리포트라
+  // 사용자가 현재 비교로 오인한다.
+  test('UI-5c: btn-new-search → 렌더된 DOM(리포트·입력 컨트롤)까지 비운다', () => {
+    const state = stateWithMatches();
+    state.salS.a = { low: 5000, high: 5000 };
+    state.selectedRate = 10;
+    state.cmtS = { a: 30, b: 45 };
+    // 리포트·입력 뷰를 실제로 렌더해 둔다(비교를 마친 사용자 상태).
+    renderInputView(state, {});
+    document.getElementById('report-body').append(document.createElement('div'));
+    assert.ok(document.getElementById('report-body').children.length > 0, '사전조건: 리포트 렌더됨');
+    assert.ok(document.getElementById('input-slot-a').children.length > 0, '사전조건: 입력 컨트롤 렌더됨');
+
+    bindReportNav(state, { go: () => {} });
+    document.getElementById('btn-new-search').dispatchEvent(new window.Event('click', { bubbles: true }));
+
+    assert.equal(document.getElementById('report-body').children.length, 0, '리포트 본문 비움');
+    assert.equal(document.getElementById('input-slot-a').children.length, 0, 'A 입력 컨트롤 비움');
+    assert.equal(document.getElementById('input-slot-b').children.length, 0, 'B 입력 컨트롤 비움');
+    assert.equal(document.getElementById('priority-picker').children.length, 0, '우선순위 피커 비움');
+    // 눈에 안 보이는 잔존 입력도 함께 초기화되어야 "새 비교"라는 이름에 부합한다.
+    assert.deepEqual(state.cmtS, { a: null, b: null }, '통근시간 초기화');
+  });
 });
 
 describe('UI-7 결측 안내(#3) — 필수값 비면 리포트 이동 차단', () => {

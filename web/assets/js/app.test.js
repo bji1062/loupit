@@ -531,10 +531,21 @@ describe('B-1 해시 딥링크 강등', () => {
     assert.equal(restoreLatestComparison({}, createInitialState()), false);
   });
 
-  test('UT-POP-1: popstate — e.state 있으면 강등 없이 그대로 이동', () => {
-    onPopState({ state: { screen: 'report' } });
-    assert.equal(App.state.ui.screen, 'report', 'go()가 만든 항목은 DOM이 보존되므로 신뢰');
+  // 개정(2026-07-20, 유령 리포트): e.state.screen을 무조건 신뢰하던 계약을 폐기한다.
+  // "새 비교"가 상태를 비우고 렌더된 DOM까지 지우면, 그 뒤 뒤로가기로 돌아온 report 항목은
+  // 보여줄 것이 없다. 무조건 신뢰하면 빈 리포트(B-1 재현)가, 지우지 않으면 유령 리포트(오정보)가
+  // 된다. → e.state가 있어도 부팅과 동일한 상태 술어로 판정한다.
+  test('UT-POP-1: popstate — e.state가 있어도 보여줄 상태가 없으면 강등', () => {
+    onPopState({ state: { screen: 'report' } }); // 상태 비어 있음(초기 App.state)
+    assert.equal(App.state.ui.screen, 'search');
     assert.equal(globalThis.history._calls.length, 0, '재푸시 금지');
+  });
+
+  test('UT-POP-1b: popstate — 슬롯이 살아 있으면 input 항목은 그대로 복원(정상 뒤로가기 보존)', () => {
+    App.state.matched.a = { comp_id: 1, comp_nm: 'A사' };
+    onPopState({ state: { screen: 'input' } });
+    assert.equal(App.state.ui.screen, 'input', '세션 내 정상 뒤로/앞으로는 회귀하면 안 된다');
+    assert.equal(globalThis.history._calls.length, 0);
   });
 
   test('UT-POP-3: popstate — 해시 없는 무상태 항목은 슬롯이 있어도 search(뒤로가기 먹통 방지)', () => {
