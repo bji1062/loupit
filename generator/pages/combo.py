@@ -38,8 +38,6 @@ def _company_summary(c: dict, t: dict) -> dict:
         "comp_tp_nm": t.get("comp_tp_nm"),
         "industry_nm": c.get("industry_nm"),
         "logo_nm": c.get("logo_nm"),
-        "growth_label": t.get("growth_label_nm"),
-        "stability": t.get("stability_score_no"),
     }
 
 

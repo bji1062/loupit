@@ -15,15 +15,11 @@
         <h3>{{ a.comp_nm }}</h3>
         {% if a.industry_nm %}<p>{{ a.industry_nm }}</p>{% endif %}
         {% if a.comp_tp_nm %}<p>{{ a.comp_tp_nm }}</p>{% endif %}
-        {% if a.stability is not none %}<p>안정성 지표 {{ a.stability }}</p>{% endif %}
-        {% if a.growth_label %}<p>{{ a.growth_label }}</p>{% endif %}
       </div>
       <div class="combo-side" data-side="b">
         <h3>{{ b.comp_nm }}</h3>
         {% if b.industry_nm %}<p>{{ b.industry_nm }}</p>{% endif %}
         {% if b.comp_tp_nm %}<p>{{ b.comp_tp_nm }}</p>{% endif %}
-        {% if b.stability is not none %}<p>안정성 지표 {{ b.stability }}</p>{% endif %}
-        {% if b.growth_label %}<p>{{ b.growth_label }}</p>{% endif %}
       </div>
     </div>
   </section>

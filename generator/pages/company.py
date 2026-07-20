@@ -98,8 +98,6 @@ def _company_view(c: dict, ctx, now) -> dict:
         "industry_nm": c.get("industry_nm"),
         "comp_tp_nm": t.get("comp_tp_nm"),
         "logo_nm": c.get("logo_nm"),
-        "growth_label": t.get("growth_label_nm"),
-        "stability": t.get("stability_score_no"),
         "work_style": [
             (k, ws[k])
             for k in ("remote", "flex", "unlimitedPTO", "refreshLeave", "overtime")
