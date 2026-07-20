@@ -5,11 +5,12 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, maybeAdvance, bindBootRetry } from './ui.js';
+import { mountUI, reflectSlotLabel, maybeAdvance, bindBootRetry, renderInputView } from './ui.js';
 import { mountAds, initConsentBanner } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
 import { findCompanies, renderCompanyView } from './company.js';
+import { recent } from './store.js'; // 부팅 시 #report 딥링크 자동 복원(SP-FE-10.3 L-8) — 소비만 한다
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
 export function createInitialState() {
@@ -73,9 +74,48 @@ export function go(screenId, { push = true } = {}) {
   return screenId;
 }
 
-function onPopState(e) {
-  const screen = (e.state && e.state.screen) || parseHash() || 'search';
-  go(screen, { push: false }); // 뒤로/앞으로 → 재푸시 없이 표시만
+// ── SP-FE-3.3 규칙 (3) 술어: "상태가 없으면 search" ─────────────────────────
+// 뷰에 들어갔을 때 보여줄 것이 실제로 있는지를 판정한다. 부팅·popstate 공통.
+export function hasSlotState(state = App.state) {
+  const ct = state.chosenType || {};
+  const im = state.inputMode || {};
+  return !!(state.matched.a || state.matched.b || ct.a || ct.b
+    || im.a === 'direct' || im.b === 'direct');
+}
+
+function hasRenderedReport() {
+  if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return false;
+  const el = document.getElementById('report-body');
+  return !!(el && el.children && el.children.length > 0);
+}
+
+// 해시가 요구한 뷰 + 현재 사실 → 실제로 들어갈 뷰. 순수 함수(브라우저 무의존, UT-ROUTE-3·4).
+// restore:true는 "복원을 시도하라"는 지시일 뿐이고, 이동(go)은 언제나 호출부가 소유한다.
+export function resolveBootScreen({ want = null, hasSlotState: slots = false, hasReport = false, recentCount = 0 } = {}) {
+  const fallback = slots ? 'input' : 'search'; // 슬롯이 차 있으면 검색보다 입력이 자연스럽다
+  if (want === 'search') return { screen: 'search', restore: false };
+  if (want === 'report') {
+    if (hasReport) return { screen: 'report', restore: false }; // 이미 렌더돼 있음(popstate 경로)
+    if (slots) return { screen: 'input', restore: false };      // 프리필 > 자동 복원(규칙 5)
+    if (recentCount > 0) return { screen: 'search', restore: true }; // 복원 시도 후 성공하면 report
+    return { screen: 'search', restore: false };                // 복원 재료 없음 → 강등
+  }
+  // 'input'(슬롯 없음)·'company'(term 없이 진입 불가)·null·미지 → 폴백
+  return { screen: fallback, restore: false };
+}
+
+export function onPopState(e) {
+  // go()가 만든 항목은 뷰 DOM이 그대로 살아 있으므로 현행대로 신뢰한다(세션 내 뒤로/앞으로 보존).
+  if (e && e.state && e.state.screen) { go(e.state.screen, { push: false }); return; }
+  // 네이티브 앵커·크로스도큐먼트 복원 등 무상태 항목 → 강등만 적용한다(자동 복원은 하지 않는다).
+  const want = parseHash();
+  // 해시가 없으면 기존 계약대로 search. resolveBootScreen의 폴백(슬롯 있으면 input)은 **부팅** 규칙이라
+  // 여기 적용하면 뒤로가기가 현재 입력 뷰에 눌러앉아 먹통으로 보인다.
+  if (!want) { go('search', { push: false }); return; }
+  const d = resolveBootScreen({
+    want, hasSlotState: hasSlotState(), hasReport: hasRenderedReport(), recentCount: 0,
+  });
+  go(d.screen, { push: false }); // 뒤로/앞으로 → 재푸시 없이 표시만
 }
 if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
   window.addEventListener('popstate', onPopState);
@@ -135,9 +175,17 @@ export async function boot(hooks = {}) {
   mountTrending({ onPick: (item) => pickTrendingPair(item, deps) });
   // 등록 회사 디렉토리(검색 카드 카운트 → 가나다순 목록 → 복지 펼침) — REF 재사용, 실패 무해.
   try { mountDirectory(App.state); } catch { /* 디렉토리 실패는 비교 툴 무손상 */ }
-  // 프리필로 슬롯이 채워졌으면 입력 뷰로(restoreFromPrefill의 go('input')이 아래 최종 go로 덮이지 않게 보정).
-  const prefilled = !!(App.state.matched.a || App.state.matched.b);
-  go(parseHash() || (prefilled ? 'input' : 'search'), { push: false });
+  // 부팅 뷰 결정(SP-FE-3.3 규칙 3·5): 해시가 요구한 뷰에 보여줄 상태가 없으면 강등한다.
+  // 이 시점에는 restoreFromPrefill(위)이 이미 슬롯을 채웠으므로 hasSlotState가 프리필을 포함한다.
+  const decision = resolveBootScreen({
+    want: parseHash(),
+    hasSlotState: hasSlotState(),
+    hasReport: hasRenderedReport(),
+    recentCount: recent.list().length,
+  });
+  let screen = decision.screen;
+  if (decision.restore && restoreLatestComparison({ recentCtx })) screen = 'report';
+  go(screen, { push: false }); // 부팅 경로의 유일한 go — 정확히 1회, push 금지
 }
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
   document.addEventListener('DOMContentLoaded', () => boot());
@@ -233,10 +281,13 @@ export function assembleCompareState(state) { // App.state → CompareState(SP-E
 
 // ── 리포트 진입·재계산(FR-42): 조립 → 계산 → 렌더 ───────────────────────────
 export function runReport(hooks = {}) {
-  const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl, recentCtx } = hooks;
+  const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl, recentCtx, save = true } = hooks;
   const report = compareFn(assembleCompareState(state)); // SP-ENGINE-2.2 Report
   if (report && report.ok === false) return report; // 필수값 결측 → 렌더·이동 차단(호출부가 안내, #3)
-  saveRecentComparison(state, report); // 성공 비교 자동 저장(C1) — 저장 불가 시 store가 조용히 무시
+  // 성공 비교 자동 저장(C1) — 저장 불가 시 store가 조용히 무시.
+  // save:false는 이미 저장된 레코드의 재실행(부팅 자동 복원)용 — 재저장하면 id·savedAt이 새로
+  // 발급되어 새로고침만으로 "최근 비교" 목록의 순서와 식별자가 요동친다.
+  if (save) saveRecentComparison(state, report);
   // 마운트 지점: #report-body(리포트 콘텐츠 전용) — #view-report 자체는 광고 슬롯·버튼·헤딩을
   // 포함하므로 replaceChildren 대상에서 제외한다(compare/index.html 셸 계약).
   const el2 = mountEl || (typeof document !== 'undefined' && document.getElementById ? document.getElementById('report-body') : null);
@@ -279,9 +330,31 @@ export function restoreComparison(record, deps = {}, state = App.state) {
     }
     reflectSlotLabel(slot, state.matched[slot] ? state.matched[slot].comp_nm : '');
   }
+  // 입력 뷰 컨트롤 재렌더: mountUI는 마운트 시점에 슬롯이 없으면 입력 뷰를 렌더하지 않는다(ui.js).
+  // 복원이 상태만 바꾸고 끝나면 "입력 수정" 한 번에 빈 입력 뷰가 나온다 — B-1과 같은 증상.
+  try { renderInputView(state); } catch { /* 렌더 실패는 복원 자체를 막지 않는다 */ }
   const goFn = typeof deps.go === 'function' ? deps.go : go;
-  if (typeof deps.runReport === 'function') deps.runReport({ state, mountEl: null });
-  else runReport({ state });
+  const report = typeof deps.runReport === 'function'
+    ? deps.runReport({ state, mountEl: null })
+    : runReport({ state });
+  // 재실행이 필수값 결측이면 렌더가 차단된다(runReport #3) — 그대로 이동하면 빈 리포트가 남는다.
+  // 엄격 비교: runReport 목이 undefined를 반환하는 기존 호출부는 성공으로 유지된다.
+  if (report && report.ok === false) return false;
   goFn('report');
   return true;
+}
+
+// ── 부팅 시 #report 딥링크 자동 복원(SP-FE-10.3 L-8, SP-FE-5.1 B-6·B-7) ──────
+// 최신 레코드 1건만 대상. 자동 복원은 "새 비교"가 아니므로 세 가지를 일부러 하지 않는다:
+//  · 이동(go) — boot이 독점한다(이중 go·부팅 중 pushState 방지, B-6)
+//  · 비교 로그 전송 — deps.runReport(로그 래퍼) 대신 순수 runReport를 쓴다. 로그를 보내면
+//    새로고침마다 "실시간 비교 TOP 10" 집계가 실제 비교 없이 부풀어 오른다(B-7)
+//  · 레코드 재저장 — save:false. 재저장하면 id·savedAt이 새로 발급돼 목록 순서가 요동친다(B-7)
+export function restoreLatestComparison({ recentCtx } = {}, state = App.state) {
+  const rec = recent.list()[0]; // store가 전 경로 try/catch(L-5) — 손상 봉투는 빈 배열로 온다
+  if (!rec) return false;
+  return restoreComparison(rec, {
+    go: () => {},
+    runReport: (h) => runReport({ ...h, recentCtx, save: false }),
+  }, state);
 }

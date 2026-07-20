@@ -22,7 +22,7 @@ import {
   bindSearchView, bindInputView, bindReportNav, reflectSearchUI, reflectSlotLabel, maybeAdvance,
   missingMessage,
 } from './ui.js';
-import { createInitialState, boot } from './app.js';
+import { createInitialState, boot, App } from './app.js';
 import { setSearchState } from './search.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -321,5 +321,91 @@ describe('UI-8 부트 실패 오류 UI + 재시도(#10)', () => {
     document.getElementById('btn-boot-retry').dispatchEvent(new window.Event('click', { bubbles: true }));
     await new Promise((r) => setTimeout(r, 0));
     assert.equal(calls, 2, '재시도 버튼 → 재부팅');
+  });
+});
+
+// ── UI-9 해시 딥링크 강등·부팅 자동 복원(B-1) — 실 DOM에서 "빈 화면 아님"을 단언 ──────────
+// app.test.js의 FakeEl 스텁에는 #report-body·#input-slot-* 가 없어 "실제로 채워졌는가"를
+// 원리적으로 검증할 수 없다. 이 층이 그 유일한 자동 수단이다.
+describe('UI-9 해시 딥링크 강등·부팅 자동 복원(B-1)', () => {
+  const REF = {
+    company_types: [
+      { comp_tp_cd: 'large', growth_rate_val: 0.04, stability_score_no: 90 },
+      { comp_tp_cd: 'startup', growth_rate_val: 0.1, stability_score_no: 40 },
+    ],
+    benefit_presets: {},
+    companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사')],
+  };
+  const hooks = { loadReferenceFn: async () => REF, mountAdsFn: () => {}, initConsentBannerFn: () => {} };
+
+  function loadShellWithStorage(url) {
+    const dom = loadShell(url);
+    // loadShell은 localStorage를 넘기지 않는다 — 대입하지 않으면 store.get이 항상 null이라
+    // recent.list()가 늘 []가 되어 복원 경로가 통째로 검증되지 않는다(조용한 무효 테스트).
+    globalThis.localStorage = dom.window.localStorage;
+    globalThis.localStorage.clear();
+    // App.state는 모듈 전역이라 테스트 간에 살아남는다. 리셋하지 않으면 앞 테스트가 채운
+    // matched가 남아 mountUI가 입력 뷰를 렌더해 버려, 새 페이지 로드와 다른 배선이 된다.
+    App.state = createInitialState();
+    return dom;
+  }
+
+  async function seedRecordViaCompare() {
+    // 실제 비교를 끝까지 수행해 레코드를 심는다(목 레코드가 아니라 프로덕션 저장 경로).
+    const s = stateWithMatches();
+    s.salS.a = { low: 5000, high: 5000 };
+    s.selectedRate = 10;
+    const { runReport } = await import('./app.js');
+    // 분리된 노드에 렌더한다: 새 페이지 로드는 #report-body가 비어 있는 상태이므로,
+    // 여기서 셸의 #report-body를 채우면 hasRenderedReport()가 true가 되어 복원 경로가
+    // 통째로 건너뛰어진다(= 조용히 무효한 테스트). 프로덕션 배선과 일치시킨다.
+    runReport({ state: s, mountEl: document.createElement('div') });
+  }
+
+  test('UI-9a: #report 무상태 진입 → 검색 뷰(빈 리포트 노출 안 함)', async () => {
+    loadShellWithStorage('https://loupit.example/compare/#report');
+    await boot(hooks);
+    assert.equal(document.getElementById('view-search').hidden, false, '검색 뷰가 보인다');
+    assert.equal(document.getElementById('view-report').hidden, true, '리포트 뷰는 숨김');
+  });
+
+  test('UI-9b: #company 무상태 진입 → 검색 뷰(백지 노출 안 함)', async () => {
+    loadShellWithStorage('https://loupit.example/compare/#company');
+    await boot(hooks);
+    assert.equal(document.getElementById('view-search').hidden, false);
+    assert.equal(document.getElementById('view-company').hidden, true);
+  });
+
+  test('UI-9c: #report + 레코드 → 복원되고 #report-body가 실제로 채워진다', async () => {
+    loadShellWithStorage('https://loupit.example/compare/#report');
+    await seedRecordViaCompare();
+    await boot(hooks);
+    assert.equal(document.getElementById('view-report').hidden, false, '리포트 뷰 표시');
+    assert.ok(
+      document.getElementById('report-body').children.length > 0,
+      '#report-body가 비어 있으면 B-1이 재발한 것이다',
+    );
+  });
+
+  test('UI-9d: 복원 후 "입력 수정" → 입력 뷰가 채워져 있다(빈 입력 뷰 금지)', async () => {
+    loadShellWithStorage('https://loupit.example/compare/#report');
+    await seedRecordViaCompare();
+    await boot(hooks);
+    document.getElementById('btn-edit-input').dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(document.getElementById('view-input').hidden, false, '입력 뷰 표시');
+    // mountUI는 마운트 시점에 슬롯이 없으면 입력 뷰를 렌더하지 않는다(ui.js). 복원이 그 뒤에
+    // 상태만 채우면 컨트롤이 비어 B-1과 동일한 백지가 한 클릭 거리에 남는다.
+    assert.ok(document.getElementById('input-slot-a').children.length > 0, 'A 슬롯 컨트롤 렌더');
+    assert.ok(document.getElementById('input-slot-b').children.length > 0, 'B 슬롯 컨트롤 렌더');
+    assert.ok(document.getElementById('priority-picker').children.length > 0, '우선순위 피커 렌더');
+  });
+
+  test('UI-9e: 부팅 자동 복원은 레코드를 재저장하지 않는다(id·순서 불변)', async () => {
+    const dom = loadShellWithStorage('https://loupit.example/compare/#report');
+    await seedRecordViaCompare();
+    const before = dom.window.localStorage.getItem('loupit.recentComparisons');
+    await boot(hooks);
+    const after = dom.window.localStorage.getItem('loupit.recentComparisons');
+    assert.equal(after, before, '새로고침만으로 "최근 비교" 봉투가 바뀌면 목록 순서·id가 요동친다');
   });
 });
