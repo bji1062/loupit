@@ -213,6 +213,7 @@ main p { margin-top:var(--sp-3); }
 
 /* ══════════════════════════════════════════════════════ LANDING ══ */
 .lede { font-size:var(--fs-lg); color:var(--t2); max-width:60ch; margin-top:var(--sp-4); }
+.lede-sub { color:var(--t3); max-width:60ch; }
 
 /* ══════════════════════════════════════════════════════ COMPANY PAGE ══ */
 .company-info { display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-3); margin-top:var(--sp-4); color:var(--t3); font-size:var(--fs-sm); }
