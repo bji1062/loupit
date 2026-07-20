@@ -11,7 +11,7 @@
 import { el } from './dom.js';
 import { onSearchInput, selectCompany, clearSlot } from './search.js';
 
-export const PRIORITIES = ['연봉', '워라밸', '복지', '브랜드'];
+export const PRIORITIES = ['연봉', '워라밸', '복지'];
 const OT_OPTS = [['', '야근 빈도'], ['low', '거의 없음'], ['mid', '보통'], ['high', '잦음']];
 const WAGE_OPTS = [['', '임금 형태'], ['inclusive', '포괄임금'], ['separate', '비포괄(야근수당 별도)']];
 

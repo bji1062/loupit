@@ -212,7 +212,6 @@ describe('T-06.10.1 assembleCompareState (UT-ASM-1)', () => {
     assert.equal(cs.com.a, 0);
     assert.equal(cs.com.b, 30);
     assert.equal(cs.curPri, 'wlb');
-    assert.equal(cs.companyTypes, state.REF.company_types);
     assert.equal(cs.selectedRate, 10);
     assert.equal('salB' in cs, false); // 슬롯 b 절대연봉 미전달(selectedRate만)
   });
@@ -222,8 +221,8 @@ describe('T-06.10.1 assembleCompareState (UT-ASM-1)', () => {
     assert.equal(salToStr({ low: 100, high: 200 }), '100-200');
   });
 
-  test('PRI_KEY: 4축 한→영 매핑', () => {
-    assert.deepEqual(PRI_KEY, { 연봉: 'salary', 워라밸: 'wlb', 복지: 'benefits', 브랜드: 'brand' });
+  test('PRI_KEY: 3축 한→영 매핑(브랜드 축 제거 2026-07-20)', () => {
+    assert.deepEqual(PRI_KEY, { 연봉: 'salary', 워라밸: 'wlb', 복지: 'benefits' });
   });
 
   test('curSacrifice: 라벨→PriKey, null이면 null', () => {

@@ -123,7 +123,7 @@ describe('UI-3 입력 뷰 컨트롤 렌더·상태 배선(MB-5·15)', () => {
     const benA = document.querySelectorAll('#input-slot-a .in-ben-row input[type="checkbox"]');
     assert.equal(benA.length, 2, '슬롯 a 복지 체크박스 2개');
     const pri = document.querySelectorAll('#priority-picker input[type="radio"]');
-    assert.equal(pri.length, 4, '우선순위 라디오 4개');
+    assert.equal(pri.length, 3, '우선순위 라디오 3개(브랜드 축 제거 2026-07-20)');
     const checkedPri = document.querySelector('#priority-picker input[type="radio"]:checked');
     assert.equal(checkedPri.value, '워라밸', '기본 우선순위 워라밸 체크');
   });

@@ -22,7 +22,7 @@ export function createInitialState() {
     salS: { a: { low: null, high: null } }, // 만원 — 슬롯 a만
     selectedRate: null, // b 상승률(%) 또는 null
     cmtS: { a: null, b: null }, // 통근시간(분) 또는 null
-    curPri: '워라밸', // ∈ {연봉,워라밸,복지,브랜드} 기본 워라밸
+    curPri: '워라밸', // ∈ {연봉,워라밸,복지} 기본 워라밸
     curSacrifice: null, // ≠ curPri 또는 null
     chosenType: { a: null, b: null }, // 직접 입력 모드 선택 유형(comp_tp_cd) 또는 null (FR-17)
     inputMode: { a: 'company', b: 'company' }, // 'company' | 'direct'
@@ -260,7 +260,7 @@ export function showCompanyPage(term, deps = {}, state = App.state) {
 }
 
 // ── SP-FE-9.3 엔진 호출·상태 조립(assembleCompareState) ─────────────────────
-export const PRI_KEY = { 연봉: 'salary', 워라밸: 'wlb', 복지: 'benefits', 브랜드: 'brand' };
+export const PRI_KEY = { 연봉: 'salary', 워라밸: 'wlb', 복지: 'benefits' };
 
 export function salToStr(s) { // {low,high} → "lo-hi" | null
   if (!s || s.low == null || s.high == null) return null;
@@ -277,7 +277,6 @@ export function assembleCompareState(state) { // App.state → CompareState(SP-E
     curPri: PRI_KEY[state.curPri] || 'wlb', // 라벨→PriKey(방어 폴백 wlb, A-3)
     curSacrifice: state.curSacrifice ? (PRI_KEY[state.curSacrifice] || null) : null,
     matched: state.matched,
-    companyTypes: (state.REF && state.REF.company_types) || [], // 브랜드 축용 참조 주입
   };
 }
 
@@ -316,7 +315,10 @@ export function restoreComparison(record, deps = {}, state = App.state) {
   state.selectedRate = inp.selectedRate ?? null;
   state.cmtS = inp.cmtS || { a: null, b: null };
   state.wsState = inp.wsState || { a: blankWs(), b: blankWs() };
-  state.curPri = inp.curPri || '워라밸';
+  // 폐기된 축('브랜드')이 담긴 옛 레코드는 기본값으로 정규화한다 — 그대로 두면 우선순위
+  // 라디오 어느 항목과도 일치하지 않아 선택이 비어 보인다(브랜드 축 제거, 2026-07-20).
+  state.curPri = PRI_KEY[inp.curPri] ? inp.curPri : '워라밸';
+  if (inp.curSacrifice && !PRI_KEY[inp.curSacrifice]) inp.curSacrifice = null;
   state.curSacrifice = inp.curSacrifice || null;
   state.chosenType = inp.chosenType || { a: null, b: null };
   state.inputMode = inp.inputMode || { a: 'company', b: 'company' };

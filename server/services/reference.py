@@ -10,9 +10,7 @@ from __future__ import annotations
 import json
 
 _SQL_TYPES = """
-  SELECT COMP_TP_ID AS comp_tp_id, COMP_TP_CD AS comp_tp_cd, COMP_TP_NM AS comp_tp_nm,
-         GROWTH_RATE_VAL AS growth_rate_val, GROWTH_LABEL_NM AS growth_label_nm,
-         STABILITY_SCORE_NO AS stability_score_no
+  SELECT COMP_TP_ID AS comp_tp_id, COMP_TP_CD AS comp_tp_cd, COMP_TP_NM AS comp_tp_nm
     FROM TCOMPANY_TYPE ORDER BY COMP_TP_ID"""
 
 _SQL_PRESETS = """
@@ -74,12 +72,8 @@ async def build_reference_bundle(conn) -> dict:
         await cur.execute(_SQL_BENEFITS)
         benefits = await cur.fetchall()
 
-    # DECIMAL(5,4) growth_rate_val → float (JSON 직렬화 + FR-D 계약 float|None).
-    # 실 aiomysql DictCursor는 DECIMAL을 Decimal로 반환한다 — generator(Jinja str화)는
-    # 무해하나 API JSONResponse는 Decimal 직렬화 불가하므로 단일 소스에서 정규화한다.
-    for t in types:
-        if t.get("growth_rate_val") is not None:
-            t["growth_rate_val"] = float(t["growth_rate_val"])
+    # 성장률·안정성 컬럼은 브랜드 축 제거(2026-07-20)로 번들에서 뺐다. DB 컬럼은 남아 있으나
+    # 어느 소비처도 읽지 않는다 — Decimal 직렬화 정규화도 함께 불필요해졌다.
 
     # 그룹핑
     presets_by_type: dict[str, list] = {}

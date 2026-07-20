@@ -12,9 +12,6 @@ class CompanyType(BaseModel):  # FR-D2 / TCOMPANY_TYPE
     comp_tp_id: int
     comp_tp_cd: str  # ∈ {large,startup,mid,foreign,public,freelance}
     comp_tp_nm: str
-    growth_rate_val: float | None = None  # DECIMAL(5,4) → float
-    growth_label_nm: str | None = None
-    stability_score_no: int | None = None  # 1~100
 
 
 class PresetBenefit(BaseModel):  # FR-D3 / TBENEFIT_PRESET (출처·만료·amt_source 없음)

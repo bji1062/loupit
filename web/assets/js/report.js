@@ -8,7 +8,7 @@ const CATEGORY_LABEL = {
   compensation: '보상', flexibility: '유연성', work_env: '근무환경', time_off: '휴가',
   health: '건강', family: '가족', growth: '성장', leisure: '여가', perks: '복리후생',
 };
-const AXIS_LABEL = { salary: '연봉', wlb: '워라밸', benefits: '복지', brand: '브랜드' };
+const AXIS_LABEL = { salary: '연봉', wlb: '워라밸', benefits: '복지' };
 
 // ── 경고 배너 코드→문구 매핑(본 절 소유, 엔진은 코드만 반환) ────────────────
 export const WARN_COPY = {
@@ -58,7 +58,7 @@ export function renderVdCard(vdCard, mountEl, opts = {}) {
   card.append(el('h3', { class: 'vd-axis-label', text: (AXIS_LABEL[vdCard.axis] || vdCard.axis) + ' 비교' }));
   for (const p of [vdCard.p1, vdCard.p2]) {
     const persp = el('div', {
-      class: 'vd-persp vd-persp--' + p.winner + (vdCard.axis === 'brand' ? ' vd-persp--brand' : ''),
+      class: 'vd-persp vd-persp--' + p.winner,
       'data-winner': p.winner,
     });
     persp.append(el('span', { class: 'vd-persp-label', text: p.label }));
@@ -66,9 +66,6 @@ export function renderVdCard(vdCard, mountEl, opts = {}) {
     card.append(persp);
   }
   if (vdCard.tie) card.append(el('p', { class: 'vd-tie-note', text: '이 축은 근소한 차이라 단정하기 어렵습니다.' }));
-  if (vdCard.axis === 'brand' && vdCard.limited) {
-    card.append(el('p', { class: 'vd-limited-note', text: '한 회사 미선택 — 브랜드 축 판정이 제한됩니다.' }));
-  }
   const sacNote = renderSacrificeNote(opts.sacrifice);
   if (sacNote) card.append(sacNote);
   mountEl.append(card);

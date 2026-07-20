@@ -7,7 +7,6 @@
 //  2) 결정성: 동일 입력 → 동일 출력. 시간 의존(만료 판정)은 now 인자로 주입
 //     (Date.now()는 오케스트레이터의 기본 매개변수에서만 바인딩).
 //  3) 불변 입력: 인자 객체를 mutate하지 않는다. 항상 새 객체를 반환한다.
-//  4) 참조 데이터(companyTypes)는 인자로 주입받는다.
 //  5) 필수값 결측은 throw 대신 missing[]/null로 표기한다.
 //
 // 프로파일러 벡터(pfResult 등)는 본 모듈 어디에서도 참조하지 않는다(§16, 01 §5.1).
@@ -45,7 +44,7 @@
 /** @typedef {{
  *   comp_id:    number|null,
  *   comp_nm:    string|null,
- *   comp_tp_cd: string|null,             // 기업유형 코드 → companyTypes 조회
+ *   comp_tp_cd: string|null,             // 기업유형 코드(직접입력 프리셋용)
  *   work_style_val: { unlimitedPTO?:boolean, remote?:boolean,
  *                     flex?:boolean, refreshLeave?:string }|null
  * }} SlotMeta */
@@ -57,7 +56,7 @@
  *   stability_score_no:number            // 1~100
  * }} CompanyType */
 
-/** @typedef {'salary'|'wlb'|'benefits'|'brand'} PriKey */  // 엔진 정규 키(§2.1)
+/** @typedef {'salary'|'wlb'|'benefits'} PriKey */  // 엔진 정규 키(§2.1)
 
 /** @typedef {{
  *   salStr:        string|null,          // 슬롯 a 연봉 "lo-hi"(만원). 예 "5000-7000"
@@ -68,7 +67,6 @@
  *   curPri:        PriKey,
  *   curSacrifice:  PriKey|null,           // ≠ curPri
  *   matched:       { a:SlotMeta|null, b:SlotMeta|null },
- *   companyTypes:  CompanyType[]          // REF.company_types (브랜드 축용)
  * }} CompareState */
 
 /** @typedef {{
@@ -99,7 +97,6 @@
  *   commute:   { a:number, b:number, annA:number, annB:number, winner:'a'|'b'|'tie' },
  *   vdCard:    VdCard,       // FR-39
  *   sacrifice: SacrificeCost|null, // FR-39
- *   brand:     object,       // brandProjection 반환값
  *   rest:      Array<{ axis:PriKey, winner:'a'|'b'|'tie', value:object }>,
  *   warnings:  string[]      // 규칙 코드(문구 아님). 예 ['eff_shrink','both_inclusive']
  * }} Report */
@@ -127,9 +124,7 @@ export const WON_PER_MANWON  = 10000;// 만원→원
 export const COMMUTE_ROUND_TRIP = 2; // 왕복 계수
 export const COMMUTE_WORKDAYS   = 240; // 연 근무일(통근 연환산)
 export const WORKDAY_HRS     = 8;    // 근무일 환산(연시간→근무일)
-export const PROJECTION_YEARS = 3;   // 브랜드 성장 투영 연수
 export const BENEFIT_SAT_THRESHOLD = 1200; // 총보상 차 ≤이면 "복지 우선" 판단(만원)
-export const GROWTH_RATE_FALLBACK  = 0.04; // company_types 조회 실패 시 상승률 폴백
 
 // DEC-2 밴드 계수 — 금액 신뢰도(amt_source) 기준, 출처 배지와 디커플링(RESEARCH §4.2)
 export const BAND_BASE   = { stated: 0.05, estimated: 0.20, none: 0 };
@@ -377,58 +372,14 @@ function vdBenefits(m) {
   return { axis: 'benefits', p1, p2, tie: false };
 }
 
-function vdBrand(m) {
-  const br = m.brand;
-  const p1 = {
-    label: '성장성',
-    winner: br.cumDiff > 0 ? 'b' : br.cumDiff < 0 ? 'a' : 'tie',
-    detail: { cumDiff: br.cumDiff, grA: br.grA, grB: br.grB, projA: br.projA, projB: br.projB },
-  };
-  const p2 = {
-    label: '안정성',
-    winner: br.stabA > br.stabB ? 'a' : br.stabB > br.stabA ? 'b' : 'tie',
-    detail: { stabA: br.stabA, stabB: br.stabB },
-  };
-  return { axis: 'brand', p1, p2, tie: p1.winner === 'tie' && p2.winner === 'tie', limited: br.limited };
-}
-
 /** 4축 vdCard 판정. 승자·수치만 반환 — 문구·색은 SP-RPT가 구성. */
 export function buildVdCard(axis, m) {
   switch (axis) {
     case 'salary':   return vdSalary(m);
     case 'wlb':      return vdWlb(m);
     case 'benefits': return vdBenefits(m);
-    case 'brand':    return vdBrand(m);
     default:         return vdWlb(m);   // 안전 폴백(기본 워라밸)
   }
-}
-
-// ─────────────────────────────────────────────────────────────────────
-// 13.4 브랜드 축 데이터 — SP-ENGINE-13b (FR-39)
-// ─────────────────────────────────────────────────────────────────────
-
-/** REF company_types에서 comp_tp_cd로 기업유형 조회. 없으면 null. */
-export function getCompanyType(companyTypes, compTpCd) {
-  return (companyTypes || []).find(t => t.comp_tp_cd === compTpCd) || null;
-}
-
-/** 3년 성장 투영 + 안정성. proj[0]=salMid; proj[y]=round(proj[y-1]×(1+gr)). */
-export function brandProjection(salMidA, salMidB, typeA, typeB) {
-  const grA = typeA ? typeA.growth_rate_val : GROWTH_RATE_FALLBACK;
-  const grB = typeB ? typeB.growth_rate_val : GROWTH_RATE_FALLBACK;
-  const projA = [salMidA], projB = [salMidB];
-  let cumDiff = 0;
-  for (let y = 1; y <= PROJECTION_YEARS; y++) {
-    projA.push(Math.round(projA[y - 1] * (1 + grA)));
-    projB.push(Math.round(projB[y - 1] * (1 + grB)));
-    cumDiff += projB[y] - projA[y];
-  }
-  return {
-    projA, projB, cumDiff, grA, grB,
-    stabA: typeA ? typeA.stability_score_no : 0,
-    stabB: typeB ? typeB.stability_score_no : 0,
-    limited: !typeA || !typeB,   // 한쪽 미선택이면 브랜드 판정 제한
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────
@@ -466,13 +417,6 @@ export function sacrificeCost(sacrifice, m) {
       const d = Math.abs(m.benA - m.benB);
       return { axis: 'benefits', ok: true, detail: { diff: d, better: m.benA > m.benB ? 'a' : 'b' } };
     }
-    case 'brand': {
-      const br = m.brand;
-      return {
-        axis: 'brand', ok: !br.limited,
-        detail: { cumDiff: br.cumDiff, stabDiff: br.stabB - br.stabA, grA: br.grA, grB: br.grB, limited: br.limited },
-      };
-    }
     default: return null;
   }
 }
@@ -508,15 +452,10 @@ export function compare(state, now = Date.now()) {
     };
   }
 
-  // 브랜드 축 데이터(항상 산출 — vdCard/rest/희생 재사용)
-  const typeA = getCompanyType(state.companyTypes, state.matched.a && state.matched.a.comp_tp_cd);
-  const typeB = getCompanyType(state.companyTypes, state.matched.b && state.matched.b.comp_tp_cd);
-  const brand = brandProjection(salA.mid, salB.mid, typeA, typeB);
-
   const m = {
     totalA: R.a.total, totalB: R.b.total, hourlyA: R.a.hourly, hourlyB: R.b.hourly,
     wsHoursA: R.a.wsHours, wsHoursB: R.b.wsHours, autoA: R.a.autonomy, autoB: R.b.autonomy,
-    benA: R.a.ben, benB: R.b.ben, brand,
+    benA: R.a.ben, benB: R.b.ben,
   };
 
   const warnings = [];
@@ -543,7 +482,6 @@ export function compare(state, now = Date.now()) {
     commute:  commuteCompare(state.com.a, state.com.b),
     vdCard:   buildVdCard(state.curPri, m),
     sacrifice: state.curSacrifice ? sacrificeCost(state.curSacrifice, m) : null,
-    brand,
     rest:     restSummary(state.curPri, state.curSacrifice, m, R),
     warnings,
   };
@@ -562,7 +500,7 @@ export function calc(state) {
 
 /** 나머지 기준 요약(curPri·curSacrifice 아닌 축). */
 export function restSummary(pri, sac, m, R) {
-  const keys = ['salary', 'wlb', 'benefits', 'brand'].filter(k => k !== pri && k !== sac);
+  const keys = ['salary', 'wlb', 'benefits'].filter(k => k !== pri && k !== sac);
   return keys.map(axis => {
     if (axis === 'salary') {
       const d = m.totalB - m.totalA;
@@ -578,14 +516,8 @@ export function restSummary(pri, sac, m, R) {
           : { commuteA: R.a.commuteMin, commuteB: R.b.commuteMin, missing: true },
       };
     }
-    if (axis === 'benefits') {
-      const d = m.benB - m.benA;
-      return { axis, winner: d > 0 ? 'b' : d < 0 ? 'a' : 'tie', value: { diff: d } };
-    }
-    // brand
-    return {
-      axis, winner: m.brand.cumDiff > 0 ? 'b' : m.brand.cumDiff < 0 ? 'a' : 'tie',
-      value: { cumDiff: m.brand.cumDiff },
-    };
+    // benefits(남는 유일한 축)
+    const d = m.benB - m.benA;
+    return { axis, winner: d > 0 ? 'b' : d < 0 ? 'a' : 'tie', value: { diff: d } };
   });
 }

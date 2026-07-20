@@ -12,25 +12,20 @@ from pydantic import ValidationError
 def test_company_type_fields():
     from server.models.reference import CompanyType
 
-    ct = CompanyType(
-        comp_tp_id=1,
-        comp_tp_cd="large",
-        comp_tp_nm="대기업",
-        growth_rate_val=0.04,
-        growth_label_nm="대기업 평균 4%",
-        stability_score_no=90,
-    )
+    ct = CompanyType(comp_tp_id=1, comp_tp_cd="large", comp_tp_nm="대기업")
     assert ct.comp_tp_cd == "large"
-    assert ct.growth_rate_val == 0.04
+    assert ct.comp_tp_nm == "대기업"
 
 
-def test_company_type_optional_fields_allow_none():
+def test_company_type_drops_removed_brand_fields():
+    """브랜드 축 제거(2026-07-20) — 성장률·안정성은 계약에서 빠졌다.
+    모델이 필드를 유지하면 SQL에서 빼도 model_dump가 null로 되살려 번들에 새어 나간다."""
     from server.models.reference import CompanyType
 
     ct = CompanyType(comp_tp_id=1, comp_tp_cd="freelance", comp_tp_nm="프리랜서")
-    assert ct.growth_rate_val is None
-    assert ct.growth_label_nm is None
-    assert ct.stability_score_no is None
+    dumped = ct.model_dump()
+    for gone in ("growth_rate_val", "growth_label_nm", "stability_score_no"):
+        assert gone not in dumped, f"{gone}는 계약에서 제거됐어야 한다"
 
 
 def test_preset_benefit_defaults():

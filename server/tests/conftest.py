@@ -401,9 +401,6 @@ def bundle_stub(monkeypatch):
                 "comp_tp_id": 1,
                 "comp_tp_cd": "large",
                 "comp_tp_nm": "대기업",
-                "growth_rate_val": 0.04,
-                "growth_label_nm": "대기업 평균 4%",
-                "stability_score_no": 90,
             },
         ],
         "benefit_presets": {

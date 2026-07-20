@@ -66,17 +66,11 @@ def _builder_datasets() -> dict[str, list[dict]]:
                 "comp_tp_id": 1,
                 "comp_tp_cd": "large",
                 "comp_tp_nm": "대기업",
-                "growth_rate_val": Decimal("0.04"),  # 실 aiomysql DECIMAL 재현
-                "growth_label_nm": "대기업 평균 4%",
-                "stability_score_no": 90,
             },
             {
                 "comp_tp_id": 2,
                 "comp_tp_cd": "startup",
                 "comp_tp_nm": "스타트업",
-                "growth_rate_val": Decimal("0.06"),  # 실 aiomysql DECIMAL 재현
-                "growth_label_nm": "스타트업 평균 6%",
-                "stability_score_no": 40,
             },
         ],
         "presets": [
@@ -167,17 +161,25 @@ async def test_builder_top_level_keys_exactly_three():
 
 
 @pytest.mark.asyncio
-async def test_builder_output_json_serializable_growth_rate_float():
-    """실 aiomysql이 DECIMAL(growth_rate_val)을 Decimal로 반환해도 번들이 JSON
-    직렬화 가능해야 한다 — 라이브 GET /reference/all 500(Decimal 직렬화 불가) 회귀 방지.
-    fake 데이터셋의 growth_rate_val은 Decimal이며, 빌더가 float로 정규화(FR-D)해야 한다."""
+async def test_builder_output_json_serializable():
+    """번들은 JSON 직렬화 가능해야 한다 — 라이브 GET /reference/all 500(Decimal 직렬화 불가)
+    회귀 방지. 과거 DECIMAL growth_rate_val이 원인이었고 그 컬럼은 브랜드 축 제거(2026-07-20)로
+    번들에서 빠졌으나, 다른 DECIMAL이 새로 유입돼도 같은 500이 나므로 가드는 유지한다."""
     from server.services.reference import build_reference_bundle
 
     conn = _FakeConn(_builder_datasets())
     bundle = await build_reference_bundle(conn)
-    json.dumps(bundle)  # Decimal 잔존 시 TypeError로 실패
-    gr = bundle["company_types"][0]["growth_rate_val"]
-    assert isinstance(gr, float), f"growth_rate_val은 float여야 함(현재 {type(gr).__name__})"
+    json.dumps(bundle)  # Decimal 등 비직렬화 타입 잔존 시 TypeError로 실패
+
+    # 브랜드 축 필드가 되살아나지 않는지 잠근다. ⚠ 빌더 출력만 보면 놓친다 —
+    # 라우터는 ReferenceBundle.model_dump()로 직렬화하므로 **계약 모델에 필드가 남아 있으면
+    # SQL에서 빼도 null로 되살아난다**(2026-07-20 실제로 겪음). 모델 경유로 검증한다.
+    from server.models.reference import ReferenceBundle
+
+    dumped = ReferenceBundle.model_validate(bundle).model_dump()
+    for t in dumped["company_types"]:
+        for gone in ("growth_rate_val", "growth_label_nm", "stability_score_no"):
+            assert gone not in t, f"{gone}는 계약 모델에서도 제거됐어야 한다(브랜드 축 제거)"
 
 
 @pytest.mark.asyncio

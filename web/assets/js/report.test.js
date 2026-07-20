@@ -96,14 +96,6 @@ describe('T-06.11.2 renderVdCard', () => {
     assert.ok(persps.length >= 1);
   });
 
-  test('limited(brand, 한쪽 미선택) → 주석 노출', () => {
-    const state = fixtureState({ curPri: 'brand', matched: { a: null, b: { comp_id: 2, comp_nm: 'B', comp_tp_cd: 'startup', work_style_val: {} } } });
-    const report = compare(state);
-    const mount = new FakeElement('div');
-    renderVdCard(report.vdCard, mount);
-    assert.ok(mount.allText().includes('제한'));
-  });
-
   test('멱등 재호출: 두 번 호출해도 카드 1개만 유지', () => {
     const report = compare(fixtureState());
     const mount = new FakeElement('div');

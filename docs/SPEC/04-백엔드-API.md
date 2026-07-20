@@ -1,5 +1,14 @@
 # SPEC 04 — 백엔드 API (FastAPI)
 
+> ⚠️ **폐기(2026-07-20): 브랜드 축(성장성·안정성) 제거됨.**
+> 아래 본문의 브랜드 축·`brandProjection`·`vdBrand`·`GROWTH_RATE_VAL`/`GROWTH_LABEL_NM`/
+> `STABILITY_SCORE_NO` 관련 서술은 **이력이며 현행 계약이 아니다.** 우선순위 축은
+> 연봉·워라밸·복지 **3종**이고, `reference/all`의 `company_types`는
+> `comp_tp_id`/`comp_tp_cd`/`comp_tp_nm` 3필드만 반환한다.
+> DB 컬럼은 남아 있으나 **어느 코드도 읽지 않는다**(별도 마이그레이션으로 분리).
+> 경위·파급범위: `docs/ANALYSIS-성장성-용어-2026-07-20.md` §6-1.
+
+
 **영역 ID 대역**: `SP-API`
 **저장 경로**: `docs/SPEC/04-백엔드-API.md`
 **목적**: loupit 슬림 **읽기 전용 FastAPI** 서버(C3, `server/`)의 구현 계약을 개발자가 추측 없이 그대로 만들 수 있는 수준으로 확정한다. (1) 모듈/패키지 구조(`main`/`config`/`database`/`routers`/`services`/`models`/`cache`), (2) GET 4종 엔드포인트의 요청·응답 Pydantic 모델·상태코드·오류 형태, (3) aiomysql 풀 + 원시 SQL(`%s` 플레이스홀더), (4) 인메모리 TTL 캐시, (5) 인증·쓰기 미들웨어 부재 명시, (6) CORS·전송 헤더·캐시 정책, (7) pytest + httpx(ASGITransport) 테스트 명세를 소유한다.

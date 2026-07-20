@@ -11,12 +11,12 @@ import {
   // 상수
   OT_HRS, LEGAL_WEEK_HRS, AUTONOMY_LABELS, MONTHLY_STD_HRS,
   OT_MULT, WEEKS_PER_MONTH, WEEKS_PER_YEAR, WON_PER_MANWON, COMMUTE_ROUND_TRIP,
-  COMMUTE_WORKDAYS, WORKDAY_HRS, PROJECTION_YEARS, BENEFIT_SAT_THRESHOLD,
-  GROWTH_RATE_FALLBACK, BAND_BASE, BAND_EXPIRE, BENEFIT_CATEGORIES,
+  COMMUTE_WORKDAYS, WORKDAY_HRS, BENEFIT_SAT_THRESHOLD,
+  BAND_BASE, BAND_EXPIRE, BENEFIT_CATEGORIES,
   // 함수
   parseSalRange, deriveOfferRange, benTotal, benByCat, benCatCompare, qualCompare,
   effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks, commuteCompare,
-  bandCoeff, sumBand, getCompanyType, brandProjection, buildVdCard, sacrificeCost,
+  bandCoeff, sumBand, buildVdCard, sacrificeCost,
   compare, calc, restSummary,
 } from './calc.js';
 
@@ -55,9 +55,7 @@ describe('T-05.1.1 모듈 골격·상수 스모크', () => {
     assert.equal(COMMUTE_ROUND_TRIP, 2);
     assert.equal(COMMUTE_WORKDAYS, 240);
     assert.equal(WORKDAY_HRS, 8);
-    assert.equal(PROJECTION_YEARS, 3);
     assert.equal(BENEFIT_SAT_THRESHOLD, 1200);
-    assert.equal(GROWTH_RATE_FALLBACK, 0.04);
     assert.deepEqual(BAND_BASE, { stated: 0.05, estimated: 0.20, none: 0 });
     assert.equal(BAND_EXPIRE, 0.15);
     assert.deepEqual(BENEFIT_CATEGORIES, ['compensation', 'flexibility', 'work_env',
@@ -67,7 +65,7 @@ describe('T-05.1.1 모듈 골격·상수 스모크', () => {
   test('함수 전량 export', () => {
     for (const fn of [parseSalRange, deriveOfferRange, benTotal, benByCat, benCatCompare,
       qualCompare, effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks,
-      commuteCompare, bandCoeff, sumBand, getCompanyType, brandProjection, buildVdCard,
+      commuteCompare, bandCoeff, sumBand, buildVdCard,
       sacrificeCost, compare, calc, restSummary]) {
       assert.equal(typeof fn, 'function');
     }
@@ -283,39 +281,8 @@ describe('T-05.6 복지 불확실성 밴드 DEC-2', () => {
   });
 });
 
-// ── T-05.7: 우선순위 판정 vdCard·브랜드·희생 ──────────────────────────
-describe('T-05.7 vdCard·브랜드·희생', () => {
-  const companyTypes = [
-    { comp_tp_cd: 'startup', growth_rate_val: 0.08, growth_label_nm: '스타트업 평균 8%', stability_score_no: 40 },
-    { comp_tp_cd: 'large', growth_rate_val: 0.04, growth_label_nm: '대기업 평균 4%', stability_score_no: 90 },
-  ];
-
-  test('T-ENGINE-28: getCompanyType 조회/미존재', () => {
-    assert.deepEqual(getCompanyType(companyTypes, 'startup'), companyTypes[0]);
-    assert.equal(getCompanyType(companyTypes, 'unknown'), null);
-  });
-
-  test('T-ENGINE-29: brandProjection 3년 투영', () => {
-    const typeA = { growth_rate_val: 0.04, stability_score_no: 50 };
-    const typeB = { growth_rate_val: 0.10, stability_score_no: 70 };
-    const result = brandProjection(5000, 5500, typeA, typeB);
-    assert.deepEqual(result.projA, [5000, 5200, 5408, 5624]);
-    assert.deepEqual(result.projB, [5500, 6050, 6655, 7321]);
-    assert.equal(result.cumDiff, 3794);
-    assert.equal(result.grA, 0.04);
-    assert.equal(result.grB, 0.10);
-    assert.equal(result.stabA, 50);
-    assert.equal(result.stabB, 70);
-    assert.equal(result.limited, false);
-  });
-
-  test('T-ENGINE-30: brandProjection typeA=null → 폴백+limited', () => {
-    const typeB = { growth_rate_val: 0.10, stability_score_no: 70 };
-    const result = brandProjection(5000, 5500, null, typeB);
-    assert.equal(result.grA, GROWTH_RATE_FALLBACK);
-    assert.equal(result.limited, true);
-  });
-
+// ── T-05.7: 우선순위 판정 vdCard·희생 ──────────────────────────────────
+describe('T-05.7 vdCard·희생', () => {
   test('T-ENGINE-31: buildVdCard(salary) — 양쪽 hourly 산출', () => {
     const m = { totalA: 6000, totalB: 7000, hourlyA: 25000, hourlyB: 30000 };
     const card = buildVdCard('salary', m);
@@ -359,13 +326,6 @@ describe('T-05.7 vdCard·브랜드·희생', () => {
     const card = buildVdCard('benefits', m);
     assert.equal(card.p1.winner, 'a');
     assert.equal(card.p2.detail.satisfy, true);
-  });
-
-  test('T-ENGINE-36: buildVdCard(brand) — cumDiff>0, stabA>stabB', () => {
-    const m = { brand: { cumDiff: 3794, grA: 0.04, grB: 0.10, projA: [], projB: [], stabA: 90, stabB: 40, limited: false } };
-    const card = buildVdCard('brand', m);
-    assert.equal(card.p1.winner, 'b');
-    assert.equal(card.p2.winner, 'a');
   });
 
   test('T-ENGINE-37: sacrificeCost(salary)', () => {
@@ -442,7 +402,7 @@ describe('T-05.8 오케스트레이터', () => {
     assert.equal(result.catDelta.length, 9);
     assert.equal(result.vdCard.axis, 'salary');
     assert.equal(result.sacrifice.axis, 'wlb');
-    assert.deepEqual(result.rest.map(r => r.axis), ['benefits', 'brand']);
+    assert.deepEqual(result.rest.map(r => r.axis), ['benefits']);
   });
 
   test('T-ENGINE-47: totalRange = [total-sumBand, total+sumBand]', () => {
