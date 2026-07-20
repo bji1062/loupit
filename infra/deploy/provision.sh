@@ -37,6 +37,15 @@ sudo chown "${APP_USER}:${APP_USER}" /var/backups/loupit
 sudo chmod 750 /var/backups/loupit
 # Nginx(www-data)가 /home/ubuntu/loupit/web을 읽으려면 상위 디렉토리 탐색권한 필요
 sudo chmod 711 /home/ubuntu || true
+# 프록시 임시버퍼 디렉터리는 반드시 워커 사용자(www-data) 소유여야 한다.
+# 소유가 어긋나면 큰 업스트림 응답(reference/all 약 600KB)을 임시파일로 흘리는 순간
+# open()이 EACCES로 실패하고 **응답이 조용히 잘린다** — 5xx가 아니라 200 + 절단 본문이라
+# 로그를 안 보면 원인 파악이 어렵다(2026-07-20 실장애, 절단률 약 40%).
+# loupit.conf의 proxy_buffers 상향으로 이 경로를 애초에 안 타게 해뒀지만, 다른 업스트림
+# 응답이 커질 수 있으므로 소유권도 함께 보장한다(이중 방어).
+sudo mkdir -p /var/lib/nginx/proxy
+sudo chown -R www-data:www-data /var/lib/nginx/proxy
+sudo chmod 700 /var/lib/nginx/proxy
 
 echo "[4/6] infra/ 산출물 배치"
 sudo mkdir -p /etc/nginx/snippets

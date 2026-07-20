@@ -31,6 +31,20 @@ chk "SM-13 404"             "[ \"\$(code ${BASE}/nonexistent-xyz)\" = 404 ]"
 # HEAD도 수락 — api_route methods=["GET","HEAD"]) 반영 후 HEAD가 200 + 동일 헤더를 반환하므로,
 # f9459f9의 GET-헤더덤프 우회(HEAD→405 회피)는 더 이상 불필요하다. HEAD는 본문을 안 받아 더 가볍다.
 chk "SM-4 ref cache-header" "curl -sI ${BASE}/api/v1/reference/all | grep -qi 'cache-control: public, max-age=3600'"
+
+# SM-16: reference/all의 **본문 무결성**. SM-4는 HEAD로 헤더만 보므로 본문이 잘려도 통과한다 —
+# 2026-07-20 실장애가 정확히 그 사각지대였다. nginx가 약 600KB 응답을 proxy_buffers에 못 담아
+# /var/lib/nginx/proxy/ 임시파일로 흘리는데 권한이 어긋나면 open()이 EACCES로 실패하고 응답이
+# 조용히 잘렸다(Content-Length는 이미 전체 길이로 나간 뒤). 절단률 약 40%, 사용자에겐
+# "비교 도구를 불러오지 못했습니다"로 보였고 어떤 스모크도 이를 잡지 못했다.
+# 간헐 실패라 1회 검사로는 놓친다 → 5회 연속 전부 완전한 JSON이어야 통과.
+chk "SM-16 ref body intact(5x)" "for _i in 1 2 3 4 5; do curl -s ${BASE}/api/v1/reference/all -o ${SMOKE_TMP}/ref.json || exit 1; python3 -c \"
+import json,sys
+d=json.load(open('${SMOKE_TMP}/ref.json'))
+assert isinstance(d.get('companies'),list) and len(d['companies'])>0, 'companies 비었음'
+assert isinstance(d.get('company_types'),list), 'company_types 없음'
+assert isinstance(d.get('benefit_presets'),dict), 'benefit_presets 없음'
+\" || exit 1; done"
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"
