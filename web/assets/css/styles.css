@@ -214,6 +214,10 @@ main p { margin-top:var(--sp-3); }
 /* ══════════════════════════════════════════════════════ LANDING ══ */
 .lede { font-size:var(--fs-lg); color:var(--t2); max-width:60ch; margin-top:var(--sp-4); }
 .lede-sub { color:var(--t3); max-width:60ch; }
+/* 참여 안내 한 줄. 60ch(=600px)일 때 자연 텍스트폭이 정확히 600px라 여유가 0이었고,
+   Pretendard 폴백·확대·OS 폰트 차이 같은 미세한 변동에 "니다)"만 다음 줄로 넘어갔다.
+   폭에 여유를 주고, 좁은 화면에서 불가피하게 감길 때는 text-wrap으로 고아를 막는다. */
+.lede-note { color:var(--t3); max-width:76ch; text-wrap:pretty; }
 
 /* ══════════════════════════════════════════════════════ COMPANY PAGE ══ */
 .company-info { display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-3); margin-top:var(--sp-4); color:var(--t3); font-size:var(--fs-sm); }
