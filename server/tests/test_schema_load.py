@@ -18,9 +18,8 @@ EXPECTED_COLUMNS: dict[str, dict[str, dict]] = {
         "COMP_TP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
         "COMP_TP_CD": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
         "COMP_TP_NM": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
-        "GROWTH_RATE_VAL": {"DATA_TYPE": "decimal", "IS_NULLABLE": "NO"},
-        "GROWTH_LABEL_NM": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
-        "STABILITY_SCORE_NO": {"DATA_TYPE": "tinyint", "IS_NULLABLE": "NO"},
+        # GROWTH_RATE_VAL/GROWTH_LABEL_NM/STABILITY_SCORE_NO는 브랜드 축 제거로 드랍됨
+        # (db/migrations/20260720_drop_brand_axis_columns.sql, 2026-07-20).
     },
     "TCOMPANY": {
         "COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},

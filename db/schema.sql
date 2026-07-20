@@ -13,16 +13,14 @@ SET CHARACTER SET utf8mb4;
 
 -- ─────────────────────────────────────────────────────────────────────
 -- TCOMPANY_TYPE — 기업유형 마스터 (SP-DB-2)
--- 6종({large,startup,mid,foreign,public,freelance}). 비교 판정의 브랜드축.
+-- 6종({large,startup,mid,foreign,public,freelance}). 직접입력 유형 선택·정적 페이지 라벨용.
+-- (브랜드 축 제거 2026-07-20 — 성장률·안정성 컬럼은 20260720 마이그레이션으로 드랍됨)
 -- ─────────────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS TCOMPANY_TYPE (
   COMP_TP_ID          INT AUTO_INCREMENT PRIMARY KEY COMMENT '기업유형 PK',
   COMP_TP_CD          VARCHAR(20)  NOT NULL UNIQUE
                       COMMENT '기업유형 코드 (large, startup, mid, foreign, public, freelance)',
   COMP_TP_NM          VARCHAR(20)  NOT NULL COMMENT '표시 라벨 (대기업, 스타트업, 중견기업, 외국계, 공기업, 프리랜서)',
-  GROWTH_RATE_VAL     DECIMAL(5,4) NOT NULL COMMENT '연평균 연봉 상승률 (0.0400 = 4%)',
-  GROWTH_LABEL_NM     VARCHAR(50)  NOT NULL COMMENT '성장률 설명 텍스트 (예: 대기업 평균 4%)',
-  STABILITY_SCORE_NO  TINYINT      NOT NULL COMMENT '고용 안정성 점수 (1~100)',
   INS_ID  INT COMMENT '입력자 ID',
   INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
   MOD_ID  INT COMMENT '수정자 ID',

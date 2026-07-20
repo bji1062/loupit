@@ -11,15 +11,12 @@ import pymysql
 import pytest
 
 
-def _insert_type(conn, cd="large", nm="대기업", growth="0.0400", label="대기업 평균 4%", score=90):
+def _insert_type(conn, cd="large", nm="대기업"):
+    # 성장률·성장문구·안정성 3컬럼은 브랜드 축 제거(2026-07-20 마이그레이션)로 드랍됐다.
     with conn.cursor() as cur:
         cur.execute(
-            """
-            INSERT INTO TCOMPANY_TYPE
-                (COMP_TP_CD, COMP_TP_NM, GROWTH_RATE_VAL, GROWTH_LABEL_NM, STABILITY_SCORE_NO)
-            VALUES (%s, %s, %s, %s, %s)
-            """,
-            (cd, nm, growth, label, score),
+            "INSERT INTO TCOMPANY_TYPE (COMP_TP_CD, COMP_TP_NM) VALUES (%s, %s)",
+            (cd, nm),
         )
         return cur.lastrowid
 

@@ -5,12 +5,14 @@
 -- ══════════════════════════════════════════════════════════════════════
 SET NAMES utf8mb4;
 
+-- 성장률·성장문구·안정성 3컬럼은 브랜드 축 제거(2026-07-20)로 드랍됐다.
+-- 남은 것은 코드(comp_tp_cd)와 표시명(comp_tp_nm)뿐 — 직접입력 유형 선택·정적 페이지 라벨용.
 INSERT IGNORE INTO TCOMPANY_TYPE
-  (COMP_TP_CD, COMP_TP_NM, GROWTH_RATE_VAL, GROWTH_LABEL_NM, STABILITY_SCORE_NO)
+  (COMP_TP_CD, COMP_TP_NM)
 VALUES
-  ('large',     '대기업',     0.0400, '대기업 평균 4%',     90),
-  ('mid',       '중견기업',   0.0270, '중견기업 평균 2.7%', 70),
-  ('public',    '공기업',     0.0300, '공기업 평균 3%',      95),
-  ('startup',   '스타트업',   0.1000, '스타트업 평균 10%',   30),
-  ('foreign',   '외국계',     0.0500, '외국계 평균 5%',      60),
-  ('freelance', '프리랜서',   0.0200, '프리랜서 평균 2%',    20);
+  ('large',     '대기업'),
+  ('mid',       '중견기업'),
+  ('public',    '공기업'),
+  ('startup',   '스타트업'),
+  ('foreign',   '외국계'),
+  ('freelance', '프리랜서');
