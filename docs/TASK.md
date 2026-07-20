@@ -40,7 +40,7 @@ TASK는 6단계 **SPEC**(SP-* 구현 계약)을 개발자가 그대로 착수할
 
 ## 4. 진행 롤업
 
-- **총 리프 286** / 완료 227 / 진행 30 (01~12 메타 합계: 7+19+21+28+29+46+36+29+18+25+24+4) — M1·M2·M3·M5 완료 · **M7 착수**(2026-07-11): SP-INFRA 산출물 + SP-TEST MT-2/3/4. **집계 게이트 `run_tests.sh` ALL GREEN**: server 167·generator 151·node 283·nginx -t ok. · **M8 착수(2026-07-11): 실 생성물 빌드(회사 95·sitemap 103)+라이브 API 스모크 green** — `/reference/all` Decimal(growth_rate_val) JSON 직렬화 500 버그 포착·수정(단위테스트 미검출, 회귀 테스트 추가). 진행 30 = SP-INFRA 21(라이브 SM/CFG는 M8) + SP-ADS 8 + SP-FE 1(수동). 미착수 28 = 수동 QA. (대상외 1)
+- **총 리프 286** / 완료 227 / 진행 30 (01~12 메타 합계: 7+19+21+28+29+46+36+29+18+25+24+4) — M1·M2·M3·M5 완료 · **M7 착수**(2026-07-11): SP-INFRA 산출물 + SP-TEST MT-2/3/4. **집계 게이트 `run_tests.sh` ALL GREEN**: server 167·generator 151·node 283·nginx -t ok. · **M8 착수(2026-07-11): 실 생성물 빌드(회사 95·sitemap 103)+라이브 API 스모크 green** — `/reference/all` Decimal 필드 JSON 직렬화 500 버그 포착·수정(단위테스트 미검출, 회귀 테스트 추가). ※ 당시 원인 컬럼(`GROWTH_RATE_VAL`)은 브랜드 축 제거(2026-07-20)로 삭제됐다 — 현행 `/reference/all`의 `company_types`는 `comp_tp_id`/`comp_tp_cd`/`comp_tp_nm` 3필드다. 회귀 테스트는 존치. 진행 30 = SP-INFRA 21(라이브 SM/CFG는 M8) + SP-ADS 8 + SP-FE 1(수동). 미착수 28 = 수동 QA. (대상외 1)
 - **Tier-0 회귀 게이트: 27개** (깨지면 배포 차단) — 목록·러너는 [00 §5](TASK/00-빌드순서-마일스톤.md#5-tier-0-회귀-게이트-맵)
 - **미결 결정 게이트: 4개** (DG-1~4, 전부 미해소) — 정의·차단 대상은 [00 §4](TASK/00-빌드순서-마일스톤.md#4-결정-게이트-dg-14)
 

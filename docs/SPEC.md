@@ -57,7 +57,7 @@ loupit SPEC은 FRD가 정의한 각 기능요구(FR-*)를 **개발자가 추측 
 | `qual_yn` | `QUAL_YN BOOLEAN` | `bool` 강제 | 정성=금액/카테고리/밴드 제외 | 금액 생략·`qual_desc` 서술 표시 |
 | `expires_dtm` | `EXPIRES_DTM` | ISO8601\|null | 만료 시 밴드 **+0.15 가산**(`now` 주입) | "만료·재확인 필요" 배지 |
 | `work_style_val`(JSON) | `WORK_STYLE_VAL JSON` | `json.loads`→dict | `autonomyScore`(unlimitedPTO)·`initWsState` 제안 | 근무형태 5축 표시(true만) |
-| `comp_tp_cd` + `company_types[]` | `COMP_TP_ID`→조인 파생 | `comp_tp_cd`·`growth_rate_val`·`stability_score_no` | `brandProjection`(3년 투영·안정성) | 유형 지표·성장 라벨(있을 때만) |
+| `comp_tp_cd` + `company_types[]` | `COMP_TP_ID`→조인 파생(`TCOMPANY_TYPE` = 식별 3 + 감사 4) | `comp_tp_cd`·`comp_tp_nm`(원소 3필드) | 미참조(`companyTypes` 미주입, SP-ENGINE-13b 폐기) | 유형명 표시·프리셋 그룹 키 |
 | `aliases[]` | `TCOMPANY_ALIAS` | 인라인 `aliases[]` | — | 검색 매칭·정규화·JSON-LD `alternateName` |
 | `value_source`(real/preset/user) | **DB 컬럼 없음** | **API 필드 없음** | 미참조 | 클라이언트 런타임 파생(`fillBenefits`, SP-FE 전용) |
 
@@ -65,7 +65,7 @@ loupit SPEC은 FRD가 정의한 각 기능요구(FR-*)를 **개발자가 추측 
 
 ## 5. TDD 커버리지 요약
 
-브리프 §10 TDD 원칙. 영역별 테스트 유형·러너·케이스 대역을 종합한다(케이스 정의 정본은 각 SP-* 문서, 종합·게이트는 SP-TEST). 자동 ≈231 + 수동 체크리스트 32.
+브리프 §10 TDD 원칙. 영역별 테스트 유형·러너·케이스 대역을 종합한다(케이스 정의 정본은 각 SP-* 문서, 종합·게이트는 SP-TEST). 자동 ≈227 + 수동 체크리스트 32.
 
 | SP-대역 | 테스트 유형·계층 | 러너·도구 | 케이스 대역(수) |
 | --- | --- | --- | --- |
@@ -73,7 +73,7 @@ loupit SPEC은 FRD가 정의한 각 기능요구(FR-*)를 **개발자가 추측 
 | SP-DB | DB 스키마·제약·데이터 계약 | pytest + pymysql + MySQL 8 | SC·CN·DC(33) |
 | SP-SEED | 시드·이관·배지·멱등 | pytest + pymysql + MySQL 8 | SD·SI·SB·SM(29) |
 | SP-API | API 계약(라우트·응답·헤더·오류) | pytest + httpx ASGITransport(무 DB) | TS·TH·TR·TSE·TC·TM·TN·TCORS·TE(26) |
-| SP-ENGINE | 순수 계산모듈(경계·0나눗셈·밴드·순수성) | node:test(동일 ES모듈 import) | T-ENGINE(48) |
+| SP-ENGINE | 순수 계산모듈(경계·0나눗셈·밴드·순수성) | node:test(동일 ES모듈 import) | T-ENGINE(44 — 1~48 중 28·29·30·36 폐기) |
 | SP-FE | 프론트 순수로직 + 수동 브라우저 | node:test + in-memory 스텁 / 브라우저 | UT-*(19) + MB(14) |
 | SP-GEN | 정적 생성물(개수·SEO·slug·비-JS·이스케이프) | pytest + fake 번들(무 DB) | GC(26) |
 | SP-ADS | 순수 게이팅/필터 + 데이터 + 수동 | node:test / `affiliate.json` / 브라우저 | UT-ADS(15) + MB-ADS(12) |

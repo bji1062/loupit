@@ -1,12 +1,7 @@
 # SPEC 04 — 백엔드 API (FastAPI)
 
-> ⚠️ **폐기(2026-07-20): 브랜드 축(성장성·안정성) 제거됨.**
-> 아래 본문의 브랜드 축·`brandProjection`·`vdBrand`·`GROWTH_RATE_VAL`/`GROWTH_LABEL_NM`/
-> `STABILITY_SCORE_NO` 관련 서술은 **이력이며 현행 계약이 아니다.** 우선순위 축은
-> 연봉·워라밸·복지 **3종**이고, `reference/all`의 `company_types`는
-> `comp_tp_id`/`comp_tp_cd`/`comp_tp_nm` 3필드만 반환한다.
-> DB 컬럼은 남아 있으나 **어느 코드도 읽지 않는다**(별도 마이그레이션으로 분리).
-> 경위·파급범위: `docs/ANALYSIS-성장성-용어-2026-07-20.md` §6-1.
+> **이력**: 브랜드 축(성장성·안정성)은 2026-07-20 제거됐다. 우선순위는 연봉·워라밸·복지 3종.
+> 경위·파급범위: `docs/ANALYSIS-성장성-용어-2026-07-20.md` §6-1 · `docs/HANDOFF-2026-07-19.md` §K.
 
 
 **영역 ID 대역**: `SP-API`
@@ -286,9 +281,6 @@ class CompanyType(BaseModel):                 # FR-D2 / TCOMPANY_TYPE
     comp_tp_id: int
     comp_tp_cd: str                           # ∈ {large,startup,mid,foreign,public,freelance}
     comp_tp_nm: str
-    growth_rate_val: float | None = None      # DECIMAL(5,4) → float
-    growth_label_nm: str | None = None
-    stability_score_no: int | None = None     # 1~100
 
 class PresetBenefit(BaseModel):               # FR-D3 / TBENEFIT_PRESET (출처·만료·amt_source 없음)
     benefit_cd: str
@@ -372,9 +364,7 @@ class ErrorEnvelope(BaseModel):               # FR-95 문서용(FastAPI 기본 {
 import json
 
 _SQL_TYPES = """
-  SELECT COMP_TP_ID AS comp_tp_id, COMP_TP_CD AS comp_tp_cd, COMP_TP_NM AS comp_tp_nm,
-         GROWTH_RATE_VAL AS growth_rate_val, GROWTH_LABEL_NM AS growth_label_nm,
-         STABILITY_SCORE_NO AS stability_score_no
+  SELECT COMP_TP_ID AS comp_tp_id, COMP_TP_CD AS comp_tp_cd, COMP_TP_NM AS comp_tp_nm
     FROM TCOMPANY_TYPE ORDER BY COMP_TP_ID"""
 
 _SQL_PRESETS = """
