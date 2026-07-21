@@ -97,7 +97,6 @@ def _company_view(c: dict, ctx, now) -> dict:
         "comp_nm": c["comp_nm"],
         "industry_nm": c.get("industry_nm"),
         "comp_tp_nm": t.get("comp_tp_nm"),
-        "logo_nm": c.get("logo_nm"),
         "work_style": [
             (k, ws[k])
             for k in ("remote", "flex", "unlimitedPTO", "refreshLeave", "overtime")

@@ -37,7 +37,6 @@ def _company_summary(c: dict, t: dict) -> dict:
         "comp_eng_nm": c["comp_eng_nm"],
         "comp_tp_nm": t.get("comp_tp_nm"),
         "industry_nm": c.get("industry_nm"),
-        "logo_nm": c.get("logo_nm"),
     }
 
 
