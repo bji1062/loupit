@@ -220,11 +220,17 @@ def test_pc12_content_and_config_modules_have_no_real_secrets():
     from generator import config as config_module
     from generator.content import policy as policy_content_module
 
+    # 진짜 시크릿(DB URL·개인키)은 어느 모듈에도 없어야 한다.
     for mod in (config_module, policy_content_module):
         src = inspect.getsource(mod)
         assert "mysql://" not in src
-        assert not re.search(r"ca-pub-\d{10,}", src)
         assert "BEGIN PRIVATE KEY" not in src
+
+    # AdSense 게시자 ID(ca-pub-…)는 **공개값**이라 시크릿이 아니다 — ads.txt·모든 페이지 광고
+    # 코드에 노출된다. 2026-07-21 애드센스 활성화로 config.py에 정당하게 존재한다(render_ads_txt
+    # 소스). 단 정책 문안(policy content)에는 클라이언트 id가 들어갈 이유가 없으므로 거기선 여전히 금지.
+    assert not re.search(r"ca-pub-\d{10,}", inspect.getsource(policy_content_module)), \
+        "정책 문안에 광고 client id가 섞였다 — 문맥상 오류"
 
 
 def test_pc12_policy_contact_env_unset_yields_real_email_default(monkeypatch):

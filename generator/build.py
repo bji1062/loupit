@@ -56,6 +56,7 @@ def run(
     ]
     pages.append(sitemap_page.render_sitemap(env, site_urls, resolved_lastmod, CFG))
     pages.append(sitemap_page.render_robots(CFG))
+    pages.append(sitemap_page.render_ads_txt(CFG))  # /ads.txt (AdSense, 2026-07-21)
     manifest = stage_and_swap(out_dir, pages, incremental=incremental, gzip=gzip)
     write_manifest(out_dir, manifest)
     return 0

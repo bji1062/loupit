@@ -20,6 +20,26 @@ def render_sitemap(env, urls: list[str], lastmod: str, cfg=CFG) -> Page:
     )
 
 
+def render_ads_txt(cfg=CFG) -> Page:
+    """/ads.txt — AdSense 광고 판매 권한 인증(수익 보호) + 소유권 확인 겸용(2026-07-21).
+    형식: `google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0`
+      · pub-id는 client id(`ca-pub-…`)에서 `ca-` 접두 제거.
+      · f08c47fec0942fa0 = Google AdSense 인증기관 고정 ID(전 게시자 공통).
+    robots/sitemap과 동일하게 web/dist에 산출되고 nginx `location = /ads.txt`가 서빙한다.
+    """
+    pub = cfg.adsense_client_id.replace("ca-", "", 1)  # ca-pub-… → pub-…
+    body = f"google.com, {pub}, DIRECT, f08c47fec0942fa0\n"
+    return Page(
+        path="ads.txt",
+        url=f"{cfg.site_origin}/ads.txt",
+        html=body,
+        title="",
+        description="",
+        in_sitemap=False,
+        content_type="text/plain; charset=utf-8",
+    )
+
+
 def render_robots(cfg=CFG) -> Page:
     """`Sitemap:` 라인 필수(NFR10). 읽기전용 API는 색인 대상 아님.
 

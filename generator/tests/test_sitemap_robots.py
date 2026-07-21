@@ -80,6 +80,19 @@ def test_gc19_robots_allows_root_disallows_api(fake_bundle, fake_now):
     assert robots_page.content_type == "text/plain; charset=utf-8"
 
 
+def test_ads_txt_format_and_pubid():
+    """AdSense ads.txt(2026-07-21): google.com·DIRECT·인증기관 ID 고정, pub-id는 ca- 제거."""
+    from generator.config import CFG
+    page = sitemap.render_ads_txt(CFG)
+    assert page.path == "ads.txt"
+    assert page.content_type == "text/plain; charset=utf-8"
+    line = page.html.strip()
+    assert line.startswith("google.com, pub-"), line
+    assert line.endswith("DIRECT, f08c47fec0942fa0"), line
+    assert "ca-pub-" not in line, "ads.txt는 ca- 접두 없이 pub-만 써야 한다"
+    assert CFG.adsense_client_id.replace("ca-", "", 1) in line
+
+
 def test_robots_blocks_aggressive_scrapers_not_search_engines(fake_bundle, fake_now):
     """스크래핑 방어 Layer D(2026-07-21): 공격적 SEO 스크래퍼는 Disallow,
     검색·AdSense 크롤러는 규칙에 등장하지 않음(= 전체 규칙의 Allow 적용). 후자를 실수로

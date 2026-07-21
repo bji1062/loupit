@@ -40,8 +40,10 @@ class GenConfig:
     out_dir: str = os.environ.get("GEN_OUT_DIR", "web/dist")
     default_og_image: str = "/assets/v2/og-default.png"  # 사이트 기본 공유 이미지(회사별 없음, FR-55)
     adsense_client_id: str = os.environ.get(
-        "ADSENSE_CLIENT_ID", "ca-pub-XXXXXXXXXXXXXXXX"
-    )  # placeholder(NFR22)
+        "ADSENSE_CLIENT_ID", "ca-pub-6009927622334159"
+    )  # AdSense 게시자 ID(공개값). 용도: render_ads_txt의 pub-id 소스(2026-07-21 발급).
+    #   ※ 런타임 광고 로더의 client id는 web/assets/js/adsConfig.js AD_CLIENT가 별도 소유
+    #     (SPA·정적 공용, static-ads.js→ads.js 경로). 이 config는 정적 ads.txt 생성 전용.
     compare_path: str = "/compare"  # CTA 진입 경로(SP-FE 셸)
     site_name: str = "jobcho.wiki"
     lang: str = "ko"

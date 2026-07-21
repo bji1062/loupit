@@ -24,8 +24,12 @@ describe('T-08.1.1 adsConfig 모듈 골격 스모크', () => {
 
 // ── T-08.2.1: adsConfig 상수 블록·SLOT_ID_MAP·SLOT_RESERVE·AD_LABEL_TEXT ────
 describe('T-08.2.1 adsConfig 설정 구조 스모크', () => {
-  test('AD_CLIENT는 초기 플레이스홀더', () => {
-    assert.equal(adsConfig.AD_CLIENT, AD_CLIENT_PLACEHOLDER);
+  test('AD_CLIENT는 실 게시자 ID(2026-07-21 애드센스 활성화, isPlaceholder=false)', () => {
+    // 2026-07-21 pub-id 발급으로 플레이스홀더 → 실값 치환(§B-3 단계 2). 공개값이라 리포 노출 무방.
+    // 슬롯은 여전히 플레이스홀더(승인 후 발급) — 그래서 수동 슬롯은 아직 억제된다(ads.js 가드).
+    assert.notEqual(adsConfig.AD_CLIENT, AD_CLIENT_PLACEHOLDER);
+    assert.equal(isPlaceholder(adsConfig.AD_CLIENT), false, '실값이면 로더 주입 경로 활성');
+    assert.match(adsConfig.AD_CLIENT, /^ca-pub-\d{16}$/, 'ca-pub- + 16자리 형식');
   });
 
   test('AUTO_ADS=true, DENY_FALLBACK=nonpersonalized(기본값)', () => {

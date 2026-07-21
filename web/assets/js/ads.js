@@ -109,9 +109,12 @@ function mountManualSlot(root, pageType, position) {
   if (!host) return;                                                          // 위치 없으면 미렌더(무크래시)
   const slotId = resolveSlotId(pageType, position);
 
-  // 승인 전(placeholder)·슬롯 미상·거부폴백(suppress)에는 빈 "광고" 점선 박스를 노출하지 않는다(#12):
-  // 실 client id 주입 전까지 랜딩에 내용 없는 광고 자리가 상시 보이던 함정 제거 — host를 비우고 hidden.
-  if (isPlaceholder(adsConfig.AD_CLIENT) || !slotId
+  // 승인 전(placeholder)·슬롯 미상/미치환·거부폴백(suppress)에는 빈 "광고" 점선 박스를 노출하지 않는다(#12).
+  // ⚠ slotId가 **플레이스홀더 값**('XXXXXXXXXX')일 때도 억제해야 한다(2026-07-21): AD_CLIENT만 실값으로
+  // 치환하고 AD_SLOT은 아직 플레이스홀더인 심사 전 상태에서, resolveSlotId는 truthy 문자열을 반환하므로
+  // `!slotId`로는 안 걸린다 → 실 client + 가짜 슬롯의 깨진 <ins data-ad-slot="XXXX">가 만들어졌다.
+  // 이 단계에선 AUTO ads(enableAutoAds)만 서빙하고 수동 슬롯은 실 슬롯 ID 발급 후(승인 후) 렌더한다.
+  if (isPlaceholder(adsConfig.AD_CLIENT) || !slotId || isPlaceholder(slotId)
       || (adsConfig.DENY_FALLBACK === 'suppress' && !isPersonalized())) {
     host.replaceChildren();
     host.hidden = true;
