@@ -103,7 +103,9 @@ export async function mountTrending(deps = {}) {
   try {
     const f = fetchFn || (typeof fetch !== 'undefined' ? fetch : null);
     if (!f) return null;
-    const res = await f(TRENDING_URL, { credentials: 'omit' });
+    // 스크래핑 방어(2026-07-21): 데이터 GET은 nginx가 X-Loupit-Client 헤더를 요구(apiFetch와 동일).
+    // 빠지면 이 위젯이 403으로 조용히 사라진다(위젯 실패는 무해하나 기능 손실).
+    const res = await f(TRENDING_URL, { credentials: 'omit', headers: { 'X-Loupit-Client': 'web' } });
     items = parseTrending(await res.json());
   } catch { return null; } // 로드 실패 → hidden 유지(무크래시)
   if (!items.length) return null; // 집계 0건 → 미노출

@@ -141,6 +141,13 @@ describe('mountTrending — 렌더·롤링·호버 펼침·클릭', () => {
     assert.match(host.querySelector('.trend-title').textContent, /실시간 비교 TOP 10/);
   });
 
+  test('스크래핑 방어: trending fetch가 X-Loupit-Client 헤더를 보낸다(제거 시 위젯 403)', async () => {
+    let seen = null;
+    await mountTrending({ fetchFn: async (url, opt) => { seen = opt; return { ok: true, json: async () => ({ items: TEN }) }; } });
+    assert.equal(seen?.headers?.['X-Loupit-Client'], 'web',
+      '헤더가 빠지면 nginx가 comparisons/trending을 403 처리해 위젯이 조용히 사라진다');
+  });
+
   test('롤링: ROTATE_MS 경과 → 접힘 행이 2위로 전진(순환)', async (t) => {
     t.mock.timers.enable({ apis: ['setInterval'] });
     await mountTrending({ fetchFn: okFetch() });

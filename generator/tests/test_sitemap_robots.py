@@ -78,3 +78,16 @@ def test_gc19_robots_allows_root_disallows_api(fake_bundle, fake_now):
     assert "Allow: /" in robots_page.html
     assert "Disallow: /api/" in robots_page.html
     assert robots_page.content_type == "text/plain; charset=utf-8"
+
+
+def test_robots_blocks_aggressive_scrapers_not_search_engines(fake_bundle, fake_now):
+    """스크래핑 방어 Layer D(2026-07-21): 공격적 SEO 스크래퍼는 Disallow,
+    검색·AdSense 크롤러는 규칙에 등장하지 않음(= 전체 규칙의 Allow 적용). 후자를 실수로
+    Disallow하면 SEO·애드센스가 죽으므로 그 부재를 명시적으로 잠근다."""
+    _, _, robots = _build_all(fake_bundle, fake_now)
+    for bad in ("AhrefsBot", "SemrushBot", "MJ12bot"):
+        assert f"User-agent: {bad}" in robots.html, f"{bad} 차단 규칙 누락"
+    # 검색·AdSense 크롤러는 전용 Disallow 블록이 있으면 안 된다(있으면 SEO 사망).
+    for good in ("Googlebot", "Mediapartners-Google", "AdsBot-Google", "Bingbot"):
+        assert f"User-agent: {good}\nDisallow: /" not in robots.html, \
+            f"{good}에 Disallow가 붙었다 — SEO/애드센스 차단 사고"

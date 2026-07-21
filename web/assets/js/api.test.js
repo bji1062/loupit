@@ -46,6 +46,14 @@ describe('T-06.6.1 apiFetch 전송 계약', () => {
     });
   });
 
+  test('스크래핑 방어: X-Loupit-Client 헤더를 반드시 보낸다(제거 시 nginx 게이트로 앱 전체 죽음)', () => {
+    mockFetchOk({});
+    return apiFetch('/x').then(() => {
+      assert.equal(calls[0].opts.headers['X-Loupit-Client'], 'web',
+        '이 헤더가 빠지면 데이터 GET이 전부 403 — reference/all·검색·상세 전멸');
+    });
+  });
+
   test('credentials: "omit" 전송(자격증명 미전송, NFR16)', async () => {
     mockFetchOk({});
     await apiFetch('/x');

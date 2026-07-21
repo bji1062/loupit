@@ -30,7 +30,7 @@ chk "SM-13 404"             "[ \"\$(code ${BASE}/nonexistent-xyz)\" = 404 ]"
 # SM-4: HEAD로 참조 엔드포인트의 Cache-Control을 검사한다. L-1(2026-07-13, GET 라우트는
 # HEAD도 수락 — api_route methods=["GET","HEAD"]) 반영 후 HEAD가 200 + 동일 헤더를 반환하므로,
 # f9459f9의 GET-헤더덤프 우회(HEAD→405 회피)는 더 이상 불필요하다. HEAD는 본문을 안 받아 더 가볍다.
-chk "SM-4 ref cache-header" "curl -sI ${BASE}/api/v1/reference/all | grep -qi 'cache-control: public, max-age=3600'"
+chk "SM-4 ref cache-header" "curl -sI -H 'X-Loupit-Client: web' ${BASE}/api/v1/reference/all | grep -qi 'cache-control: public, max-age=3600'"
 
 # SM-16: reference/all의 **본문 무결성**. SM-4는 HEAD로 헤더만 보므로 본문이 잘려도 통과한다 —
 # 2026-07-20 실장애가 정확히 그 사각지대였다. nginx가 약 600KB 응답을 proxy_buffers에 못 담아
@@ -38,13 +38,26 @@ chk "SM-4 ref cache-header" "curl -sI ${BASE}/api/v1/reference/all | grep -qi 'c
 # 조용히 잘렸다(Content-Length는 이미 전체 길이로 나간 뒤). 절단률 약 40%, 사용자에겐
 # "비교 도구를 불러오지 못했습니다"로 보였고 어떤 스모크도 이를 잡지 못했다.
 # 간헐 실패라 1회 검사로는 놓친다 → 5회 연속 전부 완전한 JSON이어야 통과.
-chk "SM-16 ref body intact(5x)" "for _i in 1 2 3 4 5; do curl -s ${BASE}/api/v1/reference/all -o ${SMOKE_TMP}/ref.json || exit 1; python3 -c \"
+chk "SM-16 ref body intact(5x)" "for _i in 1 2 3 4 5; do curl -s -H 'X-Loupit-Client: web' ${BASE}/api/v1/reference/all -o ${SMOKE_TMP}/ref.json || exit 1; python3 -c \"
 import json,sys
 d=json.load(open('${SMOKE_TMP}/ref.json'))
 assert isinstance(d.get('companies'),list) and len(d['companies'])>0, 'companies 비었음'
 assert isinstance(d.get('company_types'),list), 'company_types 없음'
 assert isinstance(d.get('benefit_presets'),dict), 'benefit_presets 없음'
 \" || exit 1; done"
+
+# ── 스크래핑 방어 회귀 가드(2026-07-21) ──
+# SM-17: Layer A — 사이트 헤더 없는 맨 curl은 reference/all에서 403(벌크 덤프 차단).
+#   ⚠ 이게 200이면 "1회 호출 = 600KB 전체"가 다시 열린 것. SM-4·16은 헤더를 보내니 별개.
+chk "SM-17 A: 무헤더 ref → 403" "[ \"\$(code ${BASE}/api/v1/reference/all)\" = 403 ]"
+# SM-18: Layer B — 악성 봇 UA는 정적 페이지에서도 403.
+chk "SM-18 B: 봇UA landing → 403" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -A 'python-requests/2.31' ${BASE}/)\" = 403 ]"
+# SM-19: 화이트리스트 — Googlebot·AdSense 크롤러는 절대 차단 금지(SEO/수익 생명줄).
+chk "SM-19 googlebot 허용(≠403)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -A 'Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)' ${BASE}/)\" != 403 ]"
+chk "SM-19b AdSense 크롤러 허용" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -A 'Mediapartners-Google' ${BASE}/)\" != 403 ]"
+# SM-20: health는 Layer A 예외(무헤더 curl로도 200) — 모니터링 생존.
+chk "SM-20 health 무헤더 200" "curl -s ${BASE}/api/v1/health | grep -q '\"status\":\"ok\"'"
+
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"
