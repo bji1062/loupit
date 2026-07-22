@@ -244,7 +244,9 @@ def test_SC5_engine_and_collation(schema_db, db_name, table):
     assert collation.startswith("utf8mb4")
 
 
-# ── SC-6: FK→TMEMBER/프로파일러 부재 ──
+# ── SC-6: FK→구 제거 테이블(프로파일러·소셜 등) 부재 ──
+# TMEMBER 는 SC14 로 REMOVED_TABLES 에서 해제됐다(§C item1) — 참여 테이블의 FK→TMEMBER 는 정상이라
+# 본 검사 대상이 아니다. 그래서 목록에서 빠졌고, 남은 15종에 대한 FK 만 0 이어야 한다.
 def test_SC6_no_fk_to_removed_tables(schema_db, db_name):
     with schema_db.cursor() as cur:
         cur.execute(
@@ -256,3 +258,42 @@ def test_SC6_no_fk_to_removed_tables(schema_db, db_name):
         )
         count = cur.fetchone()[0]
     assert count == 0
+
+
+# ── AU-3·AU-4 (SC14): 참여 테이블 PII·해시 계약 (@pytest.mark.sc14, 구현 M9 전 RED) ──
+# 참여 7테이블 DDL 이 db/schema.sql 에 들어와야(M9) schema_db 가 생성하므로, 그 전엔 이 두 테스트가
+# 실패한다. 베이스 게이트는 `-m "not sc14"` 로 제외한다(SP-DB-17·SP-AUTH-3, T9·NFR30·INV-8).
+@pytest.mark.sc14
+def test_AU3_sc14_tmember_pii_minimal(schema_db, db_name):
+    """AU-3: TMEMBER PII 최소 — 비-PII(PK `MBR_ID`·`STATUS_CD`·감사4, SP-DB-17.1 주석)를 뺀 데이터
+    컬럼이 정확히 {LOGIN_EMAIL_NM, NICKNAME_NM} 이고, 비밀번호/토큰/코드/시크릿 컬럼이 없다
+    (SP-DB-17.1 'PII 정확집합', T9·NFR30). STATUS_CD(∈{active,withdrawn}, SP-DB-17.8)는 탈퇴
+    상태용 비-PII 라 제외집합에 포함한다."""
+    cols = set(_columns(schema_db, db_name, "TMEMBER"))
+    non_pii = {"INS_ID", "INS_DTM", "MOD_ID", "MOD_DTM", "MBR_ID", "STATUS_CD"}
+    pii_cols = cols - non_pii
+    assert pii_cols == {"LOGIN_EMAIL_NM", "NICKNAME_NM"}, (
+        f"TMEMBER PII 컬럼 정확집합 불일치: {pii_cols}"
+    )
+    leaked = [c for c in cols if any(f in c.upper() for f in ("PASSWORD", "PASSWD", "SECRET", "TOKEN"))]
+    assert not leaked, f"TMEMBER 금지 컬럼(비밀번호/토큰): {leaked}"
+
+
+@pytest.mark.sc14
+def test_AU4_sc14_auth_tables_hash_only(schema_db, db_name):
+    """AU-4: 인증 테이블은 원문 이메일/코드/토큰 컬럼을 두지 않고 *_HASH_VAL(SHA-256/HMAC)만 저장한다
+    (SP-DB-17.2·3·5, T9·NFR30·INV-8)."""
+    checks = {
+        "TSESSION": ("TOKEN",),              # 세션 토큰 원문 금지 → SHA-256 해시만
+        "TAUTH_CODE": ("CODE",),             # 코드 원문 금지 → 해시만
+        "TEMPLOY_VERIFICATION": ("EMAIL",),  # 회사 이메일 원문 금지 → HMAC 해시만
+    }
+    for table, secrets in checks.items():
+        cols = set(_columns(schema_db, db_name, table))
+        assert any(c.endswith("_HASH_VAL") for c in cols), f"{table}: *_HASH_VAL 부재"
+        for c in cols:
+            up = c.upper()
+            if up.endswith("_ID"):
+                continue  # PK/FK 식별자(AUTH_CODE_ID 등)는 원문 시크릿이 아니다 — 스캔 제외
+            for sec in secrets:
+                assert not (sec in up and "HASH" not in up), f"{table}.{c}: 원문 {sec} 컬럼 금지(해시만, AU-4)"

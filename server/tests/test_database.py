@@ -96,7 +96,11 @@ def test_write_helpers_are_absent():
     허용 쓰기는 정확히 2종, 둘 다 익명 비교 로그(TCOMPARE_LOG) 전용:
       - `insert_compare_log` (단일 INSERT, INV-1 개정 2026-07-14)
       - `purge_compare_log`  (보존 퍼지 DELETE, #7b)
-    그 외 쓰기 심볼(다른 테이블·다른 DML)이 생기면 본 게이트가 깨진다."""
+    그 외 쓰기 심볼(다른 테이블·다른 DML)이 생기면 본 게이트가 깨진다.
+
+    **SC14(③)**: 참여 쓰기(`execute`·`transaction`, SP-AUTH-4)는 AU-7(@pytest.mark.sc14)이
+    재명세한다(§C item4 — 구 게이트의 `execute` hasattr 금지와 충돌 해소). 본 base 게이트는
+    현 익명 무쓰기 표면을 지키며, M9 구현 시 execute/transaction 허용집합으로 갱신된다."""
     from server import database
 
     for forbidden in ("execute", "commit", "rollback", "insert", "update", "delete"):
@@ -165,3 +169,26 @@ def test_get_pool_returns_initialized_pool(monkeypatch):
     sentinel = object()
     monkeypatch.setattr(database, "_pool", sentinel)
     assert database.get_pool() is sentinel
+
+
+@pytest.mark.sc14
+def test_AU7_sc14_write_symbols_include_participation_helpers():
+    """AU-7(SC14): 참여 쓰기 진입점(execute·transaction, SP-AUTH-4)이 database 에 존재하고,
+    write_symbols 정확 집합이 익명 로그 2종 + `execute` 로 재명세된다(§C item4).
+
+    구현(M9) 전엔 execute/transaction 부재라 RED → @pytest.mark.sc14 로 베이스 게이트 제외.
+    (`transaction` 은 쓰기 키워드 미포함이라 write_symbols 필터엔 안 잡히나 심볼 존재는 확인한다.)"""
+    from server import database
+
+    assert hasattr(database, "execute"), "SC14: database.execute 부재"
+    assert hasattr(database, "transaction"), "SC14: database.transaction 부재"
+    write_symbols = {
+        name
+        for name in dir(database)
+        if not name.startswith("_")
+        and callable(getattr(database, name))
+        and any(kw in name.lower() for kw in ("insert", "update", "delete", "execute", "commit", "purge"))
+    }
+    assert sorted(write_symbols) == ["execute", "insert_compare_log", "purge_compare_log"], (
+        f"SC14 write_symbols 재명세 불일치: {sorted(write_symbols)}"
+    )

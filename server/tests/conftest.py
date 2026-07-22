@@ -43,6 +43,12 @@ def pytest_configure(config):
     LOUPIT_ALLOW_SERVING_SCHEMA=1)로만 허용한다. 이 신호가 없는 맨 `pytest` 직접 실행은
     schema_db 픽스처의 DROP TABLE 이 서빙 데이터를 복원 없이 비우므로 여기서 중단한다 —
     2026-07-11 C-1 회귀 차단."""
+    # SC14 마커 등록(③ RED 스테이징): 미구현 SC14 스펙은 @pytest.mark.sc14 로 격리하고, 베이스
+    # 릴리스 게이트는 run_tests.sh 의 `-m "not sc14"` 로 제외해 그린을 유지한다(M9 구현 후 활성).
+    config.addinivalue_line(
+        "markers",
+        "sc14: SC14 참여(로그인·재직인증·복지편집) RED 스펙 — 구현(M9) 전 실패, 베이스 게이트 제외",
+    )
     allow_serving = os.environ.get("LOUPIT_ALLOW_SERVING_SCHEMA") == "1"
     try:
         assert_test_target(os.environ.get("DB_NAME"), allow_serving=allow_serving)
@@ -65,13 +71,25 @@ TABLE_CREATE_ORDER = [
 ]
 TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
-# SP-DB-11 제거 테이블 16종 — 격리 시 잔존분이 있다면 함께 정리(negative 보장).
+# SP-DB-11 제거 테이블 15종(TMEMBER 는 SC14 로 SP-DB-17 이 신규 소유 → 제거목록에서 해제, ③ §C item1
+# — SC-6(FK→REMOVED 0건) 통과에 필수: 참여 FK 가 TMEMBER 를 참조). TSOCIAL_ACCOUNT·TEMAIL_VERIFICATION
+# 은 무소셜·무비밀번호로 영구 제거 유지. 격리 시 잔존분이 있다면 함께 정리(negative 보장).
 REMOVED_TABLES = [
-    "TMEMBER", "TSOCIAL_ACCOUNT", "TEMAIL_VERIFICATION",
+    "TSOCIAL_ACCOUNT", "TEMAIL_VERIFICATION",
     "TPROFILE", "TPROFILE_JOB_FIT", "TJOB_GROUP", "TJOB",
     "TPROFILER_QUESTION", "TQUESTION_SCENARIO", "TPROFILER_RESULT",
     "TCOMPARISON", "TCOMPARISON_FEED", "TDAILY_STAT", "TPOPULAR_CASE",
     "TBENEFIT_REPORT", "TCOMPANY_BENEFIT_BADGE_LOG",
+]
+
+# ── SC14 참여 7테이블 생성순서(FK 부모→자식, SP-DB-17) ─────────────────────────────────
+# ③ RED 스테이징: 이 위상은 **아직 활성 TABLE_CREATE_ORDER 에 편입하지 않는다** — 참여 테이블
+# DDL 이 db/schema.sql 에 없어(M9) schema_db 픽스처가 생성하지 못하기 때문. 지금은 @pytest.mark.sc14
+# 스펙(AU-3/4)이 참조하는 상수로만 둔다. **M9 착수 시** db/schema.sql·load.py 에 DDL 을 넣고 이 목록을
+# TABLE_CREATE_ORDER 에 병합한다(run_tests.sh ④ 참여 백업이 이미 이 순서로 준비돼 있음).
+PARTICIPATION_CREATE_ORDER = [
+    "TMEMBER", "TCOMPANY_EMAIL_DOMAIN", "TSESSION", "TAUTH_CODE",
+    "TEMPLOY_VERIFICATION", "TEMPLOY_VRF_REQUEST", "TBENEFIT_EDIT_LOG",
 ]
 
 

@@ -106,6 +106,15 @@ def test_compare_log_path_preserved():
     assert "backup_compare_log" in s and "reinject_compare_log" in s, "TCOMPARE_LOG 보존 경로 훼손"
 
 
+def test_base_gate_excludes_sc14_marker():
+    """③ RED 스테이징: 베이스 백엔드 게이트가 `-m "not sc14"` 로 미구현 SC14 스펙을 제외해
+    RED 스펙이 배포를 막지 않는다(SC14 마커 등록: conftest.pytest_configure)."""
+    s = _script()
+    assert re.search(r"""pytest\s+server/tests/[^\n]*-m\s+["']not sc14["']""", s), (
+        "run_tests.sh 백엔드 게이트에 -m 'not sc14' 제외 부재 — RED SC14 스펙이 베이스 배포를 막을 수 있음"
+    )
+
+
 if __name__ == "__main__":  # conftest/DB 없이 자체 검증용(python server/tests/test_runner_backup.py)
     _fns = [v for k, v in sorted(globals().items()) if k.startswith("test_") and callable(v)]
     for _f in _fns:

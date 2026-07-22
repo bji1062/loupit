@@ -51,7 +51,11 @@ def test_TS1_get_five_endpoints_plus_single_anonymous_log_post(app_instance):
 
 
 def test_TS2_middleware_is_cors_only_no_auth_no_session(app_instance):
-    """Tier-0: 미들웨어 = CORS 1종·무인증·무세션 (INV-1)."""
+    """Tier-0: 미들웨어 = CORS 1종·무인증·무세션 (INV-1).
+
+    **SC14 불변(§C: TS-2 어서션 원문 유지)**: 참여 세션·재직 검증은 미들웨어가 아니라
+    라우트 의존성(`require_member`/`require_employment`)이라 SC14 후에도 이 어서션은 그대로
+    참이다(INV-9 = `app.user_middleware == ['CORSMiddleware']`). 그래서 sc14 마커 없이 상시."""
     middleware_names = [m.cls.__name__ for m in app_instance.user_middleware]
 
     forbidden_substrings = ("auth", "session")
@@ -109,4 +113,53 @@ async def test_TCORS2_preflight_allows_get_head_options_post_only(client):
     assert resp.status_code in (200, 204)
     allow_methods = resp.headers.get("access-control-allow-methods", "")
     allowed = {m.strip() for m in allow_methods.split(",")}
+    # SC14 후에도 그대로: 참여 쓰기(PUT/DELETE)는 동일 오리진(nginx 프록시)이라 preflight 불요이며,
+    # CORS 는 의도적으로 PUT/DELETE 를 광고하지 않는다(SP-AUTH-12: 크로스오리진 쓰기는 preflight
+    # 실패로 차단 = CSRF 방어). 따라서 이 집합은 sc14 마커 없이 상시 그린이다.
     assert allowed == {"GET", "HEAD", "OPTIONS", "POST"}
+
+
+@pytest.mark.sc14
+def test_TS1_sc14_participation_surface(app_instance):
+    """AU-1(SC14): API 표면 = 익명(GET 5 + 로그 POST 1)에 SC14 참여 라우트를 더한 정확 집합
+    (§C item3 — TS-1 확장). 쓰기는 익명 로그 + 참여 쓰기(POST/PUT/DELETE), 공개 GET 에 me·edits.
+
+    구현(M9) 전엔 참여 라우트 부재라 RED → @pytest.mark.sc14 로 베이스 게이트 제외. base TS-1 은
+    현 익명 표면(GET 5 + 로그 POST 1)을 지키며, M9 구현 시 본 집합으로 갱신·통합된다."""
+    write_methods = {"POST", "PUT", "PATCH", "DELETE"}
+    seen: set[tuple[str, str]] = set()
+    writes: list[tuple[str, str]] = []
+    for route in app_instance.routes:
+        if not isinstance(route, APIRoute):
+            continue
+        for method in route.methods:
+            if method in write_methods:
+                writes.append((route.path, method))
+            seen.add((route.path, method))
+
+    expected_writes = {
+        ("/api/v1/comparisons/log", "POST"),                          # 익명(INV-1)
+        ("/api/v1/members/login-code", "POST"),                       # FR-102
+        ("/api/v1/members/login", "POST"),                            # FR-103
+        ("/api/v1/members/logout", "POST"),                           # FR-104
+        ("/api/v1/members/me", "PUT"),                                # FR-104
+        ("/api/v1/members/me", "DELETE"),                             # FR-104
+        ("/api/v1/employment/verify-code", "POST"),                   # FR-105
+        ("/api/v1/employment/verify", "POST"),                        # FR-106
+        ("/api/v1/employment/requests", "POST"),                      # FR-107
+        ("/api/v1/companies/{comp_id}/benefits", "POST"),             # FR-108
+        ("/api/v1/companies/{comp_id}/benefits/{benefit_id}", "PUT"), # FR-109
+    }
+    assert set(writes) == expected_writes, f"SC14 쓰기 표면 불일치: {set(writes) ^ expected_writes}"
+
+    expected_get = {
+        "/api/v1/health",
+        "/api/v1/reference/all",
+        "/api/v1/companies/search",
+        "/api/v1/companies/{comp_id}",
+        "/api/v1/comparisons/trending",
+        "/api/v1/members/me",                        # FR-104(세션)
+        "/api/v1/companies/{comp_id}/edits",         # FR-110 공개 열람
+    }
+    gets = {path for (path, method) in seen if method == "GET"}
+    assert gets == expected_get, f"SC14 GET 표면 불일치: {gets ^ expected_get}"
