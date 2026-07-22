@@ -6,13 +6,13 @@
 
 **영역 ID 대역**: `SP-API`
 **저장 경로**: `docs/SPEC/04-백엔드-API.md`
-**목적**: loupit 슬림 **읽기 전용 FastAPI** 서버(C3, `server/`)의 구현 계약을 개발자가 추측 없이 그대로 만들 수 있는 수준으로 확정한다. (1) 모듈/패키지 구조(`main`/`config`/`database`/`routers`/`services`/`models`/`cache`), (2) GET 4종 엔드포인트의 요청·응답 Pydantic 모델·상태코드·오류 형태, (3) aiomysql 풀 + 원시 SQL(`%s` 플레이스홀더), (4) 인메모리 TTL 캐시, (5) 인증·쓰기 미들웨어 부재 명시, (6) CORS·전송 헤더·캐시 정책, (7) pytest + httpx(ASGITransport) 테스트 명세를 소유한다.
+**목적**: loupit 슬림 **읽기 전용 FastAPI** 서버(C3, `server/`)의 구현 계약을 개발자가 추측 없이 그대로 만들 수 있는 수준으로 확정한다. (1) 모듈/패키지 구조(`main`/`config`/`database`/`routers`/`services`/`models`/`cache`), (2) 익명 GET 5종 엔드포인트(+ 익명 비교 로그 POST 1종)의 요청·응답 Pydantic 모델·상태코드·오류 형태, (3) aiomysql 풀 + 원시 SQL(`%s` 플레이스홀더), (4) 인메모리 TTL 캐시, (5) 인증·쓰기 미들웨어 부재 명시, (6) CORS·전송 헤더·캐시 정책, (7) pytest + httpx(ASGITransport) 테스트 명세를 소유한다.
 
 **상위 추적**: CONTEXT_BRIEF §6(읽기 전용 API 표면)·§2-1·§2-4(무인증·무쓰기)·§8(스택), FRD `11-API.md`(**FR-90~FR-96** 전송 계약), FRD `02-데이터-계약.md`(**FR-D1~FR-D11** 본문 스키마), FRD `12-오류-엣지.md`(**FR-E1·FR-E2·FR-E6** 실패 처리), SPEC `01-개요와-아키텍처.md`(**SP-ARCH-1·4·5·6·7·10** 컴포넌트·번들 단일 소스·디렉토리·버전·불변식), SPEC `02-데이터베이스-스키마.md`(**SP-DB-2~9** 테이블·컬럼·`AMT_SOURCE_CD`↔`amt_source` 필드맵). 하위 TASK 문서는 `SP-API-N` ID를 인용한다.
 
-**범위 경계**: 본 문서는 **런타임 읽기 전용 HTTP 서버**만 소유한다. DB DDL·제약은 SP-DB, 96개 시드 재이식은 SP-SEED, 정적 생성기(빌드타임 `build_reference_bundle` 소비)는 SP-GEN, 클라이언트 계산·`value_source` 프로버넌스·밴드 산정은 SP-CALC/SP-FE가 소유한다. **번들 빌더 함수(`services/reference.py::build_reference_bundle`)는 런타임 API와 빌드타임 generator가 공유하는 단일 소스**(SP-ARCH-4)이며 본 문서가 그 원시 SQL·조립 계약을 확정한다. 로그인/회원/프로파일러/서버측 사용자 쓰기는 영구 제외이며 본 서버 어디에도 등장하지 않는다(§2-1·§2-3·§2-4, NFR16·NFR20).
+**범위 경계**: 본 문서는 **런타임 읽기 전용 HTTP 서버**만 소유한다. DB DDL·제약은 SP-DB, 96개 시드 재이식은 SP-SEED, 정적 생성기(빌드타임 `build_reference_bundle` 소비)는 SP-GEN, 클라이언트 계산·`value_source` 프로버넌스·밴드 산정은 SP-CALC/SP-FE가 소유한다. **번들 빌더 함수(`services/reference.py::build_reference_bundle`)는 런타임 API와 빌드타임 generator가 공유하는 단일 소스**(SP-ARCH-4)이며 본 문서가 그 원시 SQL·조립 계약을 확정한다. 프로파일러(가치관 진단 설문)와 서버측 사용자 쓰기는 영구 제외다. 로그인·회원·계정은 복지 등록·수정 기여(SC14, 문서 09/13·SP-AUTH) 한정 In-scope이며, C3 server가 SC14 기여 쓰기 라우트(`member`·`employment`·`benefit_edit` 라우터, ML-B 예정; SPEC/01:56)를 호스팅한다 — 단 본 문서가 소유하는 익명 읽기 흐름/모듈엔 비등장한다(§2-1·§2-3·§2-4, NFR16·NFR20).
 
-**전역 불변식(SP-ARCH-10 상속)**: INV-1(API 표면 = GET 4종, 쓰기 라우트 0, 인증/세션 미들웨어 0) · INV-2(`reference/all` 최상위 3키·프로파일러 키 부재·`Cache-Control: public, max-age=3600`) · INV-5(밴드는 `amt_source` 기준, 서버는 근거 필드만 전달).
+**전역 불변식(SP-ARCH-10 상속)**: INV-1(익명 API 표면 = GET 5종 + 익명 비교 로그 POST 1종, SC14 기여 쓰기 라우트는 별도 열거, 인증/세션 미들웨어 0) · INV-2(`reference/all` 최상위 3키·프로파일러 키 부재·`Cache-Control: public, max-age=3600`) · INV-5(밴드는 `amt_source` 기준, 서버는 근거 필드만 전달).
 
 ---
 
@@ -31,8 +31,9 @@ server/
 │  ├─ __init__.py
 │  ├─ health.py            # SP-API-8   GET /health              (FR-91)
 │  ├─ reference.py         # SP-API-9   GET /reference/all       (FR-92)
-│  └─ companies.py         # SP-API-10  GET /companies/search    (FR-93)
-│                          # SP-API-11  GET /companies/{comp_id} (FR-94)
+│  ├─ companies.py         # SP-API-10  GET /companies/search    (FR-93)
+│  │                       # SP-API-11  GET /companies/{comp_id} (FR-94)
+│  └─ trending.py          # GET /comparisons/trending · POST /comparisons/log  (개정 2026-07-14)
 ├─ services/
 │  ├─ __init__.py
 │  └─ reference.py         # SP-API-7  build_reference_bundle(conn)->dict  (SP-ARCH-4, generator 공유)
@@ -52,7 +53,7 @@ server/
 └─ .env.example
 ```
 
-- **레거시 델타**: `job_change/server`의 auth/oauth/profiler/comparisons/admin/landing 라우터·JWT/SMTP 설정·미들웨어를 전부 제거한 형태. `routers/`는 3파일(GET 4종)만 존재.
+- **레거시 델타**: `job_change/server`의 auth/oauth/profiler/comparisons/admin/landing 라우터·JWT/SMTP 설정·미들웨어를 전부 제거한 형태. `routers/`는 실제 4파일(health·reference·companies·trending — 익명 GET 5종 + 익명 비교 로그 POST 1종)이다. SC14 기여 쓰기 라우터(member·employment·benefit_edit)는 별도로 ML-B에서 추가 예정(SP-AUTH).
 - **추적**: SP-ARCH-1·SP-ARCH-6, F8, FR-90, §6.
 
 ---
@@ -218,7 +219,7 @@ class TTLCache:
 
 ## SP-API-5 — 애플리케이션 조립 (`main.py`)
 
-lifespan에서 풀 생성/해제, 라우터 3종 등록(접두 `/api/v1`), CORS 미들웨어(허용목록) 부착. **인증·세션 미들웨어를 추가하지 않는다**(INV-1).
+lifespan에서 풀 생성/해제, 라우터 4종 등록(health·reference·companies·trending, 접두 `/api/v1`), CORS 미들웨어(허용목록) 부착. **인증·세션 미들웨어를 추가하지 않는다**(INV-1).
 
 ```python
 # server/main.py

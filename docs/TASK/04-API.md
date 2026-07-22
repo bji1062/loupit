@@ -7,13 +7,13 @@
 
 ## 진행 요약
 - 리프 총 28 / 완료 27 / 진행 0 / 미착수 0 / **대상외 1**(T-04.6.2, DG-4 미채택) — 2026-07-11 M2 TDD 구현 완료
-- Tier-0 게이트 리프: T-04.5.2 (TS-1 GET 4종·무쓰기), T-04.5.3 (TS-2 무인증·무세션), T-04.7.1 (TR-1 3키 계약), T-04.7.2 (TR-2 캐시/전송 헤더), T-04.7.3 (TR-3 프로파일러 키 부재), T-04.7.5 (TR-5 캐시 1회 조립) — **전부 green**
+- Tier-0 게이트 리프: T-04.5.2 (TS-1 GET 5종·익명 로그 POST 1종), T-04.5.3 (TS-2 무인증·무세션), T-04.7.1 (TR-1 3키 계약), T-04.7.2 (TR-2 캐시/전송 헤더), T-04.7.3 (TR-3 프로파일러 키 부재), T-04.7.5 (TR-5 캐시 1회 조립) — **전부 green**
 - 선결정 게이트: DG-4 **확정**(00 §4, 2026-07-11) — `/health` 레디니스 503 확장 **미채택**(MVP 라이브니스 전용). T-04.6.2는 구현 대상에서 제외(아래 표기).
 - 러너: `python -m pytest server/tests/ -q` — API 계약 테스트(무 DB, monkeypatch) 62개 + 기존 SP-DB/SP-SEED 테스트(실 DB) 99개 = **166 pass**, skip 0, fail 0.
 
 ## T-04.1 패키지 골격·테스트 하네스  — (SP-API-1, SP-API-14.1, INV-1, FR-90)
 - [v] T-04.1.1 server 서브패키지 스캐폴드·레거시 델타(auth/oauth/profiler 부재)
-  - 구현: `server/`에 SP-API-1 레이아웃 서브패키지 `__init__.py` 생성 — `server/__init__.py`·`routers/__init__.py`·`services/__init__.py`·`models/__init__.py`·`tests/__init__.py`. `routers/`는 3파일(health·reference·companies=GET 4종)만 예약. `server/requirements.txt`·`.env.example`은 **위임**(SP-ARCH T-01.2.1). 레거시 델타: auth/oauth/profiler/comparisons/admin/landing 라우터·JWT/SMTP·미들웨어 파일 부재(SP-ARCH-6 규칙: 파일 추가 가능·디렉토리 경계 불변).
+  - 구현: `server/`에 SP-API-1 레이아웃 서브패키지 `__init__.py` 생성 — `server/__init__.py`·`routers/__init__.py`·`services/__init__.py`·`models/__init__.py`·`tests/__init__.py`. `routers/`는 4파일(health·reference·companies·trending=GET 5종)만 예약. `server/requirements.txt`·`.env.example`은 **위임**(SP-ARCH T-01.2.1). 레거시 델타: auth/oauth/profiler/comparisons/admin/landing 라우터·JWT/SMTP·미들웨어 파일 부재(SP-ARCH-6 규칙: 파일 추가 가능·디렉토리 경계 불변).
   - 테스트: 패키지 import 스모크(`import server`·`import server.routers`·`import server.services`) + 금지 라우터/모듈(auth·oauth·profiler·comparisons) 파일 부재 grep(pytest+bash) — RED 먼저. 라우트 표면 회귀는 TS-1(T-04.5.2)
   - refs: SP-API-1 · SP-ARCH-6·SP-ARCH-1 · FR-90 · INV-1 · NFR20
 - [v] T-04.1.2 conftest.py 테스트 하네스 (ASGITransport client + fake_data monkeypatch 픽스처)
@@ -53,12 +53,12 @@
 
 ## T-04.5 앱 조립·표면 불변식·CORS·라우팅  — (SP-API-5·13, FR-90·FR-96, INV-1·INV-7)
 - [v] T-04.5.1 create_app 조립·lifespan·라우터 등록·CORS 미들웨어 (main.py)
-  - 구현: `server/main.py` — `@asynccontextmanager lifespan(app)`(`init_pool()` → `app.state.reference_cache=TTLCache(ttl)` → yield → `close_pool()`), `create_app()`(`FastAPI(title="loupit read-only API", version="1.0.0", lifespan=...)`, `CORSMiddleware(allow_origins=cors_origin_list, allow_methods=["GET","HEAD","OPTIONS"], allow_headers=["*"], allow_credentials=False)`, `include_router(health/reference/companies, prefix=api_prefix)`), `app=create_app()`. **인증·세션 미들웨어 0**(전역 예외 핸들러는 T-04.10.1이 채움).
-  - 테스트: 앱 부트 스모크 — `create_app()` 성립·라우터 3종 등록·미들웨어 목록에 CORS만(pytest client) — RED 먼저. 표면 강제는 TS-1·TS-2(T-04.5.2/3)
+  - 구현: `server/main.py` — `@asynccontextmanager lifespan(app)`(`init_pool()` → `app.state.reference_cache=TTLCache(ttl)` → yield → `close_pool()`), `create_app()`(`FastAPI(title="loupit read-only API", version="1.0.0", lifespan=...)`, `CORSMiddleware(allow_origins=cors_origin_list, allow_methods=["GET","HEAD","OPTIONS"], allow_headers=["*"], allow_credentials=False)`, `include_router(health/reference/companies/trending, prefix=api_prefix)`), `app=create_app()`. **인증·세션 미들웨어 0**(전역 예외 핸들러는 T-04.10.1이 채움).
+  - 테스트: 앱 부트 스모크 — `create_app()` 성립·라우터 4종(health·reference·companies·trending) 등록·미들웨어 목록에 CORS만(pytest client) — RED 먼저. 표면 강제는 TS-1·TS-2(T-04.5.2/3)
   - refs: SP-API-5 · SP-ARCH-2·5 · FR-90·FR-96 · INV-1
-- [v] T-04.5.2 API 표면 = GET 4종·쓰기 라우트 0 (TS-1) (Tier0)
-  - 구현: 라우터 3종(health·reference·companies) 등록 결과 `app.routes` 순회 시 `{method,path}`가 health·reference/all·companies/search·companies/{comp_id}의 GET(+자동 HEAD/OPTIONS)뿐, POST/PUT/PATCH/DELETE 라우트 수=0임을 강제. 라우트 실구현은 라우터 leaf(T-04.6~9)가 채우고 본 리프는 **Tier-0 표면 회귀 게이트**만 소유. SP-ARCH T2가 이 케이스로 위임됨.
-  - 테스트: TS-1 (pytest — `server/tests/test_surface.py`) — `app.routes` 순회, GET 4 엔드포인트뿐·쓰기 메서드 라우트 수=0 — RED 먼저
+- [v] T-04.5.2 API 표면 = GET 5종·익명 로그 POST 1종 (TS-1) (Tier0)
+  - 구현: 라우터 4종(health·reference·companies·trending) 등록 결과 `app.routes` 순회 시 `{method,path}`가 health·reference/all·companies/search·companies/{comp_id}·comparisons/trending의 GET 5종(+자동 HEAD/OPTIONS)과 비교 로그 `POST /comparisons/log` 1종뿐, 그 외 POST/PUT/PATCH/DELETE 라우트 수=0임을 강제. 라우트 실구현은 라우터 leaf(T-04.6~9)가 채우고 본 리프는 **Tier-0 표면 회귀 게이트**만 소유. SP-ARCH T2가 이 케이스로 위임됨.
+  - 테스트: TS-1 (pytest — `server/tests/test_surface.py`) — `app.routes` 순회, 익명 GET 5종 + 비교 로그 POST 1종뿐·그 외 쓰기 메서드 라우트 수=0 — RED 먼저
   - refs: SP-API-14 · INV-1 · FR-90·FR-95 · NFR20 (SP-ARCH T2 위임 수신)
 - [v] T-04.5.3 미들웨어 = CORS 1종·무인증·무세션 (TS-2) (Tier0)
   - 구현: `app.user_middleware`/미들웨어 스택에 `AuthenticationMiddleware`·`SessionMiddleware`·커스텀 인증 의존성 부재, `CORSMiddleware`만 존재함을 강제. **Tier-0 무인증 회귀 게이트**. SP-ARCH T2가 이 케이스로 위임됨.
@@ -145,7 +145,7 @@
   - refs: SP-API-12 · FR-95·FR-D11 · FR-E7 · NFR16·NFR26
 
 ## 위임 케이스 (다른 SP 스위트에 실구현/검증 — 본 도메인 이중 구현 없음)
-- **SP-ARCH 위임(수신·발신)**: (수신) SP-ARCH §9.2의 **T2**(INV-1 API 표면=GET 4종·무쓰기·무인증)는 본 도메인 **TS-1·TS-2·TM-1**(T-04.5.2/3/5, Tier-0)이 실구현·게이트 소유; **T4**(INV-2 3키·프로파일러 키 부재·1h 캐시)는 **TR-1~3·TR-5**(T-04.7.1~3/5, Tier-0)가 실구현. (발신) `build_reference_bundle` **단일 소스 심볼 동일성 회귀(T3)** 는 SP-ARCH T-01.3.1이 소유(함수 실구현은 T-04.4.1 여기). 통합 스모크(T7 무전송·T8 배포 `reference/all` 캐시 헤더 live curl)는 SP-ARCH/SP-INFRA M8.
+- **SP-ARCH 위임(수신·발신)**: (수신) SP-ARCH §9.2의 **T2**(INV-1 API 표면=GET 5종·익명 로그 POST 1종·무인증)는 본 도메인 **TS-1·TS-2·TM-1**(T-04.5.2/3/5, Tier-0)이 실구현·게이트 소유; **T4**(INV-2 3키·프로파일러 키 부재·1h 캐시)는 **TR-1~3·TR-5**(T-04.7.1~3/5, Tier-0)가 실구현. (발신) `build_reference_bundle` **단일 소스 심볼 동일성 회귀(T3)** 는 SP-ARCH T-01.3.1이 소유(함수 실구현은 T-04.4.1 여기). 통합 스모크(T7 무전송·T8 배포 `reference/all` 캐시 헤더 live curl)는 SP-ARCH/SP-INFRA M8.
 - **SP-ARCH T-01.2.1 위임**: `server/requirements.txt`(fastapi·uvicorn·aiomysql·pydantic·httpx·pytest-asyncio pin)·`server/.env.example`(DB·CORS·캐시 변수만). 본 문서 T-04.1.1은 서브패키지 `__init__.py`만 생성.
 - **SP-DB 위임**: 5종 테이블 DDL·`AMT_SOURCE_CD` 컬럼·제약. 본 도메인은 스키마를 SELECT로 소비만(SP-API-7/10/11 SQL).
 - **SP-SEED 위임**: 런타임 데이터(유형 6종·프리셋·96개 회사 복지·별칭). 무 DB 테스트는 monkeypatch 캔드 주입, 실 데이터 스모크는 SP-SEED.
