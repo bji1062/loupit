@@ -1,5 +1,5 @@
 [Unit]
-# beta.jobcho.wiki 무중단 스테이징 인스턴스 — 프로덕션 loupit-api.service(:8000)와 별개.
+# beta.loupit.co 무중단 스테이징 인스턴스 — 프로덕션 loupit-api.service(:8000)와 별개.
 # 라이브 jobchoice.service(:8000)를 건드리지 않도록 포트 8001·전용 env로 격리.
 Description=loupit BETA staging API (FastAPI/Uvicorn, :8001)
 After=network.target mysql.service
