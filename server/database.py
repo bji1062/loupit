@@ -1,15 +1,24 @@
-"""SP-API-3 DB 접근 계층 — aiomysql 풀 + 원시 SQL(%s 바인딩).
+"""SP-API-3 + SP-AUTH-4 DB 접근 계층 — aiomysql 풀 + 원시 SQL(%s 바인딩).
 
-읽기 헬퍼(fetch_all/fetch_one)를 제공하고, 범용 쓰기 헬퍼(execute/commit/
-rollback)는 두지 않는다(INV-1·NFR20). 허용 쓰기는 정확히 2종뿐이며 둘 다
-익명 비교 로그(TCOMPARE_LOG) 전용이다:
+읽기 헬퍼(fetch_all/fetch_one)를 제공한다. 쓰기 진입점은 두 부류로 엄격히 열거된다:
+
+**익명 표면(INV-1)** — 정확히 2종, 둘 다 익명 비교 로그(TCOMPARE_LOG) 전용:
   - `insert_compare_log` — INV-1 개정(2026-07-14, "실시간 비교 TOP 10")으로
     허용된 익명 비교 로그 단일 INSERT.
   - `purge_compare_log` — #7b 보존 퍼지. 무인증 POST가 무한 축적시키는 로그를
     보존기간 경과분 DELETE로 상한한다(트렌딩 소비 윈도우 밖 행만 삭제).
-그 외 쓰기 경로(다른 테이블·다른 DML)를 추가하려면 INV-1 재개정이 선행돼야 한다.
+
+**참여(SC14) 기여 쓰기(INV-1 열거, SP-AUTH-4)** — 세션·재직 인증(Depends)을 통과한
+기여 라우트 전용 범용 쓰기 진입점:
+  - `execute` — 참여 쓰기 1문(INSERT/UPDATE/DELETE) 실행.
+  - `transaction` — 본체+이력 다문 원자 트랜잭션 컨텍스트 매니저.
+
+익명 표면에 새 쓰기 경로(다른 테이블·다른 DML)를 추가하려면 INV-1 재개정이 선행돼야
+한다. write_symbols 회귀 게이트(test_database, AU-7)가 허용집합을 고정한다.
 """
 from __future__ import annotations
+
+from contextlib import asynccontextmanager
 
 import aiomysql
 
@@ -104,6 +113,44 @@ async def purge_compare_log(retention_days: int, batch_limit: int) -> int:
                 if deleted < batch_limit:  # 마지막 배치(더 지울 행 없음) → 종료. 무한루프 불가.
                     break
     return total
+
+
+# ── SC14 참여(기여) 쓰기 진입점 (SP-AUTH-4) ──────────────────────────────────────
+# 익명 경로가 아니라 세션·재직 인증(deps.require_member / require_employment)을 통과한
+# 기여 라우트 전용 쓰기다(INV-1 "열거된 SC14 기여 쓰기", NFR20). 익명 표면의 허용 쓰기는
+# 위 insert_compare_log·purge_compare_log 2종뿐으로 유지되며, 아래 두 진입점은 기여(SC14)
+# 서비스 계층(session·employment·benefit_edit)에서만 호출된다. write_symbols 회귀 게이트
+# (test_database, AU-7)가 허용집합 = {execute, insert_compare_log, purge_compare_log} 를 고정한다
+# (transaction 은 쓰기 키워드 미포함이라 필터엔 안 잡히나 심볼 존재는 게이트가 확인한다).
+
+
+async def execute(sql: str, params: tuple = ()) -> int:
+    """참여 쓰기 1문(INSERT/UPDATE/DELETE)을 실행하고 영향 행 수를 반환한다(SP-AUTH-4).
+
+    풀이 autocommit=True 라 단문은 즉시 커밋된다. 본체+이력처럼 다문 원자성이 필요하면
+    transaction() 으로 묶는다. 값은 SQL 텍스트에 삽입하지 않고 %s 로만 바인딩한다
+    (원시 SQL 규약, SP-API-3)."""
+    async with get_pool().acquire() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(sql, params)
+            return cur.rowcount or 0
+
+
+@asynccontextmanager
+async def transaction():
+    """참여 원자 쓰기 트랜잭션 — 복지 본체 + TBENEFIT_EDIT_LOG 등 다문 원자성용(SP-AUTH-4·9).
+
+    풀이 autocommit=True 라도 conn.begin() 으로 명시 트랜잭션을 열고, with 블록 정상 종료 시
+    commit·예외 발생 시 rollback 한다. 획득한 커넥션을 yield 하여 호출측이 여러 쓰기를 한
+    트랜잭션으로 묶게 한다(T-13.10.1 낙관적 동시성 편집). 종료 시 커넥션은 풀에 반환된다."""
+    async with get_pool().acquire() as conn:
+        await conn.begin()
+        try:
+            yield conn
+            await conn.commit()
+        except Exception:
+            await conn.rollback()
+            raise
 
 
 async def ping() -> bool:

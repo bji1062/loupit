@@ -20,7 +20,15 @@ from server import database
 from server.cache import TTLCache
 from server.config import Settings, get_settings
 from server.database import close_pool, init_pool
-from server.routers import companies, health, reference, trending
+from server.routers import (
+    benefit_edit,
+    companies,
+    employment,
+    health,
+    member,
+    reference,
+    trending,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +120,12 @@ def create_app() -> FastAPI:
     app.include_router(reference.router, prefix=p)
     app.include_router(companies.router, prefix=p)
     app.include_router(trending.router, prefix=p)
+    # SC14 참여(로그인·재직·복지편집) 라우터 3종 등록(SP-AUTH-1). 미들웨어는 추가하지
+    # 않는다 — 세션·재직 검증은 deps.require_member/require_employment(Depends)로만
+    # 주입되어 app.user_middleware == ['CORSMiddleware'] 불변을 지킨다(AU-2, INV-9).
+    app.include_router(member.router, prefix=p)
+    app.include_router(employment.router, prefix=p)
+    app.include_router(benefit_edit.router, prefix=p)
     return app
 
 

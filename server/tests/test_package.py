@@ -31,11 +31,21 @@ def test_T04_1_1_forbidden_legacy_modules_absent():
 
 
 def test_T04_1_1_routers_package_file_allowlist():
-    """routers/ 파일 허용목록 — health·reference·companies + trending(INV-1 개정
-    2026-07-14 익명 비교 트렌딩; 레거시 'comparisons' 모듈명은 사용자 저장 비교
-    부활 방지를 위해 계속 금지) (+ __init__.py)."""
+    """AU-6(SC14 재명세): routers/ 파일 허용목록 = 익명 5(health·reference·companies·
+    trending·__init__) + 참여 3(member·employment·benefit_edit, SP-AUTH-1).
+
+    trending 보존(INV-1 개정 2026-07-14 익명 비교 트렌딩), 라우터명 'auth' 는 FORBIDDEN
+    유지(→ member.py, T10), 레거시 'comparisons' 모듈명도 사용자 저장 비교 부활 방지를
+    위해 계속 금지. §C item4 — M9 표면 세그먼트에서 구 5파일 게이트를 이 확장 집합으로
+    갱신·통합했다(구 @pytest.mark.sc14 test_AU6 를 본 베이스 게이트로 흡수)."""
     py_files = {f for f in os.listdir(ROUTERS_DIR) if f.endswith(".py")}
-    assert py_files == {"__init__.py", "health.py", "reference.py", "companies.py", "trending.py"}
+    expected = {
+        "__init__.py", "health.py", "reference.py", "companies.py", "trending.py",
+        "member.py", "employment.py", "benefit_edit.py",
+    }
+    assert py_files == expected, f"라우터 허용목록 불일치(대칭차): {py_files ^ expected}"
+    assert "auth" in FORBIDDEN_MODULE_NAMES, "라우터명 'auth' 금지 유지(→ member.py, T10)"
+    assert "trending.py" in py_files, "trending.py 보존(§C item4)"
 
 
 @pytest.mark.asyncio
@@ -56,21 +66,3 @@ async def test_T04_1_2_fake_data_monkeypatch_applied(client, fake_data):
     missing = await client.get("/api/v1/companies/999999")
     assert ok.status_code == 200
     assert missing.status_code == 404
-
-
-@pytest.mark.sc14
-def test_AU6_sc14_router_allowlist_expanded():
-    """AU-6(SC14): routers/ 허용목록이 참여 라우터(member·employment·benefit_edit)를 포함하도록
-    재명세되고, 금지명 `auth`(라우터명 auth 금지 → member.py 사용, T10)는 유지, trending 도
-    보존된다(§C item4). 구현(M9) 전엔 참여 라우터 파일 부재라 RED → @pytest.mark.sc14.
-
-    위 base `test_T04_1_1_routers_package_file_allowlist` 는 현 5파일을 지키며, M9 구현 시 이
-    확장 집합으로 갱신된다."""
-    py_files = {f for f in os.listdir(ROUTERS_DIR) if f.endswith(".py")}
-    expected = {
-        "__init__.py", "health.py", "reference.py", "companies.py", "trending.py",
-        "member.py", "employment.py", "benefit_edit.py",
-    }
-    assert py_files == expected, f"SC14 라우터 허용목록 불일치(대칭차): {py_files ^ expected}"
-    assert "auth" in FORBIDDEN_MODULE_NAMES, "라우터명 'auth' 금지 유지(→ member.py)"
-    assert "trending.py" in py_files, "trending.py 보존(§C item4)"
