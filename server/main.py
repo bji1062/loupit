@@ -29,6 +29,7 @@ from server.routers import (
     reference,
     trending,
 )
+from server.services import session as session_service
 
 logger = logging.getLogger(__name__)
 
@@ -50,10 +51,24 @@ async def _purge_compare_log_safe(settings: Settings) -> None:
         logger.exception("TCOMPARE_LOG 보존 퍼지 실패 — 앱 계속")
 
 
+async def _purge_sessions_safe() -> None:
+    """만료·폐기 세션 + 만료·소비 코드 퍼지 1회 — DB 장애가 앱을 죽이지 않도록 삼킨다(SP-AUTH-4).
+
+    참여 테이블(TSESSION·TAUTH_CODE)이 비어 있으면 무영향(no-op). `session_service` 를 모듈
+    참조로 호출한다(monkeypatch 테스트 가능성)."""
+    try:
+        deleted = await session_service.purge_expired()
+        if deleted:
+            logger.info("세션 보존 퍼지: 만료·폐기 세션 %d행 삭제(만료 코드 동반 정리)", deleted)
+    except Exception:  # DB 장애·참여 테이블 부재 등 — 앱 계속(다음 주기 재시도)
+        logger.exception("세션 보존 퍼지 실패 — 앱 계속")
+
+
 async def _retention_scheduler(settings: Settings) -> None:
-    """일 1회 보존 퍼지 루프. lifespan 종료 시 task.cancel()로 취소된다(#7b)."""
+    """일 1회 보존 퍼지 루프. lifespan 종료 시 task.cancel()로 취소된다(#7b·SP-AUTH-4)."""
     while True:
         await _purge_compare_log_safe(settings)
+        await _purge_sessions_safe()
         await asyncio.sleep(settings.compare_log_purge_interval_seconds)
 
 

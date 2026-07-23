@@ -17,27 +17,30 @@ def app_instance():
 
 
 def test_TS1_get_five_endpoints_plus_single_anonymous_log_post(app_instance):
-    """Tier-0: API 표면 = GET 5종 + 익명 비교 로그 POST 정확히 1종 (INV-1 개정 2026-07-14).
+    """Tier-0: 익명 표면 = GET 5종 + 쓰기(익명 비교 로그 + M9 로그인 흐름, 현행 실제 등록분).
 
-    "실시간 비교 TOP 10" 위젯을 위해 POST /comparisons/log 하나만 허용한다 —
-    저장은 회사쌍 comp_id + 시각뿐(사용자 식별자·입력값 무저장, test_schema_load
-    TCOMPARE_LOG 컬럼 계약이 프라이버시 가드). 그 외 쓰기 라우트가 늘어나면
-    본 게이트가 깨진다 — 추가하려면 INV-1 재개정이 선행돼야 한다."""
+    익명 비교 로그(POST /comparisons/log)는 회사쌍 comp_id + 시각만 저장한다(사용자 식별자·
+    입력값 무저장, test_schema_load TCOMPARE_LOG 컬럼 계약이 프라이버시 가드). SC14 참여 쓰기는
+    라우트 본체가 착지하며 점증하므로, 본 베이스 게이트는 **현재 실제 등록된 쓰기 표면**을
+    정확일치로 고정한다(계획 밖 쓰기가 끼면 깨짐 — INV-1). 전체 목표 집합(쓰기 11·GET 7)은
+    아래 test_TS1_sc14(AU-1)가 소유하며, 참여 라우트가 전부 착지하면 두 게이트가 수렴한다."""
     write_methods = {"POST", "PUT", "PATCH", "DELETE"}
     seen_paths_methods: set[tuple[str, str]] = set()
-    write_routes = []
+    write_routes: set[tuple[str, str]] = set()
 
     for route in app_instance.routes:
         if not isinstance(route, APIRoute):
             continue
         for method in route.methods:
             if method in write_methods:
-                write_routes.append((route.path, method))
+                write_routes.add((route.path, method))
             seen_paths_methods.add((route.path, method))
 
-    assert write_routes == [("/api/v1/comparisons/log", "POST")], (
-        f"허용된 쓰기 라우트는 익명 비교 로그 POST 1종뿐: {write_routes}"
-    )
+    assert write_routes == {
+        ("/api/v1/comparisons/log", "POST"),     # 익명(INV-1)
+        ("/api/v1/members/login-code", "POST"),  # FR-102 로그인 코드 발송
+        ("/api/v1/members/login", "POST"),       # FR-103 코드 검증·세션 발급
+    }, f"현행 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {
         "/api/v1/health",
