@@ -9,15 +9,17 @@
   approve <req_id> [--by N] [--note S] 승인 → manual 재직 인증 생성(+employ_vrf_ttl_days)
   reject  <req_id> [--by N] [--note S] 거부(사유 기록)
   revoke-verification <mbr_id> <comp_id> [--by N]  재직 인증 폐기(REVOKED_DTM)
+  delete-benefit <benefit_id> [--note S]  복지 하드 삭제 + delete 편집 이력(반달리즘 정정)
 
-`delete-benefit`(복지 반달리즘 삭제)은 복지 편집(T-13.10)의 편집 이력(append-only)·CASCADE
-설계와 함께 추가한다 — TBENEFIT_EDIT_LOG.BENEFIT_ID 가 ON DELETE CASCADE 라 하드 삭제 시 이력이
-함께 지워지므로, 편집 이력 인프라와 동시에 설계해야 이력·롤백 재료를 보존할 수 있다.
+`delete-benefit` 은 delete 이력을 **먼저** 기록한 뒤 복지를 삭제한다 —
+`TBENEFIT_EDIT_LOG.BENEFIT_ID ON DELETE SET NULL`(구 CASCADE 에서 변경, DG)로 이력의 BENEFIT_ID 만
+NULL 이 되고 이력(before 스냅샷·COMP_ID)은 공개 편집 이력에 존치된다. 사용자 대면 DELETE 라우트는 없다.
 """
 from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import sys
 
 import pymysql
@@ -132,6 +134,51 @@ def cmd_revoke_verification(conn, args) -> int:
     return 0
 
 
+# delete-benefit 편집 이력 before 스냅샷 필드(benefit_edit._snapshot 와 동일 형식·소문자 키).
+_SNAP_MAP = {
+    "benefit_cd": "BENEFIT_CD", "benefit_nm": "BENEFIT_NM", "benefit_ctgr_cd": "BENEFIT_CTGR_CD",
+    "benefit_amt": "BENEFIT_AMT", "qual_yn": "QUAL_YN", "note_ctnt": "NOTE_CTNT",
+    "badge_cd": "BADGE_CD", "amt_source": "AMT_SOURCE_CD",
+}
+
+
+def _benefit_snapshot(row: dict) -> str:
+    """삭제 복지의 before 스냅샷 JSON — benefit_edit._snapshot 와 동일 형식(공개 이력 diff 정합)."""
+    snap = {lo: row.get(up) for lo, up in _SNAP_MAP.items()}
+    snap["qual_yn"] = bool(snap.get("qual_yn"))
+    return json.dumps(snap, ensure_ascii=False)
+
+
+def cmd_delete_benefit(conn, args) -> int:
+    """복지 하드 삭제 + delete 편집 이력 기록(반달리즘 정정, FR-115).
+
+    순서가 핵심: delete 이력을 **먼저** INSERT(BENEFIT_ID=대상)한 뒤 복지를 DELETE 하면,
+    `TBENEFIT_EDIT_LOG.BENEFIT_ID ON DELETE SET NULL` 이 이력의 BENEFIT_ID 만 NULL 로 바꿔
+    이력 자체(before 스냅샷·COMP_ID·기록시각)는 **존치**된다(CASCADE 였다면 이력도 소실).
+    편집자(ACTOR_MBR_ID)는 운영자라 회원이 아니므로 NULL — 맥락은 EDIT_NOTE_CTNT 로 남긴다."""
+    with conn.cursor(pymysql.cursors.DictCursor) as cur:
+        cur.execute(
+            "SELECT BENEFIT_ID, COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_CTGR_CD, BENEFIT_AMT, "
+            "QUAL_YN, NOTE_CTNT, BADGE_CD, AMT_SOURCE_CD FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s",
+            (args.benefit_id,),
+        )
+        row = cur.fetchone()
+        if not row:
+            print(f"복지 #{args.benefit_id}: 존재하지 않음(삭제 안 함).")
+            return 1
+        comp = row["COMP_ID"]
+        cur.execute(
+            "INSERT INTO TBENEFIT_EDIT_LOG "
+            "(BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, EDIT_TYPE_CD, BEFORE_VAL, AFTER_VAL, EDIT_NOTE_CTNT) "
+            "VALUES (%s, %s, NULL, 'delete', %s, NULL, %s)",
+            (args.benefit_id, comp, _benefit_snapshot(row), args.note or "운영자 삭제"),
+        )
+        cur.execute("DELETE FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s", (args.benefit_id,))
+    conn.commit()
+    print(f"복지 #{args.benefit_id} 삭제 완료 (COMP {comp}, delete 이력 기록·존치).")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="python -m server.ops", description="loupit 운영자 CLI (SP-AUTH-8)")
     sub = p.add_subparsers(dest="command", required=True)
@@ -155,6 +202,11 @@ def build_parser() -> argparse.ArgumentParser:
     vp.add_argument("comp_id", type=int)
     vp.add_argument("--by", type=int, default=None)
     vp.set_defaults(func=cmd_revoke_verification)
+
+    dp = sub.add_parser("delete-benefit", help="복지 하드 삭제 + delete 이력(반달리즘 정정)")
+    dp.add_argument("benefit_id", type=int)
+    dp.add_argument("--note", default=None, help="삭제 사유(편집 이력에 기록)")
+    dp.set_defaults(func=cmd_delete_benefit)
 
     return p
 

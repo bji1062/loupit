@@ -58,6 +58,22 @@ class _FakeCursor:
                 if v["MBR_ID"] == mbr and v["COMP_ID"] == comp and not v["revoked"]:
                     v["revoked"] = True
                     self.rowcount += 1
+        elif sql.strip().startswith("SELECT") and "FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID" in sql:  # delete-benefit 조회
+            for b in self.store.get("benefits", []):
+                if b["BENEFIT_ID"] == params[0]:
+                    self._result = [dict(b)]
+        elif "INSERT INTO TBENEFIT_EDIT_LOG" in sql:  # (bid, comp, before_json, note)
+            self.store.setdefault("edit_logs", []).append(
+                {"BENEFIT_ID": params[0], "COMP_ID": params[1], "ACTOR_MBR_ID": None,
+                 "EDIT_TYPE_CD": "delete", "BEFORE_VAL": params[2], "AFTER_VAL": None, "EDIT_NOTE_CTNT": params[3]})
+            self.rowcount = 1
+        elif "DELETE FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID" in sql:  # 하드 삭제 → 이력 BENEFIT_ID SET NULL
+            bid = params[0]
+            self.store["benefits"] = [b for b in self.store.get("benefits", []) if b["BENEFIT_ID"] != bid]
+            for l in self.store.get("edit_logs", []):
+                if l["BENEFIT_ID"] == bid:
+                    l["BENEFIT_ID"] = None  # ON DELETE SET NULL 시뮬레이션(이력 존치)
+            self.rowcount = 1
         else:
             raise AssertionError(f"ops fake: unmatched SQL: {sql!r}")
 
@@ -148,6 +164,34 @@ def test_AO_list_pending_runs(capsys):
     assert "삼성전자" in out and "#5" in out
 
 
+def test_AO2_delete_benefit_records_delete_log_and_preserves_it():
+    """AO-2: 복지 하드 삭제 + delete 이력 기록. BENEFIT_ID ON DELETE SET NULL 이라 이력 존치(CASCADE 아님)."""
+    import json
+
+    store = {"requests": [], "verifications": [], "edit_logs": [],
+             "benefits": [{"BENEFIT_ID": 3, "COMP_ID": 10, "BENEFIT_CD": "meal", "BENEFIT_NM": "식대",
+                           "BENEFIT_CTGR_CD": "compensation", "BENEFIT_AMT": 220, "QUAL_YN": 0,
+                           "NOTE_CTNT": None, "BADGE_CD": "verified", "AMT_SOURCE_CD": "estimated"}]}
+    conn = _FakeConn(store)
+    assert ops.cmd_delete_benefit(conn, _args(benefit_id=3, note="반달 정정")) == 0
+    assert store["benefits"] == []                                # 복지 하드 삭제
+    assert len(store["edit_logs"]) == 1                           # delete 이력 기록
+    log = store["edit_logs"][0]
+    assert log["EDIT_TYPE_CD"] == "delete" and log["AFTER_VAL"] is None
+    assert log["BENEFIT_ID"] is None and log["COMP_ID"] == 10     # SET NULL 로 존치(COMP_ID로 조회 가능)
+    before = json.loads(log["BEFORE_VAL"])
+    assert before["benefit_cd"] == "meal" and before["benefit_nm"] == "식대"  # before 스냅샷
+    assert log["EDIT_NOTE_CTNT"] == "반달 정정"
+    assert conn.commits == 1
+
+
+def test_AO2_delete_benefit_missing_is_noop():
+    store = {"requests": [], "verifications": [], "edit_logs": [], "benefits": []}
+    conn = _FakeConn(store)
+    assert ops.cmd_delete_benefit(conn, _args(benefit_id=999, note=None)) == 1
+    assert store["edit_logs"] == []                               # 미존재 → 이력·삭제 없음
+
+
 def test_AO3_no_user_facing_benefit_delete_route():
     """AO-3: 복지 삭제는 CLI 전용 — 사용자 대면 benefit DELETE 라우트 부재(계정 탈퇴 DELETE만)."""
     from fastapi.routing import APIRoute
@@ -166,5 +210,7 @@ def test_AO_parser_dispatch():
     assert a.func is ops.cmd_approve and a.req_id == 5 and a.by == 9 and a.note == "ok"
     b = p.parse_args(["revoke-verification", "1", "10"])
     assert b.func is ops.cmd_revoke_verification and b.mbr_id == 1 and b.comp_id == 10
+    d = p.parse_args(["delete-benefit", "3", "--note", "반달"])
+    assert d.func is ops.cmd_delete_benefit and d.benefit_id == 3 and d.note == "반달"
     with pytest.raises(SystemExit):  # 서브명령 필수
         p.parse_args([])
