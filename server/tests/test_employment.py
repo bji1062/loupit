@@ -161,6 +161,9 @@ async def employ_env(monkeypatch):
             return None
         if "FROM TAUTH_CODE" in sql:  # verify path2: (target, purpose, comp)
             thash, comp = params[0], params[2]
+            if "INS_DTM" in sql:  # 재전송 쿨다운 체크: 미소비 최근 코드 존재?
+                exists = any(c["TARGET_HASH_VAL"] == thash and c["COMP_ID"] == comp and not c["CONSUMED"] for c in store["codes"])
+                return {"x": 1} if exists else None
             cands = [c for c in store["codes"] if c["TARGET_HASH_VAL"] == thash and c["COMP_ID"] == comp and not c["CONSUMED"]]
             if not cands:
                 return None
@@ -235,7 +238,8 @@ async def employ_env(monkeypatch):
 
     app = create_app()
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+    async with httpx.AsyncClient(transport=transport, base_url="http://t",
+                                 headers={"X-Loupit-Client": "web"}) as c:  # CSRF 기본 통과
         yield c, store, captured
 
 
@@ -272,6 +276,18 @@ async def test_verify_code_match_sends_and_204(employ_env):
     assert len(store["codes"]) == 1
     assert "hong@samsung.com" not in str(store["codes"][0])  # 원문 미저장(해시만)
     assert cap["code"] and cap["email"] == "hong@samsung.com"
+
+
+@pytest.mark.asyncio
+async def test_AE_resend_cooldown_suppresses_duplicate(employ_env):
+    """[T-13.13.2] 재전송 쿨다운 — 회사 이메일에 미소비 코드가 있으면 재요청 무발송(204 유지)."""
+    c, store, cap = employ_env
+    r1 = await c.post("/api/v1/employment/verify-code",
+                      json={"comp_id": 10, "company_email": "hong@samsung.com"}, headers=_AUTH)
+    assert r1.status_code == 204 and len(store["codes"]) == 1
+    r2 = await c.post("/api/v1/employment/verify-code",
+                      json={"comp_id": 10, "company_email": "hong@samsung.com"}, headers=_AUTH)
+    assert r2.status_code == 204 and len(store["codes"]) == 1  # 무발송(쿨다운)
 
 
 @pytest.mark.asyncio

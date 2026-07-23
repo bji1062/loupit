@@ -6,14 +6,14 @@
 - 서버가 배지 시맨틱을 강제하고(사용자는 official·stated 지정 불가), 본체+이력을 원자
   트랜잭션으로 처리한다(서비스 계층). calc.js 는 무변경 — 표시 계층만 확장한다(INV-5).
 - 사용자 대면 DELETE 라우트는 두지 않는다(복지 삭제는 운영자 CLI 전용, FR-100·115).
-- CSRF `X-Loupit-Client`(FR-113)는 전 쓰기 라우트 공통이라 T-13.13.1 이 일괄 얹는다(이월).
+- 쓰기(POST/PUT)는 `deps.require_csrf`(커스텀 헤더 `X-Loupit-Client` 부재 시 403, FR-113)를 세션·재직보다 먼저 통과해야 한다(T-13.13.1). GET /edits 는 비대상(익명 공개).
 """
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request, Response
 from fastapi.responses import JSONResponse
 
-from server.deps import require_employment, require_member
+from server.deps import require_csrf, require_employment, require_member
 from server.models.benefit_edit import BenefitCreateIn, BenefitUpdateIn, EditLogItem
 from server.services import benefit_edit
 
@@ -32,6 +32,7 @@ async def create_benefit(
     body: BenefitCreateIn,
     request: Request,
     comp_id: int = Path(..., ge=1),
+    _csrf: None = Depends(require_csrf),
     member: dict = Depends(require_member),
     _employment: dict = Depends(require_employment),
 ) -> JSONResponse:
@@ -57,6 +58,7 @@ async def update_benefit(
     request: Request,
     comp_id: int = Path(..., ge=1),
     benefit_id: int = Path(..., ge=1),
+    _csrf: None = Depends(require_csrf),
     member: dict = Depends(require_member),
     _employment: dict = Depends(require_employment),
 ) -> JSONResponse:

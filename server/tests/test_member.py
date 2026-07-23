@@ -22,6 +22,9 @@ async def member_env(monkeypatch):
     async def _fetch_one(sql, params=()):
         if "FROM TAUTH_CODE" in sql:
             target = params[0]
+            if "INS_DTM" in sql:  # 재전송 쿨다운 체크: 미소비 최근 코드 존재?
+                exists = any(c["TARGET_HASH_VAL"] == target and not c["CONSUMED"] for c in store["codes"])
+                return {"x": 1} if exists else None
             cands = [c for c in store["codes"] if c["TARGET_HASH_VAL"] == target and not c["CONSUMED"]]
             if not cands:
                 return None
@@ -87,7 +90,8 @@ async def member_env(monkeypatch):
 
     app = create_app()
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+    async with httpx.AsyncClient(transport=transport, base_url="http://t",
+                                 headers={"X-Loupit-Client": "web"}) as c:  # CSRF 기본 통과
         yield c, store, captured
 
 
@@ -192,16 +196,37 @@ async def test_AL_login_code_consumed_not_reusable(member_env):
 
 @pytest.mark.asyncio
 async def test_AL_shadow_code_does_not_block_real_login(member_env):
-    """[보안 Fix2] 제3자가 피해자 이메일로 코드를 재발급(섀도잉)해도, 피해자의 진짜 코드로 로그인된다.
+    """[보안 Fix2] 미소비 코드가 2개 공존해도(예: 쿨다운 밖 재발급) 정확한 코드 해시로 로그인된다.
 
-    구 '최신 1건' 매칭이면 공격자의 신규 코드가 정답을 밀어내 401이 됐다 — 해시 직접 매칭으로 방어."""
+    구 '최신 1건' 매칭이면 더 최신 코드가 정답을 밀어내 401이 됐다 — CODE_HASH_VAL 직접 매칭으로 방어.
+    (발급 쿨다운을 우회해 verify-path 강건성만 검증하려 코드 2건을 스토어에 직접 심는다.)"""
+    from server.services import auth_code
     c, store, cap = member_env
-    await _issue(c, "victim@x.com")   # 코드 A (피해자가 메일로 받음)
-    victim_code = cap["code"]
-    await _issue(c, "victim@x.com")   # 코드 B (공격자 섀도잉, 더 최신) — cap 은 이제 코드 B
+    norm = auth_code._normalize_email("victim@x.com")
+    thash = auth_code._hash_target(norm)
+    store["codes"] += [
+        {"AUTH_CODE_ID": 1, "CODE_HASH_VAL": auth_code._hash_code("111111", norm), "TARGET_HASH_VAL": thash,
+         "ATTEMPT_CNT": 0, "CONSUMED": False, "EXPIRED": False},
+        {"AUTH_CODE_ID": 2, "CODE_HASH_VAL": auth_code._hash_code("222222", norm), "TARGET_HASH_VAL": thash,
+         "ATTEMPT_CNT": 0, "CONSUMED": False, "EXPIRED": False},  # 더 최신(섀도잉)
+    ]
+    store["_code_seq"] = 2
+    r = await c.post("/api/v1/members/login", json={"email": "victim@x.com", "code": "111111"})
+    assert r.status_code == 200        # 최신(222222)에 밀리지 않고 111111 해시로 매칭
+
+
+@pytest.mark.asyncio
+async def test_AL_resend_cooldown_suppresses_duplicate(member_env):
+    """[T-13.13.2] 재전송 쿨다운 — 미소비 코드가 있으면 재요청은 무발송(균일 204, 메일 폭탄·섀도잉 완화)."""
+    c, store, cap = member_env
+    await _issue(c, "e@x.com")
+    assert len(store["codes"]) == 1
+    r = await c.post("/api/v1/members/login-code", json={"email": "e@x.com"})  # 쿨다운 내 재요청
+    assert r.status_code == 204                # 균일 204 유지(열거 단서 없음)
+    assert len(store["codes"]) == 1            # 새 코드 미발급(무발송)
+    store["codes"][0]["CONSUMED"] = True       # 소비 후엔 쿨다운 해제(미소비만 억제)
+    await _issue(c, "e@x.com")
     assert len(store["codes"]) == 2
-    r = await c.post("/api/v1/members/login", json={"email": "victim@x.com", "code": victim_code})
-    assert r.status_code == 200        # 최신(B)에 밀리지 않고 A 해시로 매칭
 
 
 @pytest.mark.asyncio
@@ -345,7 +370,8 @@ async def account_env(monkeypatch):
 
     app = create_app()
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+    async with httpx.AsyncClient(transport=transport, base_url="http://t",
+                                 headers={"X-Loupit-Client": "web"}) as c:  # CSRF 기본 통과
         yield c, store
 
 

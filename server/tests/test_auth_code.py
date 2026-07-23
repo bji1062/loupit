@@ -42,7 +42,11 @@ async def test_issue_login_code_stores_hash_not_plaintext(monkeypatch):
         async def send_login_code(self, email, code):
             sent["email"], sent["code"] = email, code
 
+    async def _fetch_one(sql, params=()):
+        return None  # 재전송 쿨다운 체크: 미소비 최근 코드 없음 → 발급 진행
+
     monkeypatch.setattr(auth_code.database, "execute", _exec)
+    monkeypatch.setattr(auth_code.database, "fetch_one", _fetch_one)
     import server.mailer as mailer
 
     monkeypatch.setattr(mailer, "get_mailer", lambda: _M())

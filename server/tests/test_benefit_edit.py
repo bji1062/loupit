@@ -229,7 +229,8 @@ async def benefit_env(monkeypatch):
 
     app = create_app()
     transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
-    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+    async with httpx.AsyncClient(transport=transport, base_url="http://t",
+                                 headers={"X-Loupit-Client": "web"}) as c:  # CSRF 기본 통과
         yield c, store
 
 

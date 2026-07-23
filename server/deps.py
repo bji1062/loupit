@@ -6,9 +6,21 @@
 """
 from __future__ import annotations
 
-from fastapi import Cookie, Depends, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException
 
 from server.services import employment, session
+
+
+async def require_csrf(x_loupit_client: str | None = Header(default=None)) -> None:
+    """상태변경(POST/PUT/DELETE) CSRF 방어 — 커스텀 헤더 `X-Loupit-Client` 필수, 부재 시 403(FR-113·SP-AUTH-12).
+
+    크로스오리진은 preflight 없이 커스텀 헤더를 못 붙이고, preflight 는 CORS 허용목록 +
+    `allow_credentials=false` 에서 실패한다(SameSite=Lax 와 결합). nginx Layer A 게이트에 더한
+    앱 레벨 이중 검사 — 미들웨어가 아니라 라우트 의존성으로 구현해 `app.user_middleware ==
+    ['CORSMiddleware']` 불변을 지킨다(INV-9). 익명 GET·익명 비교 로그(sendBeacon)는 비대상이라
+    이 의존성을 달지 않는다. 쓰기 라우트에서 세션·재직 의존성보다 **먼저** 평가되도록 앞에 둔다."""
+    if not x_loupit_client:
+        raise HTTPException(status_code=403, detail="잘못된 요청입니다.")
 
 
 async def require_member(loupit_sid: str | None = Cookie(default=None)) -> dict:

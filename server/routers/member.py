@@ -16,7 +16,7 @@ from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
 from pymysql.err import IntegrityError
 
 from server import database
-from server.deps import require_member
+from server.deps import require_csrf, require_member
 from server.models.member import (
     LoginCodeIn,
     LoginIn,
@@ -76,14 +76,14 @@ async def _get_or_create_member(email: str) -> tuple[dict, bool]:
 
 
 @router.post("/members/login-code", status_code=204)
-async def request_login_code(body: LoginCodeIn) -> Response:
+async def request_login_code(body: LoginCodeIn, _csrf: None = Depends(require_csrf)) -> Response:
     """로그인 코드 발송 — 계정 유무 무관 균일 204(계정 열거 차단, AL-1, FR-102)."""
     await auth_code.issue_login_code(body.email)
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 
 @router.post("/members/login")
-async def login(body: LoginIn, response: Response) -> LoginResult:
+async def login(body: LoginIn, response: Response, _csrf: None = Depends(require_csrf)) -> LoginResult:
     """코드 검증 → 세션 발급 → Set-Cookie → 200 {nickname, is_new} (AL-2·3·4, FR-103).
 
     실패: 불일치 401 / 만료 410 / 시도 상한 429."""
@@ -126,7 +126,8 @@ async def get_me(response: Response, member: dict = Depends(require_member)) -> 
 
 @router.put("/members/me", response_model=MeResponse)
 async def update_me(
-    body: NicknameUpdateIn, response: Response, member: dict = Depends(require_member)
+    body: NicknameUpdateIn, response: Response,
+    _csrf: None = Depends(require_csrf), member: dict = Depends(require_member),
 ) -> MeResponse:
     """닉네임 변경 — UNIQUE 원자 검사(중복 409, AM-2). no-store."""
     mbr_id = member["MBR_ID"]
@@ -145,7 +146,9 @@ async def update_me(
 
 @router.post("/members/logout", status_code=204)
 async def logout(
-    loupit_sid: str | None = Cookie(default=None), member: dict = Depends(require_member)
+    _csrf: None = Depends(require_csrf),
+    loupit_sid: str | None = Cookie(default=None),
+    member: dict = Depends(require_member),
 ) -> Response:
     """로그아웃 — 세션 폐기 + 쿠키 삭제 → 204 (AM-3)."""
     if loupit_sid:
@@ -156,7 +159,9 @@ async def logout(
 
 
 @router.delete("/members/me", status_code=204)
-async def withdraw(member: dict = Depends(require_member)) -> Response:
+async def withdraw(
+    _csrf: None = Depends(require_csrf), member: dict = Depends(require_member)
+) -> Response:
     """탈퇴(AM-4) — 로그인 이메일 원문 파기(NULL)·전 세션 폐기·재직 인증(회사 이메일 HMAC 포함) 파기.
 
     닉네임·편집 이력(TBENEFIT_EDIT_LOG)은 공개 이력 무결성 위해 **존치**(약관 T5·개인정보 P7 고지).

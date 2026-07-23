@@ -48,19 +48,46 @@ def _hash_target(target: str) -> str:
     return hashlib.sha256(_normalize_email(target).encode()).hexdigest()
 
 
+async def recent_unconsumed_exists(target_hash: str, purpose: str, comp_id: int | None = None) -> bool:
+    """재전송 쿨다운(FR-112) — `mail_resend_cooldown_sec` 창 안에 미소비 코드가 있으면 True.
+
+    메일 폭탄·섀도잉(제3자가 피해자 이메일로 반복 코드 발급) 완화용. 쿨다운 중 재요청은 발송을
+    억제하되 응답은 **균일 204 유지**(계정 열거 방지, NFR31). purpose+대상(+회사)로 스코프."""
+    cooldown = get_settings().mail_resend_cooldown_sec
+    if cooldown <= 0:
+        return False
+    if comp_id is None:
+        row = await database.fetch_one(
+            "SELECT 1 AS x FROM TAUTH_CODE WHERE TARGET_HASH_VAL=%s AND PURPOSE_CD=%s "
+            "AND CONSUMED_DTM IS NULL AND INS_DTM > UTC_TIMESTAMP() - INTERVAL %s SECOND LIMIT 1",
+            (target_hash, purpose, cooldown),
+        )
+    else:
+        row = await database.fetch_one(
+            "SELECT 1 AS x FROM TAUTH_CODE WHERE TARGET_HASH_VAL=%s AND PURPOSE_CD=%s AND COMP_ID=%s "
+            "AND CONSUMED_DTM IS NULL AND INS_DTM > UTC_TIMESTAMP() - INTERVAL %s SECOND LIMIT 1",
+            (target_hash, purpose, comp_id, cooldown),
+        )
+    return row is not None
+
+
 async def issue_login_code(email: str) -> None:
     """로그인 코드 발급 — 해시만 저장(+login_code_ttl_min), 원문은 메일로만(무저장).
 
-    계정 유무와 무관하게 항상 발급·발송한다(호출측 member.py 는 균일 204, 계정 열거 방지)."""
+    계정 유무와 무관하게 항상 균일 204(호출측 member.py, 계정 열거 방지). 단 재전송 쿨다운 창 안에
+    미소비 코드가 있으면 **무발송**(메일 폭탄·섀도잉 완화) — 응답은 여전히 204라 열거 단서가 없다."""
     from server import mailer  # 지연 import(라우트 조립 순서 무관)
 
     s = get_settings()
     norm = _normalize_email(email)
+    target_hash = _hash_target(norm)
+    if await recent_unconsumed_exists(target_hash, "login"):
+        return  # 쿨다운 중 — 무발송(균일 204 유지)
     code = _gen_code()
     await database.execute(
         "INSERT INTO TAUTH_CODE (PURPOSE_CD, CODE_HASH_VAL, TARGET_HASH_VAL, EXPIRES_DTM, ATTEMPT_CNT) "
         "VALUES ('login', %s, %s, UTC_TIMESTAMP() + INTERVAL %s MINUTE, 0)",
-        (_hash_code(code, norm), _hash_target(norm), s.login_code_ttl_min),
+        (_hash_code(code, norm), target_hash, s.login_code_ttl_min),
     )
     await mailer.get_mailer().send_login_code(norm, code)  # 원문은 여기서 소멸(무저장)
 

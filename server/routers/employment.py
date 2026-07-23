@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 
-from server.deps import require_member
+from server.deps import require_csrf, require_member
 from server.models.employment import EmployRequestIn, EmployVerifyCodeIn, EmployVerifyIn
 from server.services import employment
 from server.services.auth_code import CodeResult
@@ -18,7 +18,8 @@ router = APIRouter(tags=["employment"])
 
 @router.post("/employment/verify-code", status_code=204)
 async def request_employ_code(
-    body: EmployVerifyCodeIn, member: dict = Depends(require_member)
+    body: EmployVerifyCodeIn,
+    _csrf: None = Depends(require_csrf), member: dict = Depends(require_member),
 ) -> Response:
     """회사 이메일로 인증 코드 발송 (AE-1·2, FR-105).
 
@@ -35,7 +36,8 @@ async def request_employ_code(
 
 @router.post("/employment/verify", status_code=201)
 async def verify_employment(
-    body: EmployVerifyIn, response: Response, member: dict = Depends(require_member)
+    body: EmployVerifyIn, response: Response,
+    _csrf: None = Depends(require_csrf), member: dict = Depends(require_member),
 ) -> dict:
     """코드 검증 → 재직 인증(domain) 생성 (AE-3·4, FR-106).
 
@@ -59,7 +61,8 @@ async def verify_employment(
 
 @router.post("/employment/requests", status_code=202)
 async def submit_request(
-    body: EmployRequestIn, response: Response, member: dict = Depends(require_member)
+    body: EmployRequestIn, response: Response,
+    _csrf: None = Depends(require_csrf), member: dict = Depends(require_member),
 ) -> dict:
     """수동 승인 요청(도메인 미등록 회사 폴백) → 202 pending (AE-5, FR-107). 동일 회사 pending 중복 → 409."""
     outcome = await employment.submit_manual_request(member["MBR_ID"], body.comp_id, body.evidence)

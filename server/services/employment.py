@@ -64,11 +64,14 @@ async def issue_employ_code(comp_id: int, mbr_id: int, company_email: str) -> No
 
     s = get_settings()
     norm = auth_code._normalize_email(company_email)
+    target_hash = auth_code._hash_target(norm)
+    if await auth_code.recent_unconsumed_exists(target_hash, _PURPOSE, comp_id):
+        return  # 재전송 쿨다운 중 — 무발송(회사 이메일 폭탄 완화, 호출측 204 유지)
     code = auth_code._gen_code()
     await database.execute(
         "INSERT INTO TAUTH_CODE (PURPOSE_CD, CODE_HASH_VAL, TARGET_HASH_VAL, COMP_ID, MBR_ID, EXPIRES_DTM, ATTEMPT_CNT) "
         "VALUES (%s, %s, %s, %s, %s, UTC_TIMESTAMP() + INTERVAL %s MINUTE, 0)",
-        (_PURPOSE, auth_code._hash_code(code, norm), auth_code._hash_target(norm), comp_id, mbr_id, s.login_code_ttl_min),
+        (_PURPOSE, auth_code._hash_code(code, norm), target_hash, comp_id, mbr_id, s.login_code_ttl_min),
     )
     await mailer.get_mailer().send_employ_code(norm, code)  # 원문은 여기서 소멸
 
