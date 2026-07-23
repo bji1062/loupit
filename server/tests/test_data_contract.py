@@ -18,7 +18,7 @@ CATEGORIES_9 = {
     "compensation", "flexibility", "work_env", "time_off",
     "health", "family", "growth", "leisure", "perks",
 }
-BADGE_CODES = {"official", "est"}
+BADGE_CODES = {"official", "est", "verified"}  # verified = SC14 재직자 확인(사용자 등록/수정, SP-AUTH-9, DC-6 3값)
 AMT_SOURCE_CODES = {"stated", "estimated", "none"}
 BADGE_SRC_CODES = {"scrape_official", "scrape_fallback", "ai_parse", "manual", "user_report"}
 TYPE_CODES_6 = {"large", "startup", "mid", "foreign", "public", "freelance"}

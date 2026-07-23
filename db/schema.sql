@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS TCOMPANY_BENEFIT (
   BENEFIT_CTGR_CD     VARCHAR(20)  NOT NULL
                       COMMENT '복지 카테고리 9종 (compensation, flexibility, work_env, time_off, health, family, growth, leisure, perks)',
   BADGE_CD            VARCHAR(10)  NOT NULL DEFAULT 'est'
-                      COMMENT '출처 신뢰도 배지 — 복지 존재의 확실성 (official: 공식 확인, est: 추정)',
+                      COMMENT '출처 신뢰도 배지 — 복지 존재의 확실성 (official: 공식 확인, est: 추정, verified: 재직자 확인 — SC14 사용자 등록/수정 SP-AUTH-9)',
   AMT_SOURCE_CD       VARCHAR(10)  NOT NULL DEFAULT 'estimated'
                       COMMENT '금액 신뢰도 (stated: 공식 명시금액, estimated: 앵커 추정, none: 정성/금액없음) — DEC-2, BADGE_CD와 독립. 불확실성 밴드 근거. API JSON 필드명 amt_source',
   BADGE_SRC_CD        VARCHAR(20)  DEFAULT NULL

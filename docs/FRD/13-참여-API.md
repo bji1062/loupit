@@ -328,6 +328,7 @@
 | 파라미터 | 위치 | 타입 | 널 | 제약 |
 |----------|------|------|----|------|
 | `comp_id` | path | int | N | 재직 인증 보유 회사 |
+| `benefit_cd` | body | string | N | 복지 코드(소문자 스네이크 `^[a-z][a-z0-9_]{1,29}$`, 회사 내 유니크 `uq_comp_benefit` — 중복 시 409) |
 | `benefit_nm` | body | string | N | 복지 표시명(이스케이프) |
 | `benefit_ctgr_cd` | body | string | N | 9카테고리 중 하나 |
 | `benefit_amt` | body | int\|null | Y | 금액(만원). 정성이면 null |
