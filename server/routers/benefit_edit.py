@@ -84,6 +84,23 @@ async def update_benefit(
     )
 
 
+@router.get("/companies/{comp_id}/benefits")
+async def list_benefits_for_edit(
+    response: Response,
+    comp_id: int = Path(..., ge=1),
+    member: dict = Depends(require_member),
+    _employment: dict = Depends(require_employment),
+) -> JSONResponse:
+    """편집용 복지 목록 (FR-109 부트스트랩) — 재직 인증자에게 각 복지의 `base_dtm`(낙관동시성 토큰) 동봉.
+
+    기존(시드) 복지를 수정하려면 읽은 행의 base_dtm 이 필요한데, 공개 캐시 경로(GET /companies/{id})엔
+    편집 토큰을 두지 않는다(캐시 stale→오탐 409 방지). 편집 폼은 이 인증·no-store 경로로 토큰을
+    부트스트랩한다. 세션 없음 401·해당 회사 재직 미보유 403. GET 이라 CSRF 비대상."""
+    benefits = await benefit_edit.fetch_company_benefits(comp_id)
+    response.headers["Cache-Control"] = "no-store"
+    return JSONResponse(content={"benefits": benefits}, headers={"Cache-Control": "no-store"})
+
+
 @router.get("/companies/{comp_id}/edits", response_model=list[EditLogItem])
 async def list_edits(
     response: Response,

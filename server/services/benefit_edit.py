@@ -38,13 +38,13 @@ _SQL_ROW = """
          BADGE_SRC_URL_CTNT AS badge_src_url_ctnt, SORT_ORDER_NO AS sort_order_no, INS_DTM, MOD_DTM
     FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s"""
 
-# 회사 복지 목록(공개 투영, companies._SQL_COMP_BENEFITS 계약과 동일) — 편집 후 갱신 목록 반환용.
+# 회사 복지 목록(편집용 투영) — 각 행에 base_dtm(낙관동시성 토큰)을 실으려 INS_DTM·MOD_DTM 포함.
 _SQL_LIST = """
   SELECT BENEFIT_CD AS benefit_cd, BENEFIT_NM AS benefit_nm, BENEFIT_AMT AS benefit_amt,
          BENEFIT_CTGR_CD AS benefit_ctgr_cd, BADGE_CD AS badge_cd, AMT_SOURCE_CD AS amt_source,
          QUAL_YN AS qual_yn, QUAL_DESC_CTNT AS qual_desc_ctnt, NOTE_CTNT AS note_ctnt,
          VERIFIED_DTM AS verified_dtm, EXPIRES_DTM AS expires_dtm, BADGE_SRC_CD AS badge_src_cd,
-         BADGE_SRC_URL_CTNT AS badge_src_url_ctnt, SORT_ORDER_NO AS sort_order_no
+         BADGE_SRC_URL_CTNT AS badge_src_url_ctnt, SORT_ORDER_NO AS sort_order_no, INS_DTM, MOD_DTM
     FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s ORDER BY SORT_ORDER_NO, BENEFIT_ID"""
 
 # 편집 이력 공개 조회(닉네임 조인·최신순·커서 페이지네이션). 편집자 이메일·MBR_ID 미노출(INV-8).
@@ -111,9 +111,12 @@ async def _daily_count(mbr_id: int, comp_id: int) -> int:
 
 
 async def fetch_company_benefits(comp_id: int) -> list[dict]:
-    """회사 복지 목록(공개 투영) — 편집 성공 응답의 benefits[] 로 클라이언트 인메모리 치환용."""
+    """회사 복지 목록(편집용 투영, 각 행 base_dtm 동봉) — 편집 응답 benefits[]·편집용 조회 공용.
+
+    base_dtm(낙관동시성 토큰)은 편집자만 보는 인증·no-store 경로(create/update 응답·편집용 GET)로만
+    노출된다 — 공개·캐시 가능한 GET /companies/{id} 상세엔 두지 않는다(캐시 stale→오탐 409 방지)."""
     rows = await database.fetch_all(_SQL_LIST, (comp_id,))
-    return [Benefit(**reference._norm_benefit(dict(r))).model_dump() for r in rows]
+    return [_public_benefit(r) for r in rows]
 
 
 async def create_benefit(comp_id: int, mbr_id: int, payload) -> dict:

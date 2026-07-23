@@ -58,6 +58,7 @@ def test_TS1_participation_surface_exact(app_instance):
         "/api/v1/comparisons/trending",
         "/api/v1/members/me",                    # FR-104 마이페이지(세션)
         "/api/v1/companies/{comp_id}/edits",     # FR-110 편집 이력 공개 열람
+        "/api/v1/companies/{comp_id}/benefits",  # FR-109 편집용 조회(재직 게이트·base_dtm 부트스트랩)
     }
     get_paths = {path for (path, method) in seen_paths_methods if method == "GET"}
     assert get_paths == expected_get_paths

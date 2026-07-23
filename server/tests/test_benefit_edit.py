@@ -395,6 +395,53 @@ async def test_AB1_update_requires_employment_403(benefit_env):
     assert r.status_code == 403
 
 
+# ── 편집용 조회 — base_dtm 부트스트랩 (#1, FR-109 수정 도달성) ──────────────────
+@pytest.mark.asyncio
+async def test_read_for_edit_requires_session_401(benefit_env):
+    c, store = benefit_env
+    r = await c.get("/api/v1/companies/10/benefits")  # 무쿠키
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_read_for_edit_requires_employment_403(benefit_env):
+    c, store = benefit_env
+    r = await c.get("/api/v1/companies/20/benefits", headers=_AUTH)  # 회사 20 재직 없음
+    assert r.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_read_for_edit_returns_benefits_with_base_dtm_no_store(benefit_env):
+    c, store = benefit_env
+    await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal", amt=220), headers=_AUTH)
+    r = await c.get("/api/v1/companies/10/benefits", headers=_AUTH)
+    assert r.status_code == 200
+    assert r.headers.get("cache-control") == "no-store"
+    benefits = r.json()["benefits"]
+    assert len(benefits) == 1 and benefits[0]["base_dtm"]  # 편집 토큰 동봉
+
+
+@pytest.mark.asyncio
+async def test_read_for_edit_roundtrip_to_put(benefit_env):
+    """조회한 base_dtm으로 곧바로 수정(PUT) → 200 (기존 복지 수정 도달성, #1)."""
+    c, store = benefit_env
+    await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal", amt=220), headers=_AUTH)
+    bid = store["benefits"][0]["BENEFIT_ID"]
+    read = await c.get("/api/v1/companies/10/benefits", headers=_AUTH)
+    base = read.json()["benefits"][0]["base_dtm"]
+    ok = await c.put(f"/api/v1/companies/10/benefits/{bid}",
+                     json={"base_dtm": base, "benefit_nm": "식대(정정)", "benefit_amt": 250}, headers=_AUTH)
+    assert ok.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_create_response_benefits_carry_base_dtm(benefit_env):
+    """create/update 응답의 benefits[] 각 항목도 base_dtm 동봉(편집 준비)."""
+    c, store = benefit_env
+    r = await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal", amt=220), headers=_AUTH)
+    assert all("base_dtm" in b for b in r.json()["benefits"])
+
+
 # ── AH — 편집 이력 공개 조회 ──────────────────────────────────────────────────
 @pytest.mark.asyncio
 async def test_AH1_edits_public_anonymous_200(benefit_env):
