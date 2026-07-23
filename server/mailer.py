@@ -63,8 +63,17 @@ class SmtpMailer:
 
 
 def get_mailer():
-    """`mailer_mode` + `smtp_user` 로 메일러 선택(SP-AUTH-11 규칙3: smtp_user 미설정 시 console 폴백)."""
+    """`mailer_mode` 로 메일러 선택. **운영 fail-closed**(보안점검 2026-07-23):
+
+    `mailer_mode=smtp` 인데 `smtp_user` 가 비면, 코드가 stdout(운영 로그)으로 새는 ConsoleMailer 로
+    **조용히 폴백하지 않고 기동/발송을 실패**시킨다(NFR31). ConsoleMailer(코드 stdout 출력)는 오직
+    `mailer_mode=console`(명시적 개발 선택)에서만 반환된다 — 운영은 mailer_mode=smtp + smtp_user 필수."""
     s = get_settings()
-    if s.mailer_mode == "smtp" and s.smtp_user:
+    if s.mailer_mode == "smtp":
+        if not s.smtp_user:
+            raise RuntimeError(
+                "mailer_mode=smtp 인데 smtp_user 미설정 — 코드가 로그로 새는 console 폴백을 막기 위해 "
+                "실패(fail-closed). SMTP 자격을 주입하거나 개발이면 mailer_mode=console 로 명시하세요."
+            )
         return SmtpMailer(s.smtp_host, s.smtp_port, s.smtp_user, s.smtp_pass, s.smtp_from)
     return ConsoleMailer()

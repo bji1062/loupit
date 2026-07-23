@@ -88,6 +88,7 @@ def test_AU5_sc14_config_fields_present():
     # 비밀 pepper (SP-AUTH-4·7, NFR30) — 기본 빈문자
     assert s.session_hash_pepper == ""
     assert s.comp_email_hmac_pepper == ""
+    assert s.login_code_hmac_pepper == ""  # 로그인 코드 HMAC 키(보안점검 2026-07-23, 운영 필수)
     # 금지 substring 재확인(신규 필드가 4종을 포함하지 않음)
     for name in Settings.model_fields:
         low = name.lower()

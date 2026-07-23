@@ -123,10 +123,16 @@ def create_app() -> FastAPI:
 
     @app.exception_handler(RequestValidationError)
     async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
-        # 422(q 검증·comp_id 검증) — no-store(SP-API-12).
+        # 422(q 검증·comp_id 검증·로그인 이메일/코드 검증) — no-store(SP-API-12).
+        # 보안점검 2026-07-23: Pydantic v2 errors()의 `input`(및 ctx/url)은 제출 원본값을 담아
+        # 로그인 이메일·코드 원문을 응답에 반향시킨다 → type·loc·msg 만 노출(NFR31).
+        safe = [
+            {"type": e.get("type"), "loc": e.get("loc"), "msg": e.get("msg")}
+            for e in exc.errors()
+        ]
         return JSONResponse(
             status_code=422,
-            content={"detail": jsonable_encoder(exc.errors())},
+            content={"detail": jsonable_encoder(safe)},
             headers={"Cache-Control": "no-store"},
         )
 

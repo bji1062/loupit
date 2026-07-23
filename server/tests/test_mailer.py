@@ -27,14 +27,16 @@ def test_get_mailer_defaults_to_console(monkeypatch):
     assert isinstance(get_mailer(), ConsoleMailer)
 
 
-def test_get_mailer_smtp_without_user_falls_back_to_console(monkeypatch):
-    """규칙3: mailer_mode=smtp 라도 smtp_user 미설정이면 Console 폴백(실발송 방지)."""
+def test_get_mailer_smtp_without_user_fails_closed(monkeypatch):
+    """fail-closed(보안점검 2026-07-23): mailer_mode=smtp + smtp_user 미설정이면 코드가 stdout
+    로그로 새는 console 조용한 폴백 대신 RuntimeError 로 실패한다(NFR31)."""
     monkeypatch.setenv("MAILER_MODE", "smtp")
     monkeypatch.setenv("SMTP_USER", "")
     get_settings.cache_clear()
-    from server.mailer import ConsoleMailer, get_mailer
+    from server.mailer import get_mailer
 
-    assert isinstance(get_mailer(), ConsoleMailer)
+    with pytest.raises(RuntimeError):
+        get_mailer()
 
 
 def test_get_mailer_smtp_with_user_selects_smtp(monkeypatch):

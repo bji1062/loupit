@@ -29,7 +29,10 @@ def _gen_nickname() -> str:
 async def _get_or_create_member(email: str) -> tuple[dict, bool]:
     """이메일로 활성 회원 조회, 없으면 신규 생성(닉네임 자동) 후 (회원, is_new) 반환.
 
-    PII = 로그인 이메일 + 자동 닉네임뿐(INV-8·T9). 닉네임 UNIQUE 충돌 시 몇 회 재생성한다."""
+    PII = 로그인 이메일 + 자동 닉네임뿐(INV-8·T9). INSERT UNIQUE 충돌은 두 종류를 구분한다
+    (보안점검 2026-07-23): **이메일 중복**(동일 이메일 동시 첫 로그인·버튼 더블클릭 레이스)은
+    이미 만들어진 계정을 재조회해 is_new=False 로 흡수하고, **닉네임 중복**만 새 닉네임으로 재시도한다.
+    (구현: INSERT 실패 시 해당 이메일 계정이 존재하면 그걸 반환, 없으면 닉네임 충돌로 보고 재시도.)"""
     norm = auth_code._normalize_email(email)
     row = await database.fetch_one(
         "SELECT MBR_ID, NICKNAME_NM FROM TMEMBER WHERE LOGIN_EMAIL_NM=%s AND STATUS_CD='active'",
@@ -39,23 +42,28 @@ async def _get_or_create_member(email: str) -> tuple[dict, bool]:
         return row, False
 
     last_exc: Exception | None = None
-    for _ in range(5):  # 닉네임 UNIQUE 충돌 재시도(확률 낮음)
+    for _ in range(5):
         try:
             await database.execute(
                 "INSERT INTO TMEMBER (LOGIN_EMAIL_NM, NICKNAME_NM) VALUES (%s, %s)",
                 (norm, _gen_nickname()),
             )
-            break
-        except Exception as exc:  # IntegrityError(닉네임 중복) 등 — 재생성 후 재시도
+            new_row = await database.fetch_one(
+                "SELECT MBR_ID, NICKNAME_NM FROM TMEMBER WHERE LOGIN_EMAIL_NM=%s",
+                (norm,),
+            )
+            return new_row, True
+        except Exception as exc:  # UNIQUE 위반(pymysql IntegrityError 등)
             last_exc = exc
-    else:
-        raise HTTPException(500, "가입 처리 중 오류가 발생했습니다.") from last_exc
-
-    row = await database.fetch_one(
-        "SELECT MBR_ID, NICKNAME_NM FROM TMEMBER WHERE LOGIN_EMAIL_NM=%s",
-        (norm,),
-    )
-    return row, True
+            # 이메일 중복 레이스: 다른 동시 요청이 같은 이메일로 계정을 이미 만들었으면 그걸 흡수.
+            existing = await database.fetch_one(
+                "SELECT MBR_ID, NICKNAME_NM FROM TMEMBER WHERE LOGIN_EMAIL_NM=%s AND STATUS_CD='active'",
+                (norm,),
+            )
+            if existing:
+                return existing, False
+            # 이메일이 아직 없다 = 닉네임 충돌 → 새 닉네임으로 재시도.
+    raise HTTPException(500, "가입 처리 중 오류가 발생했습니다.") from last_exc
 
 
 @router.post("/members/login-code", status_code=204)

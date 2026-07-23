@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import hashlib
+import hmac
 import secrets
 
 from server import database
@@ -33,8 +34,13 @@ def _gen_code() -> str:
 
 
 def _hash_code(code: str, target: str) -> str:
-    """코드 해시 — 정규화 이메일 target 으로 스코프(교차 대입 방어)."""
-    return hashlib.sha256(f"{target}:{code}".encode()).hexdigest()
+    """코드 해시 — 정규화 이메일 target 으로 스코프 + 서버 pepper HMAC(NFR30, 보안점검 2026-07-23).
+
+    6자리 코드는 저엔트로피(10^6)라 무키 해시는 DB 유출 시 오프라인 무차별로 원문 복원된다.
+    login_code_hmac_pepper(운영 필수)로 HMAC 해, pepper 를 모르는 DB-읽기 공격자는 후보 해시를
+    계산할 수 없다. pepper 미설정(개발) 시 무키 폴백이나 운영에선 반드시 주입한다."""
+    pepper = get_settings().login_code_hmac_pepper.encode()
+    return hmac.new(pepper, f"{target}:{code}".encode(), hashlib.sha256).hexdigest()
 
 
 def _hash_target(target: str) -> str:
@@ -62,34 +68,46 @@ async def issue_login_code(email: str) -> None:
 async def verify_login_code(email: str, code: str) -> str:
     """로그인 코드 검증·소비 → CodeResult(ok|mismatch|expired|too_many).
 
-    최신 미소비 login 코드 1건을 대상 해시로 조회한다. 만료·시도상한을 먼저 걸러
-    무차별 대입을 막고, 시도를 증가시킨 뒤 constant-time 해시 대조한다. 성공 시 소비
-    (CONSUMED_DTM)해 재사용을 차단한다. 코드가 없으면 불일치(균일 401, 계정 열거 방지)."""
+    원자적·섀도잉 내성 설계(보안점검 2026-07-23):
+    (1) 정답 경로 — 제출 코드 해시(CODE_HASH_VAL)와 정확히 일치하는 live·미소비·시도상한 내 코드를
+        **조건부 UPDATE 로 원자 소비**한다. 해시 직접 매칭이라 제3자가 발급시킨 최신 코드가 정당한
+        코드를 밀어내지 못하고(섀도잉 내성), `CONSUMED_DTM IS NULL` 조건이 동시 성공 시에도 1코드→1세션을
+        보장한다(락·트랜잭션 불필요).
+    (2) 실패 경로 — 대상의 최신 미소비 코드로 상태(만료·상한)를 판정하고, 틀린 추측이면 시도를
+        `AND ATTEMPT_CNT < 상한` 가드로 **원자 증가**해 동시요청으로도 code_max_attempts 를 못 넘게 한다.
+    코드가 없으면 불일치(균일 401, 계정 열거 방지)."""
     norm = _normalize_email(email)
+    s = get_settings()
+    target_hash = _hash_target(norm)
+    code_hash = _hash_code(code, norm)
+
+    # (1) 정답 경로 — 해시 일치 live 코드를 원자 소비. rowcount>=1 → 성공.
+    consumed = await database.execute(
+        "UPDATE TAUTH_CODE SET CONSUMED_DTM = UTC_TIMESTAMP() "
+        "WHERE TARGET_HASH_VAL=%s AND PURPOSE_CD='login' AND CODE_HASH_VAL=%s "
+        "AND CONSUMED_DTM IS NULL AND EXPIRES_DTM > UTC_TIMESTAMP() AND ATTEMPT_CNT < %s",
+        (target_hash, code_hash, s.code_max_attempts),
+    )
+    if consumed:
+        return CodeResult.OK
+
+    # (2) 실패 경로 — 최신 미소비 코드로 상태 판정 + 틀린 추측 시 시도 원자 증가.
     row = await database.fetch_one(
-        "SELECT AUTH_CODE_ID, CODE_HASH_VAL, ATTEMPT_CNT, "
-        "       (EXPIRES_DTM <= UTC_TIMESTAMP()) AS is_expired "
+        "SELECT AUTH_CODE_ID, ATTEMPT_CNT, (EXPIRES_DTM <= UTC_TIMESTAMP()) AS is_expired "
         "FROM TAUTH_CODE "
         "WHERE TARGET_HASH_VAL=%s AND PURPOSE_CD='login' AND CONSUMED_DTM IS NULL "
         "ORDER BY AUTH_CODE_ID DESC LIMIT 1",
-        (_hash_target(norm),),
+        (target_hash,),
     )
     if row is None:
         return CodeResult.MISMATCH
     if row["is_expired"]:
         return CodeResult.EXPIRED
-    if row["ATTEMPT_CNT"] >= get_settings().code_max_attempts:
+    if row["ATTEMPT_CNT"] >= s.code_max_attempts:
         return CodeResult.TOO_MANY
-
     await database.execute(
-        "UPDATE TAUTH_CODE SET ATTEMPT_CNT = ATTEMPT_CNT + 1 WHERE AUTH_CODE_ID=%s",
-        (row["AUTH_CODE_ID"],),
+        "UPDATE TAUTH_CODE SET ATTEMPT_CNT = ATTEMPT_CNT + 1 "
+        "WHERE AUTH_CODE_ID=%s AND ATTEMPT_CNT < %s",
+        (row["AUTH_CODE_ID"], s.code_max_attempts),
     )
-    if not secrets.compare_digest(row["CODE_HASH_VAL"], _hash_code(code, norm)):
-        return CodeResult.MISMATCH
-
-    await database.execute(
-        "UPDATE TAUTH_CODE SET CONSUMED_DTM = UTC_TIMESTAMP() WHERE AUTH_CODE_ID=%s",
-        (row["AUTH_CODE_ID"],),
-    )
-    return CodeResult.OK
+    return CodeResult.MISMATCH

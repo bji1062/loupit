@@ -83,8 +83,9 @@ class Settings(BaseSettings):
     employ_vrf_ttl_days: int = 365  # 재직 인증 만료(FR-106)
 
     # 비밀 pepper (SP-AUTH-4·7, NFR30) — 로그 금지
-    session_hash_pepper: str = ""  # 세션 토큰 SHA-256 pepper(선택). 미설정 시 순수 SHA-256
+    session_hash_pepper: str = ""  # 세션 토큰 SHA-256 pepper(선택·48바이트 고엔트로피라 무키도 안전)
     comp_email_hmac_pepper: str = ""  # 회사 이메일 HMAC 키(재직 인증 필수 — 미설정 시 재직 경로 기동 실패, SP-AUTH-7)
+    login_code_hmac_pepper: str = ""  # 로그인 코드 HMAC 키(보안강화, 보안점검 2026-07-23). 6자리 코드는 저엔트로피(10^6)라 무키 해시는 DB 유출 시 오프라인 무차별로 복원됨 → 운영 필수 주입
 
     @property
     def cors_origin_list(self) -> list[str]:

@@ -44,16 +44,21 @@ async def member_env(monkeypatch):
                                    "TARGET_HASH_VAL": params[1], "ATTEMPT_CNT": 0,
                                    "CONSUMED": False, "EXPIRED": False})
             return 1
-        if "UPDATE TAUTH_CODE SET ATTEMPT_CNT" in sql:
+        if "SET CONSUMED_DTM" in sql and "CODE_HASH_VAL" in sql:  # path1 원자 소비(해시 직접 매칭)
+            thash, chash, maxa = params[0], params[1], params[2]
             for c in store["codes"]:
-                if c["AUTH_CODE_ID"] == params[0]:
-                    c["ATTEMPT_CNT"] += 1
-            return 1
-        if "UPDATE TAUTH_CODE SET CONSUMED_DTM" in sql:
-            for c in store["codes"]:
-                if c["AUTH_CODE_ID"] == params[0]:
+                if (c["TARGET_HASH_VAL"] == thash and c["CODE_HASH_VAL"] == chash
+                        and not c["CONSUMED"] and not c["EXPIRED"] and c["ATTEMPT_CNT"] < maxa):
                     c["CONSUMED"] = True
-            return 1
+                    return 1
+            return 0
+        if "SET ATTEMPT_CNT" in sql:  # path2 원자 시도 증가(ATTEMPT_CNT < 상한 가드)
+            cid, maxa = params[0], params[1]
+            for c in store["codes"]:
+                if c["AUTH_CODE_ID"] == cid and c["ATTEMPT_CNT"] < maxa:
+                    c["ATTEMPT_CNT"] += 1
+                    return 1
+            return 0
         if "INSERT INTO TMEMBER" in sql:
             store["_mbr_seq"] += 1
             store["members"].append({"MBR_ID": store["_mbr_seq"], "LOGIN_EMAIL_NM": params[0],
@@ -183,3 +188,59 @@ async def test_AL_login_code_consumed_not_reusable(member_env):
     assert ok.status_code == 200
     again = await c.post("/api/v1/members/login", json={"email": "e@x.com", "code": code})
     assert again.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_AL_shadow_code_does_not_block_real_login(member_env):
+    """[보안 Fix2] 제3자가 피해자 이메일로 코드를 재발급(섀도잉)해도, 피해자의 진짜 코드로 로그인된다.
+
+    구 '최신 1건' 매칭이면 공격자의 신규 코드가 정답을 밀어내 401이 됐다 — 해시 직접 매칭으로 방어."""
+    c, store, cap = member_env
+    await _issue(c, "victim@x.com")   # 코드 A (피해자가 메일로 받음)
+    victim_code = cap["code"]
+    await _issue(c, "victim@x.com")   # 코드 B (공격자 섀도잉, 더 최신) — cap 은 이제 코드 B
+    assert len(store["codes"]) == 2
+    r = await c.post("/api/v1/members/login", json={"email": "victim@x.com", "code": victim_code})
+    assert r.status_code == 200        # 최신(B)에 밀리지 않고 A 해시로 매칭
+
+
+@pytest.mark.asyncio
+async def test_AL_invalid_body_422_does_not_echo_email_or_code(member_env):
+    """[보안 Fix6] 형식 불량 422 응답이 제출한 이메일·코드 원문을 반향하지 않는다(NFR31)."""
+    c, store, cap = member_env
+    r = await c.post("/api/v1/members/login", json={"email": "leaked-plaintext-xyz", "code": "9z9z9z"})
+    assert r.status_code == 422
+    assert "leaked-plaintext-xyz" not in r.text  # 이메일 원문 미반향
+    assert "9z9z9z" not in r.text                 # 코드 원문 미반향
+    detail = r.json()["detail"]
+    assert isinstance(detail, list) and all("input" not in e for e in detail)  # input 키 제거
+
+
+@pytest.mark.asyncio
+async def test_get_or_create_member_email_race_absorbs_no_500(monkeypatch):
+    """[보안 Fix5] 동일 이메일 동시 첫 로그인(버튼 더블클릭)의 이메일 UNIQUE 충돌은 500이 아니라
+    이미 만들어진 계정 재조회로 흡수(is_new=False)한다 — 닉네임 충돌로 오인해 5회 헛시도 후 500 나던 버그."""
+    from server import database
+    from server.routers import member as member_router
+
+    state = {"inserts": 0, "active_selects": 0}
+
+    async def _execute(sql, params=()):
+        if "INSERT INTO TMEMBER" in sql:
+            state["inserts"] += 1
+            raise RuntimeError("Duplicate entry 'race@x.com' for key 'uq_member_email'")
+        return 1
+
+    async def _fetch_one(sql, params=()):
+        if "STATUS_CD='active'" in sql:
+            state["active_selects"] += 1
+            # 1회차: 신규(없음) → INSERT 시도. 2회차(예외 후 재조회): 동시 요청이 만든 계정 존재.
+            return None if state["active_selects"] == 1 else {"MBR_ID": 55, "NICKNAME_NM": "직장인-000055"}
+        return None
+
+    monkeypatch.setattr(database, "execute", _execute)
+    monkeypatch.setattr(database, "fetch_one", _fetch_one)
+
+    row, is_new = await member_router._get_or_create_member("Race@x.com")
+    assert row["MBR_ID"] == 55 and is_new is False
+    assert state["inserts"] == 1  # 이메일 충돌을 재조회로 흡수(닉네임 재시도로 반복 INSERT 안 함)
