@@ -26,6 +26,7 @@ SEED_DIR = Path(__file__).resolve().parent
 COMPANY_TYPES_SQL = SEED_DIR / "company_types.sql"
 BENEFIT_PRESETS_SQL = SEED_DIR / "benefit_presets.sql"
 BENEFIT_SQL_DIR = SEED_DIR / "benefit" / "sql"
+COMPANY_EMAIL_DOMAIN_SQL = SEED_DIR / "company_email_domain.sql"  # SC14 재직 인증 도메인 화이트리스트(DG-5)
 
 # 생성 순서(FK 부모→자식, SP-DB-8). DROP은 이 역순으로 수행한다.
 TABLE_CREATE_ORDER = ["TCOMPANY_TYPE", "TCOMPANY", "TCOMPANY_ALIAS", "TCOMPANY_BENEFIT", "TBENEFIT_PRESET"]
@@ -178,6 +179,7 @@ def main(fresh: bool = False) -> dict:
                 run_sql_file(cur, f)
             meta = build_company_meta()
             apply_company_meta(cur, meta)  # 4: 별칭·근무형태 보강
+            run_sql_file(cur, COMPANY_EMAIL_DOMAIN_SQL)  # 4b: 회사↔이메일 도메인 화이트리스트(재직 인증, DG-5)
             stats = backfill(cur)  # 5: DEC-2 백필(official 승격·amt_source·출처·만료)
             counts = _gather_counts(cur)  # 하한 스모크용 실카운트(커밋 직전, 동일 트랜잭션)
         conn.commit()
