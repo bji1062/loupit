@@ -43,6 +43,9 @@ def test_TS1_get_five_endpoints_plus_single_anonymous_log_post(app_instance):
         ("/api/v1/members/logout", "POST"),      # FR-104 로그아웃
         ("/api/v1/members/me", "PUT"),           # FR-104 닉네임 변경
         ("/api/v1/members/me", "DELETE"),        # FR-104 탈퇴
+        ("/api/v1/employment/verify-code", "POST"),  # FR-105 재직 코드 발송
+        ("/api/v1/employment/verify", "POST"),       # FR-106 재직 인증
+        ("/api/v1/employment/requests", "POST"),     # FR-107 수동 승인 요청
     }, f"현행 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {

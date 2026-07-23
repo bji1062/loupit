@@ -6,9 +6,9 @@
 """
 from __future__ import annotations
 
-from fastapi import Cookie, HTTPException
+from fastapi import Cookie, Depends, HTTPException
 
-from server.services import session
+from server.services import employment, session
 
 
 async def require_member(loupit_sid: str | None = Cookie(default=None)) -> dict:
@@ -22,5 +22,11 @@ async def require_member(loupit_sid: str | None = Cookie(default=None)) -> dict:
     return member
 
 
-# require_employment(comp_id) 는 재직 인증(services/employment.active_verification) 의존이라
-# 복지 편집(T-13.10)·재직(T-13.8) 착수 시 추가한다(현재 로그인/계정 경로는 미사용).
+async def require_employment(comp_id: int, member: dict = Depends(require_member)) -> dict:
+    """경로변수 comp_id 회사의 **활성 재직 인증**을 요구, 없으면 403(SP-AUTH-4·7).
+
+    IDOR 방어 — 인증한 회사의 복지만 편집할 수 있게 게이트한다(복지 편집 T-13.10 이 소비)."""
+    verification = await employment.active_verification(member["MBR_ID"], comp_id)
+    if not verification:
+        raise HTTPException(status_code=403, detail="해당 회사 재직 인증이 필요합니다.")
+    return verification
