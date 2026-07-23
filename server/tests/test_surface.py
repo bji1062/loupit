@@ -40,6 +40,9 @@ def test_TS1_get_five_endpoints_plus_single_anonymous_log_post(app_instance):
         ("/api/v1/comparisons/log", "POST"),     # 익명(INV-1)
         ("/api/v1/members/login-code", "POST"),  # FR-102 로그인 코드 발송
         ("/api/v1/members/login", "POST"),       # FR-103 코드 검증·세션 발급
+        ("/api/v1/members/logout", "POST"),      # FR-104 로그아웃
+        ("/api/v1/members/me", "PUT"),           # FR-104 닉네임 변경
+        ("/api/v1/members/me", "DELETE"),        # FR-104 탈퇴
     }, f"현행 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {
@@ -48,6 +51,7 @@ def test_TS1_get_five_endpoints_plus_single_anonymous_log_post(app_instance):
         "/api/v1/companies/search",
         "/api/v1/companies/{comp_id}",
         "/api/v1/comparisons/trending",
+        "/api/v1/members/me",                    # FR-104 마이페이지(세션)
     }
     get_paths = {path for (path, method) in seen_paths_methods if method == "GET"}
     assert get_paths == expected_get_paths

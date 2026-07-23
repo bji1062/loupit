@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -45,3 +46,41 @@ class LoginResult(BaseModel):
 
     nickname: str
     is_new: bool
+
+
+# 닉네임 제약(SP-AUTH-6.4, NFR21) — 본 문서 소유. 저장은 파라미터 바인딩, 표시 이스케이프는 SP-FE.
+_NICK_RE = re.compile(r"^[0-9A-Za-z가-힣_\- ]{2,20}$")  # 한글·영숫자·_-·공백, 2~20자
+_BANNED_NICK = ("관리자", "운영자", "운영진", "admin", "administrator", "loupit", "루핏")
+
+
+class NicknameUpdateIn(BaseModel):
+    """PUT /members/me 요청 본문 — 닉네임 변경."""
+
+    nickname: str = Field(..., max_length=30)
+
+    @field_validator("nickname")
+    @classmethod
+    def _valid_nickname(cls, v: str) -> str:
+        v = v.strip()
+        if not _NICK_RE.match(v):
+            raise ValueError("닉네임은 2~20자의 한글·영문·숫자·_- 만 가능합니다.")
+        low = v.lower().replace(" ", "")
+        if any(bad in low for bad in _BANNED_NICK):
+            raise ValueError("사용할 수 없는 닉네임입니다.")
+        return v
+
+
+class VerificationItem(BaseModel):
+    """재직 인증 1건(마이페이지 표시용)."""
+
+    comp_id: int
+    comp_nm: str
+    expires_dtm: datetime | None = None
+
+
+class MeResponse(BaseModel):
+    """GET/PUT /members/me 응답 — 닉네임·상태·활성 재직 인증 목록(회사 이메일·MBR_ID 미노출, INV-8)."""
+
+    nickname: str
+    status: str
+    verifications: list[VerificationItem] = []

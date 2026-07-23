@@ -244,3 +244,177 @@ async def test_get_or_create_member_email_race_absorbs_no_500(monkeypatch):
     row, is_new = await member_router._get_or_create_member("Race@x.com")
     assert row["MBR_ID"] == 55 and is_new is False
     assert state["inserts"] == 1  # 이메일 충돌을 재조회로 흡수(닉네임 재시도로 반복 INSERT 안 함)
+
+
+# ── 계정 관리(마이페이지·로그아웃·탈퇴) — AM-* (T-13.5.2·T-13.7) ──────────────────────
+_AUTH = {"Cookie": "loupit_sid=SESSIONRAW"}  # account_env 가 심은 유효 세션 원문
+
+
+@pytest_asyncio.fixture
+async def account_env(monkeypatch):
+    """로그인된 회원(MBR_ID=1) + 유효 세션(SESSIONRAW)이 심긴 클라이언트. 계정 SQL 인메모리 스텁."""
+    from server import database
+    from server.main import create_app
+    from server.services import session as session_svc
+
+    store = {
+        "members": [{"MBR_ID": 1, "LOGIN_EMAIL_NM": "me@x.com", "NICKNAME_NM": "직장인-000001", "STATUS_CD": "active"}],
+        "sessions": [{"MBR_ID": 1, "TOKEN_HASH_VAL": session_svc._hash_token("SESSIONRAW"), "revoked": False}],
+        "verifications": [],  # {MBR_ID, COMP_ID, COMP_NM, EXPIRES_DTM, revoked}
+    }
+
+    def _member(mid):
+        return next((m for m in store["members"] if m["MBR_ID"] == mid), None)
+
+    async def _fetch_one(sql, params=()):
+        if "FROM TSESSION" in sql and "TOKEN_HASH_VAL" in sql:
+            for s in store["sessions"]:
+                if s["TOKEN_HASH_VAL"] == params[0] and not s["revoked"]:
+                    return {"MBR_ID": s["MBR_ID"]}
+            return None
+        if "SELECT NICKNAME_NM, STATUS_CD FROM TMEMBER" in sql:
+            m = _member(params[0])
+            return {"NICKNAME_NM": m["NICKNAME_NM"], "STATUS_CD": m["STATUS_CD"]} if m else None
+        raise AssertionError(f"account fake: unmatched fetch_one: {sql!r}")
+
+    async def _fetch_all(sql, params=()):
+        if "FROM TEMPLOY_VERIFICATION" in sql:
+            return [
+                {"comp_id": v["COMP_ID"], "comp_nm": v["COMP_NM"], "expires_dtm": v.get("EXPIRES_DTM")}
+                for v in store["verifications"]
+                if v["MBR_ID"] == params[0] and not v.get("revoked")
+            ]
+        raise AssertionError(f"account fake: unmatched fetch_all: {sql!r}")
+
+    async def _execute(sql, params=()):
+        if "UPDATE TMEMBER SET NICKNAME_NM" in sql:
+            nick, mid = params[0], params[1]
+            if any(m["NICKNAME_NM"] == nick and m["MBR_ID"] != mid for m in store["members"]):
+                from pymysql.err import IntegrityError
+                raise IntegrityError(1062, "Duplicate entry for key 'uq_member_nickname'")
+            _member(mid)["NICKNAME_NM"] = nick
+            return 1
+        if "UPDATE TSESSION SET REVOKED_DTM" in sql and "TOKEN_HASH_VAL" in sql:
+            for s in store["sessions"]:
+                if s["TOKEN_HASH_VAL"] == params[0]:
+                    s["revoked"] = True
+            return 1
+        raise AssertionError(f"account fake: unmatched execute: {sql!r}")
+
+    class _Cur:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *e):
+            return False
+
+        async def execute(self, sql, params=()):
+            if "UPDATE TMEMBER SET LOGIN_EMAIL_NM=NULL" in sql:
+                m = _member(params[0])
+                m["LOGIN_EMAIL_NM"] = None
+                m["STATUS_CD"] = "withdrawn"
+            elif "UPDATE TSESSION SET REVOKED_DTM" in sql and "MBR_ID" in sql:
+                for s in store["sessions"]:
+                    if s["MBR_ID"] == params[0]:
+                        s["revoked"] = True
+            elif "DELETE FROM TEMPLOY_VERIFICATION" in sql:
+                store["verifications"][:] = [v for v in store["verifications"] if v["MBR_ID"] != params[0]]
+            else:
+                raise AssertionError(f"withdraw fake cursor: unmatched: {sql!r}")
+
+    class _Conn:
+        def cursor(self):
+            return _Cur()
+
+    class _Txn:
+        async def __aenter__(self):
+            return _Conn()
+
+        async def __aexit__(self, *e):
+            return False
+
+    async def _noop():
+        return None
+
+    monkeypatch.setattr(database, "fetch_one", _fetch_one)
+    monkeypatch.setattr(database, "fetch_all", _fetch_all)
+    monkeypatch.setattr(database, "execute", _execute)
+    monkeypatch.setattr(database, "transaction", lambda: _Txn())
+    monkeypatch.setattr(database, "init_pool", _noop)
+    monkeypatch.setattr(database, "close_pool", _noop)
+
+    app = create_app()
+    transport = httpx.ASGITransport(app=app, raise_app_exceptions=False)
+    async with httpx.AsyncClient(transport=transport, base_url="http://t") as c:
+        yield c, store
+
+
+@pytest.mark.asyncio
+async def test_AM1_me_requires_session_401(account_env):
+    c, store = account_env
+    r = await c.get("/api/v1/members/me")  # 쿠키 없음
+    assert r.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_AM1_me_returns_profile_no_store(account_env):
+    c, store = account_env
+    r = await c.get("/api/v1/members/me", headers=_AUTH)
+    assert r.status_code == 200
+    b = r.json()
+    assert b["nickname"] == "직장인-000001"
+    assert b["status"] == "active"
+    assert b["verifications"] == []
+    assert r.headers.get("cache-control") == "no-store"
+
+
+@pytest.mark.asyncio
+async def test_AM2_update_nickname_ok(account_env):
+    c, store = account_env
+    r = await c.put("/api/v1/members/me", json={"nickname": "새로운닉"}, headers=_AUTH)
+    assert r.status_code == 200
+    assert r.json()["nickname"] == "새로운닉"
+    assert store["members"][0]["NICKNAME_NM"] == "새로운닉"
+
+
+@pytest.mark.asyncio
+async def test_AM2_update_nickname_duplicate_409(account_env):
+    c, store = account_env
+    store["members"].append({"MBR_ID": 2, "LOGIN_EMAIL_NM": "o@x.com", "NICKNAME_NM": "임자있음", "STATUS_CD": "active"})
+    r = await c.put("/api/v1/members/me", json={"nickname": "임자있음"}, headers=_AUTH)
+    assert r.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_AM2_update_nickname_banned_422(account_env):
+    c, store = account_env
+    r = await c.put("/api/v1/members/me", json={"nickname": "관리자"}, headers=_AUTH)
+    assert r.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_AM3_logout_revokes_session_and_clears_cookie(account_env):
+    c, store = account_env
+    r = await c.post("/api/v1/members/logout", headers=_AUTH)
+    assert r.status_code == 204
+    assert store["sessions"][0]["revoked"] is True
+    assert "loupit_sid=" in r.headers.get("set-cookie", "").lower()
+    # 폐기 후 같은 쿠키로 me → 401
+    r2 = await c.get("/api/v1/members/me", headers=_AUTH)
+    assert r2.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_AM4_withdraw_nulls_email_keeps_nickname_and_history(account_env):
+    c, store = account_env
+    store["verifications"].append({"MBR_ID": 1, "COMP_ID": 3, "COMP_NM": "삼성", "revoked": False})
+    r = await c.delete("/api/v1/members/me", headers=_AUTH)
+    assert r.status_code == 204
+    m = store["members"][0]
+    assert m["LOGIN_EMAIL_NM"] is None            # 이메일 원문 파기
+    assert m["STATUS_CD"] == "withdrawn"
+    assert m["NICKNAME_NM"] == "직장인-000001"     # 닉네임 존치(공개 이력 무결성)
+    assert store["sessions"][0]["revoked"] is True  # 전 세션 폐기
+    assert store["verifications"] == []            # 재직 인증(회사 이메일 HMAC) 파기
+    r2 = await c.get("/api/v1/members/me", headers=_AUTH)
+    assert r2.status_code == 401                    # 세션 무효

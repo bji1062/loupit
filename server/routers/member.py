@@ -12,10 +12,19 @@ from __future__ import annotations
 
 import secrets
 
-from fastapi import APIRouter, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
+from pymysql.err import IntegrityError
 
 from server import database
-from server.models.member import LoginCodeIn, LoginIn, LoginResult
+from server.deps import require_member
+from server.models.member import (
+    LoginCodeIn,
+    LoginIn,
+    LoginResult,
+    MeResponse,
+    NicknameUpdateIn,
+    VerificationItem,
+)
 from server.services import auth_code, session
 
 router = APIRouter(tags=["member"])
@@ -91,3 +100,81 @@ async def login(body: LoginIn, response: Response) -> LoginResult:
     session.set_session_cookie(response, raw)
     response.headers["Cache-Control"] = "no-store"
     return LoginResult(nickname=member["NICKNAME_NM"], is_new=is_new)
+
+
+@router.get("/members/me", response_model=MeResponse)
+async def get_me(response: Response, member: dict = Depends(require_member)) -> MeResponse:
+    """마이페이지 — 닉네임·상태·활성 재직 인증 목록(회사 이메일·MBR_ID 미노출, no-store, AM-1)."""
+    mbr_id = member["MBR_ID"]
+    row = await database.fetch_one(
+        "SELECT NICKNAME_NM, STATUS_CD FROM TMEMBER WHERE MBR_ID=%s", (mbr_id,)
+    )
+    verifs = await database.fetch_all(
+        "SELECT v.COMP_ID AS comp_id, c.COMP_NM AS comp_nm, v.EXPIRES_DTM AS expires_dtm "
+        "FROM TEMPLOY_VERIFICATION v JOIN TCOMPANY c ON c.COMP_ID = v.COMP_ID "
+        "WHERE v.MBR_ID=%s AND v.REVOKED_DTM IS NULL "
+        "AND (v.EXPIRES_DTM IS NULL OR v.EXPIRES_DTM > UTC_TIMESTAMP()) ORDER BY v.COMP_ID",
+        (mbr_id,),
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return MeResponse(
+        nickname=row["NICKNAME_NM"],
+        status=row["STATUS_CD"],
+        verifications=[VerificationItem(**v) for v in verifs],
+    )
+
+
+@router.put("/members/me", response_model=MeResponse)
+async def update_me(
+    body: NicknameUpdateIn, response: Response, member: dict = Depends(require_member)
+) -> MeResponse:
+    """닉네임 변경 — UNIQUE 원자 검사(중복 409, AM-2). no-store."""
+    mbr_id = member["MBR_ID"]
+    try:
+        await database.execute(
+            "UPDATE TMEMBER SET NICKNAME_NM=%s WHERE MBR_ID=%s", (body.nickname, mbr_id)
+        )
+    except IntegrityError:  # 닉네임 UNIQUE 위반 — 원자 검사(레이스 안전)
+        raise HTTPException(status_code=409, detail="이미 사용 중인 닉네임입니다.")
+    row = await database.fetch_one(
+        "SELECT NICKNAME_NM, STATUS_CD FROM TMEMBER WHERE MBR_ID=%s", (mbr_id,)
+    )
+    response.headers["Cache-Control"] = "no-store"
+    return MeResponse(nickname=row["NICKNAME_NM"], status=row["STATUS_CD"], verifications=[])
+
+
+@router.post("/members/logout", status_code=204)
+async def logout(
+    loupit_sid: str | None = Cookie(default=None), member: dict = Depends(require_member)
+) -> Response:
+    """로그아웃 — 세션 폐기 + 쿠키 삭제 → 204 (AM-3)."""
+    if loupit_sid:
+        await session.revoke_session(loupit_sid)
+    resp = Response(status_code=204, headers={"Cache-Control": "no-store"})
+    session.clear_session_cookie(resp)
+    return resp
+
+
+@router.delete("/members/me", status_code=204)
+async def withdraw(member: dict = Depends(require_member)) -> Response:
+    """탈퇴(AM-4) — 로그인 이메일 원문 파기(NULL)·전 세션 폐기·재직 인증(회사 이메일 HMAC 포함) 파기.
+
+    닉네임·편집 이력(TBENEFIT_EDIT_LOG)은 공개 이력 무결성 위해 **존치**(약관 T5·개인정보 P7 고지).
+    본체+세션+재직을 한 트랜잭션으로 원자 처리한다(SP-AUTH-6)."""
+    mbr_id = member["MBR_ID"]
+    async with database.transaction() as conn:
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE TMEMBER SET LOGIN_EMAIL_NM=NULL, STATUS_CD='withdrawn' WHERE MBR_ID=%s",
+                (mbr_id,),
+            )
+            await cur.execute(
+                "UPDATE TSESSION SET REVOKED_DTM=UTC_TIMESTAMP() WHERE MBR_ID=%s AND REVOKED_DTM IS NULL",
+                (mbr_id,),
+            )
+            # 재직 인증 삭제 = 폐기 + 회사 이메일 HMAC 파기(COMP_EMAIL_HASH_VAL CHAR64 NOT NULL
+            # UNIQUE 라 blank 불가 → 행 삭제로 HMAC 자체를 제거).
+            await cur.execute("DELETE FROM TEMPLOY_VERIFICATION WHERE MBR_ID=%s", (mbr_id,))
+    resp = Response(status_code=204, headers={"Cache-Control": "no-store"})
+    session.clear_session_cookie(resp)
+    return resp
