@@ -422,13 +422,36 @@ async def test_read_for_edit_returns_benefits_with_base_dtm_no_store(benefit_env
 
 
 @pytest.mark.asyncio
-async def test_read_for_edit_roundtrip_to_put(benefit_env):
-    """조회한 base_dtm으로 곧바로 수정(PUT) → 200 (기존 복지 수정 도달성, #1)."""
+async def test_read_for_edit_exposes_benefit_id_for_put_target(benefit_env):
+    """편집용 조회가 각 복지의 benefit_id 를 동봉한다 — PUT 대상 지정에 필요(프론트 편집 폼 도달성).
+
+    공개 계약(Benefit·/reference·GET /companies/{id})은 내부 PK 를 감추지만(§02), 인증·no-store
+    편집 경로는 PUT /benefits/{benefit_id} 의 대상을 클라이언트가 알아야 하므로 benefit_id 를 노출한다."""
     c, store = benefit_env
     await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal", amt=220), headers=_AUTH)
-    bid = store["benefits"][0]["BENEFIT_ID"]
+    r = await c.get("/api/v1/companies/10/benefits", headers=_AUTH)
+    b = r.json()["benefits"][0]
+    assert isinstance(b.get("benefit_id"), int) and b["benefit_id"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_create_response_benefit_exposes_benefit_id(benefit_env):
+    """등록 응답의 benefit 도 benefit_id 동봉 — 방금 등록한 복지를 곧바로 수정(PUT)할 수 있게."""
+    c, store = benefit_env
+    r = await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal", amt=220), headers=_AUTH)
+    assert isinstance(r.json()["benefit"].get("benefit_id"), int)
+
+
+@pytest.mark.asyncio
+async def test_read_for_edit_roundtrip_to_put(benefit_env):
+    """조회한 benefit_id·base_dtm 으로 곧바로 수정(PUT) → 200 (기존 복지 수정 도달성, #1).
+
+    benefit_id 를 테스트 셋업(store)이 아니라 **API 응답**에서 얻어 프론트 편집 폼의 실제 경로를 검증한다."""
+    c, store = benefit_env
+    await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal", amt=220), headers=_AUTH)
     read = await c.get("/api/v1/companies/10/benefits", headers=_AUTH)
-    base = read.json()["benefits"][0]["base_dtm"]
+    row = read.json()["benefits"][0]
+    bid, base = row["benefit_id"], row["base_dtm"]
     ok = await c.put(f"/api/v1/companies/10/benefits/{bid}",
                      json={"base_dtm": base, "benefit_nm": "식대(정정)", "benefit_amt": 250}, headers=_AUTH)
     assert ok.status_code == 200

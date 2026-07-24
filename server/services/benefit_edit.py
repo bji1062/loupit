@@ -38,9 +38,10 @@ _SQL_ROW = """
          BADGE_SRC_URL_CTNT AS badge_src_url_ctnt, SORT_ORDER_NO AS sort_order_no, INS_DTM, MOD_DTM
     FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s"""
 
-# 회사 복지 목록(편집용 투영) — 각 행에 base_dtm(낙관동시성 토큰)을 실으려 INS_DTM·MOD_DTM 포함.
+# 회사 복지 목록(편집용 투영) — 각 행에 base_dtm(낙관동시성 토큰)·benefit_id(PUT 대상)를 실으려
+# BENEFIT_ID·INS_DTM·MOD_DTM 포함. 이 투영은 인증·no-store 편집 경로 전용(공개 목록 아님).
 _SQL_LIST = """
-  SELECT BENEFIT_CD AS benefit_cd, BENEFIT_NM AS benefit_nm, BENEFIT_AMT AS benefit_amt,
+  SELECT BENEFIT_ID, BENEFIT_CD AS benefit_cd, BENEFIT_NM AS benefit_nm, BENEFIT_AMT AS benefit_amt,
          BENEFIT_CTGR_CD AS benefit_ctgr_cd, BADGE_CD AS badge_cd, AMT_SOURCE_CD AS amt_source,
          QUAL_YN AS qual_yn, QUAL_DESC_CTNT AS qual_desc_ctnt, NOTE_CTNT AS note_ctnt,
          VERIFIED_DTM AS verified_dtm, EXPIRES_DTM AS expires_dtm, BADGE_SRC_CD AS badge_src_cd,
@@ -84,9 +85,13 @@ def _snapshot(row: dict) -> dict:
 
 
 def _public_benefit(row: dict) -> dict:
-    """응답용 단일 복지 dict(공개 계약 Benefit + 낙관적 동시성 토큰 base_dtm)."""
+    """편집 응답용 단일 복지 dict — 공개 계약 Benefit + 편집 전용 필드(base_dtm·benefit_id).
+
+    base_dtm(낙관동시성 토큰)·benefit_id(PUT 대상 PK)는 인증·no-store 편집 경로에서만 노출된다.
+    공개·캐시 경로(/reference·GET /companies/{id})는 reference 계층을 쓰므로 이 둘이 새지 않는다(§02 PK 비노출)."""
     d = Benefit(**reference._norm_benefit(dict(row))).model_dump()
     d["base_dtm"] = _version_token(row)
+    d["benefit_id"] = row.get("BENEFIT_ID")
     return d
 
 
