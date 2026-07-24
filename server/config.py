@@ -76,7 +76,7 @@ class Settings(BaseSettings):
 
     # 세션·코드 TTL·시도 상한 (SP-AUTH-4·5·12, FR-101·112)
     session_ttl_days: int = 30  # 세션 만료(FR-101)
-    login_code_ttl_min: int = 10  # 로그인/인증 코드 만료(FR-102·105, NFR31)
+    login_code_ttl_min: int = 5  # 로그인/인증 코드 만료(FR-102·105, NFR31). 5분(2026-07-24, 사용자 결정: 10분은 김)
     code_max_attempts: int = 5  # 코드 검증 시도 상한(FR-112, NFR31)
     mail_resend_cooldown_sec: int = 60  # 재전송 쿨다운(FR-112)
     daily_edit_limit: int = 30  # 계정·회사당 일일 복지 편집 상한(FR-108·112)

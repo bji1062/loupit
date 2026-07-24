@@ -80,7 +80,7 @@ def test_AU5_sc14_config_fields_present():
     assert s.smtp_user == "" and s.smtp_pass == "" and s.smtp_from == ""
     # 세션·코드 TTL·시도 상한 (SP-AUTH-4·5·12, FR-101·112)
     assert s.session_ttl_days == 30
-    assert s.login_code_ttl_min == 10
+    assert s.login_code_ttl_min == 5
     assert s.code_max_attempts == 5
     assert s.mail_resend_cooldown_sec == 60
     assert s.daily_edit_limit == 30
