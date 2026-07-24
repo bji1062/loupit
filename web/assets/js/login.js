@@ -80,7 +80,9 @@ $('resend-btn').addEventListener('click', async () => {
   try {
     await withBusy($('resend-btn'), '보내는 중…', () => requestLoginCode(currentEmail));
     showError(''); errBox.hidden = true;
+    $('code').value = ''; // 새 코드 발송 → 이전 입력 코드 비움
     $('sent-to').textContent = currentEmail;
+    $('code').focus();
   } catch (err) { showError(messageFor(err, 'send')); }
 });
 

@@ -84,6 +84,7 @@ $('emp-send').addEventListener('click', async () => {
   if (!EMAIL_RE.test(email)) { setErr('이메일 형식을 확인해주세요.'); return; }
   try {
     await withBusy($('emp-send'), '보내는 중…', () => requestEmployCode(selected.comp_id, email));
+    $('emp-code').value = ''; // 새 코드 발송 → 이전 입력 코드 비움(혼동 방지)
     $('code-step').hidden = false; $('manual-step').hidden = true; $('emp-code').focus();
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) { // manual_required — 도메인 미등록
