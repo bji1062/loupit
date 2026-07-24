@@ -81,3 +81,11 @@ export const getMe = () => apiSend('GET', '/members/me'); // credentialed(세션
 export const logout = () => apiSend('POST', '/members/logout');
 export const updateNickname = (nickname) => apiSend('PUT', '/members/me', { nickname }); // 409 중복·422 형식/금칙어
 export const withdraw = () => apiSend('DELETE', '/members/me'); // 탈퇴: 이메일 파기·닉네임/이력 존치
+
+// 재직 인증(SP-AUTH-7·8). 도메인 자동 인증 + 미등록 회사 수동 승인 폴백.
+export const requestEmployCode = (comp_id, company_email) =>
+  apiSend('POST', '/employment/verify-code', { comp_id, company_email }); // 204 / 409 manual_required / 422 불일치
+export const verifyEmployment = (comp_id, company_email, code) =>
+  apiSend('POST', '/employment/verify', { comp_id, company_email, code }); // 201 / 401·410·429 / 409 중복
+export const submitEmployRequest = (comp_id, evidence) =>
+  apiSend('POST', '/employment/requests', { comp_id, evidence }); // 202 pending / 409 중복 대기

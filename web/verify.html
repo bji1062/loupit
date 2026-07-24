@@ -1,0 +1,79 @@
+<!doctype html>
+<!-- web/verify.html — SC14 재직 인증 화면. 회사 선택 → 회사 이메일 도메인 자동 인증,
+     미등록 회사는 수동 승인 요청 폴백. 세션 필요. noindex. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>재직 인증 — jobcho.wiki 잡초</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
+  <link rel="stylesheet" href="/assets/v2/css/styles.css">
+  <link rel="stylesheet" href="/assets/v2/css/auth.css">
+</head>
+<body data-page-type="auth">
+<header data-global class="gnb">
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <a href="/mypage" class="gnb-link">← 마이페이지</a>
+  </nav>
+</header>
+
+<main class="auth-main">
+  <!-- 미로그인 -->
+  <div id="need-login" class="auth-card" hidden>
+    <h1>로그인이 필요해요</h1>
+    <p class="auth-lede">재직 인증은 로그인 후 할 수 있어요.</p>
+    <a class="auth-btn" href="/login">로그인하러 가기</a>
+  </div>
+
+  <div id="verify-card" class="auth-card" hidden>
+    <h1>재직 인증</h1>
+    <p class="auth-lede">회사 이메일로 재직을 확인하면 <strong>그 회사의 복지 정보를 직접 편집</strong>할 수 있어요. 회사 이메일은 저장하지 않고 확인용으로만 씁니다.</p>
+
+    <!-- ① 회사 선택 -->
+    <label for="comp-search">회사</label>
+    <input id="comp-search" autocomplete="off" placeholder="회사명 검색 (예: 삼성전자)">
+    <ul id="comp-results" class="comp-results" hidden role="listbox" aria-label="회사 후보"></ul>
+    <p id="comp-selected" class="auth-sent" hidden>선택: <strong id="comp-name"></strong> <button type="button" class="auth-link" id="comp-change">변경</button></p>
+
+    <!-- ② 회사 이메일 → 코드 -->
+    <div id="email-step" hidden>
+      <label for="comp-email">회사 이메일</label>
+      <input id="comp-email" type="email" inputmode="email" autocomplete="off" placeholder="you@company.com">
+      <p class="auth-hint">회사 도메인 이메일로 6자리 코드를 보내드려요.</p>
+      <button class="auth-btn" id="emp-send">인증 코드 받기</button>
+    </div>
+
+    <!-- ③ 코드 입력 -->
+    <div id="code-step" hidden>
+      <label for="emp-code">인증 코드 (6자리)</label>
+      <input id="emp-code" inputmode="numeric" maxlength="6" pattern="[0-9]*" placeholder="••••••">
+      <button class="auth-btn" id="emp-verify">인증하기</button>
+    </div>
+
+    <!-- ④ 수동 승인 폴백(도메인 미등록 회사) -->
+    <div id="manual-step" hidden>
+      <p class="auth-sent">이 회사는 아직 도메인 자동 인증이 없어요. 재직 증빙을 남기면 운영자가 확인해 드려요.</p>
+      <label for="evidence">재직 증빙</label>
+      <textarea id="evidence" maxlength="1000" placeholder="예: 재직증명서 링크, 사원증 사진 링크, 회사 이메일 캡처 링크 등"></textarea>
+      <button class="auth-btn" id="manual-send">수동 승인 요청</button>
+    </div>
+
+    <p class="auth-ok" id="verify-ok" hidden role="status"></p>
+    <p class="auth-error" id="verify-err" hidden role="alert"></p>
+  </div>
+</main>
+
+<footer data-global>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+  </nav>
+  <p class="disclaimer">회사 이메일은 재직 확인 직후 파기되고 해시만 남습니다(중복 인증 방지용).</p>
+</footer>
+
+<script type="module" src="/assets/v2/js/verify.js" defer></script>
+</body>
+</html>
