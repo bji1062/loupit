@@ -79,3 +79,5 @@ export const requestLoginCode = (email) => apiSend('POST', '/members/login-code'
 export const login = (email, code) => apiSend('POST', '/members/login', { email, code });
 export const getMe = () => apiSend('GET', '/members/me'); // credentialed(세션 쿠키)
 export const logout = () => apiSend('POST', '/members/logout');
+export const updateNickname = (nickname) => apiSend('PUT', '/members/me', { nickname }); // 409 중복·422 형식/금칙어
+export const withdraw = () => apiSend('DELETE', '/members/me'); // 탈퇴: 이메일 파기·닉네임/이력 존치

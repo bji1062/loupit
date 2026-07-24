@@ -1,0 +1,85 @@
+<!doctype html>
+<!-- web/mypage.html — SC14 마이페이지(내 정보·닉네임 변경·재직 인증 목록·로그아웃·탈퇴).
+     세션 필요(require_member) — 미로그인 시 로그인 유도. noindex. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>마이페이지 — jobcho.wiki 잡초</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
+  <link rel="stylesheet" href="/assets/v2/css/styles.css">
+  <link rel="stylesheet" href="/assets/v2/css/auth.css">
+</head>
+<body data-page-type="auth">
+<header data-global class="gnb">
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <a href="/" class="gnb-link">← 비교하러 가기</a>
+  </nav>
+</header>
+
+<main class="auth-main">
+  <!-- 미로그인 -->
+  <div id="need-login" class="auth-card" hidden>
+    <h1>로그인이 필요해요</h1>
+    <p class="auth-lede">마이페이지는 로그인 후 볼 수 있어요. 둘러보기·비교는 로그인 없이 그대로예요.</p>
+    <a class="auth-btn" href="/login">로그인하러 가기</a>
+  </div>
+
+  <!-- 프로필 -->
+  <div id="profile" class="auth-card" hidden>
+    <h1>마이페이지</h1>
+    <div class="profile-row">
+      <span class="k">닉네임</span>
+      <span class="nick-display">
+        <span class="v" id="nickname">…</span>
+        <button type="button" class="auth-link" id="edit-nick">변경</button>
+      </span>
+    </div>
+    <div id="nick-edit" hidden>
+      <label for="nick-input">새 닉네임</label>
+      <input id="nick-input" maxlength="20" autocomplete="off" placeholder="2~20자 · 한글·영문·숫자·_-">
+      <p class="auth-hint">‘관리자’·‘운영자’ 등 사용할 수 없는 이름이 있어요.</p>
+      <button class="auth-btn" id="save-nick" style="width:auto;padding:9px 18px">저장</button>
+      <div class="auth-links" style="justify-content:flex-start;margin-top:var(--sp-2)">
+        <button type="button" class="auth-link" id="cancel-nick">취소</button>
+      </div>
+    </div>
+    <div class="profile-row">
+      <span class="k">상태</span>
+      <span class="badge-status" id="status">active</span>
+    </div>
+    <p class="auth-ok" id="nick-ok" hidden>닉네임을 변경했어요.</p>
+    <p class="auth-error" id="nick-err" hidden role="alert"></p>
+  </div>
+
+  <!-- 재직 인증 -->
+  <div id="vrf-card" class="auth-card" hidden>
+    <h2>재직 인증</h2>
+    <ul class="vrf-list" id="vrf-list"></ul>
+    <p class="vrf-empty" id="vrf-empty" hidden>아직 재직 인증한 회사가 없어요. 복지 편집 화면에서 회사 이메일로 인증할 수 있어요.</p>
+  </div>
+
+  <!-- 계정 관리 -->
+  <div id="account-card" class="auth-card" hidden>
+    <h2>계정 관리</h2>
+    <button class="auth-btn auth-btn--ghost" id="logout-btn">로그아웃</button>
+    <button class="auth-btn auth-btn--danger" id="withdraw-btn">회원 탈퇴</button>
+    <p class="auth-hint">탈퇴하면 로그인 이메일은 삭제돼요. 편집 이력의 닉네임은 공개 이력 무결성을 위해 남습니다.</p>
+    <p class="auth-error" id="account-err" hidden role="alert"></p>
+  </div>
+</main>
+
+<footer data-global>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+  </nav>
+  <p class="disclaimer">로그인 정보는 이메일과 닉네임뿐입니다. 비밀번호를 저장하지 않습니다.</p>
+</footer>
+
+<script type="module" src="/assets/v2/js/mypage.js" defer></script>
+</body>
+</html>

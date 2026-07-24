@@ -1,0 +1,67 @@
+/* web/assets/css/auth.css — SC14 참여 화면(로그인·마이페이지) 공통 스타일. 디자인 토큰(styles.css)
+   재사용, 중앙 카드 1개 패턴. login.html·mypage.html이 공유(DRY). */
+
+.auth-main { max-width:480px; margin:0 auto; padding:var(--sp-7) var(--gutter-mobile) var(--sp-8); }
+.auth-card { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg);
+             padding:var(--sp-6) var(--sp-5); box-shadow:var(--shadow-1); }
+.auth-card + .auth-card { margin-top:var(--sp-4); }
+.auth-card h1 { font-family:var(--font-serif); font-size:var(--fs-h2); line-height:var(--lh-tight);
+                letter-spacing:var(--ls-tight); margin:0 0 var(--sp-3); color:var(--t1); }
+.auth-card h2 { font-size:var(--fs-lg); margin:0 0 var(--sp-4); color:var(--t1); }
+.auth-lede { color:var(--t3); font-size:var(--fs-sm); line-height:var(--lh-base); margin:0 0 var(--sp-5); }
+.auth-lede strong { color:var(--brand); font-weight:var(--fw-semibold); }
+
+.auth-card label { display:block; font-size:var(--fs-xs); font-weight:var(--fw-medium);
+                   color:var(--t2); margin:var(--sp-4) 0 var(--sp-1); }
+.auth-card input { width:100%; padding:11px 12px; font-size:var(--fs-base);
+                   border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm);
+                   background:var(--bg-1); color:var(--t1); font-family:var(--font-sans); }
+.auth-card input:focus-visible { outline:var(--focus-width) solid var(--focus);
+                   outline-offset:var(--focus-offset); border-color:var(--brand); }
+#code { letter-spacing:.4em; text-align:center; font-size:var(--fs-h3); font-variant-numeric:tabular-nums; }
+.auth-hint { font-size:var(--fs-xs); color:var(--t4); margin:var(--sp-2) 0 0; }
+
+.auth-btn { display:block; width:100%; margin-top:var(--sp-5); padding:12px 16px; border:0;
+            border-radius:var(--r-sm); background:var(--brand); color:var(--on-brand);
+            font-size:var(--fs-base); font-weight:var(--fw-semibold); cursor:pointer;
+            text-align:center; text-decoration:none; transition:background var(--dur-fast) var(--ease-out); }
+.auth-btn:hover { background:var(--brand-active); }
+.auth-btn:disabled { opacity:.55; cursor:progress; }
+.auth-btn--ghost { background:var(--bg-2); color:var(--t2); }
+.auth-btn--ghost:hover { background:var(--bg-3); }
+.auth-btn--danger { background:var(--bg-1); color:var(--red); border:var(--bw) solid var(--border-strong); }
+.auth-btn--danger:hover { background:var(--red-dim); }
+
+.auth-links { display:flex; gap:var(--sp-4); justify-content:center; margin-top:var(--sp-4); flex-wrap:wrap; }
+.auth-link { background:none; border:0; color:var(--link); font-size:var(--fs-sm);
+             cursor:pointer; padding:var(--sp-1); text-decoration:underline; font-family:inherit; }
+.auth-link:disabled { color:var(--t4); cursor:default; text-decoration:none; }
+
+.auth-sent { background:var(--brand-tint); border-radius:var(--r-sm); padding:var(--sp-3) var(--sp-4);
+             font-size:var(--fs-sm); color:var(--t2); margin:0 0 var(--sp-2); }
+.auth-sent strong { color:var(--brand); }
+.auth-error { background:var(--red-dim); color:var(--red); border-radius:var(--r-sm);
+              padding:var(--sp-3) var(--sp-4); font-size:var(--fs-sm); margin:var(--sp-4) 0 0; }
+.auth-ok { background:var(--green-dim); color:var(--green); border-radius:var(--r-sm);
+           padding:var(--sp-3) var(--sp-4); font-size:var(--fs-sm); margin:var(--sp-4) 0 0; }
+.auth-welcome { font-family:var(--font-serif); font-size:var(--fs-h3); margin:0 0 var(--sp-2); color:var(--t1); }
+.auth-welcome strong { color:var(--brand); }
+.auth-done-sub { color:var(--t3); font-size:var(--fs-sm); line-height:var(--lh-base); margin:0 0 var(--sp-4); }
+
+/* ── 마이페이지 ── */
+.profile-row { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3);
+               padding:var(--sp-3) 0; border-bottom:var(--bw) solid var(--border); }
+.profile-row:last-of-type { border-bottom:0; }
+.profile-row .k { font-size:var(--fs-xs); color:var(--t3); }
+.profile-row .v { font-size:var(--fs-base); color:var(--t1); font-weight:var(--fw-medium); }
+.nick-display { display:flex; align-items:center; gap:var(--sp-3); }
+.badge-status { font-size:var(--fs-xs); padding:2px 8px; border-radius:var(--r-pill);
+                background:var(--green-dim); color:var(--green); }
+
+.vrf-list { list-style:none; margin:0; padding:0; }
+.vrf-list li { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-3);
+               padding:var(--sp-3) 0; border-bottom:var(--bw) solid var(--border); }
+.vrf-list li:last-child { border-bottom:0; }
+.vrf-comp { font-weight:var(--fw-medium); color:var(--t1); }
+.vrf-exp { font-size:var(--fs-xs); color:var(--t3); }
+.vrf-empty { color:var(--t3); font-size:var(--fs-sm); margin:var(--sp-2) 0 0; }
