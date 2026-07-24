@@ -1,6 +1,10 @@
 /* web/assets/css/auth.css — SC14 참여 화면(로그인·마이페이지) 공통 스타일. 디자인 토큰(styles.css)
    재사용, 중앙 카드 1개 패턴. login.html·mypage.html이 공유(DRY). */
 
+/* 한글 문장이 단어 중간에서 줄바꿈되지 않게(어절/공백 단위로만 끊음). word-break는 상속되어
+   .auth-card 하위 문장(lede·hint·안내)에 모두 적용되고, 푸터 disclaimer도 포함한다. */
+.auth-card, .disclaimer { word-break: keep-all; }
+
 .auth-main { max-width:480px; margin:0 auto; padding:var(--sp-7) var(--gutter-mobile) var(--sp-8); }
 .auth-card { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg);
              padding:var(--sp-6) var(--sp-5); box-shadow:var(--shadow-1); }

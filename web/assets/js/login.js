@@ -14,8 +14,8 @@ const errBox = $('auth-error');
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 let currentEmail = '';
 
-// 코드 유효시간 카운트다운(서버 login_code_ttl_min=10분과 일치). 만료 시 재발송 유도.
-const CODE_TTL_SEC = 600;
+// 코드 유효시간 카운트다운(서버 login_code_ttl_min=5분과 일치). 만료 시 재발송 유도.
+const CODE_TTL_SEC = 300;
 let timerId = null;
 function startTimer() {
   clearInterval(timerId);
