@@ -4,7 +4,10 @@
 import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { apiFetch, ApiError, getReference, searchCompanies, getCompany, API_BASE } from './api.js';
+import {
+  apiFetch, ApiError, getReference, searchCompanies, getCompany, API_BASE,
+  getBenefitsForEdit, createBenefit, updateBenefit, getEdits,
+} from './api.js';
 
 // ── fetch 스파이(호출 인자 기록) ────────────────────────────────────────────
 let calls;
@@ -131,5 +134,64 @@ describe('T-06.6.2 엔드포인트 래퍼', () => {
 
     mockFetchStatus(500);
     await assert.rejects(() => searchCompanies('x'), ApiError);
+  });
+});
+
+// ── SC14 참여(복지 편집) 헬퍼 — apiSend(credentialed·CSRF) / apiFetch(익명) ─────
+describe('SC14 참여 헬퍼', () => {
+  let sendCalls;
+  // apiSend 는 res.text()로 본문을 읽는다(204/JSON/오류 envelope 안전). text() 지원 목.
+  function mockSend(status, json) {
+    sendCalls = [];
+    globalThis.fetch = async (url, opts) => {
+      sendCalls.push({ url, opts });
+      return { ok: status >= 200 && status < 300, status, text: async () => JSON.stringify(json) };
+    };
+  }
+
+  test('createBenefit → POST, credentials:include, X-Loupit-Client, JSON 본문', async () => {
+    mockSend(201, { benefit: { benefit_id: 5 }, benefits: [] });
+    const { status, data } = await createBenefit(10, { benefit_cd: 'meal', benefit_nm: '식대' });
+    assert.equal(status, 201);
+    assert.equal(sendCalls[0].url, API_BASE + '/companies/10/benefits');
+    assert.equal(sendCalls[0].opts.method, 'POST');
+    assert.equal(sendCalls[0].opts.credentials, 'include'); // 익명 GET(omit)과 대비
+    assert.equal(sendCalls[0].opts.headers['X-Loupit-Client'], 'web'); // CSRF
+    assert.equal(JSON.parse(sendCalls[0].opts.body).benefit_cd, 'meal');
+    assert.equal(data.benefit.benefit_id, 5);
+  });
+
+  test('updateBenefit → PUT /companies/{c}/benefits/{id}', async () => {
+    mockSend(200, { benefit: {}, benefits: [] });
+    await updateBenefit(10, 7, { base_dtm: 'x', benefit_nm: 'n', qual_yn: false });
+    assert.equal(sendCalls[0].opts.method, 'PUT');
+    assert.equal(sendCalls[0].url, API_BASE + '/companies/10/benefits/7');
+  });
+
+  test('getBenefitsForEdit → GET credentialed(편집용 조회)', async () => {
+    mockSend(200, { benefits: [] });
+    await getBenefitsForEdit(10);
+    assert.equal(sendCalls[0].opts.method, 'GET');
+    assert.equal(sendCalls[0].url, API_BASE + '/companies/10/benefits');
+    assert.equal(sendCalls[0].opts.credentials, 'include');
+  });
+
+  test('updateBenefit 409(선점) → ApiError.data 에 current_benefit 보존', async () => {
+    mockSend(409, { current_benefit: { benefit_id: 7 }, benefits: [] });
+    await assert.rejects(() => updateBenefit(10, 7, { base_dtm: 'old', benefit_nm: 'n', qual_yn: false }), (err) => {
+      assert.ok(err instanceof ApiError);
+      assert.equal(err.status, 409);
+      assert.equal(err.data.current_benefit.benefit_id, 7); // 폼 재조정에 필요
+      return true;
+    });
+  });
+
+  test('getEdits → 익명 GET(credentials:omit)·limit 쿼리', async () => {
+    const seen = [];
+    globalThis.fetch = async (url, opts) => { seen.push({ url, opts }); return { ok: true, status: 200, json: async () => [] }; };
+    await getEdits(10, 50);
+    assert.equal(seen[0].opts.method, 'GET');
+    assert.equal(seen[0].opts.credentials, 'omit'); // 익명(무쿠키)
+    assert.equal(seen[0].url, API_BASE + '/companies/10/edits?limit=50');
   });
 });

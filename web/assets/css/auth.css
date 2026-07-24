@@ -1,5 +1,5 @@
-/* web/assets/css/auth.css — SC14 참여 화면(로그인·마이페이지) 공통 스타일. 디자인 토큰(styles.css)
-   재사용, 중앙 카드 1개 패턴. login.html·mypage.html이 공유(DRY). */
+/* web/assets/css/auth.css — SC14 참여 화면 공통 스타일(로그인·마이페이지·재직 인증·복지 편집·편집 이력).
+   디자인 토큰(styles.css) 재사용, 중앙 카드 패턴. login/mypage/verify/edit/edits.html이 공유(DRY). */
 
 /* 한글 문장이 단어 중간에서 줄바꿈되지 않게(어절/공백 단위로만 끊음). word-break는 상속되어
    .auth-card 하위 문장(lede·hint·안내)에 모두 적용되고, 푸터 disclaimer도 포함한다. */
@@ -86,3 +86,52 @@
 .comp-results li:last-child { border-bottom:0; }
 .comp-results li:hover, .comp-results li:focus { background:var(--brand-tint); }
 .comp-results li .ind { color:var(--t3); font-size:var(--fs-xs); margin-left:var(--sp-2); }
+
+/* ── 복지 편집(select·복지 목록·등록/수정 폼) ── */
+.auth-card select { width:100%; padding:11px 12px; font-size:var(--fs-base); font-family:var(--font-sans);
+                    border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm);
+                    background:var(--bg-1); color:var(--t1); }
+.auth-card select:focus-visible { outline:var(--focus-width) solid var(--focus);
+                    outline-offset:var(--focus-offset); border-color:var(--brand); }
+
+.ben-list { list-style:none; margin:var(--sp-3) 0 0; padding:0; }
+.ben-row { display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-3) 0;
+           border-bottom:var(--bw) solid var(--border); }
+.ben-row:last-child { border-bottom:0; }
+.ben-main { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.ben-nm { font-weight:var(--fw-medium); color:var(--t1); }
+.ben-meta { font-size:var(--fs-xs); color:var(--t3); }
+.ben-badge { font-size:var(--fs-xs); padding:2px 8px; border-radius:var(--r-pill);
+             background:var(--green-dim); color:var(--green); white-space:nowrap; }
+
+.amt-row { display:flex; align-items:flex-end; gap:var(--sp-4); flex-wrap:wrap; }
+.amt-col { flex:1; min-width:140px; }
+.qual-check { display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);
+              color:var(--t2); margin:0 0 11px; white-space:nowrap; cursor:pointer; }
+.qual-check input { width:auto; }
+.amt-col.is-disabled { opacity:.5; }
+
+#benefit-form { margin-top:var(--sp-4); padding-top:var(--sp-4); border-top:var(--bw) solid var(--border); }
+
+/* ── 편집 이력(나무위키식 before→after) ── */
+.edit-log { list-style:none; margin:var(--sp-4) 0 0; padding:0; }
+.log-entry { padding:var(--sp-4) 0; border-bottom:var(--bw) solid var(--border); }
+.log-entry:last-child { border-bottom:0; }
+.log-head { display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap; }
+.log-nick { font-weight:var(--fw-semibold); color:var(--t1); }
+.log-type { font-size:var(--fs-xs); padding:2px 8px; border-radius:var(--r-pill); }
+.log-type--create { background:var(--green-dim); color:var(--green); }
+.log-type--update { background:var(--brand-tint); color:var(--brand); }
+.log-type--delete { background:var(--red-dim); color:var(--red); }
+.log-dtm { font-size:var(--fs-xs); color:var(--t4); margin-left:auto; font-variant-numeric:tabular-nums; }
+.log-note { font-size:var(--fs-sm); color:var(--t3); margin:var(--sp-2) 0 0; font-style:italic;
+            word-break:keep-all; }
+.log-diff { list-style:none; margin:var(--sp-2) 0 0; padding:0; }
+.log-diff li { display:flex; align-items:baseline; gap:var(--sp-2); flex-wrap:wrap;
+               font-size:var(--fs-sm); padding:2px 0; }
+.log-diff .dl { color:var(--t3); font-size:var(--fs-xs); min-width:56px; }
+.log-diff .dv { color:var(--t1); }
+.log-diff .dv.from { color:var(--t3); }
+.log-diff .dv.to { color:var(--t1); font-weight:var(--fw-medium); }
+.log-diff .dv.strike { text-decoration:line-through; color:var(--t4); }
+.log-diff .arw { color:var(--t4); }

@@ -164,7 +164,9 @@ function showSuccess(compNm) {
   ok.textContent = '✅ ';
   const s = document.createElement('strong'); s.textContent = compNm; ok.append(s);
   ok.append(' 재직 인증 완료! 이제 이 회사 복지를 편집할 수 있어요. ');
-  const a = document.createElement('a'); a.href = '/mypage'; a.textContent = '마이페이지로'; a.className = 'auth-link';
+  const a = document.createElement('a');
+  a.href = selected ? ('/edit?comp=' + encodeURIComponent(selected.comp_id)) : '/edit';
+  a.textContent = '복지 편집하러 가기 →'; a.className = 'auth-link';
   ok.append(a);
   ok.hidden = false;
 }

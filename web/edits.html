@@ -1,0 +1,53 @@
+<!doctype html>
+<!-- web/edits.html — SC14 복지 편집 이력(공개·익명). 나무위키식 before→after 이력.
+     로그인 불필요. 회사는 ?comp=<id> 로 지정. 편집자는 닉네임만 노출. (스테이징 noindex) -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>복지 편집 이력 — jobcho.wiki 잡초</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
+  <link rel="stylesheet" href="/assets/v2/css/styles.css">
+  <link rel="stylesheet" href="/assets/v2/css/auth.css">
+</head>
+<body data-page-type="auth">
+<header data-global class="gnb">
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <a href="/" class="gnb-link">← 비교하러 가기</a>
+  </nav>
+</header>
+
+<main id="edits-main" class="auth-main">
+  <div class="auth-card">
+    <h1 id="comp-title" hidden>복지 편집 이력</h1>
+    <p class="auth-lede">복지 정보가 언제·누구에 의해 어떻게 바뀌었는지 그대로 공개해요. 편집자는 닉네임만 표시됩니다(이메일·개인정보 비공개).</p>
+    <p><a id="company-link" class="auth-link" href="#" hidden>회사 정보 보기 →</a></p>
+
+    <!-- ?comp 없을 때: 회사 검색 -->
+    <div id="pick-card" hidden>
+      <label for="pick-search">회사 검색</label>
+      <input id="pick-search" autocomplete="off" placeholder="회사명 검색 (예: 삼성전자)">
+      <ul id="pick-results" class="comp-results" hidden role="listbox" aria-label="회사 후보"></ul>
+    </div>
+
+    <ul id="edit-log" class="edit-log" hidden></ul>
+    <p id="edits-empty" class="vrf-empty" hidden>아직 편집 이력이 없어요.</p>
+    <p id="edits-more" class="auth-hint" hidden>최근 100건만 표시돼요.</p>
+    <p id="edits-status" class="auth-error" hidden role="alert"></p>
+  </div>
+</main>
+
+<footer data-global>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+  </nav>
+  <p class="disclaimer">편집 이력은 공개 데이터입니다. 편집자 식별 정보는 닉네임만 표시됩니다.</p>
+</footer>
+
+<script type="module" src="/assets/v2/js/edits.js" defer></script>
+</body>
+</html>

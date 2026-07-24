@@ -27,7 +27,10 @@ function renderVrf(list) {
     const e = document.createElement('span');
     e.className = 'vrf-exp';
     e.textContent = v.expires_dtm ? ('만료 ' + fmtDate(v.expires_dtm)) : '무기한';
-    li.append(c, e);
+    const edit = document.createElement('a'); // 재직 인증한 회사 → 복지 편집 진입
+    edit.className = 'auth-link'; edit.href = '/edit?comp=' + encodeURIComponent(v.comp_id);
+    edit.textContent = '복지 편집 →';
+    li.append(c, e, edit);
     ul.append(li);
   }
 }
