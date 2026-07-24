@@ -20,6 +20,8 @@
                    outline-offset:var(--focus-offset); border-color:var(--brand); }
 #code { letter-spacing:.4em; text-align:center; font-size:var(--fs-h3); font-variant-numeric:tabular-nums; }
 .auth-hint { font-size:var(--fs-xs); color:var(--t4); margin:var(--sp-2) 0 0; }
+.auth-timer { font-size:var(--fs-xs); color:var(--t3); margin:var(--sp-2) 0 0; font-variant-numeric:tabular-nums; }
+.auth-timer.expired { color:var(--red); font-weight:var(--fw-medium); }
 
 .auth-btn { display:block; width:100%; margin-top:var(--sp-5); padding:12px 16px; border:0;
             border-radius:var(--r-sm); background:var(--brand); color:var(--on-brand);

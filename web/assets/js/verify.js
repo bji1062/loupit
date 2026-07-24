@@ -11,6 +11,28 @@ const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 
 let selected = null; // {comp_id, comp_nm}
 
+// 코드 유효시간 카운트다운(서버 login_code_ttl_min=10분과 일치). 만료 시 재발송 유도.
+const CODE_TTL_SEC = 600;
+let timerId = null;
+function startTimer(elId) {
+  clearInterval(timerId);
+  const el = $(elId); el.classList.remove('expired');
+  let remain = CODE_TTL_SEC;
+  const tick = () => {
+    if (remain <= 0) {
+      clearInterval(timerId);
+      el.textContent = '코드가 만료됐어요 — ‘인증 코드 받기’를 다시 눌러주세요.';
+      el.classList.add('expired');
+      return;
+    }
+    el.textContent = `코드 유효시간 ${Math.floor(remain / 60)}:${String(remain % 60).padStart(2, '0')}`;
+    remain -= 1;
+  };
+  tick();
+  timerId = setInterval(tick, 1000);
+}
+function stopTimer(elId) { clearInterval(timerId); const el = $(elId); if (el) { el.textContent = ''; el.classList.remove('expired'); } }
+
 function setErr(msg) { const e = $('verify-err'); e.textContent = msg; e.hidden = false; }
 function clrMsg() { $('verify-err').hidden = true; $('verify-ok').hidden = true; }
 
@@ -74,6 +96,7 @@ $('comp-change').addEventListener('click', () => {
   $('comp-selected').hidden = true;
   $('comp-search').hidden = false; $('comp-search').value = ''; $('comp-search').focus();
   $('email-step').hidden = true; $('code-step').hidden = true; $('manual-step').hidden = true;
+  stopTimer('emp-timer');
   clrMsg();
 });
 
@@ -86,6 +109,7 @@ $('emp-send').addEventListener('click', async () => {
     await withBusy($('emp-send'), '보내는 중…', () => requestEmployCode(selected.comp_id, email));
     $('emp-code').value = ''; // 새 코드 발송 → 이전 입력 코드 비움(혼동 방지)
     $('code-step').hidden = false; $('manual-step').hidden = true; $('emp-code').focus();
+    startTimer('emp-timer'); // 유효시간 카운트다운 시작
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) { // manual_required — 도메인 미등록
       $('manual-step').hidden = false; $('code-step').hidden = true;
@@ -134,6 +158,7 @@ $('manual-send').addEventListener('click', async () => {
 });
 
 function showSuccess(compNm) {
+  stopTimer('emp-timer');
   for (const id of ['email-step', 'code-step', 'manual-step']) $(id).hidden = true;
   const ok = $('verify-ok');
   ok.textContent = '✅ ';

@@ -14,6 +14,28 @@ const errBox = $('auth-error');
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
 let currentEmail = '';
 
+// 코드 유효시간 카운트다운(서버 login_code_ttl_min=10분과 일치). 만료 시 재발송 유도.
+const CODE_TTL_SEC = 600;
+let timerId = null;
+function startTimer() {
+  clearInterval(timerId);
+  const el = $('login-timer'); el.classList.remove('expired');
+  let remain = CODE_TTL_SEC;
+  const tick = () => {
+    if (remain <= 0) {
+      clearInterval(timerId);
+      el.textContent = '코드가 만료됐어요 — ‘코드 다시 받기’를 눌러주세요.';
+      el.classList.add('expired');
+      return;
+    }
+    el.textContent = `코드 유효시간 ${Math.floor(remain / 60)}:${String(remain % 60).padStart(2, '0')}`;
+    remain -= 1;
+  };
+  tick();
+  timerId = setInterval(tick, 1000);
+}
+function stopTimer() { clearInterval(timerId); const el = $('login-timer'); if (el) { el.textContent = ''; el.classList.remove('expired'); } }
+
 function show(step) {
   stepEmail.hidden = step !== 'email';
   stepCode.hidden = step !== 'code';
@@ -59,6 +81,7 @@ stepEmail.addEventListener('submit', async (e) => {
     $('sent-to').textContent = email;
     show('code');
     $('code').focus();
+    startTimer();
   } catch (err) { showError(messageFor(err, 'send')); }
 });
 
@@ -83,10 +106,11 @@ $('resend-btn').addEventListener('click', async () => {
     $('code').value = ''; // 새 코드 발송 → 이전 입력 코드 비움
     $('sent-to').textContent = currentEmail;
     $('code').focus();
+    startTimer();
   } catch (err) { showError(messageFor(err, 'send')); }
 });
 
-$('change-btn').addEventListener('click', () => { $('code').value = ''; show('email'); $('email').focus(); });
+$('change-btn').addEventListener('click', () => { stopTimer(); $('code').value = ''; show('email'); $('email').focus(); });
 
 $('logout-btn').addEventListener('click', async () => {
   try { await logout(); } catch { /* 이미 만료/폐기여도 UI는 로그아웃 처리 */ }
@@ -95,6 +119,7 @@ $('logout-btn').addEventListener('click', async () => {
 });
 
 function enterDone(data) {
+  stopTimer();
   $('nickname').textContent = (data && data.nickname) || '직장인';
   $('done-sub').textContent = data && data.is_new
     ? '새 계정이 만들어졌어요. 닉네임은 마이페이지에서 바꿀 수 있어요.'
