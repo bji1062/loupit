@@ -20,9 +20,9 @@
   .card h2 { margin:0 0 4px; font-size:15px; }
   .card .hint { color:var(--muted); font-size:12.5px; margin:0 0 12px; }
   label { display:block; font-size:12.5px; color:var(--muted); margin:10px 0 4px; }
-  input { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
+  input, select { width:100%; padding:9px 10px; border:1px solid var(--line); border-radius:8px;
           background:#0c0e12; color:var(--fg); font-size:14px; }
-  input:focus { outline:none; border-color:var(--accent); }
+  input:focus, select:focus { outline:none; border-color:var(--accent); }
   .row { display:flex; gap:8px; }
   .row > * { flex:1; }
   button { margin-top:10px; padding:9px 12px; border:0; border-radius:8px; background:var(--accent);
@@ -114,7 +114,17 @@
       <div><label>금액(만원)</label><input id="benAmt" value="240"></div>
     </div>
     <label>카테고리</label>
-    <input id="benCtgr" value="compensation">
+    <select id="benCtgr">
+      <option value="compensation">보상</option>
+      <option value="flexibility">유연성</option>
+      <option value="work_env">근무환경</option>
+      <option value="time_off">휴가</option>
+      <option value="health">건강</option>
+      <option value="family">가족</option>
+      <option value="growth">성장</option>
+      <option value="leisure">여가</option>
+      <option value="perks">복리후생</option>
+    </select>
     <label>편집 사유(이력)</label>
     <input id="benNote" value="베타 테스트 등록">
     <div class="row">
