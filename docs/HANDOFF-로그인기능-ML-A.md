@@ -144,3 +144,43 @@ loupit(라이브, jobcho.wiki)에 **로그인 + 재직 인증 + 복지 등록/�
 
 **① DDL 정본 = `SPEC/02` SP-DB-17**. 생성순서(conftest `TABLE_CREATE_ORDER`): TMEMBER→DOMAIN→SESSION→AUTH_CODE→VERIFICATION→VRF_REQUEST→EDIT_LOG.
 **RED 테스트 스테이징 논점(③에서 결정)**: SC14 test 증분을 마커/스킵으로 격리해 라이브 베이스 릴리스 게이트(`release.sh`)를 green 유지(구현 전 RED가 베이스 배포를 막지 않도록).
+
+---
+
+## G. 2026-07-25 세션 종료 — 내일 재개 지점
+
+### 오늘 한 일 (전부 GREEN·커밋됨)
+
+| # | 항목 | 결과 |
+|---|---|---|
+| 1 | **인증 e2e 라이브 확인** (beta·격리 DB `loupit_beta`) | 16단계 PASS — `login-code 204 → 코드(journalctl) → login 200(쿠키 HttpOnly·Secure·Lax·Path=/api/v1) → me 200 / 무쿠키 401 → 재직 verify-code 204 → verify 201(삼성 comp40) → 편집용 GET(no-store·행별 benefit_id+base_dtm) → 등록 201 → PUT 200 → 구 base_dtm 409(현재행 동봉) → 최신 PUT 200(정성 전환 amt_source=none) → 익명 /edits diff → IDOR 403 → CSRF 403 → 정성+금액 422` |
+| 2 | **프론트 테스트 보강** | `login.js`·`mypage.js`·`verify.js` 를 `edit.js` 구조(순수 export + `init*Page()` 가드)로 리팩터 → 순수 유닛 3파일 + **실 HTML 을 jsdom 에 올려 배선 검증하는 `auth-dom.test.js`(4화면 30건)**. 프론트 전체 **566 green** |
+| 3 | **`/edits` 페이지네이션**(사용자 결정 = 커서 노출) | 응답에 `edit_id`(=EDIT_LOG_ID) 동봉 + 프론트 '더 보기'가 `before=<마지막 id>` 로 이어받기. `schema.sql` 에 `idx_editlog_comp_cursor(COMP_ID, EDIT_LOG_ID)` 추가. FRD FR-110·SP-AUTH-10·TASK T-13.11.1 동반 갱신 |
+| 4 | **UX 폴리시**(409 뒤 재시도 → 오해 401) | 401·409 를 `getMe()` 프로브로 규명(서버 메시지 문자열 매칭 안 함). 프로브 3값 — `alive`/`dead`(명시적 401)/**`unknown`**(타임아웃·5xx·네트워크, **세션 만료로 단정 금지**). 409 는 "이미 인증" vs "이 회사 이메일이 이미 사용됨"(주체 단정 안 함). 소비된 코드는 비우고 코드 단계를 닫아 재시도 경로 자체를 제거 |
+| 5 | **release.sh M9 활성화 가드**(적대리뷰 major) | 릴리스 1회로 AdSense 게이트 전 M9 가 조용히 활성화되던 경로 차단 — 서빙 스키마에 참여 테이블이 7/7 이 아니면 `M9_ACTIVATE=1` 없이 중단(테스트 게이트 [1] **앞**). `server/tests/test_release_m9_gate.py` 4건 + mysql 셰임 4분기 동작 검증(DB 무접촉) |
+| 6 | **베타 테스트 데이터 정리** | 참여 6테이블 0행 + 사용자 등록 복지 2건 삭제 → 복지 시드 1317 복귀. 시드 보존(회사 95·도메인 31), AUTO_INCREMENT 1 리셋, beta API 재시작(참조 캐시). 스냅샷 = `docs/beta-testdata-backup-20260725.sql`(해시·이메일 마스킹본) |
+
+**적대적 리뷰** `wf_5a510a37`(25에이전트·5렌즈): 제기 20 → **확증 14**(blocker 1·major 6·minor 7) **전부 수정**, 반증 6 기각. 수정이 진짜 게이트인지 **뮤테이션으로 검증**(SQL 별칭 제거·파라미터 스왑·프로브 단정·버튼 잠금 해제 뮤턴트 모두 검출).
+
+**커밋**: `main` **6879454**(백엔드·문서·schema·release 가드·.gitignore) · `m9-frontend` **dc1b285**(프론트). origin 푸시 완료.
+
+### 지금 상태 스냅샷
+
+- **테스트**: 백엔드 `DB_NAME=loupit_test python3 -m pytest server/tests -q -m "not sc14"` → **327 passed** / `-m sc14` → 3 passed. 프론트 `cd /home/ubuntu/loupit-fe && node --test 'web/**/*.test.js'` → **566 passed**.
+  - ⚠️ 프론트 테스트에 jsdom 이 필요한데 worktree 엔 node_modules 가 없다 → **심링크**로 해결: `ln -s /home/ubuntu/loupit/node_modules /home/ubuntu/loupit-fe/node_modules` (`.gitignore` 앵커 패턴으로 커밋 차단됨).
+- **서비스**: prod `loupit-api`(:8000) **미재시작**(내 백엔드 변경 미로드·서빙 스키마에 참여 테이블 없어 inert) · beta `loupit-beta-api`(:8001) 재시작됨. 베타 docroot 는 여전히 worktree(`/home/ubuntu/loupit-fe/web`).
+- **베타 DB**: 시드 상태(회사 95·복지 1317·도메인 31, 참여 테이블 전부 0행). 회사 이메일 HMAC 이 지워져 `@samsung.com` 등 **이전 주소 재사용 가능**.
+
+### 내일 시작점 (우선순위 순)
+
+1. **`m9-frontend` → `main` 병합 시점 결정**. 병합하면 프론트 5화면이 **프로덕션 docroot 에 들어간다**(`web/` 직서빙) — 즉 `/login`·`/mypage`·`/verify`·`/edit`·`/edits` 가 jobcho.wiki 에 노출된다. 백엔드 라우트는 서빙 스키마에 참여 테이블이 없어 500/404 이므로, **병합 = 사실상 M9 프론트 공개**다. AdSense 게이트와 함께 판단할 것. 보류하면 worktree 분리 유지(메모리 `loupit-deploy-host` "M9 프론트 worktree 분리" 절의 되돌리기 절차 참조).
+2. **M9 활성화**(AdSense 승인 후): 체크리스트 = (a) `db/schema.sql` 7테이블 적용, (b) `conftest.TABLE_CREATE_ORDER` 에 `PARTICIPATION_CREATE_ORDER` 병합, (c) sc14 마커 RED→그린 편입, (d) 베이스 test(TS-1·allowlist·write_symbols) 갱신, (e) `SPEC/11 §6.2a` GRANT·`§3.4` nginx 실파일 반영, (f) **운영 pepper 2종 주입**(`login_code_hmac_pepper`·`comp_email_hmac_pepper`) + `mailer_mode=smtp`(현재 Console 이면 코드가 로그로 나간다). 실행은 `M9_ACTIVATE=1 RELEASE_CONFIRM=1 bash infra/deploy/release.sh`.
+3. **남은 nit**(리뷰에서 잘렸거나 낮은 우선순위): ① 재직 429 후 재발송 안내 문구 다듬기(서버가 무발송인 구간을 클라가 60초 막지만, 상한 초과 직후 문구가 여전히 '새 코드를 받아주세요') ② `edit.js` 의 401 처리도 verify.js 처럼 프로브로 구분할지 ③ 운영자 삭제 이력이 `(탈퇴)` 로 표시되는 문구(리뷰에서 '설계 선택'으로 기각).
+4. **실 브라우저 시각 확인 미실시** — 이 호스트에 헤드리스 브라우저가 없다. jsdom 으로 배선·id 정합은 덮었지만 CSS·모바일 레이아웃은 미확인. 필요하면 사용자 브라우저로 `https://beta.loupit.co/login` 부터 훑을 것.
+
+### 재개용 실전 메모
+
+- 로그인/재직 코드는 ConsoleMailer → `journalctl -u loupit-beta-api --since "2 min ago" | grep ConsoleMailer` 에서 6자리 릴레이. 이메일은 형식만 맞으면 됨.
+- 베타 API 는 **main 트리 `server/`** 코드를 쓴다(worktree 아님) → 백엔드 수정 후 `sudo systemctl restart loupit-beta-api`.
+- 프론트 편집은 **`/home/ubuntu/loupit-fe/web/` 에만**(main 트리 `web/` 편집 = 프로덕션 즉시 노출). git 은 `git -C /home/ubuntu/loupit-fe`.
+- 회사 검색은 한글 쿼리라 `curl -G --data-urlencode "q=삼성"` 로 호출할 것(인라인 URL 은 깨진다).
