@@ -3,7 +3,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { EDIT_TYPE_LABELS, diffFields, fmtDtm, renderEntry } from './edits.js';
+import { EDIT_TYPE_LABELS, PAGE_LIMIT, diffFields, fmtDtm, renderEntry, nextCursor, hasMore } from './edits.js';
 
 // ── 최소 in-memory document 스텁(renderEntry 전용) ──────────────────────────
 class FakeEl {
@@ -64,6 +64,34 @@ describe('diffFields', () => {
     assert.ok(rows.length >= 1);
     assert.ok(rows.every((r) => r.to === null));
   });
+});
+
+// ── 키셋 페이징(사용자 결정 2026-07-25: edit_id 노출 + before 커서) ─────────────
+describe('nextCursor / hasMore', () => {
+  const page = (ids) => ids.map((id) => ({ edit_id: id, nickname: 'n', edit_type: 'update', dtm: '2026-01-01T00:00:00' }));
+
+  test('다음 커서 = 마지막(가장 오래된) 행의 edit_id', () => {
+    assert.equal(nextCursor(page([812, 811, 810])), 810);
+  });
+  test('빈 페이지·미정의 → null(더 요청하지 않음)', () => {
+    assert.equal(nextCursor([]), null);
+    assert.equal(nextCursor(null), null);
+    assert.equal(nextCursor(undefined), null);
+  });
+  test('edit_id 없는 응답(구 서버) → null 로 안전 폴백', () => {
+    assert.equal(nextCursor([{ nickname: 'n' }]), null);
+  });
+  test('상한만큼 꽉 찼을 때만 더 보기', () => {
+    assert.equal(hasMore(page(Array.from({ length: PAGE_LIMIT }, (_, i) => i + 1))), true);
+    assert.equal(hasMore(page([1, 2, 3])), false);
+    assert.equal(hasMore([]), false);
+    assert.equal(hasMore(null), false);
+  });
+  test('limit 을 명시하면 그 값 기준', () => {
+    assert.equal(hasMore(page([1, 2]), 2), true);
+    assert.equal(hasMore(page([1]), 2), false);
+  });
+  test('페이지 크기는 서버 상한(200) 이내', () => { assert.ok(PAGE_LIMIT >= 1 && PAGE_LIMIT <= 200); });
 });
 
 describe('renderEntry — textContent-only(XSS 안전)', () => {

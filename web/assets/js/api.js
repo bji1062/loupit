@@ -99,5 +99,7 @@ export const createBenefit = (comp_id, body) =>
   apiSend('POST', '/companies/' + encodeURIComponent(comp_id) + '/benefits', body); // 201 / 409 코드중복 / 429 상한 / 422
 export const updateBenefit = (comp_id, benefit_id, body) =>
   apiSend('PUT', '/companies/' + encodeURIComponent(comp_id) + '/benefits/' + encodeURIComponent(benefit_id), body); // 200 / 409 선점(현재행 동봉) / 404 / 429 / 422
-export const getEdits = (comp_id, limit = 100, opt) =>
-  apiFetch('/companies/' + encodeURIComponent(comp_id) + '/edits?limit=' + encodeURIComponent(limit), opt); // 익명 공개 · 404 미존재 회사
+// 편집 이력: 익명 공개 GET · 404 미존재 회사. `before`=키셋 커서(그 edit_id 보다 오래된 페이지).
+export const getEdits = (comp_id, limit = 50, before = null, opt) =>
+  apiFetch('/companies/' + encodeURIComponent(comp_id) + '/edits?limit=' + encodeURIComponent(limit)
+    + (before ? '&before=' + encodeURIComponent(before) : ''), opt);

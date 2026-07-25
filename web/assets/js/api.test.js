@@ -194,4 +194,13 @@ describe('SC14 참여 헬퍼', () => {
     assert.equal(seen[0].opts.credentials, 'omit'); // 익명(무쿠키)
     assert.equal(seen[0].url, API_BASE + '/companies/10/edits?limit=50');
   });
+
+  test('getEdits(before) → 키셋 커서 쿼리 부착, 미지정 시 before 파라미터 없음', async () => {
+    const seen = [];
+    globalThis.fetch = async (url, opts) => { seen.push({ url, opts }); return { ok: true, status: 200, json: async () => [] }; };
+    await getEdits(10, 50, 812);
+    assert.equal(seen[0].url, API_BASE + '/companies/10/edits?limit=50&before=812');
+    await getEdits(10, 50, null);
+    assert.equal(seen[1].url.includes('before'), false); // 첫 페이지엔 커서 없음
+  });
 });

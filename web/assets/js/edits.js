@@ -11,7 +11,21 @@ export const CATEGORY_LABELS = {
   compensation: '보상', flexibility: '유연성', work_env: '근무환경', time_off: '휴가',
   health: '건강', family: '가족', growth: '성장', leisure: '여가', perks: '복리후생',
 };
-const PAGE_LIMIT = 100; // 커서(EDIT_LOG_ID) 미노출 계약이라 최신 N건만(그 이상은 안내).
+// 한 페이지 건수. 서버가 각 행에 `edit_id`(키셋 커서)를 주므로 '더 보기'로 계속 이어 받는다
+// (사용자 결정 2026-07-25 — offset 페이징의 경계 중복·누락을 피한 커서 방식).
+export const PAGE_LIMIT = 50;
+
+// ── 순수: 다음 페이지 커서 = 마지막(가장 오래된) 행의 edit_id. 없으면 null ──
+export function nextCursor(items) {
+  if (!items || !items.length) return null;
+  const last = items[items.length - 1];
+  return last && last.edit_id != null ? last.edit_id : null;
+}
+
+// ── 순수: 더 받을 게 남았는지 — 요청 상한만큼 꽉 찼으면 다음 페이지가 있을 수 있다 ──
+export function hasMore(items, limit = PAGE_LIMIT) {
+  return !!items && items.length >= limit;
+}
 
 // ── 순수: 금액 표시 ──
 function fmtAmt(v) {
@@ -114,12 +128,41 @@ export function initEditsPage() {
   };
 
   function fail(msg) { $('edits-status').textContent = msg; $('edits-status').hidden = false; }
+  function clearFail() { $('edits-status').hidden = true; $('edits-status').textContent = ''; }
+
+  let cursor = null; // 다음 페이지 커서(마지막으로 받은 행의 edit_id)
+
+  function appendItems(items) {
+    const listEl = $('edit-log');
+    for (const it of items) listEl.append(renderEntry(document, it));
+    listEl.hidden = false;
+  }
+
+  // 받은 페이지로 커서·'더 보기' 상태 갱신. 상한만큼 꽉 찼을 때만 버튼 노출.
+  // `showEnd`=이어받기 결과로 버튼이 사라지는 경우 — 끝 안내를 띄우고, 버튼에 있던 키보드 포커스를
+  // 그 안내로 옮긴다(사라진 요소에서 포커스가 body 로 튀는 것 방지).
+  function syncMore(items, showEnd) {
+    const next = nextCursor(items);
+    if (next != null) cursor = next;
+    const btn = $('edits-more');
+    if (hasMore(items) && cursor != null) {
+      btn.hidden = false; btn.disabled = false; btn.textContent = '더 보기';
+      $('edits-end').hidden = true;
+    } else {
+      const hadFocus = document.activeElement === btn;
+      btn.hidden = true;
+      if (showEnd) {
+        $('edits-end').hidden = false;
+        if (hadFocus) $('edits-end').focus();
+      }
+    }
+  }
 
   async function loadHistory(compId) {
     // 이력을 먼저 확보(회사 유효성 겸용) — 404·오류면 제목·링크를 노출하지 않는다(모순 화면 방지).
     let items;
     try {
-      items = await getEdits(compId, PAGE_LIMIT);
+      items = await getEdits(compId, PAGE_LIMIT, null);
     } catch (err) {
       if (err instanceof ApiError && err.status === 404) { fail('그 회사를 찾을 수 없어요. 주소를 확인해주세요.'); return; }
       fail('편집 이력을 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
@@ -133,12 +176,26 @@ export function initEditsPage() {
     const backLink = $('company-link');
     backLink.href = '/company/' + encodeURIComponent(compId); // 공개 상세로(있으면)
     backLink.hidden = false;
-    const listEl = $('edit-log');
-    listEl.textContent = '';
+    $('edit-log').textContent = '';
     if (!items.length) { $('edits-empty').hidden = false; return; }
-    for (const it of items) listEl.append(renderEntry(document, it));
-    listEl.hidden = false;
-    if (items.length >= PAGE_LIMIT) { $('edits-more').hidden = false; }
+    appendItems(items);
+    syncMore(items, false); // 첫 페이지에서 상한 미달이면 '더 보기'가 애초에 없으므로 끝 안내 불필요
+  }
+
+  // '더 보기' — 커서(before=<마지막 edit_id>)로 다음 페이지를 이어 붙인다(중복·누락 없음).
+  async function loadMore(compId) {
+    const btn = $('edits-more');
+    if (cursor == null || btn.disabled) return;
+    clearFail();
+    btn.disabled = true; btn.textContent = '불러오는 중…';
+    try {
+      const items = await getEdits(compId, PAGE_LIMIT, cursor);
+      appendItems(items);
+      syncMore(items, true);
+    } catch {
+      btn.disabled = false; btn.textContent = '더 보기'; // 재시도 가능하게 되돌림
+      fail('다음 이력을 불러오지 못했어요. 잠시 후 다시 시도해주세요.');
+    }
   }
 
   // ?comp 없을 때: 회사 검색으로 이력 페이지 이동.
@@ -172,7 +229,10 @@ export function initEditsPage() {
   }
 
   const comp = compParam();
-  if (comp) loadHistory(comp); else setupPicker();
+  if (comp) {
+    $('edits-more').addEventListener('click', () => loadMore(comp));
+    loadHistory(comp);
+  } else setupPicker();
 }
 
 if (typeof document !== 'undefined' && typeof document.getElementById === 'function'
