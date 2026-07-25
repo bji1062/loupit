@@ -406,13 +406,13 @@
 |----------|------|------|----|------|
 | `comp_id` | path | int | N | 회사 PK |
 | `limit` | query | int | Y | 페이지 크기(상한 SP-AUTH) |
-| `before` | query | string(dtm)\|int | Y | 커서 페이지네이션 |
+| `before` | query | int | Y | 커서 = 이력 행의 `edit_id`(그보다 오래된 페이지) |
 
 **출력·상태**
 
 | 상태 | 조건 | 본문 |
 |------|------|------|
-| 200 OK | 조회 성공(0건 포함) | `[{nickname, edit_type, before, after, edit_note, dtm}, ...]` |
+| 200 OK | 조회 성공(0건 포함) | `[{edit_id, nickname, edit_type, before, after, edit_note, dtm}, ...]` |
 | 404 Not Found | 미존재 comp_id | 오류 envelope |
 
 - 세션 불필요(공개). 모든 출력 필드는 이스케이프(NFR21).
@@ -421,6 +421,7 @@
 1. 공개 조회 — `require_member` 미적용. 익명(A1·A2)도 열람 가능.
 2. 응답에 편집자 이메일·MBR_ID 등 식별 정보 미포함(닉네임만, INV-8).
 3. before/after 스냅샷은 JSON. XSS 이스케이프(NFR21).
+4. **`edit_id` = 키셋 페이징 커서 토큰**(나무위키식 공개 리비전 ID, 사용자 결정 2026-07-25). 클라이언트는 마지막 행의 `edit_id`를 `before`로 되돌려 다음 페이지를 받는다(경계 중복·누락 0). 이 값은 **쓰기 능력을 부여하지 않는다** — 이력은 append-only이고 이력을 대상으로 하는 사용자 대면 쓰기·삭제 라우트가 없다(FR-115: 복지 삭제는 운영자 CLI 전용).
 
 **추적**: SC14 / UC-77 / INV-8·NFR21 / FR-108·FR-109 / SP-AUTH·SP-DB.
 

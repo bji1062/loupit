@@ -76,8 +76,12 @@ class BenefitUpdateIn(BaseModel):
 class EditLogItem(BaseModel):
     """GET /companies/{comp_id}/edits 응답 1건 — 공개 편집 이력(FR-110).
 
-    편집자 식별은 **닉네임만**(이메일·MBR_ID 미노출, INV-8). before/after 는 스냅샷 JSON."""
+    편집자 식별은 **닉네임만**(이메일·MBR_ID 미노출, INV-8). before/after 는 스냅샷 JSON.
+    `edit_id` 는 키셋 페이징 커서(`?before=<edit_id>`)로 되돌려 쓰는 이력 행 식별자다 —
+    나무위키식 공개 리비전 ID(사용자 결정 2026-07-25). 이력은 append-only 이고 사용자 대면
+    삭제·수정 라우트가 없어 노출이 쓰기 능력을 주지 않는다."""
 
+    edit_id: int
     nickname: str
     edit_type: str            # ∈ {create, update, delete}
     before: dict | None = None

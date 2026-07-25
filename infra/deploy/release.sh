@@ -83,6 +83,37 @@ if [ "${RELEASE_CONFIRM:-}" != "1" ]; then
   fi
 fi
 
+# ── M9(SC14 참여 기능) 활성화 가드 ──────────────────────────────────────────
+# [2] 의 `mysql < db/schema.sql` 은 멱등이지만 **부재 테이블은 새로 만든다**. schema.sql 에는
+# SC14 참여 7테이블이 이미 들어 있고 `server/main.py` 는 member·employment·benefit_edit 라우터를
+# 무조건 등록하므로, 아무 생각 없이 릴리스를 한 번 돌리면 **AdSense 게이트 전에 M9 API 가 조용히
+# 활성화**된다(적대리뷰 2026-07-25 확증). 활성화는 체크리스트를 동반한 명시적 결정이어야 한다
+# → 서빙 스키마에 참여 테이블이 없으면 `M9_ACTIVATE=1` 없이는 여기서 중단한다.
+# (테스트 게이트[1]도 서빙 스키마를 건드리므로 그 **앞**에서 막는다.)
+STEP="M9 활성화 가드"
+_PARTICIPATION_TABLES="'TMEMBER','TSESSION','TAUTH_CODE','TCOMPANY_EMAIL_DOMAIN','TEMPLOY_VERIFICATION','TEMPLOY_VRF_REQUEST','TBENEFIT_EDIT_LOG'"
+_npart="$(mysql -h "${DB_HOST:-127.0.0.1}" -P "${DB_PORT:-3306}" -u "${DB_USER:?DB_USER 미설정 — server/.env 확인}" \
+  ${DB_PASSWORD:+-p"${DB_PASSWORD}"} -N -B -e \
+  "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA='${DB_NAME:-loupit}' AND TABLE_NAME IN (${_PARTICIPATION_TABLES})")"
+if [ "${_npart:-0}" -eq 7 ]; then
+  echo "  ✓ M9 참여 테이블 7/7 존재 — 이미 활성 스키마(추가 확인 불요)."
+elif [ "${M9_ACTIVATE:-}" = "1" ]; then
+  echo "  ⚠ M9_ACTIVATE=1 — 이번 릴리스가 참여 테이블(${_npart:-0}/7 존재)을 생성해 **M9 를 활성화**한다."
+else
+  {
+    echo ""
+    echo "✗ 중단: 이 릴리스는 M9(로그인·재직인증·복지편집)를 활성화하게 된다."
+    echo "  서빙 스키마 ${DB_NAME:-loupit} 의 참여 테이블: ${_npart:-0}/7 존재"
+    echo "  [2] schema 단계의 db/schema.sql 이 나머지를 생성하고, 등록된 라우터가 즉시 공개된다."
+    echo "  ── 의도한 릴리스라면 ──"
+    echo "     M9 활성화 체크리스트(docs/HANDOFF-로그인기능-ML-A.md·TASK/13)를 먼저 확인하고"
+    echo "     M9_ACTIVATE=1 RELEASE_CONFIRM=1 bash infra/deploy/release.sh"
+    echo "  ── 아니라면 ──"
+    echo "     M9 는 AdSense 심사 이후로 게이트돼 있다. 이 릴리스는 취소하라."
+  } >&2
+  trap - ERR; exit 1
+fi
+
 echo "[1/7] test gate (SP-TEST-4 집계 — G1~G3) — 실패 시 즉시 중단(2~7 미실행, 서빙 정적물 유지)"
 echo "      ⚠ 백엔드 테스트가 참조 5테이블을 일시 DROP/CREATE 후 종료 시 재시드한다(~10초 창)."
 STEP="[1/7] 테스트 게이트"

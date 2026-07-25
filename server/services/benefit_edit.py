@@ -50,7 +50,8 @@ _SQL_LIST = """
 
 # 편집 이력 공개 조회(닉네임 조인·최신순·커서 페이지네이션). 편집자 이메일·MBR_ID 미노출(INV-8).
 _SQL_EDITS = """
-  SELECT COALESCE(m.NICKNAME_NM, '(탈퇴)') AS nickname, l.EDIT_TYPE_CD AS edit_type,
+  SELECT l.EDIT_LOG_ID AS edit_id, COALESCE(m.NICKNAME_NM, '(탈퇴)') AS nickname,
+         l.EDIT_TYPE_CD AS edit_type,
          l.BEFORE_VAL AS before_val, l.AFTER_VAL AS after_val, l.EDIT_NOTE_CTNT AS edit_note,
          l.INS_DTM AS dtm
     FROM TBENEFIT_EDIT_LOG l LEFT JOIN TMEMBER m ON m.MBR_ID = l.ACTOR_MBR_ID
@@ -224,7 +225,7 @@ async def list_edits(comp_id: int, limit: int, before: int | None) -> list[dict]
     params.append(limit)
     rows = await database.fetch_all(sql, tuple(params))
     return [
-        {"nickname": r["nickname"], "edit_type": r["edit_type"],
+        {"edit_id": r["edit_id"], "nickname": r["nickname"], "edit_type": r["edit_type"],
          "before": _parse_json(r["before_val"]), "after": _parse_json(r["after_val"]),
          "edit_note": r["edit_note"], "dtm": r["dtm"]}
         for r in rows

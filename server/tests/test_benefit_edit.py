@@ -120,15 +120,23 @@ async def benefit_env(monkeypatch):
 
     async def _fetch_all(sql, params=()):
         if "FROM TBENEFIT_EDIT_LOG" in sql:  # list_edits: (comp[, before], limit)
+            # 페이크가 '정답'을 만들어버리지 않도록, 넘어온 실제 SQL이 계약을 지키는지 먼저 단언한다.
+            # (별칭·정렬·커서 절이 빠지거나 파라미터 순서가 뒤바뀌면 여기서 깨진다 = 회귀 게이트)
+            assert "l.EDIT_LOG_ID AS edit_id" in sql, sql   # 커서 토큰 노출
+            assert "ORDER BY l.EDIT_LOG_ID DESC" in sql, sql  # 최신순
+            assert "LIMIT %s" in sql, sql
+            has_cursor = "l.EDIT_LOG_ID < %s" in sql
+            assert has_cursor == (len(params) == 3), (sql, params)  # 커서 절 ↔ 파라미터 개수 정합
             comp = params[0]
-            before = params[1] if len(params) == 3 else None
+            before = params[1] if has_cursor else None
             limit = params[-1]
             rows = [l for l in store["edit_logs"] if l["COMP_ID"] == comp]
             if before is not None:
                 rows = [l for l in rows if l["EDIT_LOG_ID"] < before]
             rows = sorted(rows, key=lambda l: l["EDIT_LOG_ID"], reverse=True)[:limit]
             return [
-                {"nickname": store["members"].get(l["ACTOR_MBR_ID"]),  # 탈퇴 후에도 닉네임 존치
+                {"edit_id": l["EDIT_LOG_ID"],  # 키셋 커서 토큰(공개 계약)
+                 "nickname": store["members"].get(l["ACTOR_MBR_ID"]),  # 탈퇴 후에도 닉네임 존치
                  "edit_type": l["EDIT_TYPE_CD"], "before_val": l["BEFORE_VAL"], "after_val": l["AFTER_VAL"],
                  "edit_note": l["EDIT_NOTE_CTNT"], "dtm": l["INS_DTM"]}
                 for l in rows
@@ -488,7 +496,7 @@ async def test_AH2_edits_expose_nickname_only_no_mbr_id_or_email(benefit_env):
     assert "MBR_ID" not in raw and "mbr_id" not in raw
     assert "ACTOR_MBR_ID" not in raw
     item = r.json()[0]
-    assert set(item.keys()) <= {"nickname", "edit_type", "before", "after", "edit_note", "dtm"}
+    assert set(item.keys()) <= {"edit_id", "nickname", "edit_type", "before", "after", "edit_note", "dtm"}
 
 
 @pytest.mark.asyncio
@@ -528,3 +536,47 @@ async def test_AH_edits_unknown_company_404(benefit_env):
     c, store = benefit_env
     r = await c.get("/api/v1/companies/999/edits")
     assert r.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_AH6_edits_expose_edit_id_for_keyset_cursor(benefit_env):
+    """공개 이력 각 행에 `edit_id`(커서 토큰) 동봉 — 최신순 내림차순, 정수 (사용자 결정 2026-07-25).
+
+    쓰기 능력은 부여하지 않는다(이력은 append-only·사용자 대면 삭제 라우트 없음). 내부 컬럼명
+    `EDIT_LOG_ID` 는 응답에 등장하지 않는다(노출 필드명은 `edit_id`)."""
+    c, store = benefit_env
+    await c.post("/api/v1/companies/10/benefits", json=_payload(cd="meal"), headers=_AUTH)
+    await c.post("/api/v1/companies/10/benefits", json=_payload(cd="gym", ctgr="health"), headers=_AUTH)
+    r = await c.get("/api/v1/companies/10/edits")
+    items = r.json()
+    assert len(items) == 2
+    ids = [it["edit_id"] for it in items]
+    assert all(isinstance(i, int) for i in ids)
+    assert ids == sorted(ids, reverse=True)      # 최신순(내림차순) = 커서 계약
+    assert "EDIT_LOG_ID" not in r.text           # 내부 컬럼명 미노출
+
+
+@pytest.mark.asyncio
+async def test_AH6_edits_before_cursor_returns_older_page(benefit_env):
+    """`before=<edit_id>` = 그 행보다 오래된 이력만(키셋 페이징 — 경계 중복·누락 없음).
+
+    limit 과 before 를 **서로 다른 값**으로 두고 페이지 내용을 정확히 고정한다 — 값이 겹치면
+    파라미터 순서가 뒤바뀐 회귀를 잡지 못하고, `all(...)`·집합 어서션만 두면 빈 페이지에서
+    공허하게 참이 되어 '더 보기가 영원히 아무것도 못 붙이는' 회귀를 놓친다."""
+    c, store = benefit_env
+    for cd, ctgr in (("meal", "compensation"), ("gym", "health"), ("book", "growth"), ("snack", "perks")):
+        await c.post("/api/v1/companies/10/benefits", json=_payload(cd=cd, ctgr=ctgr), headers=_AUTH)
+    all_ids = [it["edit_id"] for it in (await c.get("/api/v1/companies/10/edits")).json()]
+    assert len(all_ids) == 4 and all_ids == sorted(all_ids, reverse=True)
+
+    page1 = (await c.get("/api/v1/companies/10/edits?limit=3")).json()
+    assert [it["edit_id"] for it in page1] == all_ids[:3]      # 최신 3건 정확히
+    cursor = page1[-1]["edit_id"]
+
+    page2 = (await c.get(f"/api/v1/companies/10/edits?limit=3&before={cursor}")).json()
+    assert [it["edit_id"] for it in page2] == all_ids[3:]      # 남은 1건 정확히(빈 페이지면 실패)
+    assert not ({it["edit_id"] for it in page1} & {it["edit_id"] for it in page2})  # 중복 0
+    assert [it["edit_id"] for it in page1 + page2] == all_ids  # 누락 0
+
+    # 마지막 커서 뒤로는 빈 페이지(더 보기 종료 조건)
+    assert (await c.get(f"/api/v1/companies/10/edits?before={page2[-1]['edit_id']}")).json() == []

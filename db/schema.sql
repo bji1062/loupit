@@ -256,6 +256,9 @@ CREATE TABLE IF NOT EXISTS TBENEFIT_EDIT_LOG (
   EDIT_NOTE_CTNT  VARCHAR(500) DEFAULT NULL COMMENT '편집 사유·출처 (기여자 입력, 이스케이프)',
   INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시 (불변 append-only — 감사 4종 미적용, MOD 없음)',
   INDEX idx_editlog_comp  (COMP_ID, INS_DTM),
+  -- 공개 이력 키셋 페이징 전용 — `WHERE COMP_ID=? [AND EDIT_LOG_ID < ?] ORDER BY EDIT_LOG_ID DESC LIMIT ?`
+  -- (FR-110). idx_editlog_comp 는 INS_DTM 정렬이라 이 쿼리에선 filesort 가 된다.
+  INDEX idx_editlog_comp_cursor (COMP_ID, EDIT_LOG_ID),
   INDEX idx_editlog_actor (ACTOR_MBR_ID, INS_DTM),
   FOREIGN KEY (BENEFIT_ID)   REFERENCES TCOMPANY_BENEFIT(BENEFIT_ID) ON DELETE SET NULL,
   FOREIGN KEY (ACTOR_MBR_ID) REFERENCES TMEMBER(MBR_ID)              ON DELETE SET NULL
