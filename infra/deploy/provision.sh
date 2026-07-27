@@ -48,7 +48,19 @@ sudo chown -R www-data:www-data /var/lib/nginx/proxy
 sudo chmod 700 /var/lib/nginx/proxy
 
 echo "[4/6] infra/ 산출물 배치"
-sudo mkdir -p /etc/nginx/snippets
+sudo mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
+# ── http 컨텍스트 산출물(conf.d) — sites-enabled 보다 **먼저** 배치·로드돼야 한다 ──
+# 2026-07-27 발견(적대검토, 3개 렌즈 수렴): 이 두 파일을 배치하는 스크립트가 리포에 **하나도
+# 없었다**. loupit.conf 는 `limit_req zone=loupit_api|loupit_log|loupit_mail` 과 서버 레벨
+# `if ($loupit_bad_bot)` 로 둘 다에 하드 의존하는데, 존·맵은 http 컨텍스트 전용이라
+# server{} 안에 둘 수 없어 이 파일들에만 있다. 즉 신규 호스트를 리포만으로 프로비저닝하면
+# "unknown limit_req zone" / "unknown variable" 로 **nginx -t 가 실패해 nginx 가 아예 뜨지
+# 못했다**(수동 배치로 가려져 있던 잠복 결함 — 실호스트는 사람이 손으로 복사해 둔 상태였다).
+# nginx.conf 의 http{} 는 conf.d/*.conf 를 sites-enabled/* 보다 먼저 include 하므로,
+# 여기서 배치해 두면 정의가 사용보다 앞선다(순서 보장).
+sudo cp "${ROOT_DIR}/infra/nginx/loupit-limits.conf"     /etc/nginx/conf.d/loupit-limits.conf
+sudo cp "${ROOT_DIR}/infra/nginx/loupit-botdefense.conf" /etc/nginx/conf.d/loupit-botdefense.conf
+sudo chmod 644 /etc/nginx/conf.d/loupit-limits.conf /etc/nginx/conf.d/loupit-botdefense.conf
 sudo cp "${ROOT_DIR}/infra/nginx/loupit.conf" /etc/nginx/sites-available/loupit.conf
 sudo cp "${ROOT_DIR}/infra/nginx/snippets/loupit-security.conf" /etc/nginx/snippets/loupit-security.conf
 sudo ln -sf /etc/nginx/sites-available/loupit.conf /etc/nginx/sites-enabled/loupit.conf

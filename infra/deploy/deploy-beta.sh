@@ -31,14 +31,59 @@ if [ ! -f /etc/letsencrypt/live/beta.loupit.co/fullchain.pem ]; then
   exit 1
 fi
 
-echo "[2/5] nginx 보안 스니펫 배치(base + beta noindex)"
-sudo mkdir -p /etc/nginx/snippets
+echo "[2/5] nginx 보안 스니펫 + http 컨텍스트 산출물 배치"
+sudo mkdir -p /etc/nginx/snippets /etc/nginx/conf.d
 sudo cp "${ROOT_DIR}/infra/nginx/snippets/loupit-security.conf"      /etc/nginx/snippets/loupit-security.conf
 sudo cp "${ROOT_DIR}/infra/nginx/snippets/loupit-beta-security.conf" /etc/nginx/snippets/loupit-beta-security.conf
 sudo chmod 644 /etc/nginx/snippets/loupit-security.conf /etc/nginx/snippets/loupit-beta-security.conf
+# 레이트리밋 존 정의(http 컨텍스트 전용 → conf.d). 2026-07-27 부터 beta vhost 도
+# `limit_req zone=loupit_api|loupit_mail` 로 여기에 **하드 의존**한다 — 이 파일 없이 vhost 만
+# 배치하면 "unknown limit_req zone" 으로 nginx 전체가 뜨지 못한다(정의가 사용보다 앞서야 하며,
+# conf.d 는 sites-enabled 보다 먼저 include 되므로 여기서 함께 배치한다).
+sudo cp "${ROOT_DIR}/infra/nginx/loupit-limits.conf" /etc/nginx/conf.d/loupit-limits.conf
+sudo chmod 644 /etc/nginx/conf.d/loupit-limits.conf
 
 echo "[3/5] beta vhost 배치·활성화"
-sudo cp "${ROOT_DIR}/infra/nginx/loupit-beta.conf" /etc/nginx/sites-available/loupit-beta.conf
+# ── docroot 결정 (2026-07-27 blocker 수정) ─────────────────────────────────────
+# 리포의 loupit-beta.conf 는 "m9-frontend 가 main 에 병합된 뒤" 상태, 즉 docroot=${ROOT_DIR}/web
+# 를 담는다. 그런데 병합 전인 현재 라이브 베타는 **별도 체크아웃**(/home/ubuntu/loupit-fe/web)을
+# 서빙한다. 여기서 리포 파일을 통째 cp 하면 docroot 가 뒤바뀌어 베타 M9 페이지
+# (/login·/mypage·/verify·/edit·/edits — main 체크아웃엔 존재하지 않는다)가 **전부 404** 가 된다.
+# 게다가 nginx 는 root 디렉터리·파일의 존재를 검사하지 않으므로 [5/5] 의 `nginx -t` 롤백 가드가
+# 이 사고를 **못 잡는다**(문법은 완벽히 유효하다). 그래서 두 겹으로 막는다:
+#   (1) 라이브에 이미 vhost 가 있으면 그 docroot 를 보존한다(BETA_DOCROOT 로 명시 오버라이드 가능).
+#   (2) 배치 **전에** 그 docroot 가 실제로 베타가 서빙해야 할 페이지를 갖고 있는지 확인한다.
+# 병합이 끝나면 라이브 docroot 를 ${ROOT_DIR}/web 으로 되돌리면 (1)이 자동으로 그 값을 따른다.
+BETA_DOCROOT="${BETA_DOCROOT:-}"
+if [ -z "${BETA_DOCROOT}" ] && [ -f /etc/nginx/sites-available/loupit-beta.conf ]; then
+  BETA_DOCROOT="$(awk '$1=="root"{sub(/;$/,"",$2); if ($2 ~ /\/web$/) {print $2; exit}}' \
+                    /etc/nginx/sites-available/loupit-beta.conf)"
+  [ -n "${BETA_DOCROOT}" ] && echo "  · 기존 라이브 docroot 보존: ${BETA_DOCROOT}"
+fi
+BETA_DOCROOT="${BETA_DOCROOT:-${ROOT_DIR}/web}"
+BETA_CHECKOUT="$(dirname "${BETA_DOCROOT}")"   # web/ 의 형제 경로(infra/beta-test) 기준
+
+# nginx -t 가 못 잡는 것을 여기서 잡는다: docroot 에 실제로 페이지가 있는가.
+_miss=0
+for _f in index.html login.html mypage.html verify.html edit.html edits.html; do
+  if [ ! -f "${BETA_DOCROOT}/${_f}" ]; then
+    echo "  ✗ 없음: ${BETA_DOCROOT}/${_f}" >&2
+    _miss=1
+  fi
+done
+if [ "${_miss}" = 1 ]; then
+  echo "  ✗ docroot(${BETA_DOCROOT})에 베타가 서빙해야 할 페이지가 없다 — 배치하지 않고 중단한다." >&2
+  echo "    (통째 cp 했다면 nginx -t 는 통과하고 베타만 조용히 404 가 됐을 상황이다.)" >&2
+  echo "    명시 지정: sudo BETA_DOCROOT=/home/ubuntu/loupit-fe/web bash infra/deploy/deploy-beta.sh" >&2
+  exit 1
+fi
+
+_staged="$(mktemp)"
+trap 'rm -f "${_staged}"' EXIT
+sed -e "s#${ROOT_DIR}/web#${BETA_DOCROOT}#g" \
+    -e "s#${ROOT_DIR}/infra/beta-test#${BETA_CHECKOUT}/infra/beta-test#g" \
+    "${ROOT_DIR}/infra/nginx/loupit-beta.conf" > "${_staged}"
+sudo install -o root -g root -m 644 "${_staged}" /etc/nginx/sites-available/loupit-beta.conf
 sudo ln -sf /etc/nginx/sites-available/loupit-beta.conf /etc/nginx/sites-enabled/loupit-beta.conf
 
 echo "[4/5] beta systemd 서비스 배치"
