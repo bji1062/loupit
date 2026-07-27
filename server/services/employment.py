@@ -73,7 +73,10 @@ async def issue_employ_code(comp_id: int, mbr_id: int, company_email: str) -> No
         "VALUES (%s, %s, %s, %s, %s, UTC_TIMESTAMP() + INTERVAL %s MINUTE, 0)",
         (_PURPOSE, auth_code._hash_code(code, norm), target_hash, comp_id, mbr_id, s.login_code_ttl_min),
     )
-    await mailer.get_mailer().send_employ_code(norm, code)  # 원문은 여기서 소멸
+    # 원문은 여기서 소멸. 발송 실패는 삼키고 로그만 — 재직 경로도 204 균일 계약이다(send_code_safe).
+    await auth_code.send_code_safe(
+        lambda: mailer.get_mailer().send_employ_code(norm, code), code, "employ"
+    )
 
 
 async def verify_employ_code(comp_id: int, company_email: str, code: str) -> str:

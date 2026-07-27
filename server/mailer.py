@@ -9,12 +9,18 @@ from __future__ import annotations
 
 import asyncio
 import smtplib
+import ssl
 from email.message import EmailMessage
 
 from server.config import get_settings
 
 _LOGIN_SUBJECT = "[loupit] 로그인 코드"
 _EMPLOY_SUBJECT = "[loupit] 재직 인증 코드"
+
+# 연결·대화 전체 상한(초). 코드 TTL 이 5분이라 그 안에 끝나지 않으면 어차피 무의미하고,
+# 무한 대기는 asyncio.to_thread 의 기본 스레드풀 슬롯을 영구 점유해 API 전체를 멈춘다
+# (socket.getdefaulttimeout() 이 None 이라 미지정 시 정말로 무한이다 — 실측 확인).
+_SMTP_TIMEOUT_SEC = 15
 
 
 def _body(code: str, ttl_min: int) -> str:
@@ -47,8 +53,12 @@ class SmtpMailer:
         msg["To"] = to
         msg["Subject"] = subject
         msg.set_content(body)
-        with smtplib.SMTP(self._host, self._port) as s:
-            s.starttls()
+        # `starttls()` 를 컨텍스트 없이 부르면 stdlib 기본이 check_hostname=False·CERT_NONE 이라
+        # 암호화만 되고 **상대를 확인하지 않는다**(python3.10 실측). 그 위로 SMTP 비밀번호와 인증
+        # 코드가 흐르므로 반드시 검증 컨텍스트를 명시한다.
+        ctx = ssl.create_default_context()
+        with smtplib.SMTP(self._host, self._port, timeout=_SMTP_TIMEOUT_SEC) as s:
+            s.starttls(context=ctx)
             if self._user:
                 s.login(self._user, self._pass)
             s.send_message(msg)
@@ -75,5 +85,17 @@ def get_mailer():
                 "mailer_mode=smtp 인데 smtp_user 미설정 — 코드가 로그로 새는 console 폴백을 막기 위해 "
                 "실패(fail-closed). SMTP 자격을 주입하거나 개발이면 mailer_mode=console 로 명시하세요."
             )
-        return SmtpMailer(s.smtp_host, s.smtp_port, s.smtp_user, s.smtp_pass, s.smtp_from)
+        # 발신 주소 검증(2026-07-27). `smtp_from or smtp_user` 폴백 자체는 유지한다 — Gmail 처럼
+        # 계정명이 곧 이메일인 제공자에선 정당하다. 문제는 **결과가 주소가 아닐 때**다: Resend 의
+        # smtp_user 는 리터럴 `"resend"` 라서 폴백하면 From 이 `resend` 가 되고, 수신측이 거부하는데
+        # 서버 로그엔 성공으로 남아 원인 추적이 어렵다. 그래서 폴백을 막는 게 아니라 최종값을 본다.
+        # (발신 도메인은 SPF/DKIM 정렬 대상이므로 운영에서 아무 값이나 될 수 없다.)
+        sender = s.smtp_from or s.smtp_user
+        if "@" not in sender:
+            raise RuntimeError(
+                f"mailer_mode=smtp 인데 발신 주소가 이메일이 아님(smtp_from={s.smtp_from!r}, "
+                f"폴백 smtp_user={s.smtp_user!r}) — SMTP_FROM 에 발신 주소를 지정하세요"
+                " (예: 'loupit <no-reply@jobcho.wiki>')."
+            )
+        return SmtpMailer(s.smtp_host, s.smtp_port, s.smtp_user, s.smtp_pass, sender)
     return ConsoleMailer()

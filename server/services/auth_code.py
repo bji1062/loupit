@@ -9,10 +9,32 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import logging
 import secrets
 
 from server import database
 from server.config import get_settings
+
+logger = logging.getLogger(__name__)
+
+
+async def send_code_safe(send, code: str, purpose: str) -> None:
+    """메일 발송 1회 — 실패를 삼키고 서버 로그로만 남긴다(2026-07-27).
+
+    **왜 삼키는가**: 코드 발송 응답은 계정 유무와 무관하게 **균일 204** 여야 한다(계정 열거 차단,
+    NFR31). 메일 예외가 그대로 오르면 500 이 되어 그 계약이 깨지고, SMTP 장애 구간에서 응답 코드가
+    갈리는 관측 채널이 생긴다. 코드 행은 이미 저장돼 있으므로 사용자는 재전송으로 복구할 수 있다.
+
+    **로그 위생**: 예외 문자열에 수신 주소·코드가 실려 오는 제공자가 있어(예: "relay refused for
+    <addr>") 예외 메시지를 그대로 찍지 않는다 — 예외 **타입명과 용도**만 남긴다(NFR31)."""
+    try:
+        await send()
+    except Exception as exc:  # 제공자 장애·자격 오류·타임아웃 등 — 균일 204 유지
+        logger.error(
+            "인증 코드 메일 발송 실패(용도=%s, 예외=%s) — 응답은 균일 204 유지. "
+            "SMTP 설정·제공자 상태를 확인하세요.",
+            purpose, type(exc).__name__,
+        )
 
 
 class CodeResult:
@@ -89,7 +111,8 @@ async def issue_login_code(email: str) -> None:
         "VALUES ('login', %s, %s, UTC_TIMESTAMP() + INTERVAL %s MINUTE, 0)",
         (_hash_code(code, norm), target_hash, s.login_code_ttl_min),
     )
-    await mailer.get_mailer().send_login_code(norm, code)  # 원문은 여기서 소멸(무저장)
+    # 원문은 여기서 소멸(무저장). 발송 실패는 삼키고 로그만 — 균일 204 계약 유지(send_code_safe).
+    await send_code_safe(lambda: mailer.get_mailer().send_login_code(norm, code), code, "login")
 
 
 async def verify_login_code(email: str, code: str) -> str:
