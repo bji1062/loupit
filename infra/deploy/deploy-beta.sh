@@ -56,8 +56,17 @@ echo "[3/5] beta vhost 배치·활성화"
 # 병합이 끝나면 라이브 docroot 를 ${ROOT_DIR}/web 으로 되돌리면 (1)이 자동으로 그 값을 따른다.
 BETA_DOCROOT="${BETA_DOCROOT:-}"
 if [ -z "${BETA_DOCROOT}" ] && [ -f /etc/nginx/sites-available/loupit-beta.conf ]; then
-  BETA_DOCROOT="$(awk '$1=="root"{sub(/;$/,"",$2); if ($2 ~ /\/web$/) {print $2; exit}}' \
-                    /etc/nginx/sites-available/loupit-beta.conf)"
+  # ⚠ ACME 블록의 root 는 반드시 건너뛴다(2026-07-27 세션 C). 그 root 는 certbot 의 webroot_path
+  #   와 묶여 있어 docroot 치환에서 제외되므로, 파일에서 **먼저 나오는** `root …/web` 이다.
+  #   순진하게 첫 줄을 집으면 앱 docroot 대신 ACME root 를 docroot 로 오인한다.
+  #   마커 + 블록 범위 두 겹으로 거른다(누가 마커를 지워도 블록 판정이 받아준다).
+  BETA_DOCROOT="$(awk '
+    /acme-challenge/  {inacme=1; next}
+    inacme && /}/     {inacme=0; next}
+    inacme            {next}
+    /ACME-NO-REWRITE/ {next}
+    $1=="root" {sub(/;$/,"",$2); if ($2 ~ /\/web$/) {print $2; exit}}
+  ' /etc/nginx/sites-available/loupit-beta.conf)"
   [ -n "${BETA_DOCROOT}" ] && echo "  · 기존 라이브 docroot 보존: ${BETA_DOCROOT}"
 fi
 BETA_DOCROOT="${BETA_DOCROOT:-${ROOT_DIR}/web}"
@@ -80,9 +89,34 @@ fi
 
 _staged="$(mktemp)"
 trap 'rm -f "${_staged}"' EXIT
-sed -e "s#${ROOT_DIR}/web#${BETA_DOCROOT}#g" \
+# `ACME-NO-REWRITE` 마커가 붙은 줄은 치환에서 제외한다(`b` = 이 줄에 대한 나머지 -e 를 건너뜀).
+# 이유: ACME 챌린지 root 는 앱 docroot 와 무관하며 certbot 의 webroot_path 와 **정확히 일치**해야
+# 한다. 일괄 치환이 그 줄까지 베타 체크아웃으로 바꿔 놓아 베타 인증서 자동갱신이 조용히 실패했다
+# (2026-07-27 세션 C 실측: `certbot renew --dry-run` → beta 만 404. 만료 시 베타가 HTTPS 를 잃는다).
+sed -e '/ACME-NO-REWRITE/b' \
+    -e "s#${ROOT_DIR}/web#${BETA_DOCROOT}#g" \
     -e "s#${ROOT_DIR}/infra/beta-test#${BETA_CHECKOUT}/infra/beta-test#g" \
     "${ROOT_DIR}/infra/nginx/loupit-beta.conf" > "${_staged}"
+
+# 배치 **전** 검증: nginx 가 읽을 ACME root 와 certbot 이 쓸 webroot_path 가 같은가.
+# `nginx -t` 는 이 불일치를 절대 못 잡는다(문법은 유효하고 갱신은 90일 뒤에야 실패한다).
+_acme_root="$(awk '/acme-challenge/{f=1} f && $1=="root"{sub(/;$/,"",$2); print $2; exit}' "${_staged}")"
+_renewal=/etc/letsencrypt/renewal/beta.loupit.co.conf
+if sudo test -f "${_renewal}"; then
+  _cb_webroot="$(sudo awk -F'=' '/^[[:space:]]*webroot_path/{split($2,a,","); gsub(/^[[:space:]]+|[[:space:]]+$/,"",a[1]); print a[1]; exit}' "${_renewal}")"
+  if [ -n "${_cb_webroot}" ] && [ "${_acme_root}" != "${_cb_webroot}" ]; then
+    echo "  ✗ ACME 경로 불일치 — 배치하지 않고 중단한다." >&2
+    echo "    nginx 가 읽을 곳 : ${_acme_root}" >&2
+    echo "    certbot 이 쓸 곳 : ${_cb_webroot}  (${_renewal})" >&2
+    echo "    이대로 두면 베타 인증서 자동갱신이 조용히 실패하고 만료 시 HTTPS 가 끊긴다." >&2
+    echo "    확인: loupit-beta.conf 의 ACME root 줄에 'ACME-NO-REWRITE' 마커가 살아 있는가." >&2
+    exit 1
+  fi
+  echo "  · ACME 경로 일치 확인: ${_acme_root}"
+else
+  echo "  ⚠ ${_renewal} 없음 — ACME 경로 일치 검사 생략(최초 발급 전이면 정상)." >&2
+fi
+
 sudo install -o root -g root -m 644 "${_staged}" /etc/nginx/sites-available/loupit-beta.conf
 sudo ln -sf /etc/nginx/sites-available/loupit-beta.conf /etc/nginx/sites-enabled/loupit-beta.conf
 
