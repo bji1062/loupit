@@ -66,12 +66,23 @@ def test_get_settings_is_cached_singleton():
 
 
 @pytest.mark.sc14
-def test_AU5_sc14_config_fields_present():
+def test_AU5_sc14_config_fields_present(monkeypatch):
     """AU-5(SC14): SP-AUTH-2 참여 설정 필드가 기본값·타입과 함께 존재한다.
 
     구현(M9) 전엔 필드 부재라 RED → @pytest.mark.sc14 로 베이스 게이트 제외.
     금지 substring(jwt·oauth·password_reset·social)을 어느 필드도 포함하지 않음도 재확인한다."""
     from server.config import Settings
+
+    # ── 환경 격리 (2026-07-27) ──
+    # `_env_file=None` 은 **.env 파일만** 끊는다 — os.environ 은 못 끊는다. 그런데 conftest 가
+    # `load_dotenv(server/.env)`(conftest.py:36)로 배포 설정을 os.environ 에 부어 넣으므로,
+    # 운영 자격증명이 그대로 새어 들어와 "선언된 기본값"을 보려던 이 테스트가 **배포 상태에 따라
+    # RED** 가 된다. 실제로 Resend 연동으로 `SMTP_HOST=smtp.resend.com` 이 들어가자 터졌다.
+    # pepper 3종도 운영 투입이 예정돼 있어(NFR30) 같은 방식으로 터질 예정이었다.
+    # 필드명을 대문자로 뒤집어 전부 지우면 신규 필드가 늘어도 격리가 자동으로 따라온다.
+    # (전 필드가 기본값을 가지므로 빈 환경에서도 인스턴스화된다 — 실측 확인.)
+    for name in Settings.model_fields:
+        monkeypatch.delenv(name.upper(), raising=False)
 
     s = Settings(_env_file=None)
     # 메일러 (SP-AUTH-11)
