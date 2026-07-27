@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS TAUTH_CODE (
   AUTH_CODE_ID    INT AUTO_INCREMENT PRIMARY KEY COMMENT '인증 코드 PK',
   PURPOSE_CD      VARCHAR(16)  NOT NULL COMMENT '용도 (login, employ_verify) — 값집합 SP-DB-17.8',
   CODE_HASH_VAL   CHAR(64)     NOT NULL COMMENT '6자리 코드 SHA-256 해시 (원문 무저장, T9)',
-  TARGET_HASH_VAL CHAR(64)     NOT NULL COMMENT '대상 이메일/회사이메일 SHA-256 해시 (조회키, 원문 무저장, T9)',
+  TARGET_HASH_VAL CHAR(64)     NOT NULL COMMENT '대상 수신함 SHA-256 해시 = SHA256(배달주소 정규화) (조회키, 원문 무저장, T9). 계정 식별키 아님 — +태그·구글도트를 접어야 재전송 쿨다운이 폭탄 변형에 발화한다(auth_code._delivery_address)',
   COMP_ID         INT          DEFAULT NULL COMMENT '재직 인증 대상 회사 FK (TCOMPANY.COMP_ID, login 시 NULL)',
   MBR_ID          INT          DEFAULT NULL COMMENT '요청 회원 FK (TMEMBER.MBR_ID, 신규 로그인 시 NULL)',
   ATTEMPT_CNT     SMALLINT     NOT NULL DEFAULT 0 COMMENT '검증 시도 횟수 (code_max_attempts 초과 시 무효, 접미 _CNT 비준)',
