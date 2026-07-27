@@ -230,6 +230,21 @@ async def test_AL_resend_cooldown_suppresses_duplicate(member_env):
 
 
 @pytest.mark.asyncio
+async def test_AL_쿨다운은_같은_수신함_변형_요청도_억제한다(member_env):
+    """[적대검토 2026-07-27] 라우트 계약 — `+태그`/도트 변형 연속 요청도 발송은 1회뿐.
+
+    변형마다 조회키가 갈려 쿨다운이 미스나던 우회의 종단 재현. 균일 204 는 그대로 유지되어야
+    한다(억제 여부가 응답으로 새면 계정 열거 채널이 된다, NFR31)."""
+    c, store, cap = member_env
+    for 변형 in ["victim@gmail.com", "victim+1@gmail.com", "v.i.ctim@gmail.com", "VICTIM+9@Gmail.com"]:
+        r = await c.post("/api/v1/members/login-code", json={"email": 변형})
+        assert r.status_code == 204 and r.content == b""  # 억제돼도 응답은 동일
+    assert len(store["codes"]) == 1, f"쿨다운 우회 — 코드 {len(store['codes'])}건 발급됨"
+    # 계정 식별키는 접지 않는다 — 발송 주소는 요청 원문의 정규화값(첫 요청 = 평문 주소)
+    assert cap["email"] == "victim@gmail.com"
+
+
+@pytest.mark.asyncio
 async def test_AL_invalid_body_422_does_not_echo_email_or_code(member_env):
     """[보안 Fix6] 형식 불량 422 응답이 제출한 이메일·코드 원문을 반향하지 않는다(NFR31)."""
     c, store, cap = member_env

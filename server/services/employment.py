@@ -59,7 +59,11 @@ async def active_verification(mbr_id: int, comp_id: int) -> dict | None:
 
 
 async def issue_employ_code(comp_id: int, mbr_id: int, company_email: str) -> None:
-    """재직 인증 코드 발급 — 해시만 저장(+login_code_ttl_min), 회사 이메일로 발송. 원문 무저장."""
+    """재직 인증 코드 발급 — 해시만 저장(+login_code_ttl_min), 회사 이메일로 발송. 원문 무저장.
+
+    쿨다운 조회키(`auth_code._hash_target`)는 **배달 주소** 기준이라 `+태그` 변형으로 같은 회사
+    수신함에 폭탄을 넣는 우회가 막힌다(로그인 경로와 동일 결함·동일 수정, 2026-07-27).
+    회사 스코프(COMP_ID)는 그대로 유지된다 — 다른 회사 인증 요청까지 막지 않는다."""
     from server import mailer  # 지연 import(조립 순서 무관)
 
     s = get_settings()
