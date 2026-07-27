@@ -66,6 +66,22 @@ class Settings(BaseSettings):
     # 익명 배포엔 부재(값은 안전 기본), SC14 기여 배포 시 server/.env 로 주입한다(SP-INFRA §7).
     # 어떤 필드명도 금지 substring(jwt·oauth·password_reset·social)을 포함하지 않는다(T10).
 
+    # M9 활성화 마스터 스위치 (2026-07-27). **기본 OFF** — 이 플래그 하나가
+    #   (A) 참여 라우터 3종 등록(main.create_app) · (B) 세션·코드 retention purge ·
+    #   (C) 정책 페이지 문안(개인정보 P7·약관 T5, generator/content/policy.py)
+    # 을 **동시에** 뒤집는다. (C)가 같은 스위치인 것이 핵심이다: 라이브 `/privacy` 는 지금
+    # "회원가입·로그인·계정 기능이 없습니다 … 이메일을 수집·저장하지 않습니다" 라고 선언하므로,
+    # 로그인 배포와 문안 전환이 어긋나면 어느 방향이든 처리방침이 허위 기재가 된다.
+    #
+    # 기본을 OFF 로 둔 이유(재시작 함정): 라우터 등록이 무조건이던 판본에서 프로덕션이 inert 했던
+    # 유일한 근거는 `loupit-api` 가 SC14 코드 이전에 기동돼 아직 안 죽었다는 것뿐이었다 — 재부팅
+    # 한 번이면 참여 테이블 0/7 인 스키마 위에서 M9 표면이 켜졌다. `release.sh` 의 M9 활성화
+    # 가드는 릴리스 경로만 덮는다(test_m9_gate).
+    #
+    # 배포별: prod `server/.env` = 키 부재(OFF) · beta `server/.env.beta` = `M9_ENABLED=1` ·
+    # 테스트 = conftest 가 세션 전역으로 1 주입(베이스 게이트는 ON 표면을 계약으로 가짐).
+    m9_enabled: bool = False
+
     # 메일러 (SP-AUTH-11): mailer_mode=smtp 이되 smtp_user 미설정이면 ConsoleMailer 폴백(실발송 방지)
     mailer_mode: str = "console"  # ∈ {console, smtp}
     smtp_host: str = ""  # 예: smtp.naver.com

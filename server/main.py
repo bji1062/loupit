@@ -51,11 +51,17 @@ async def _purge_compare_log_safe(settings: Settings) -> None:
         logger.exception("TCOMPARE_LOG 보존 퍼지 실패 — 앱 계속")
 
 
-async def _purge_sessions_safe() -> None:
+async def _purge_sessions_safe(m9_enabled: bool) -> None:
     """만료·폐기 세션 + 만료·소비 코드 퍼지 1회 — DB 장애가 앱을 죽이지 않도록 삼킨다(SP-AUTH-4).
 
     참여 테이블(TSESSION·TAUTH_CODE)이 비어 있으면 무영향(no-op). `session_service` 를 모듈
-    참조로 호출한다(monkeypatch 테스트 가능성)."""
+    참조로 호출한다(monkeypatch 테스트 가능성).
+
+    M9 OFF 면 아예 호출하지 않는다 — OFF 스키마엔 두 테이블이 **없어서** 매 주기 예외가 잡히고
+    journalctl 에 스택이 쌓인다. 삼켜지므로 무해하지만, 실제 DB 장애 신호를 상시 노이즈로 덮는
+    쪽이 더 나쁘다(test_m9_gate M9G5·M9G6)."""
+    if not m9_enabled:
+        return
     try:
         deleted = await session_service.purge_expired()
         if deleted:
@@ -68,7 +74,7 @@ async def _retention_scheduler(settings: Settings) -> None:
     """일 1회 보존 퍼지 루프. lifespan 종료 시 task.cancel()로 취소된다(#7b·SP-AUTH-4)."""
     while True:
         await _purge_compare_log_safe(settings)
-        await _purge_sessions_safe()
+        await _purge_sessions_safe(settings.m9_enabled)
         await asyncio.sleep(settings.compare_log_purge_interval_seconds)
 
 
@@ -144,9 +150,16 @@ def create_app() -> FastAPI:
     # SC14 참여(로그인·재직·복지편집) 라우터 3종 등록(SP-AUTH-1). 미들웨어는 추가하지
     # 않는다 — 세션·재직 검증은 deps.require_member/require_employment(Depends)로만
     # 주입되어 app.user_middleware == ['CORSMiddleware'] 불변을 지킨다(AU-2, INV-9).
-    app.include_router(member.router, prefix=p)
-    app.include_router(employment.router, prefix=p)
-    app.include_router(benefit_edit.router, prefix=p)
+    #
+    # **M9 게이트(기본 OFF)**: 서빙 스키마에 참여 7테이블이 없는 배포에서 이 라우트가 켜지면
+    # 쓰기 표면이 500 을 뿜으며 노출된다. 우발적 재시작이 기능을 켜지 못하게 설정으로 막는다
+    # (config.m9_enabled 주석·test_m9_gate). OFF 표면 = SC14 이전 익명 계약과 정확히 동일.
+    # 임포트는 무조건 유지한다 — 등록만 조건부라서 라우터 모듈 자체의 임포트 오류는 OFF
+    # 배포에서도 즉시 드러난다(조용한 부패 방지).
+    if s.m9_enabled:
+        app.include_router(member.router, prefix=p)
+        app.include_router(employment.router, prefix=p)
+        app.include_router(benefit_edit.router, prefix=p)
     return app
 
 

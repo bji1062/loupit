@@ -27,6 +27,7 @@ from generator.content.policy import (
     PolicyDoc,
     PolicySection,
     build_policy_docs,
+    required_items,
 )
 
 CFG = GenConfig()
@@ -75,13 +76,19 @@ def test_pc1_all_docs_are_policy_doc_instances():
 
 
 @pytest.mark.parametrize("key", list(POLICY_KEYS))
-def test_pc2_required_items_covered(key):
-    docs = {d.key: d for d in build_policy_docs(CFG)}
+@pytest.mark.parametrize("cfg", [GenConfig(m9_enabled=False), GenConfig(m9_enabled=True)],
+                         ids=["m9-off", "m9-on"])
+def test_pc2_required_items_covered(cfg, key):
+    """필수 항목 누락 0 — **두 배포 모드 모두**.
+
+    M9(SC14 참여) 활성 배포는 회원 PII 고지 P7·T5 가 추가로 필수다(SPEC/09 §SP-POL-2).
+    모드별 기대집합은 `required_items(cfg)` 가 소유하며, 전환 계약 자체는 test_policy_m9 가
+    검증한다(구 '로그인 없음' 절대문구 철회 포함)."""
+    docs = {d.key: d for d in build_policy_docs(cfg)}
     doc = docs[key]
     req_ids = {s.req_id for s in doc.sections}
-    assert req_ids >= REQUIRED_ITEMS[key], (
-        f"{key}: 누락된 필수 항목 {REQUIRED_ITEMS[key] - req_ids}"
-    )
+    expected = required_items(cfg)[key]
+    assert req_ids >= expected, f"{key}: 누락된 필수 항목 {expected - req_ids}"
 
 
 @pytest.mark.parametrize("key", list(POLICY_KEYS))

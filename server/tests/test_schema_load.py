@@ -207,7 +207,12 @@ def test_SC3_verified_by_id_absent(schema_db, db_name):
 # ── SC-4: 감사 4종 컬럼 ──
 # TCOMPARE_LOG 면제: 익명 로그 설계(INV-1 개정 2026-07-14) — 사용자 식별 감사 컬럼(INS_ID·MOD_ID)을
 # 두지 않고 append-only 라 MOD_DTM 도 없다. 익명 계약은 아래 SC-4b 가 적극 검증한다.
-AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG"}
+#
+# TBENEFIT_EDIT_LOG 면제(SC14, SP-DB-17.7·SP-AUTH-3 규칙4): 불변 append-only 로그라 `INS_DTM`
+# 하나만 둔다 — 앱은 INSERT 만 하고 UPDATE/DELETE 가 없으므로 MOD_* 는 의미가 없고, 편집 주체는
+# 감사 컬럼이 아니라 **도메인 컬럼 `ACTOR_MBR_ID`**(FK→TMEMBER, ON DELETE SET NULL)가 들고 있다.
+# SPEC/02 §SC-4 가 명시한 예외이며, 부재 자체를 아래 SC-4c 가 적극 검증한다(면제 = 무검증 아님).
+AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG"}
 
 
 @pytest.mark.parametrize("table", [t for t in TABLE_CREATE_ORDER if t not in AUDIT_EXEMPT_TABLES])
@@ -226,6 +231,22 @@ def test_SC4b_compare_log_anonymity_contract(schema_db, db_name):
     assert cols == {"CMP_LOG_ID", "A_COMP_ID", "B_COMP_ID", "INS_DTM"}, (
         f"TCOMPARE_LOG 컬럼이 익명 계약과 다름: {sorted(cols)}"
     )
+
+
+def test_SC4c_edit_log_append_only_contract(schema_db, db_name):
+    """SC14: TBENEFIT_EDIT_LOG append-only 계약 — 감사 4종 중 INS_DTM 만(SP-DB-17.7).
+
+    AUDIT_EXEMPT_TABLES 면제를 '검사 안 함'으로 두지 않기 위한 적극 검증이다(SC-4b 와 같은 형식).
+    MOD_DTM·MOD_ID 가 생기면 로그가 사후 수정 가능해진다는 뜻이라 이력의 증거력이 무너진다 —
+    나무위키식 공개 이력(UC-77)의 신뢰 근거가 불변성이므로 스키마 수준에서 막는다."""
+    cols = set(_columns(schema_db, db_name, "TBENEFIT_EDIT_LOG"))
+    assert "INS_DTM" in cols, "append-only 로그에 기록 시각(INS_DTM)이 없다"
+    forbidden = {"INS_ID", "MOD_ID", "MOD_DTM"} & cols
+    assert not forbidden, (
+        f"TBENEFIT_EDIT_LOG 는 append-only 인데 수정 감사 컬럼 발견: {sorted(forbidden)}"
+    )
+    # 편집 주체는 감사 컬럼이 아니라 도메인 FK 가 보유한다(탈퇴 시 SET NULL, 이력 존치).
+    assert "ACTOR_MBR_ID" in cols, "편집 주체 컬럼(ACTOR_MBR_ID) 부재"
 
 
 # ── SC-5: 문자셋/엔진 ──

@@ -14,6 +14,20 @@ from __future__ import annotations
 import os
 from dataclasses import dataclass, field
 
+# pydantic-settings 가 bool 필드에 쓰는 truthy 문자열 집합(대소문자 무시).
+# 서버 `Settings` 와 생성기 `GenConfig` 가 같은 환경변수를 **같은 규칙**으로 읽어야
+# 런타임 동작과 정적 문안이 갈라지지 않는다(test_policy_m9 PM-11).
+_TRUTHY = frozenset({"1", "true", "t", "yes", "y", "on"})
+
+
+def env_flag(name: str) -> bool:
+    """환경변수를 pydantic 과 동일 규칙으로 bool 파싱한다(미설정·미인식 = False).
+
+    ⚠ 서버 쪽은 빈 문자열(`M9_ENABLED=`)을 ValidationError 로 거부해 **앱이 부팅하지 못한다** —
+    여기서 False 로 관대하게 처리해도 배포는 API 재시작 단계에서 실패하므로, `.env` 에는 키를
+    아예 두지 않거나 유효값을 넣어야 한다(빈값 금지)."""
+    return os.environ.get(name, "").strip().lower() in _TRUTHY
+
 
 @dataclass(frozen=True)
 class GenConfig:
@@ -34,6 +48,20 @@ class GenConfig:
     # 검토는 실수익 발생 시점으로 유예 — 문안이 스스로 '검토 안 된 초안'을 선언하는 상태가
     # 고지 효력·심사·신뢰 모두에 더 해롭다는 판단. env로 여전히 재점등 가능.
     legal_reviewed: bool = os.environ.get("POLICY_LEGAL_REVIEWED", "true") == "true"
+    # M9(SC14 참여·로그인) 문안 스위치 — **기본 OFF**. `server/config.Settings.m9_enabled` 와
+    # **같은 환경변수**를 읽어, 로그인 배포와 처리방침 문안이 어긋나지 않게 한다.
+    #   OFF: "회원가입·로그인·계정 기능이 없습니다"(현 익명 배포의 정확한 기술)
+    #   ON : 익명 열람 무수집(P1 개정) + 회원 정보 처리 P7 · 약관 T5 신설
+    # 어느 방향이든 어긋나면 처리방침이 허위 기재가 된다 — 로그인은 있는데 "없다"고 하거나,
+    # 로그인이 없는데 "기여하려면 로그인이 필요하다"고 하거나(SPEC/09 SP-POL-3·4, test_policy_m9).
+    # release.sh 가 `server/.env` 를 `set -a` 로 source 하므로 정적 재생성([4/7])과 API
+    # 재시작([5/7])이 한 릴리스 안에서 같은 값을 본다.
+    #
+    # 파싱은 `env_flag`(= pydantic 과 동일 규칙)로 통일한다. 초판은 `== "1"` 이었는데, 서버
+    # Settings 는 pydantic 의 넓은 truthy 집합을 받으므로 `M9_ENABLED=true` 배포에서
+    # **서버 ON · 생성기 OFF** 로 갈라졌다 — 로그인은 켜지고 처리방침은 "로그인 없음"으로 남는,
+    # 이 스위치가 막으려던 바로 그 상태다(test_policy_m9 PM-11 이 교차 검증).
+    m9_enabled: bool = env_flag("M9_ENABLED")
 
     # SP-GEN-1.3 사이트 상수 (FR-50, NFR22, SP-ARCH-6)
     site_origin: str = os.environ.get("SITE_ORIGIN", "https://jobcho.wiki")

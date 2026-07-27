@@ -1,6 +1,10 @@
 # 핸드오프 — 로그인+재직인증+복지편집(SC14) 문서화 ML-A
 
-> **다음 세션 시작점**: **ML-B ①②③④ 전부 완료·검증(✅) — 검토 체크포인트 도달**. ① SP-DB(SPEC/02), ② SP-INFRA(SPEC/11 §3.4·§6.2a·§7, 적대검증 2회), ④ T-13.2.1(`run_tests.sh` 참여 백업 + `test_runner_backup.py`), ③ Tier-0 6파일 재명세(`@pytest.mark.sc14` RED 격리, 적대검증). 각 단계 커밋됨. **다음 = 사용자 검토 후 M9 TDD**(TASK/13 41리프) — M9 활성화 체크리스트: (a) `db/schema.sql`에 참여 7테이블 DDL + `load.py --fresh`가 재생성(#14 가드 확장), (b) `conftest.TABLE_CREATE_ORDER`에 `PARTICIPATION_CREATE_ORDER` 병합, (c) sc14 RED 6스펙을 그린으로(마커 해제 또는 `-m sc14`), (d) 베이스 test(TS-1·test_package allowlist·test_database write_symbols) SC14 갱신, (e) SPEC/11 §6.2a 런타임 GRANT + §3.4 nginx conf 실파일 반영. **배포는 AdSense 심사 결과까지 홀드**(§E). 이 문서 + 메모리 `loupit-login-feature-docs`가 재개 컨텍스트다.
+> **⚠ 최신 상태는 §H(2026-07-27) 를 먼저 읽을 것.** AdSense 는 더 이상 M9 게이트가 아니다 —
+> 실제 게이트는 (1) 라이브 정책 문안 동시 배포, (2) SMTP 계정 조달, (3) 운영 pepper 2종이다.
+> `M9_ENABLED` 마스터 스위치가 도입되어 참여 라우터·세션 퍼지·정책 문안을 한 값으로 묶는다.
+
+> **다음 세션 시작점(구, §H 로 갱신됨)**: **ML-B ①②③④ 전부 완료·검증(✅) — 검토 체크포인트 도달**. ① SP-DB(SPEC/02), ② SP-INFRA(SPEC/11 §3.4·§6.2a·§7, 적대검증 2회), ④ T-13.2.1(`run_tests.sh` 참여 백업 + `test_runner_backup.py`), ③ Tier-0 6파일 재명세(`@pytest.mark.sc14` RED 격리, 적대검증). 각 단계 커밋됨. **다음 = 사용자 검토 후 M9 TDD**(TASK/13 41리프) — M9 활성화 체크리스트: (a) `db/schema.sql`에 참여 7테이블 DDL + `load.py --fresh`가 재생성(#14 가드 확장), (b) `conftest.TABLE_CREATE_ORDER`에 `PARTICIPATION_CREATE_ORDER` 병합, (c) sc14 RED 6스펙을 그린으로(마커 해제 또는 `-m sc14`), (d) 베이스 test(TS-1·test_package allowlist·test_database write_symbols) SC14 갱신, (e) SPEC/11 §6.2a 런타임 GRANT + §3.4 nginx conf 실파일 반영. **배포는 AdSense 심사 결과까지 홀드**(§E). 이 문서 + 메모리 `loupit-login-feature-docs`가 재개 컨텍스트다.
 > **최종 갱신**: 2026-07-22, §D 스윕 완료 — item 1(USECASE.md A6)·item 2(17리프)·item 4(Tier-0 xref, §C 정정 4건 발견)·**item 3=Option C 전면 정합화**(GET 4종→5종+로그 POST ~40곳·로그인 영구제외 잔존 15+건·카운트 드리프트·SC14 쓰기 라우터 언급). 워크플로 2회(검증 `wf_bf90465a`·재조정 `wf_accac492`) + 2차 수동 정밀수정 28건. 라이브 정책 문안 카브아웃 준수. 최종 grep 검증: API표면·로그인잔존·카운트 전부 클린.
 
 ---
@@ -184,3 +188,117 @@ loupit(라이브, jobcho.wiki)에 **로그인 + 재직 인증 + 복지 등록/�
 - 베타 API 는 **main 트리 `server/`** 코드를 쓴다(worktree 아님) → 백엔드 수정 후 `sudo systemctl restart loupit-beta-api`.
 - 프론트 편집은 **`/home/ubuntu/loupit-fe/web/` 에만**(main 트리 `web/` 편집 = 프로덕션 즉시 노출). git 은 `git -C /home/ubuntu/loupit-fe`.
 - 회사 검색은 한글 쿼리라 `curl -G --data-urlencode "q=삼성"` 로 호출할 것(인라인 URL 은 깨진다).
+
+---
+
+## H. 2026-07-27 — AdSense 게이트 해제 + `M9_ENABLED` 마스터 스위치
+
+### H-1. 게이트 재정의 (사용자 제기: "애드센스랑 상관 없이 로그인 기능 추가해도 되지 않아?")
+
+**맞다. AdSense 는 M9 의 진짜 게이트가 아니었다.** §E 의 "심사 결과까지 홀드"는 보수적 일괄 홀드였다.
+AdSense 가 요구하는 건 **정확한 개인정보 고지**인데, 그건 아래 게이트 ①을 고치면 동시에 만족된다.
+심사에 실제로 나쁜 건 "반쯤 배포"(프론트만 병합해 `/login.html` 이 500 나는 채로 크롤링)다 —
+**제대로 켜는 쪽이 어중간하게 두는 것보다 안전**하다.
+
+실제 게이트 3종:
+
+| # | 게이트 | 성격 | 상태 |
+|---|---|---|---|
+| ① | **라이브 정책 문안 동시 배포** | 법적(개인정보보호법 §30) · 회피 불가 | ✅ **본 세션에서 코드 완료** — 배포는 활성화 릴리스에서 |
+| ② | **SMTP 계정 조달** | 외부 의존 · 유일한 리드타임 항목 | ⬜ 미정(사용자 결정 대기) |
+| ③ | **운영 pepper 2종 주입** | 보안 · 즉시 가능 | ⬜ 활성화 시 |
+
+**① 이 왜 하드 게이트인가**: 라이브 `/privacy` 는 지금 "jobcho.wiki(잡초)는 **회원가입·로그인·계정
+기능이 없습니다.** 이용자를 식별하는 개인정보(이름·**이메일**·전화번호 등)를 서버에 수집하거나
+저장하지 않습니다" 라고, `/terms` 는 "**로그인·계정 없음** — 로그인·회원가입 없이 제공되며" 라고
+선언한다. 로그인이 켜지는 순간 둘 다 허위 기재가 된다(서비스는 실제로 로그인 이메일을 저장한다).
+
+**② SMTP 권고**: 재직 인증 코드는 **회사 메일서버(samsung.com 등)로** 들어간다. 대기업 게이트웨이는
+SPF/DKIM/DMARC 미정렬 발신을 거의 확실히 스팸/거부 처리하므로, SPEC 예시의 개인 네이버 계정
+(`smtp.naver.com`)은 로그인 코드는 몰라도 **재직 인증은 실질적으로 작동하지 않는다**. `jobcho.wiki`
+도메인으로 DKIM 서명하는 트랜잭션 메일 서비스 권장 — **Resend**(DNS TXT 3개·무료 3,000통/월) 또는
+**Amazon SES**($0.10/1,000·샌드박스 해제 1~2일). 둘 다 SMTP 릴레이를 제공하므로 `smtplib` 그대로,
+**신규 의존성 0 유지**.
+
+### H-2. `M9_ENABLED` — 하나의 스위치가 런타임과 문안을 함께 뒤집는다
+
+**발견한 함정(문서에 없던 것)**: `server/main.py` 가 참여 라우터 3종을 **무조건** 등록하고 있었다.
+프로덕션이 inert 했던 유일한 근거는 `loupit-api` 가 **2026-07-20 기동 이후 안 죽었다**는 것뿐이다 —
+prod·beta 는 같은 트리(`WorkingDirectory=/home/ubuntu/loupit`)를 쓰며, 재시작한 beta 는 참여 라우트가
+살아 있고(401/200) 재시작 안 한 prod 만 404 였다. 즉 **재부팅 한 번**이면 참여 테이블 0/7 인 스키마
+위에서 M9 쓰기 표면이 켜졌다. `release.sh` 의 M9 활성화 가드(6879454)는 **릴리스 경로만** 덮는다.
+
+도입한 계약 — 하나의 환경변수가 셋을 동시에 지배한다:
+
+| 축 | 파일 | 반영 시점 |
+|---|---|---|
+| (A) 참여 라우터 3종 등록 | `server/main.py` (`s.m9_enabled`) | 프로세스 재시작 |
+| (B) 세션·코드 retention purge | `server/main.py` `_purge_sessions_safe(m9_enabled)` | 재시작 |
+| (C) 정책 문안(개인정보 P7·약관 T5·P1/T2 개정) | `generator/content/policy.py` (`cfg.m9_enabled`) | 사이트 재빌드 |
+
+- 배포별: prod `server/.env` **키 부재 = OFF** · beta `server/.env.beta` `M9_ENABLED=1` · 테스트는
+  conftest 가 세션 전역 `setdefault("M9_ENABLED","1")`(베이스 게이트 TS-1 이 ON 표면을 계약으로 가짐).
+- `release.sh` 가 `server/.env` 를 `set -a` 로 source 하므로, 활성화 릴리스 한 번에 `[4/7]` 정적
+  재생성과 `[5/7]` API 재시작이 **같은 값**을 본다.
+- ⚠ **빈값 금지**: `M9_ENABLED=` 는 pydantic ValidationError 로 **앱이 부팅하지 못한다**. 끄려면
+  키를 지우거나 `0`. `server/.env` 에 `M9_ENABLED=0` 을 넣어도 안 된다 — conftest 의 `load_dotenv` 가
+  먼저 채워 `setdefault` 가 못 덮고 베이스 테스트 63건이 OFF 로 떨어져 RED 가 된다.
+
+**중간에 잡은 자체 결함**: 초판은 생성기가 `== "1"` 로만 파싱해, 서버(pydantic 의 넓은 truthy 집합)와
+갈라졌다 — `M9_ENABLED=true` 배포에서 **로그인은 켜지고 정책 문안은 "로그인 없음"으로 남는**, 이
+스위치가 막으려던 바로 그 상태. `generator.config.env_flag()` 로 규칙을 통일하고 교차 검증
+(`test_policy_m9` PM-11, 10개 env 값)으로 고정했다.
+
+### H-3. 함께 해소한 것
+
+- **T-13.2.2 (실간극)**: 참여 7테이블이 `apply_sql(schema.sql)` 로 **생성만 되고 DROP 목록엔 없어**
+  영원히 안 지워졌다 → 세션 간 행 잔존 + `TCOMPANY` 재생성 시 COMP_ID 재배정으로 살아남은 이력 행이
+  다른 회사로 재해석되는 **#15 동형** 결함. `TABLE_CREATE_ORDER` 에 병합하고, 계약을 "schema.sql 의
+  **모든** 테이블이 격리 사이클 안"으로 일반화(`test_schema_isolation.py` SI-1~6)해 향후 테이블 추가도
+  자동으로 잡히게 했다. 동반: `AUDIT_EXEMPT_TABLES` 에 `TBENEFIT_EDIT_LOG` 추가(append-only,
+  SPEC/02 §SC-4 가 이미 명세하던 예외를 테스트가 안 따라간 상태였음) + 부재 적극검증 `test_SC4c`.
+- **T-13.1.3 마커 정정**: `[ ]` 였으나 `test_surface.py:67-82` 에 이미 존재·상시 그린.
+- **env 예제 2종**: `infra/env/server.env.example` 에 M9 블록(주석 처리·빈값 금지 경고),
+  `server/.env.example` 헤더를 SC10 실제 금지범위로 정정.
+
+### H-4. 검증
+
+| 스위트 | 결과 |
+|---|---|
+| 백엔드 `-m "not sc14"` | **353 passed**(327 → +6 M9 게이트 +20 스키마 격리·파라미터 확장) |
+| 백엔드 `-m sc14` | 3 passed (활성화까지 격리 유지 — 서빙 스키마엔 참여 테이블이 없어 RED 가 정상) |
+| 생성기 | **211 passed**(201 → +10, PC-2 모드 파라미터화 포함) |
+| 프론트(main 트리) | **423 passed** |
+
+배포별 플래그 실측: prod `m9_enabled=False`(DB `LOUPIT`) / beta `m9_enabled=True`(DB `loupit_beta`).
+prod 참여 테이블 **0/7**, beta·test 7/7. prod API 는 여전히 참여 라우트 404(기동 2026-07-20).
+
+### H-5. 남은 것 · 미결
+
+1. **beta 재시작 검증 미실시** — 권한 거부로 `systemctl restart loupit-beta-api` 를 못 돌렸다.
+   `.env.beta` 파싱은 실측 확인(`m9_enabled=True`)했으나 **실기동 확인은 사용자 몫**:
+   `sudo systemctl restart loupit-beta-api` 후 `curl -o /dev/null -w '%{http_code}'
+   http://127.0.0.1:8001/api/v1/members/me` 가 **401**이어야 한다(404 면 게이트가 OFF 로 떨어진 것).
+2. **[미결] 공유 docroot 에서 beta 정책 문안**: `/home/ubuntu/loupit-fe/web/dist` 는
+   `/home/ubuntu/loupit/web/dist` **심링크(동일 inode 확인)** — prod·beta 가 정책 HTML 을 물리적으로
+   공유한다. 따라서 (C)만은 "prod OFF · beta ON" 이 **불가능**하다. 현재 beta 는 로그인이 살아 있는데
+   공유 `/privacy` 는 "로그인 없음"을 말한다. beta 는 `X-Robots-Tag noindex` + `robots.txt Disallow: /`
+   전면 차단이고 테스터가 운영자 본인뿐이라 **활성화 시 일괄 해소로 두는 것이 현 판단**이나,
+   심링크 해제(beta 전용 빌드)를 원하면 별도 작업이다.
+3. **`release.sh` M9 가드와 플래그의 관계 미정리**: 가드는 "서빙 스키마 7/7 이면 이미 활성"으로 보는데,
+   이제 테이블이 있어도 `M9_ENABLED` 없이는 라우터가 안 켜진다(방어 심화). `test_release_m9_gate.py`
+   가 한글 헤딩 문자열 슬라이싱에 의존하므로 손대면 동시 갱신 필요 — 별도 커밋 권장.
+4. **활성화 체크리스트(갱신본)**: (a) `db/schema.sql` 7테이블 — **이미 완료**(구 체크리스트 오류),
+   (b) conftest 병합 — **완료(H-3)**, (c) sc14 마커 해제, (d) 베이스 test 갱신 — **대부분 완료**,
+   (e) `SPEC/11 §6.2a` GRANT·`§3.4` nginx 실파일 반영, (f) **`M9_ENABLED=1` + pepper 2종 +
+   `MAILER_MODE=smtp`** 를 `server/.env` 에 주입, (g) 사이트 재빌드(정책 문안 전환) + API 재시작.
+   실행은 `M9_ACTIVATE=1 RELEASE_CONFIRM=1 bash infra/deploy/release.sh`.
+5. **GRANT 드리프트는 문서 결함이 아니다**(초기 판단 정정): SPEC/11 L548 과
+   `infra/mysql/provision_accounts.sql` L9-14 가 "라이브는 단일 `APP_LOUPIT`(GRANT ALL) 계정"임을
+   **정직히 기록**하고 §6.2a 를 도달 목표로 명시하고 있다. 다만 그 때문에 런타임이 참여 테이블에
+   쓸 권한을 이미 갖고 있으므로, 지금 M9 를 막는 것은 **`M9_ENABLED` 게이트뿐**이다.
+6. `m9-frontend` 병합 판단은 여전히 미결(§G 1번). 단 §G 의 "병합 = 사실상 M9 프론트 공개"는
+   **과대평가**다 — prod nginx 에 `location = /login|/mypage|/verify|/edit|/edits` 가 **없어**
+   클린 URL 은 404 다. 노출되는 건 말미 `location / { try_files $uri $uri/ =404; }` 를 타는
+   `/login.html` 등뿐이고, `location ~ ^/(login|mypage|verify|edit|edits)\.html$ { return 404; }`
+   한 줄로 활성화 전까지 완전 차단 가능하다.

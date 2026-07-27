@@ -35,6 +35,14 @@ BENEFIT_SQL_DIR = SEED_DIR / "benefit" / "sql"
 
 load_dotenv(ROOT / "server" / ".env")
 
+# M9 게이트(2026-07-27): 참여 라우터 등록·세션 퍼지·정책 문안은 `M9_ENABLED`(기본 OFF)가
+# 지배한다. 테스트 하네스는 **ON 을 기본**으로 잡는다 — 베이스 게이트의 표면 계약
+# (test_surface TS-1)이 참여 라우트를 포함한 M9 표면이기 때문이다. OFF 경로는 test_m9_gate 가
+# monkeypatch 로 따로 검증한다. `setdefault` 라 CLI 에서 `M9_ENABLED=0` 으로 덮어쓸 수 있다.
+# prod `server/.env` 에는 이 키를 넣지 않는다(부재=OFF) — 위 load_dotenv 가 그 파일을 읽으므로
+# 키를 넣는 순간 프로덕션까지 켜진다.
+os.environ.setdefault("M9_ENABLED", "1")
+
 
 def pytest_configure(config):
     """세션 시작 즉시 테스트 대상 DB_NAME 이 안전한지 검증(C-1 안전장치).
@@ -61,7 +69,7 @@ def pytest_configure(config):
 # 보호(게이트 실행마다 비워지는 것을 막는 백업/재주입)는 이 계층이 아니라 상위 래퍼
 # infra/deploy/run_tests.sh 가 담당한다 — pytest 이전 mysqldump 백업 → 재시드 이후 재주입.
 # 여기서 TCOMPARE_LOG 를 빼면 스키마가 미완성돼 테스트가 깨지므로, 드랍 목록에는 그대로 둔다.
-TABLE_CREATE_ORDER = [
+_REFERENCE_CREATE_ORDER = [
     "TCOMPANY_TYPE",
     "TCOMPANY",
     "TCOMPANY_ALIAS",
@@ -69,7 +77,6 @@ TABLE_CREATE_ORDER = [
     "TBENEFIT_PRESET",
     "TCOMPARE_LOG",  # 익명 비교 로그(INV-1 개정 2026-07-14) — FK→TCOMPANY라 자식 위치
 ]
-TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
 # SP-DB-11 제거 테이블 15종(TMEMBER 는 SC14 로 SP-DB-17 이 신규 소유 → 제거목록에서 해제, ③ §C item1
 # — SC-6(FK→REMOVED 0건) 통과에 필수: 참여 FK 가 TMEMBER 를 참조). TSOCIAL_ACCOUNT·TEMAIL_VERIFICATION
@@ -83,14 +90,25 @@ REMOVED_TABLES = [
 ]
 
 # ── SC14 참여 7테이블 생성순서(FK 부모→자식, SP-DB-17) ─────────────────────────────────
-# ③ RED 스테이징: 이 위상은 **아직 활성 TABLE_CREATE_ORDER 에 편입하지 않는다** — 참여 테이블
-# DDL 이 db/schema.sql 에 없어(M9) schema_db 픽스처가 생성하지 못하기 때문. 지금은 @pytest.mark.sc14
-# 스펙(AU-3/4)이 참조하는 상수로만 둔다. **M9 착수 시** db/schema.sql·load.py 에 DDL 을 넣고 이 목록을
-# TABLE_CREATE_ORDER 에 병합한다(run_tests.sh ④ 참여 백업이 이미 이 순서로 준비돼 있음).
+# **T-13.2.2 편입 완료(2026-07-27)**: 이 위상은 아래에서 TABLE_CREATE_ORDER 에 병합된다.
+#
+# 구 주석은 "DDL 이 db/schema.sql 에 없어 schema_db 픽스처가 생성하지 못한다"며 inert 상수로
+# 뒀는데, 그 전제는 SP-DB-17 DDL 이 schema.sql 에 들어오면서 **이미 거짓**이 됐다. 그 사이 이
+# 목록만 죽은 채로 남아, 참여 테이블은 `apply_sql(schema.sql)` 로 **생성은 되고 DROP 목록엔 없어
+# 영원히 안 지워지는** 상태였다 — 세션 간 행 잔존 + `TCOMPANY` 재생성으로 COMP_ID 가 재배정될 때
+# 살아남은 이력 행이 다른 회사로 재해석되는 #15 동형 결함(test_schema_isolation SI-1·SI-2).
+#
+# 서빙 스키마의 실데이터 보호는 이 계층이 아니라 run_tests.sh ④(참여 7테이블 mysqldump 백업 →
+# 재시드 후 재주입)가 담당한다 — TCOMPARE_LOG 와 완전히 같은 역할분담(#1)이다.
 PARTICIPATION_CREATE_ORDER = [
     "TMEMBER", "TCOMPANY_EMAIL_DOMAIN", "TSESSION", "TAUTH_CODE",
     "TEMPLOY_VERIFICATION", "TEMPLOY_VRF_REQUEST", "TBENEFIT_EDIT_LOG",
 ]
+
+# 활성 격리 사이클 = 참조 6 + 참여 7. 참여가 뒤에 오는 것이 FK 부모→자식 순서를 만족한다
+# (TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — test_schema_isolation SI-4).
+TABLE_CREATE_ORDER = _REFERENCE_CREATE_ORDER + PARTICIPATION_CREATE_ORDER
+TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
 
 def _split_sql_statements(sql_text: str) -> list[str]:
