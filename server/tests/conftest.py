@@ -43,6 +43,16 @@ load_dotenv(ROOT / "server" / ".env")
 # 키를 넣는 순간 프로덕션까지 켜진다.
 os.environ.setdefault("M9_ENABLED", "1")
 
+# 테스트는 **절대** 실제 메일을 보내지 않는다(적대검토 2026-07-27 blocker).
+# `test_csrf.py::test_AC1_with_csrf_header_passes_gate` 는 CSRF 헤더를 붙여 /members/login-code 를
+# 호출하고 204 를 검증한다 — 즉 핸들러가 끝까지 실행돼 메일러에 도달한다. 운영 서버의
+# `server/.env` 에 `MAILER_MODE=smtp` 가 들어간 뒤 릴리스 게이트(run_tests.sh)를 돌리면
+# **운영 Resend 계정으로 진짜 메일이 나간다**(무료 티어 일 100통 소모·도메인 평판 손상·수신자는
+# 테스트용 가짜 주소라 하드바운스).
+# conftest 가 load_dotenv 로 server/.env 를 읽으므로 이 위험은 실재한다 → 여기서 강제로 console 로
+# 고정한다. `setdefault` 가 아니라 **덮어쓰기**여야 한다(.env 값을 이겨야 하므로).
+os.environ["MAILER_MODE"] = "console"
+
 
 def pytest_configure(config):
     """세션 시작 즉시 테스트 대상 DB_NAME 이 안전한지 검증(C-1 안전장치).

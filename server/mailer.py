@@ -17,10 +17,17 @@ from server.config import get_settings
 _LOGIN_SUBJECT = "[loupit] 로그인 코드"
 _EMPLOY_SUBJECT = "[loupit] 재직 인증 코드"
 
-# 연결·대화 전체 상한(초). 코드 TTL 이 5분이라 그 안에 끝나지 않으면 어차피 무의미하고,
+# 소켓 연산 1회당 상한(초). ⚠ smtplib 의 timeout 은 **대화 전체 상한이 아니라 개별 소켓 연산
+# 상한**이라, 느린 피어는 이 값의 여러 배를 끌 수 있다(적대검토 2026-07-27 정정).
+#
 # 무한 대기는 asyncio.to_thread 의 기본 스레드풀 슬롯을 영구 점유해 API 전체를 멈춘다
 # (socket.getdefaulttimeout() 이 None 이라 미지정 시 정말로 무한이다 — 실측 확인).
-_SMTP_TIMEOUT_SEC = 15
+#
+# 값은 nginx `proxy_read_timeout 15s` 보다 **넉넉히 짧아야** 한다. 같거나 크면 제공자가 느려질 때
+# nginx 가 먼저 끊어 클라이언트가 204 대신 **504** 를 받고, "계정 유무 무관 균일 204"(계정 열거
+# 차단) 계약이 엣지에서 깨진다. 8s = 15s 대비 7s 여유(TLS 핸드셰이크·DNS 변동 흡수).
+# Resend 실측 왕복은 1s 미만이라 정상 경로엔 영향이 없다(test_mail_config_gate MG-6).
+_SMTP_TIMEOUT_SEC = 8
 
 
 def _body(code: str, ttl_min: int) -> str:
@@ -72,6 +79,34 @@ class SmtpMailer:
         await asyncio.to_thread(self._send, email, _EMPLOY_SUBJECT, _body(code, ttl))
 
 
+def resolve_sender(s) -> str:
+    """SMTP 발신 주소를 확정하고 검증한다 — 잘못됐으면 RuntimeError.
+
+    `get_mailer()`(런타임, 캐시된 전역 설정)와 `main.validate_mail_config()`(기동 시점, 명시적
+    설정 객체)가 **같은 규칙**을 쓰도록 분리한 헬퍼다. 분리 전에는 검증이 `get_mailer()` 안에만
+    있어, 설정 객체를 인자로 받는 기동 검증이 그 인자를 무시하고 전역 캐시를 보는 불일치가 있었다."""
+    if not s.smtp_user:
+        raise RuntimeError(
+            "mailer_mode=smtp 인데 smtp_user 미설정 — 코드가 로그로 새는 console 폴백을 막기 위해 "
+            "실패(fail-closed). SMTP 자격을 주입하거나 개발이면 mailer_mode=console 로 명시하세요."
+        )
+    if not s.smtp_host:
+        # 빈 호스트는 smtplib 이 연결 자체를 시도하지 않아 가장 헷갈리는 예외로 떨어진다.
+        raise RuntimeError("mailer_mode=smtp 인데 smtp_host 미설정 — SMTP_HOST 를 지정하세요.")
+    # 발신 주소 검증. `smtp_from or smtp_user` 폴백 자체는 유지한다 — Gmail 처럼 계정명이 곧
+    # 이메일인 제공자에선 정당하다. 문제는 **결과가 주소가 아닐 때**다: Resend 의 smtp_user 는
+    # 리터럴 "resend" 라서 폴백하면 From 이 `resend` 가 되고, 수신측이 거부하는데 서버 로그엔
+    # 성공으로 남아 원인 추적이 어렵다. (발신 도메인은 SPF/DKIM 정렬 대상이다.)
+    sender = s.smtp_from or s.smtp_user
+    if "@" not in sender:
+        raise RuntimeError(
+            f"mailer_mode=smtp 인데 발신 주소가 이메일이 아님(smtp_from={s.smtp_from!r}, "
+            f"폴백 smtp_user={s.smtp_user!r}) — SMTP_FROM 에 발신 주소를 지정하세요"
+            " (예: 'loupit <no-reply@jobcho.wiki>')."
+        )
+    return sender
+
+
 def get_mailer():
     """`mailer_mode` 로 메일러 선택. **운영 fail-closed**(보안점검 2026-07-23):
 
@@ -80,22 +115,6 @@ def get_mailer():
     `mailer_mode=console`(명시적 개발 선택)에서만 반환된다 — 운영은 mailer_mode=smtp + smtp_user 필수."""
     s = get_settings()
     if s.mailer_mode == "smtp":
-        if not s.smtp_user:
-            raise RuntimeError(
-                "mailer_mode=smtp 인데 smtp_user 미설정 — 코드가 로그로 새는 console 폴백을 막기 위해 "
-                "실패(fail-closed). SMTP 자격을 주입하거나 개발이면 mailer_mode=console 로 명시하세요."
-            )
-        # 발신 주소 검증(2026-07-27). `smtp_from or smtp_user` 폴백 자체는 유지한다 — Gmail 처럼
-        # 계정명이 곧 이메일인 제공자에선 정당하다. 문제는 **결과가 주소가 아닐 때**다: Resend 의
-        # smtp_user 는 리터럴 `"resend"` 라서 폴백하면 From 이 `resend` 가 되고, 수신측이 거부하는데
-        # 서버 로그엔 성공으로 남아 원인 추적이 어렵다. 그래서 폴백을 막는 게 아니라 최종값을 본다.
-        # (발신 도메인은 SPF/DKIM 정렬 대상이므로 운영에서 아무 값이나 될 수 없다.)
-        sender = s.smtp_from or s.smtp_user
-        if "@" not in sender:
-            raise RuntimeError(
-                f"mailer_mode=smtp 인데 발신 주소가 이메일이 아님(smtp_from={s.smtp_from!r}, "
-                f"폴백 smtp_user={s.smtp_user!r}) — SMTP_FROM 에 발신 주소를 지정하세요"
-                " (예: 'loupit <no-reply@jobcho.wiki>')."
-            )
+        sender = resolve_sender(s)  # 검증 규칙은 기동 시점 검증과 공유(main.validate_mail_config)
         return SmtpMailer(s.smtp_host, s.smtp_port, s.smtp_user, s.smtp_pass, sender)
     return ConsoleMailer()

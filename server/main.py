@@ -78,9 +78,44 @@ async def _retention_scheduler(settings: Settings) -> None:
         await asyncio.sleep(settings.compare_log_purge_interval_seconds)
 
 
+_VALID_MAILER_MODES = ("console", "smtp")
+
+
+def validate_mail_config(settings: Settings) -> None:
+    """메일 설정을 **기동 시점**에 검증한다 — 오설정은 배포에서 죽고, 요청에서 조용히 죽지 않는다.
+
+    적대검토 2026-07-27이 잡은 수정 상호작용 결함: `send_code_safe`(발송 예외를 삼켜 균일 204 유지)
+    가 `get_mailer()` 의 fail-closed RuntimeError 까지 삼켰다. 결과는 fail-closed 가 막으려던 바로
+    그 상태 — 기동 성공·응답 204·**메일 0통**·로그 한 줄. 5개 렌즈 중 4개가 독립 수렴했다.
+
+    **설정 오류와 일시적 발송 실패는 다른 종류다.** 전자는 배포 시점에 크게 실패해야 하고, 후자만
+    삼켜야 한다. `get_settings()` 가 lru_cache 라 런타임 중 설정이 바뀔 수 없으므로, 기동 시 1회
+    검증하면 이후 `get_mailer()` 는 사실상 던지지 않는다 — 삼킴은 그때부터 순수하게 '일시적 실패'만
+    덮는다.
+
+    M9 OFF 배포(현 프로덕션)는 메일을 아예 안 보내므로 검증 대상이 아니다."""
+    if not settings.m9_enabled:
+        return
+    if settings.mailer_mode not in _VALID_MAILER_MODES:
+        # 구 판본은 `== "smtp"` 만 봐서 `SMTP`·`stmp`·`smtp `(공백) 가 전부 else 로 떨어져
+        # ConsoleMailer 가 됐다. 그건 **인증 코드와 수신 이메일을 평문으로 journald 에 적재**한다는
+        # 뜻이다(NFR31 위반) — 운영에서 가장 조용하고 가장 나쁜 실패라 명시적으로 거부한다.
+        raise RuntimeError(
+            f"mailer_mode={settings.mailer_mode!r} 는 알 수 없는 값 — {_VALID_MAILER_MODES} 중 하나여야 "
+            "한다. 오타는 조용히 ConsoleMailer 로 떨어져 인증 코드가 평문 로그에 남는다(NFR31)."
+        )
+    if settings.mailer_mode == "smtp":
+        from server.mailer import resolve_sender
+
+        # 전달받은 settings 를 그대로 검증한다 — get_mailer() 는 lru_cache 된 전역을 읽으므로
+        # 인자를 무시하는 불일치가 생겼었다(테스트 MG-1 이 잡음). 규칙은 resolve_sender 가 소유.
+        resolve_sender(settings)
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     s = get_settings()
+    validate_mail_config(s)
     await init_pool()
     app.state.reference_cache = TTLCache(s.reference_cache_ttl)
     app.state.trending_cache = TTLCache(s.trending_cache_ttl)  # 비교 트렌딩(60s)
