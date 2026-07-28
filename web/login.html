@@ -1,0 +1,77 @@
+<!doctype html>
+<!-- web/login.html — SC14 참여 로그인 화면(무비밀번호 이메일 코드). 익명 열람은 로그인 불필요 —
+     이 화면은 복지 정보를 직접 등록·수정하려는 기여자용이다(anonymous-first). noindex. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>로그인 — jobcho.wiki 잡초</title>
+  <meta name="description" content="복지 정보를 직접 등록·수정하려면 로그인하세요. 비밀번호 없이 이메일 코드로 로그인합니다.">
+  <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
+  <link rel="stylesheet" href="/assets/v2/css/styles.css">
+  <link rel="stylesheet" href="/assets/v2/css/auth.css">
+</head>
+<body data-page-type="auth">
+<header data-global class="gnb">
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <a href="/" class="gnb-link">← 비교하러 가기</a>
+  </nav>
+</header>
+
+<main class="auth-main">
+  <div class="auth-card">
+    <h1>기여자 로그인</h1>
+    <p class="auth-lede">둘러보기·비교는 <strong>로그인 없이</strong> 그대로예요. 로그인은 <strong>복지 정보를 직접 등록·수정</strong>할 때만 필요해요.</p>
+
+    <!-- ① 이메일 입력 -->
+    <form id="step-email" novalidate>
+      <label for="email">이메일</label>
+      <input id="email" name="email" type="email" autocomplete="email" inputmode="email"
+             placeholder="you@example.com" required>
+      <p class="auth-hint">비밀번호가 없어요. 이메일로 받은 6자리 코드로 로그인합니다.</p>
+      <button class="auth-btn" type="submit" id="send-btn">인증 코드 받기</button>
+    </form>
+
+    <!-- ② 코드 입력 -->
+    <form id="step-code" hidden novalidate>
+      <p class="auth-sent"><strong id="sent-to"></strong> 으로 6자리 코드를 보냈어요.</p>
+      <label for="code">인증 코드 (6자리)</label>
+      <input id="code" name="code" inputmode="numeric" autocomplete="one-time-code"
+             maxlength="6" pattern="[0-9]*" placeholder="••••••" required>
+      <p class="auth-timer" id="login-timer" aria-live="polite"></p>
+      <button class="auth-btn" type="submit" id="login-btn">로그인</button>
+      <div class="auth-links">
+        <button type="button" class="auth-link" id="resend-btn">코드 다시 받기</button>
+        <button type="button" class="auth-link" id="change-btn">이메일 변경</button>
+      </div>
+    </form>
+
+    <!-- ③ 완료 -->
+    <div id="step-done" hidden>
+      <p class="auth-welcome">환영합니다, <strong id="nickname"></strong>님!</p>
+      <p class="auth-done-sub" id="done-sub"></p>
+      <a class="auth-btn" href="/mypage">마이페이지로 가기</a>
+      <div class="auth-links">
+        <a class="auth-link" href="/">둘러보러 가기</a>
+        <button type="button" class="auth-link" id="logout-btn">로그아웃</button>
+      </div>
+    </div>
+
+    <p class="auth-error" id="auth-error" hidden role="alert"></p>
+  </div>
+</main>
+
+<footer data-global>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+  </nav>
+  <p class="disclaimer">로그인 정보는 이메일과 닉네임뿐입니다. 비밀번호를 저장하지 않습니다.</p>
+</footer>
+
+<script type="module" src="/assets/v2/js/login.js" defer></script>
+</body>
+</html>

@@ -1,0 +1,113 @@
+<!doctype html>
+<!-- web/edit.html — SC14 복지 편집 폼. 재직 인증한 회사의 복지를 등록·수정한다.
+     세션+재직 필요(require_member·require_employment) — 미보유 시 로그인/인증 유도. noindex. -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>복지 편집 — jobcho.wiki 잡초</title>
+  <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
+  <link rel="stylesheet" href="/assets/v2/css/styles.css">
+  <link rel="stylesheet" href="/assets/v2/css/auth.css">
+</head>
+<body data-page-type="auth">
+<header data-global class="gnb">
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <a href="/mypage" class="gnb-link">← 마이페이지</a>
+  </nav>
+</header>
+
+<main class="auth-main">
+  <!-- 미로그인 -->
+  <div id="need-login" class="auth-card" hidden>
+    <h1>로그인이 필요해요</h1>
+    <p class="auth-lede">복지 편집은 로그인 후 할 수 있어요. 둘러보기·비교는 로그인 없이 그대로예요.</p>
+    <a class="auth-btn" href="/login">로그인하러 가기</a>
+  </div>
+
+  <!-- 로그인은 됐지만 재직 인증한 회사가 없음 -->
+  <div id="need-verify" class="auth-card" hidden>
+    <h1>재직 인증이 필요해요</h1>
+    <p class="auth-lede">복지 정보를 <strong>직접 편집</strong>하려면 먼저 그 회사의 재직 인증이 필요해요.</p>
+    <a class="auth-btn" href="/verify">회사 이메일로 재직 인증하기</a>
+  </div>
+
+  <!-- 편집 카드 -->
+  <div id="edit-card" class="auth-card" hidden>
+    <h1>복지 편집</h1>
+    <p class="auth-lede">재직 인증한 회사의 복지를 등록·수정할 수 있어요. 편집 내용은 <strong>공개 이력</strong>에 남고, 재직 인증 사용자의 편집에는 자동으로 <strong>‘✓ 재직자 확인’</strong> 배지가 붙어요(공식·추정 배지는 지정할 수 없어요).</p>
+
+    <label for="comp-select">회사</label>
+    <select id="comp-select" hidden aria-label="재직 인증한 회사"></select>
+    <p id="comp-single" class="auth-sent" hidden></p>
+    <p><a id="history-link" class="auth-link" href="#" hidden>이 회사 편집 이력 보기 →</a></p>
+
+    <div id="list-section" hidden>
+      <h2>등록된 복지</h2>
+      <ul id="benefit-list" class="ben-list"></ul>
+      <p id="benefit-empty" class="vrf-empty" hidden>아직 등록된 복지가 없어요. 첫 복지를 등록해보세요.</p>
+      <button type="button" class="auth-btn auth-btn--ghost" id="new-benefit">+ 새 복지 등록</button>
+    </div>
+
+    <!-- 등록/수정 공용 폼 -->
+    <form id="benefit-form" hidden>
+      <h2 id="form-title">새 복지 등록</h2>
+
+      <div id="f-code-wrap">
+        <label for="f-code">복지 코드</label>
+        <input id="f-code" autocomplete="off" maxlength="30" placeholder="예: meal, welfare_point">
+        <p class="auth-hint">소문자·숫자·_ 2~30자. 회사 안에서 유일한 식별자예요(등록 후 변경 불가).</p>
+      </div>
+      <div id="f-ctgr-fixed-wrap" hidden>
+        <p class="auth-sent">복지 코드 <strong id="f-code-fixed"></strong> · 카테고리 <strong id="f-ctgr-fixed"></strong> <span class="auth-hint">(수정 불가)</span></p>
+      </div>
+
+      <label for="f-name">복지 이름</label>
+      <input id="f-name" autocomplete="off" maxlength="100" placeholder="예: 식대 지원">
+
+      <div id="f-ctgr-wrap">
+        <label for="f-ctgr">카테고리</label>
+        <select id="f-ctgr"></select>
+      </div>
+
+      <div class="amt-row">
+        <div id="f-amt-wrap" class="amt-col">
+          <label for="f-amt">금액 (만원, 연간)</label>
+          <input id="f-amt" type="number" inputmode="numeric" min="0" step="1" placeholder="예: 220">
+        </div>
+        <label class="qual-check"><input type="checkbox" id="f-qual"> 정성 복지 (금액으로 매길 수 없음)</label>
+      </div>
+
+      <label for="f-note">비고 <span class="auth-hint">(선택)</span></label>
+      <input id="f-note" autocomplete="off" maxlength="200" placeholder="예: 1인당 월 20만원 한도">
+
+      <label for="f-editnote">편집 사유 <span class="auth-hint">(공개 이력에 남아요 · 선택)</span></label>
+      <input id="f-editnote" autocomplete="off" maxlength="500" placeholder="예: 2026년 복지 개편 반영">
+
+      <p class="auth-sent" id="conflict-note" hidden role="alert"></p>
+      <p class="auth-error" id="form-err" hidden role="alert"></p>
+
+      <button class="auth-btn" id="form-submit" type="submit">등록</button>
+      <div class="auth-links" style="justify-content:flex-start">
+        <button type="button" class="auth-link" id="form-cancel">취소</button>
+      </div>
+    </form>
+
+    <p class="auth-ok" id="edit-ok" hidden role="status"></p>
+  </div>
+</main>
+
+<footer data-global>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+  </nav>
+  <p class="disclaimer">편집 이력은 나무위키처럼 공개됩니다(닉네임만 표시, 이메일·개인정보 비공개).</p>
+</footer>
+
+<script type="module" src="/assets/v2/js/edit.js" defer></script>
+</body>
+</html>
