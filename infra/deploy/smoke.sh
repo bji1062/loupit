@@ -92,13 +92,22 @@ chk "SM-21 무헤더 login-code → 403" \
 #   통과 건수는 참고로 출력한다 — `burst` 드리프트가 눈에 보이게 하되 실패 사유로는 쓰지 않는다.
 #   ⚠ 이 검사는 **러너 IP 의 공유 메일 버킷을 약 2분 비운다**(`rate 3r/m` = 20초당 1토큰 회복).
 #     서버 자신의 IP 라 실사용자 영향은 없으나, 직후 이 호스트에서 로그인을 시험하면 429 다.
+#   ⓘ 헤더를 매 회 덤프한다 — SM-23·23b 가 **추가 요청 없이** 이 응답들을 재활용한다(메일 0통).
 sm22(){
   _p=0
+  rm -f "${SMOKE_TMP}/sm22.hp"
   for _i in 1 2 3 4 5 6 7 8 9 10; do
-    _c=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+    _c=$(curl -s -D "${SMOKE_TMP}/sm22.h" -o /dev/null -w '%{http_code}' -X POST \
          -H 'Content-Type: application/json' -H 'X-Loupit-Client: web' \
          -d "${MAIL_BODY}" "${MAIL_EP}")
-    [ "$_c" = 429 ] && { echo "$_p" > "${SMOKE_TMP}/sm22.pass"; return 0; }
+    # 비-429 응답을 보관 — SM-23b 의 대조군이다. **첫 응답이 아니라 "마지막 비-429"** 를 쓴다:
+    # 공유 버킷이라 첫 방부터 429 일 수 있고, 그때 첫 응답을 대조군으로 삼으면 그것이 곧 429 라
+    # SM-23b 가 SM-23 의 동어반복으로 축약돼 **정적 add_header 회귀를 그대로 통과시킨다**
+    # (2026-07-28 적대검토 실측: 스모크 전체가 ~1.8초라 연속 재실행이 20초 창 한복판에 떨어진다 —
+    #  release.sh 의 실패 복구 안내가 바로 "스모크 재실행"이다).
+    [ "$_c" != 429 ] && cp "${SMOKE_TMP}/sm22.h" "${SMOKE_TMP}/sm22.hp"
+    [ "$_c" = 429 ] && { cp "${SMOKE_TMP}/sm22.h" "${SMOKE_TMP}/sm22.h429"
+                         echo "$_p" > "${SMOKE_TMP}/sm22.pass"; return 0; }
     _p=$((_p+1))
   done
   echo "$_p" > "${SMOKE_TMP}/sm22.pass"
@@ -106,6 +115,43 @@ sm22(){
 }
 chk "SM-22 메일 리밋 429 도달" "sm22"
 echo "       · 통과 $(cat "${SMOKE_TMP}/sm22.pass" 2>/dev/null || echo '?')건 후 429 (정본 기대 6 = 1+burst; 공유 버킷이라 더 적을 수 있음)"
+
+# SM-23: 그 429 가 **재시도 대기(Retry-After)를 실었는가**(적대검토 ③, 2026-07-28).
+#   `rate=3r/m` → 토큰 1개 회수 20초(실측: 429 로부터 20.2초 뒤 재시도 204). 이 헤더가 없으면
+#   프론트가 "잠시 후"라는 무한정 안내밖에 못 내고, 연타하는 사용자가 **풀리는 토큰을 즉시 먹어**
+#   공유 버킷의 다른 경로까지 굶긴다(SP-INFRA-3.4.6).
+#   ⚠ **추가 요청 0** — 위 SM-22 가 이미 받은 429 응답의 헤더를 그대로 본다(메일 0통 유지).
+#   회귀 대상은 둘이다: (a) add_header 누락, (b) `always` 누락(429 는 에러 응답이라 always 없이는
+#   붙지 않는다 — 격리 하네스 실측). 둘 다 여기서 "헤더 부재"로 똑같이 잡힌다.
+#   ⚠ 429 응답만 담은 별도 파일을 본다 — SM-22 가 429 에 **도달하지 못한** 실행에서 마지막
+#     비-429 응답을 검사하면 SM-23 이 덩달아 FAIL 해 원인을 "Retry-After 배선"으로 오진시킨다.
+#     그 경우의 진짜 원인은 SM-22 가 이미 보고한 "메일 리밋이 사라졌다"다.
+if [ ! -f "${SMOKE_TMP}/sm22.h429" ]; then
+  echo "  SKIP SM-23 — SM-22 가 429 에 도달하지 못해 검사할 응답이 없다(원인은 위 SM-22 를 보라)."
+else
+  chk "SM-23 429 에 Retry-After: 20" "grep -qi '^retry-after: *20' ${SMOKE_TMP}/sm22.h429"
+fi
+
+# SM-23b: **429 가 아닌 응답엔 붙지 않는가** — `map $status` 의 `default ""` 계약.
+#   정적 `add_header Retry-After 20 always` 로 되돌리면 성공 204 에도 붙는다(실측). 그건 "지금
+#   기다려야 한다"는 거짓 신호라 잡아야 한다. MG-9(파이썬)는 **리포 파일**만 보므로, /etc/nginx
+#   수기 편집·부분 배포로 생긴 드리프트에 대해서는 이 SM-23b 가 유일한 라이브 방어선이다.
+#   ⚠ 대조군이 없으면 **통과시키지 말고 SKIP 으로 표시한다.** '검증 못 함'을 '통과'로 적는 순간
+#     게이트는 거짓 안심이 된다 — 이 스크립트가 SM-9·SM-16 에서 이미 겪은 false-pass 부류다.
+sm23b(){
+  [ -f "${SMOKE_TMP}/sm22.hp" ] || return 2          # 비-429 표본 0 → 판정 불가
+  ! grep -qi '^retry-after:' "${SMOKE_TMP}/sm22.hp"  # 비-429 응답에 헤더가 있으면 실패
+}
+if sm23b; then
+  echo "  OK  SM-23b Retry-After 는 429 에만(비-429 응답 대조 확인)"
+elif [ "$?" = 2 ]; then
+  echo "  SKIP SM-23b — 첫 요청부터 429 라 대조군(비-429 응답)이 없다."
+  echo "       · 정적 add_header 회귀는 **이번 실행에서 검증되지 않았다**. 20초 이상 유휴 후 재실행하면 검증된다."
+  echo "       · 배포 전 게이트인 test_MG9_… 가 리포 파일에 대해서는 같은 회귀를 결정적으로 잡는다."
+else
+  echo "  FAIL SM-23b — 429 가 아닌 응답에 Retry-After 가 붙었다(정적 add_header 회귀 의심)" >&2
+  fail=1
+fi
 
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"

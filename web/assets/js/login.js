@@ -21,6 +21,18 @@ export function countdownText(remain) {
   return { text: `코드 유효시간 ${Math.floor(remain / 60)}:${String(remain % 60).padStart(2, '0')}`, expired: false };
 }
 
+// ── 순수: 429 대기 안내 — 초를 알면 숫자로, 모르면 기존 문구 ──
+// `err.retryAfter` 는 nginx 메일 리밋의 `Retry-After` 헤더뿐이다(api.js 참조). 값을 모를 때
+// "잠시 후"로 폴백하는 게 핵심 — 실제 대기가 20초인데 무한정 안내를 하면 사용자는 연타한다.
+// 연타가 excess 를 더 올리지는 않지만(nginx 는 거부 시 커밋하지 않는다 — 실측), **풀리는 토큰을
+// 즉시 먹어치워** 정작 확인할 때마다 계속 429 를 보게 되고 공유 버킷의 다른 경로까지 굶는다
+// (적대검토 ③, 근거는 SP-INFRA-3.4.6).
+export function throttleMessage(retryAfter) {
+  return Number.isFinite(retryAfter) && retryAfter > 0
+    ? `요청이 너무 잦아요. ${retryAfter}초 뒤에 다시 시도해주세요.`
+    : '요청이 너무 잦아요. 잠시 후 다시 시도해주세요.';
+}
+
 // ── 순수: ApiError·네트워크 오류 → 단계별 친절 메시지 ──
 // 서버는 원문(코드/이메일)을 응답에 넣지 않는다(NFR31). 로그인 경로의 401 은 세션이 아니라
 // **코드 불일치** 한 뜻뿐이다(로그인 자체가 세션 없이 부르는 라우트).
@@ -29,10 +41,14 @@ export function messageFor(err, phase) {
   const s = err.status;
   if (phase === 'send') {
     if (s === 422) return '이메일 형식을 확인해주세요.';
-    if (s === 429) return '요청이 너무 잦아요. 잠시 후 다시 시도해주세요.';
+    // 발송 경로의 429 는 **엣지 IP 리밋 한 뜻뿐**이다 — 앱 핸들러(`POST /members/login-code`)는
+    // 계정 열거 차단을 위해 균일 204 만 낸다. 그래서 여기서만 초를 노출할 수 있다.
+    if (s === 429) return throttleMessage(err.retryAfter);
   } else { // 'login'
     if (s === 401) return '코드가 일치하지 않아요. 다시 확인해주세요.';
     if (s === 410) return '코드가 만료됐어요. ‘코드 다시 받기’를 눌러주세요.';
+    // ⚠ 여기 429 는 **앱의 코드 시도 상한**이라 뜻이 다르다: 기다린다고 풀리지 않고 새 코드가
+    //   필요하다. `Retry-After` 도 없다(엣지가 아니라 앱이 낸 429). 초를 붙이면 거짓 안내다.
     if (s === 429) return '시도가 너무 많아요. 새 코드를 받아주세요.';
     if (s === 422) return '6자리 숫자 코드를 입력해주세요.';
   }

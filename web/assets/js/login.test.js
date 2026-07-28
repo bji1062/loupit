@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import { ApiError } from './api.js';
 import {
   CODE_TTL_SEC, isValidEmail, isValidCode, countdownText, messageFor, doneSubText,
+  throttleMessage,
 } from './login.js';
 
 describe('isValidEmail', () => {
@@ -77,6 +78,33 @@ describe('messageFor', () => {
     const err = new ApiError(401, '/members/login', { detail: 'code 123456 for a@b.com' });
     const msg = messageFor(err, 'login');
     assert.doesNotMatch(msg, /123456|a@b\.com/);
+  });
+
+  // ── 적대검토 ③: 엣지 429 는 대기 초를 숫자로, 앱 429 는 그대로 ──
+  test('발송 429 + Retry-After 20 → 초를 숫자로 노출', () => {
+    const err = new ApiError(429, '/members/login-code', null, 20);
+    assert.match(messageFor(err, 'send'), /20초 뒤에/);
+  });
+  test('발송 429 + Retry-After 없음 → 기존 "잠시 후" 폴백', () => {
+    assert.match(messageFor(e(429), 'send'), /잠시 후/);
+    assert.doesNotMatch(messageFor(e(429), 'send'), /\d+초/);
+  });
+  test('로그인 단계 429(앱 시도 상한)는 retryAfter 가 있어도 초를 붙이지 않는다', () => {
+    // 이 429 는 "기다리면 풀린다"가 아니라 "새 코드를 받아야 한다"라 뜻이 다르다.
+    // 엣지가 붙인 값이 어쩌다 실려도 안내가 오염되면 안 된다.
+    const err = new ApiError(429, '/members/login', null, 20);
+    assert.match(messageFor(err, 'login'), /새 코드/);
+    assert.doesNotMatch(messageFor(err, 'login'), /\d+초/);
+  });
+});
+
+describe('throttleMessage(③ 대기 초 안내)', () => {
+  test('양수 → "N초 뒤에"', () => { assert.equal(throttleMessage(20), '요청이 너무 잦아요. 20초 뒤에 다시 시도해주세요.'); });
+  test('null·undefined·0·음수·NaN → "잠시 후" 폴백', () => {
+    for (const v of [null, undefined, 0, -1, NaN, Infinity, '20']) {
+      assert.match(throttleMessage(v), /잠시 후/, `v=${String(v)}`);
+      assert.doesNotMatch(throttleMessage(v), /\d+초/, `v=${String(v)}`);
+    }
   });
 });
 

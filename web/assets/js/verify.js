@@ -41,7 +41,20 @@ export function sendOutcome(err) {
   if (s === 409) return { kind: 'manual', msg: '' }; // manual_required — 도메인 미등록 회사
   if (s === 422) return { kind: 'error', msg: '회사 이메일 도메인이 이 회사와 일치하지 않아요.' };
   if (s === 401) return { kind: 'session', msg: '로그인이 만료됐어요. 다시 로그인해주세요.' };
-  if (s === 429) return { kind: 'error', msg: '요청이 너무 잦아요. 잠시 후 다시 시도해주세요.' };
+  // 발송 경로의 429 는 **엣지 IP 리밋 한 뜻뿐**이다(앱 핸들러는 204/409/422 만 낸다) →
+  // `Retry-After`(nginx map, 20초)를 알면 숫자로 노출한다. 모르면 기존 문구로 폴백(적대검토 ③).
+  // ⚠ 아래 verifyOutcome 의 429 는 **앱의 코드 시도 상한**이라 뜻이 달라 초를 붙이지 않는다.
+  if (s === 429) {
+    // s 는 위에서 `err instanceof ApiError ? err.status : 0` 로 얻었다 → 여기 도달했다면
+    // err 는 반드시 ApiError 다(비 ApiError 는 s=0 이라 아래 기본 분기로 간다).
+    const ra = err.retryAfter;
+    return {
+      kind: 'error',
+      msg: Number.isFinite(ra) && ra > 0
+        ? `요청이 너무 잦아요. ${ra}초 뒤에 다시 시도해주세요.`
+        : '요청이 너무 잦아요. 잠시 후 다시 시도해주세요.',
+    };
+  }
   return { kind: 'error', msg: '코드 발송에 실패했어요. 잠시 후 다시 시도해주세요.' };
 }
 
@@ -202,16 +215,32 @@ export function initVerifyPage() {
     const wait = resendWaitSec(sentAt.get(sendKey(target.comp_id, email)), Date.now());
     if (wait > 0) {
       setErr(`방금 이 주소로 코드를 보냈어요. 받은 코드를 입력하거나 ${wait}초 뒤에 다시 요청해주세요.`);
+      // "받은 코드를 입력하라"고 안내하면서 입력칸이 없으면 안내가 자기모순이다. 평시엔 이미
+      // 보이므로 no-op 이고, '변경' → 같은 회사 재선택으로 code-step 이 닫힌 경로에서만 실효가 있다.
+      // 타이머는 건드리지 않는다 — 남은 TTL 은 원 발송 시각 기준이라 여기서 5:00 으로 되감으면 거짓말이다.
+      $('code-step').hidden = false; $('emp-code').focus();
       return;
     }
     try {
       await withBusy($('emp-send'), '보내는 중…', () => requestEmployCode(target.comp_id, email));
+      // 발송은 실제로 일어났으니 쿨다운 기록은 **가드보다 먼저** 남긴다(재클릭 억제는 유지).
       sentAt.set(sendKey(target.comp_id, email), Date.now());
+      // ⚠ 최신성 가드 — 응답을 기다리는 사이 사용자가 '변경'을 눌렀거나 다른 회사를 골랐으면
+      //   이 늦은 성공으로 화면을 되살리지 않는다. `withBusy` 는 인자로 받은 emp-send 만 잠그므로
+      //   '변경' 버튼은 대기 중에도 눌린다 — 그때 selected=null 로 회사 컨텍스트가 지워지는데,
+      //   가드가 없으면 code-step·5:00 타이머·포커스가 되살아나 **회사 없는 코드 입력 화면**이
+      //   그려진다(#code-step 은 #email-step 의 형제라 함께 숨겨지지 않는다). 그 상태로 '인증하기'를
+      //   누르면 "회사를 먼저 선택해주세요."가 떠 사용자는 영문을 모른다.
+      //   기존에도 있던 레이스지만 창이 프론트 abort 상한과 같아서(구 8s → 지금 엣지 15s) 이번
+      //   MAIL_TIMEOUT 상향이 노출 시간을 약 2배로 넓혔다 — 그래서 여기서 함께 닫는다.
+      //   (동류 결함이 docs/AUDIT-2026-07-17.md 의 inputs.js 지적으로 이미 등재돼 있다.)
+      if (selected !== target) return;
       $('emp-code').value = ''; // 새 코드 발송 → 이전 입력 코드 비움(혼동 방지)
       $('code-step').hidden = false; $('manual-step').hidden = true; $('emp-code').focus();
       startTimer('emp-timer'); // 유효시간 카운트다운 시작
     } catch (err) {
       const { kind, msg } = sendOutcome(err);
+      if (selected !== target) return;   // 늦은 실패도 마찬가지 — 남의 화면에 오류를 뿌리지 않는다
       if (kind === 'manual') { // 도메인 미등록 → 수동 승인 폴백
         $('manual-step').hidden = false; $('code-step').hidden = true; stopTimer('emp-timer');
         return;

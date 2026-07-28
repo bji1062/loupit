@@ -61,6 +61,16 @@ describe('sendOutcome — 코드 발송 실패 분류', () => {
     assert.match(o.msg, /로그인/);
   });
   test('429 → 빈도 안내', () => { assert.match(sendOutcome(e(429)).msg, /잦아요/); });
+  // ── 적대검토 ③: 엣지가 준 대기 초를 숫자로 노출, 없으면 폴백 ──
+  test('429 + Retry-After 20 → "20초 뒤에"', () => {
+    const o = sendOutcome(new ApiError(429, '/employment/verify-code', null, 20));
+    assert.equal(o.kind, 'error');
+    assert.match(o.msg, /20초 뒤에/);
+  });
+  test('429 + Retry-After 없음 → "잠시 후" 폴백(숫자 없음)', () => {
+    assert.match(sendOutcome(e(429)).msg, /잠시 후/);
+    assert.doesNotMatch(sendOutcome(e(429)).msg, /\d+초/);
+  });
   test('그 외·비 ApiError → 발송 실패', () => {
     assert.match(sendOutcome(e(500)).msg, /발송에 실패/);
     assert.match(sendOutcome(new Error('net')).msg, /발송에 실패/);

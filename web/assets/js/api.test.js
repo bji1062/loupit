@@ -7,6 +7,7 @@ import assert from 'node:assert/strict';
 import {
   apiFetch, ApiError, getReference, searchCompanies, getCompany, API_BASE,
   getBenefitsForEdit, createBenefit, updateBenefit, getEdits,
+  requestLoginCode, requestEmployCode, login,
 } from './api.js';
 
 // ── fetch 스파이(호출 인자 기록) ────────────────────────────────────────────
@@ -202,5 +203,113 @@ describe('SC14 참여 헬퍼', () => {
     assert.equal(seen[0].url, API_BASE + '/companies/10/edits?limit=50&before=812');
     await getEdits(10, 50, null);
     assert.equal(seen[1].url.includes('before'), false); // 첫 페이지엔 커서 없음
+  });
+});
+
+// ── 적대검토 ③: 429 Retry-After → ApiError.retryAfter ────────────────────────
+// nginx 메일 리밋(`rate=3r/m`)의 실제 대기는 20초인데 그 값이 응답에 없어 프론트가 "잠시 후"
+// 라는 무한정 안내밖에 못 냈다. 엣지가 헤더를 싣고(conf.d/loupit-limits.conf 의 map),
+// 여기서 그 값을 구조화해 UI 로 넘긴다. **헤더가 없으면 반드시 null** 이어야 한다 —
+// 앱이 내는 429(로그인 시도 상한 등)에 20초를 붙이면 거짓 안내가 되기 때문이다.
+describe('429 Retry-After 파싱(ApiError.retryAfter)', () => {
+  // apiSend 경로 목: headers.get 을 가진 최소 Response 흉내.
+  function mockSendWithHeaders(status, headerMap) {
+    globalThis.fetch = async () => ({
+      ok: status >= 200 && status < 300,
+      status,
+      headers: { get: (k) => (k.toLowerCase() === 'retry-after' ? (headerMap['retry-after'] ?? null) : null) },
+      text: async () => '',
+    });
+  }
+
+  test('429 + Retry-After: 20 → retryAfter === 20', async () => {
+    mockSendWithHeaders(429, { 'retry-after': '20' });
+    await assert.rejects(() => requestLoginCode('a@b.co'), (err) => {
+      assert.ok(err instanceof ApiError);
+      assert.equal(err.status, 429);
+      assert.equal(err.retryAfter, 20);
+      return true;
+    });
+  });
+
+  test('429 인데 헤더 없음(앱 발급 429) → retryAfter === null', async () => {
+    mockSendWithHeaders(429, {});
+    await assert.rejects(() => login('a@b.co', '123456'), (err) => {
+      assert.equal(err.retryAfter, null); // "20초 뒤" 안내가 붙으면 안 되는 경로
+      return true;
+    });
+  });
+
+  // delta-seconds = 10진 정수(RFC 9110 §10.2.3). 그 밖은 **전부 null** — `Number()` 로 느슨하게
+  // 받으면 `0x14`(→20)·`1e30`·`+20`·`.5` 같은 값이 숫자로 통과해 계약보다 넓어진다.
+  test('정수가 아닌 값은 전부 null(억지 해석 금지)', async () => {
+    const nonInteger = [
+      'Wed, 21 Oct 2015 07:28:00 GMT', '', '  ', 'soon', '-5', 'NaN',
+      '0.5', '.5', '+20', '0x14', '1e30', '20s', ' 20 x', 'Infinity',
+    ];
+    for (const raw of nonInteger) {
+      mockSendWithHeaders(429, { 'retry-after': raw });
+      await assert.rejects(() => requestLoginCode('a@b.co'), (err) => {
+        assert.equal(err.retryAfter, null, `raw=${JSON.stringify(raw)} → null 이어야 함`);
+        return true;
+      });
+    }
+  });
+
+  test('앞뒤 공백이 있는 정수는 받는다(헤더 파싱 관용 범위)', async () => {
+    mockSendWithHeaders(429, { 'retry-after': ' 20 ' });
+    await assert.rejects(() => requestLoginCode('a@b.co'), (err) => {
+      assert.equal(err.retryAfter, 20);
+      return true;
+    });
+  });
+
+  test('headers 자체가 없는 응답(익명 apiFetch 목 포함)에도 안전하게 null', async () => {
+    mockFetchStatus(429); // headers 프로퍼티 없음
+    await assert.rejects(() => apiFetch('/reference/all'), (err) => {
+      assert.ok(err instanceof ApiError);
+      assert.equal(err.retryAfter, null);
+      return true;
+    });
+  });
+
+  test('ApiError 4번째 인자 미지정 시 기본 null(구 호출부 하위호환)', () => {
+    assert.equal(new ApiError(500, '/x').retryAfter, null);
+  });
+});
+
+// ── 적대검토 ⑤: 메일 발송만 타임아웃 20s(엣지 proxy_read_timeout 15s 보다 길게) ──
+// 8s 기본값은 nginx 15s 보다 짧아, 제공자가 느릴 때 **서버가 정상 204 를 만드는 도중** 브라우저가
+// 먼저 abort 했다 → "네트워크 오류예요"인데 메일은 실제로 나간 상태. 20s 면 엣지가 항상 먼저
+// 끊어 브라우저는 확정 상태코드를 받는다. 실제 대기를 재우지 않고 **스케줄된 지연값**을 관측한다.
+describe('메일 발송 호출의 타임아웃(⑤)', () => {
+  async function captureDelays(fn) {
+    const delays = [];
+    const realSetTimeout = globalThis.setTimeout;
+    globalThis.setTimeout = (cb, ms, ...rest) => { delays.push(ms); return realSetTimeout(cb, ms, ...rest); };
+    // ⚠ try/finally 여야 한다 — `fn()` 이 **동기 throw** 하면 Promise 체인이 만들어지기 전이라
+    //   .finally 로는 원복이 유실되고, 전역 setTimeout 패치가 이후 테스트로 새어 나간다.
+    try { await fn(); } finally { globalThis.setTimeout = realSetTimeout; }
+    return delays;
+  }
+  const okSend = () => { globalThis.fetch = async () => ({ ok: true, status: 204, headers: { get: () => null }, text: async () => '' }); };
+
+  test('requestLoginCode → 25000ms', async () => {
+    okSend();
+    const delays = await captureDelays(() => requestLoginCode('a@b.co'));
+    assert.ok(delays.includes(25000), `기대 25000, 관측 ${JSON.stringify(delays)}`);
+  });
+
+  test('requestEmployCode → 25000ms', async () => {
+    okSend();
+    const delays = await captureDelays(() => requestEmployCode(10, 'a@corp.co'));
+    assert.ok(delays.includes(25000), `기대 25000, 관측 ${JSON.stringify(delays)}`);
+  });
+
+  test('메일이 아닌 호출은 기본 8000ms 유지(전역 상향이 아님)', async () => {
+    okSend();
+    const delays = await captureDelays(() => login('a@b.co', '123456'));
+    assert.ok(delays.includes(8000), `기대 8000, 관측 ${JSON.stringify(delays)}`);
+    assert.equal(delays.includes(25000), false);
   });
 });

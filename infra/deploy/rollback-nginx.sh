@@ -94,6 +94,43 @@ _referenced="$( { for _l in "${NGINX_ETC}"/sites-enabled/*; do
                 | sed -e 's/#.*//' | grep -oE '(^|[^_])limit_req[[:space:]]+zone=[A-Za-z0-9_]+' \
                 | sed -e 's/.*zone=//' | sort -u )"
 _orphan="$(comm -23 <(echo "${_referenced}") <(echo "${_defined}") | sed -e '/^$/d')"
+
+# ── 같은 검사를 `map` 변수에도 한다(2026-07-28 신설) ────────────────────────────────
+# `$loupit_retry_after`(SP-INFRA-3.4.6) 가 conf.d 정의 ↔ vhost 참조의 **두 번째** 교차 파일
+# 의존을 만들었다. `$loupit_bad_bot`(botdefense) 도 같은 구조다. zone 만 보던 위 검사는 이걸
+# 못 잡아서, 부분 롤백이 [5] 의 `nginx -t` 에 가서야 `unknown "..." variable` 로 터졌다 —
+# 자동 원복이 있어 라이브는 안전하지만, 이 스크립트의 약속("손도 대지 않고 중단")은 깨진다.
+#
+# 후보 이름을 **"conf.d 가 map 으로 정의한 적 있는 이름"**(현재 파일 ∪ 모든 .bak)으로 한정한다 —
+# vhost 의 `$host`·`$scheme` 같은 nginx 내장 변수를 오탐하지 않기 위해서다.
+# ⚠ `set -euo pipefail` 아래다 — grep 은 무매치 시 exit 1 이고 pipefail 이 그걸 치명적으로
+#   만든다(존 검사와 달리 map 은 "하나도 없음"이 정상 상태다). 모든 파이프라인에 `|| true`.
+_map_targets() {  # stdin 의 nginx 설정에서 `map <src> $<대상> {` 의 대상 이름만 뽑는다
+  { sed -e 's/#.*//' \
+      | grep -oE '(^|[[:space:]])map[[:space:]]+[^{;]*\$[A-Za-z0-9_]+[[:space:]]*\{' \
+      | grep -oE '\$[A-Za-z0-9_]+[[:space:]]*\{$' | grep -oE '[A-Za-z0-9_]+' | sort -u; } || true
+}
+_map_universe="$( { cat "${NGINX_ETC}"/conf.d/*.conf "${NGINX_ETC}"/conf.d/*.bak-* 2>/dev/null || true; } | _map_targets)"
+_map_defined="$( { for _f in "${NGINX_ETC}"/conf.d/*.conf; do [ -f "${_f}" ] && _resolved "${_f}"; done; } | _map_targets)"
+_map_referenced="$( { { for _l in "${NGINX_ETC}"/sites-enabled/*; do
+                          [ -e "${_l}" ] || continue
+                          _resolved "$(readlink -f "${_l}")"
+                        done; } \
+                      | sed -e 's/#.*//' | grep -oE '\$[A-Za-z0-9_]+' | sed -e 's/^\$//' | sort -u; } || true )"
+_map_orphan=""
+for _v in ${_map_universe}; do
+  if ! echo "${_map_referenced}" | grep -qx -- "${_v}"; then continue; fi   # vhost 가 안 쓰면 무관
+  if   echo "${_map_defined}"    | grep -qx -- "${_v}"; then continue; fi   # 정의도 남으면 정상
+  _map_orphan="${_map_orphan}${_v}"$'\n'
+done
+if [ -n "$(echo "${_map_orphan}" | tr -d '[:space:]')" ]; then
+  echo "  ✗ 롤백 후 map 정의가 사라지는데 vhost 참조는 남는 변수:" >&2
+  echo "${_map_orphan}" | sed -e '/^$/d' -e 's/^/      $/' >&2
+  echo "    → nginx: [emerg] unknown \"...\" variable 로 설정 로드가 실패한다." >&2
+  echo "    조치: 그 변수를 참조하는 vhost 의 .bak-${SUFFIX} 백업도 함께 갖춰 다시 실행하라." >&2
+  exit 1
+fi
+
 if [ -n "${_orphan}" ]; then
   echo "  ✗ 롤백 후 정의가 사라지는데 참조는 남는 존:" >&2
   echo "${_orphan}" | sed -e 's/^/      /' >&2
@@ -103,7 +140,8 @@ if [ -n "${_orphan}" ]; then
   echo "          (또는 해당 vhost 에서 limit_req 줄을 먼저 제거하라)." >&2
   exit 1
 fi
-echo "  ✓ 롤백 후 정의: [$(echo ${_defined} | tr '\n' ' ')] ⊇ 참조: [$(echo ${_referenced} | tr '\n' ' ')]"
+echo "  ✓ 롤백 후 zone 정의: [$(echo ${_defined} | tr '\n' ' ')] ⊇ 참조: [$(echo ${_referenced} | tr '\n' ' ')]"
+echo "  ✓ 롤백 후 map 변수 정의: [$(echo ${_map_defined} | tr '\n' ' ')] (검사 대상 이름: [$(echo ${_map_universe} | tr '\n' ' ')])"
 
 echo "[3/6] 현재 파일 스냅샷(= 롤백 실패 시 되돌아갈 지점)"
 # nginx -t 가 실패하면 '방금 되돌린 것을 다시 앞으로' 감아야 한다. .bak 을 신뢰하지 않고

@@ -318,6 +318,58 @@ describe('verify.html + initVerifyPage', () => {
   const SEARCH_OK = ['GET', '/companies/search', { status: 200, body: [{ comp_id: 40, comp_nm: '삼성전자', industry_nm: '반도체' }] }];
   const SEND_OK = ['POST', '/employment/verify-code', { status: 204 }];
 
+  // ── 늦은 발송 응답 레이스(적대검토 2026-07-28) ──────────────────────────────
+  // `withBusy` 는 인자로 받은 `emp-send` 만 잠근다 → 대기 중에도 '변경' 버튼은 눌린다.
+  // 그때 회사 컨텍스트가 지워지는데, 늦게 도착한 204 가 `code-step` 을 되살리면
+  // **회사 없는 코드 입력 화면**이 그려진다(#code-step 은 #email-step 의 형제라 함께 안 숨는다).
+  // 기존에도 있던 레이스지만 MAIL_TIMEOUT 20s 상향이 노출 창을 넓혀(구 8s → 엣지 15s) 함께 닫았다.
+  test('발송 대기 중 회사 "변경" → 늦은 204 가 코드 단계를 되살리지 않는다', async () => {
+    mockApi([
+      ['GET', '/members/me', { status: 200, body: { nickname: 'n', status: 'active', verifications: [] } }],
+      SEARCH_OK,
+      ['POST', '/employment/verify-code', { status: 204, delayMs: 120 }], // 느린 SMTP 모사
+    ]);
+    initVerifyPage();
+    await tick();
+    $('comp-search').value = '삼성';
+    $('comp-search').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    await tick(320);
+    $('comp-results').querySelector('li').click();
+    $('comp-email').value = 'hong@samsung.com';
+    $('emp-send').click();               // 응답 전(120ms) 에…
+    await tick(20);
+    assert.equal($('comp-change').disabled, false, '전제: 대기 중에도 변경 버튼은 눌린다');
+    $('comp-change').click();            // …사용자가 회사를 바꾼다
+    assert.equal($('code-step').hidden, true, '변경 직후엔 코드 단계가 닫혀 있다');
+    await tick(200);                     // 늦은 204 도착
+    assert.equal($('code-step').hidden, true, '늦은 204 가 코드 단계를 되살리면 안 된다');
+    assert.equal($('comp-selected').hidden, true, '회사 컨텍스트는 지워진 채로 유지');
+    assert.equal($('emp-timer').textContent, '', '5:00 타이머가 되살아나면 안 된다');
+    assert.notEqual(globalThis.document.activeElement && globalThis.document.activeElement.id,
+      'emp-code', '사라진 입력칸으로 포커스를 끌고 가면 안 된다');
+  });
+
+  test('쿨다운 안내는 입력칸과 함께 뜬다(안내가 자기모순이면 안 된다)', async () => {
+    mockApi([
+      ['GET', '/members/me', { status: 200, body: { nickname: 'n', status: 'active', verifications: [] } }],
+      SEARCH_OK, SEND_OK,
+    ]);
+    initVerifyPage();
+    await tick();
+    await reachCodeStep();               // 1차 발송 성공 → sentAt 기록
+    $('comp-change').click();            // 코드 단계가 닫힌다
+    assert.equal($('code-step').hidden, true);
+    $('comp-search').value = '삼성';
+    $('comp-search').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    await tick(320);
+    $('comp-results').querySelector('li').click();   // 같은 회사 재선택
+    $('comp-email').value = 'hong@samsung.com';
+    $('emp-send').click();               // 60초 쿨다운에 걸린다
+    await tick();
+    assert.match($('verify-err').textContent, /받은 코드를 입력/, '쿨다운 안내');
+    assert.equal($('code-step').hidden, false, '"코드를 입력하라"면서 입력칸이 없으면 안 된다');
+  });
+
   test('도메인 자동 인증 성공(201) → 완료 안내 + 복지 편집 링크', async () => {
     mockApi([
       ['GET', '/members/me', { status: 200, body: { nickname: 'n', status: 'active', verifications: [] } }],
