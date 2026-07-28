@@ -58,6 +58,55 @@ chk "SM-19b AdSense 크롤러 허용" "[ \"\$(curl -s -o /dev/null -w '%{http_co
 # SM-20: health는 Layer A 예외(무헤더 curl로도 200) — 모니터링 생존.
 chk "SM-20 health 무헤더 200" "curl -s ${BASE}/api/v1/health | grep -q '\"status\":\"ok\"'"
 
+# ── SC14 메일 경로 회귀 가드(SM-21·SM-22, 2026-07-28 신설. SPEC §11.2) ──
+#
+# 🚨🚨 **이 두 검사는 메일을 한 통도 보내지 않는다. 아래 규칙을 깨면 릴리스마다 실제 메일이 나간다.** 🚨🚨
+#   이메일 필드에 **`@` 가 없는** 문자열을 준다 → pydantic 이 **발송 전에** 422 로 끊는다.
+#   ⚠ "잘못된 이메일이면 된다"는 기준은 **틀렸다**. `_EMAIL_RE`(`server/models/member.py:14`
+#     = `^[^@\s]+@[^@\s]+\.[^@\s]+$`)가 느슨해서 실측(2026-07-27) 결과가 이렇다:
+#         x@example.invalid → 통과 ⚠ 발송 경로 진입(존재하지 않는 TLD 로 하드 바운스)
+#         a@b.c             → 통과 ⚠ 발송 경로 진입
+#         smoke-no-mail     → 422 ✓ 안전   /   not-a-valid-email → 422 ✓   /   no-mail@ → 422 ✓
+#     **`@` 유무가 유일하게 안전한 기준이다.** prod 는 지금 M9 OFF(404)라 우연히 안전할 뿐이고,
+#     `M9_ENABLED=1` 을 켜는 순간 이 규칙이 유일한 방어선이 된다.
+#   `limit_req` 는 PREACCESS 라 앱보다 **먼저** 판정한다 → M9 ON(422)·OFF(404) 어느 쪽이든
+#   429 관측에는 영향이 없다(2026-07-27 prod 실측: 헤더 포함 연타 → 404…404·429).
+MAIL_EP="${BASE}/api/v1/members/login-code"
+MAIL_BODY='{"email":"smoke-no-mail"}'   # ← `@` 없음. **고치지 마라**(위 주석 참조).
+
+# SM-21: CSRF/Layer A 게이트 — 무헤더 POST 는 앱에 닿기 전 403.
+#   `if` 는 REWRITE 페이즈라 PREACCESS 의 limit_req 보다 먼저 돈다 → **토큰을 소비하지 않는다**
+#   (그래서 SM-22 앞에 둬도 버킷에 영향이 없다).
+chk "SM-21 무헤더 login-code → 403" \
+  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '${MAIL_BODY}' ${MAIL_EP})\" = 403 ]"
+
+# SM-22: 메일 발송 리밋이 살아 있는가 — 헤더 포함 연타 중 429 가 나오는지.
+#
+#   ⚠ **판정을 "정확히 N번째부터 429"로 하지 않는다** — SPEC §11.2 표의 기대값에서 **의도적으로
+#     완화**했다. `loupit_mail` 은 `login-code`·`verify-code`·prod·beta 가 **IP 단위로 공유하는
+#     단일 버킷**이라(§3.4.1) 직전 트래픽에 따라 통과 건수가 달라진다. SPEC 자신도 "실행 전 약
+#     60초 유휴를 둬라"고 적고 있는데, 그런 전제를 요구하는 릴리스 게이트는 간헐 실패하고
+#     **간헐 실패하는 게이트는 곧 무시된다 — 그게 게이트가 없는 것보다 나쁘다.**
+#     막으려는 회귀는 "메일 리밋이 사라졌다"이고, 그건 **"연타해도 429가 없다"로 정확히 잡힌다.**
+#     (`loupit_api` 는 burst=60 이라 10연타로는 429 가 안 난다 → 429 가 났다면 `loupit_mail` 이다.)
+#   통과 건수는 참고로 출력한다 — `burst` 드리프트가 눈에 보이게 하되 실패 사유로는 쓰지 않는다.
+#   ⚠ 이 검사는 **러너 IP 의 공유 메일 버킷을 약 2분 비운다**(`rate 3r/m` = 20초당 1토큰 회복).
+#     서버 자신의 IP 라 실사용자 영향은 없으나, 직후 이 호스트에서 로그인을 시험하면 429 다.
+sm22(){
+  _p=0
+  for _i in 1 2 3 4 5 6 7 8 9 10; do
+    _c=$(curl -s -o /dev/null -w '%{http_code}' -X POST \
+         -H 'Content-Type: application/json' -H 'X-Loupit-Client: web' \
+         -d "${MAIL_BODY}" "${MAIL_EP}")
+    [ "$_c" = 429 ] && { echo "$_p" > "${SMOKE_TMP}/sm22.pass"; return 0; }
+    _p=$((_p+1))
+  done
+  echo "$_p" > "${SMOKE_TMP}/sm22.pass"
+  return 1
+}
+chk "SM-22 메일 리밋 429 도달" "sm22"
+echo "       · 통과 $(cat "${SMOKE_TMP}/sm22.pass" 2>/dev/null || echo '?')건 후 429 (정본 기대 6 = 1+burst; 공유 버킷이라 더 적을 수 있음)"
+
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"
