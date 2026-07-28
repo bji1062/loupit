@@ -44,16 +44,19 @@ sudo cp "${ROOT_DIR}/infra/nginx/loupit-limits.conf" /etc/nginx/conf.d/loupit-li
 sudo chmod 644 /etc/nginx/conf.d/loupit-limits.conf
 
 echo "[3/5] beta vhost 배치·활성화"
-# ── docroot 결정 (2026-07-27 blocker 수정) ─────────────────────────────────────
-# 리포의 loupit-beta.conf 는 "m9-frontend 가 main 에 병합된 뒤" 상태, 즉 docroot=${ROOT_DIR}/web
-# 를 담는다. 그런데 병합 전인 현재 라이브 베타는 **별도 체크아웃**(/home/ubuntu/loupit-fe/web)을
-# 서빙한다. 여기서 리포 파일을 통째 cp 하면 docroot 가 뒤바뀌어 베타 M9 페이지
-# (/login·/mypage·/verify·/edit·/edits — main 체크아웃엔 존재하지 않는다)가 **전부 404** 가 된다.
-# 게다가 nginx 는 root 디렉터리·파일의 존재를 검사하지 않으므로 [5/5] 의 `nginx -t` 롤백 가드가
-# 이 사고를 **못 잡는다**(문법은 완벽히 유효하다). 그래서 두 겹으로 막는다:
+# ── docroot 결정 ──────────────────────────────────────────────────────────────
+# **2026-07-28 현재 정상 상태 = 라이브 베타도 `${ROOT_DIR}/web`(main 트리)이다.** m9-frontend 가
+# main 에 병합(`8060848`)돼 별도 체크아웃(/home/ubuntu/loupit-fe)이 제거됐다 → 리포 conf 를 그대로
+# 배치하면 되고 경로 치환은 항등(no-op)이 된다.
+#
+# 아래 두 겹의 가드는 **그대로 남긴다** — 프론트만 베타에서 선검증하려고 임시 워크트리를 다시
+# 만드는 경우(그때는 `BETA_DOCROOT=<워크트리>/web` 로 넘긴다)가 여전히 유효한 사용법이고,
+# 2026-07-27 에 실제로 사고를 막은 장치다:
 #   (1) 라이브에 이미 vhost 가 있으면 그 docroot 를 보존한다(BETA_DOCROOT 로 명시 오버라이드 가능).
 #   (2) 배치 **전에** 그 docroot 가 실제로 베타가 서빙해야 할 페이지를 갖고 있는지 확인한다.
-# 병합이 끝나면 라이브 docroot 를 ${ROOT_DIR}/web 으로 되돌리면 (1)이 자동으로 그 값을 따른다.
+# (2)가 필요한 이유: nginx 는 root 디렉터리·파일의 존재를 검사하지 않으므로, docroot 가 틀려도
+# 문법은 완벽히 유효하고 [5/5] 의 `nginx -t` 롤백 가드가 **이 사고를 못 잡는다**. 실제로 리포
+# 파일을 통째 cp 해 베타 M9 페이지 5종이 전부 404 가 된 사고가 있었다.
 BETA_DOCROOT="${BETA_DOCROOT:-}"
 if [ -z "${BETA_DOCROOT}" ] && [ -f /etc/nginx/sites-available/loupit-beta.conf ]; then
   # ⚠ ACME 블록의 root 는 반드시 건너뛴다(2026-07-27 세션 C). 그 root 는 certbot 의 webroot_path
