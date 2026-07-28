@@ -14,8 +14,16 @@ from email.message import EmailMessage
 
 from server.config import get_settings
 
-_LOGIN_SUBJECT = "[loupit] 로그인 코드"
-_EMPLOY_SUBJECT = "[loupit] 재직 인증 코드"
+# 사용자에게 보이는 서비스명. **`loupit` 은 리포/서버 내부 이름일 뿐 브랜드가 아니다**
+# (2026-07-28 실사용자 지적: 인증 메일이 `[loupit]` 로 도착했다). 라이브가 자기를 부르는 이름은
+# `jobcho.wiki` 하나다 — `<title>`·`og:site_name`·`generator/config.py:site_name`,
+# 그리고 **약관·개인정보 문서가 이 표기를 10회** 쓴다. 법적 문서와 인증 메일의 발신자 표기가
+# 갈리면 피싱으로 오인되거나 고지 일관성 문제가 되므로 여기서 한 번만 정의해 파생시킨다.
+# `SMTP_FROM` 표시명(server/.env)도 같은 문자열이어야 한다.
+SERVICE_NAME = "jobcho.wiki"
+
+_LOGIN_SUBJECT = f"[{SERVICE_NAME}] 로그인 코드"
+_EMPLOY_SUBJECT = f"[{SERVICE_NAME}] 재직 인증 코드"
 
 # 소켓 연산 1회당 상한(초). ⚠ smtplib 의 timeout 은 **대화 전체 상한이 아니라 개별 소켓 연산
 # 상한**이라, 느린 피어는 이 값의 여러 배를 끌 수 있다(적대검토 2026-07-27 정정).
@@ -102,7 +110,7 @@ def resolve_sender(s) -> str:
         raise RuntimeError(
             f"mailer_mode=smtp 인데 발신 주소가 이메일이 아님(smtp_from={s.smtp_from!r}, "
             f"폴백 smtp_user={s.smtp_user!r}) — SMTP_FROM 에 발신 주소를 지정하세요"
-            " (예: 'loupit <no-reply@jobcho.wiki>')."
+            f" (예: '{SERVICE_NAME} <no-reply@jobcho.wiki>')."
         )
     return sender
 

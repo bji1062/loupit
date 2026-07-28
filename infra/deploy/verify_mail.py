@@ -104,9 +104,12 @@ def main() -> int:
         msg = EmailMessage()
         msg["From"] = m._from
         msg["To"] = to
-        msg["Subject"] = "[loupit] 메일 설정 테스트"
+        # 서비스명은 mailer 에서 가져온다 — 여기 하드코딩하면 또 갈라진다(2026-07-28).
+        from server.mailer import SERVICE_NAME
+
+        msg["Subject"] = f"[{SERVICE_NAME}] 메일 설정 테스트"
         msg.set_content(
-            "loupit 메일 발송 경로 검증용 테스트입니다.\n"
+            f"{SERVICE_NAME} 메일 발송 경로 검증용 테스트입니다.\n"
             "이 메일이 도착했다면 SMTP 설정이 정상입니다.\n\n"
             "※ 스팸함에 있었다면 SPF/DKIM/DMARC DNS 레코드를 확인하세요."
         )
