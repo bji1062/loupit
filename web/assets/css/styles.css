@@ -157,6 +157,29 @@ header nav a:not(.brand):hover { color:var(--on-brand); text-decoration:none; }
 }
 .gnb-search button:hover { color:var(--brand-active); }
 
+/* 로그인 진입점(SC14) — 두 헤더 모두에서 동작해야 한다: 초록 gnb(검색창 있음)와 생성 페이지의
+   단순 헤더. gnb 에서는 `.gnb-search` 가 `margin-left:auto` 로 우측을 잡으므로 그 뒤에 붙어
+   맨 오른쪽에 오고, 단순 헤더에서는 여기 `margin-left:auto` 가 같은 역할을 한다.
+   ⚠ 기본 상태는 마크업의 `hidden` 이다 — authnav.js 가 프로브 후에만 노출한다. 따라서 M9 가
+     꺼진 prod 에서는 이 규칙이 적용될 요소가 애초에 보이지 않는다. `[hidden]` 을 이기는
+     `display` 를 쓰면 안 되므로 `:not([hidden])` 으로 한정한다. */
+.authnav:not([hidden]) { display:inline-flex; }
+.authnav {
+  align-items:center; gap:var(--sp-1); margin-left:var(--sp-3);
+  padding:var(--sp-1) var(--sp-2); border-radius:var(--r-sm);
+  color:var(--on-brand-soft); font-size:var(--fs-sm); font-weight:var(--fw-medium);
+  white-space:nowrap; max-width:14ch; overflow:hidden; text-overflow:ellipsis;
+}
+/* 생성 페이지: 검색창이 없어 여기서 우측 정렬한다. 단 `.authnav` 는 `<nav>` 안에 있고 그 nav 는
+   header 의 flex 아이템이라 **내용 너비**였다 → `margin-left:auto` 가 밀어낼 여백이 없어 링크
+   바로 옆에 붙었다(실측). nav 가 남은 공간을 차지하게 해야 auto 여백이 실제로 동작한다.
+   기존 링크는 nav 안에서 여전히 좌측 정렬이므로 레이아웃 회귀는 없다. gnb 는 `.gnb-search` 가
+   이미 `margin-left:auto` 로 우측을 잡으므로 이 규칙 대상이 아니다. */
+header:not([data-global]) nav { flex:1 1 auto; }
+header:not([data-global]) .authnav { margin-left:auto; }
+.authnav:hover { color:var(--on-brand); background:rgba(255,255,255,.12); text-decoration:none; }
+.authnav-ico { display:block; flex:0 0 auto; }
+
 /* 다크 그린 푸터(절대 반전 안 함) */
 footer, footer[data-global] {
   margin-top:var(--sp-8); background:var(--surface-dark); color:var(--on-dark-soft);

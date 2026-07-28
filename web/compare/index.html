@@ -22,7 +22,7 @@
   <link rel="stylesheet" href="/assets/v2/css/styles.css">
 </head>
 <body data-page-type="input"> <!-- 기본 input(무광고, SP-ADS-9.1). report 뷰 진입 시 app.js가 mountAds('result') 명시 호출 -->
-<header data-global class="gnb"> <!-- 나무위키식 그린 상단 바(최근토론·특수기능·로그인 없음) -->
+<header data-global class="gnb"> <!-- 나무위키식 그린 상단 바. 로그인 진입점은 authnav.js 가 런타임에 채운다(아래 슬롯) -->
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
     <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
@@ -31,6 +31,15 @@
       <input type="search" placeholder="회사명으로 복지 찾기" aria-label="회사명으로 복지 찾기" autocomplete="off">
       <button type="submit" aria-label="검색">→</button>
     </form>
+    <!-- 로그인 진입점 슬롯(SC14). 기본 hidden — authnav.js 가 /members/me 프로브로 채운다:
+         404=M9 꺼짐(숨김 유지·현재 prod) / 401="로그인" / 200=닉네임→/mypage.
+         정적 렌더가 아닌 이유: 생성물(web/dist)을 prod·beta 가 공유해 빌드 분기가 불가능하고,
+         prod 는 로그인 페이지를 nginx 가 404 로 막고 정책 문안이 "로그인 없음"을 선언 중이다.
+         ⚠ 이 마크업은 generator/templates/partials/_authnav.html 과 **동기화 대상**이다. -->
+    <a class="authnav" data-authnav hidden href="/login">
+      <svg class="authnav-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.5c-4.4 0-8 2.2-8 4.9V22h16v-2.6c0-2.7-3.6-4.9-8-4.9Z"/></svg>
+      <span data-authnav-label>로그인</span>
+    </a>
   </nav>
 </header>
 
@@ -150,5 +159,6 @@
 </footer>
 
 <script type="module" src="/assets/v2/js/app.js" defer></script>
+<script type="module" src="/assets/v2/js/authnav.js" defer></script>
 </body>
 </html>

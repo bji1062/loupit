@@ -34,9 +34,14 @@ def test_gc21_no_executable_script_alert_anywhere_in_page(fake_bundle_xss, fake_
     import re
 
     static_ads_tag = '<script type="module" src="/assets/v2/js/static-ads.js" defer>'
+    # 로그인 진입점(SC14, 2026-07-28). static-ads 와 같은 성질의 **고정 리터럴** — base.html 이
+    # 문자 그대로 방출하며 사용자 데이터가 경유하지 않는다. 따라서 이 테스트의 계약("예상 밖
+    # <script> = XSS 누수")을 약화시키지 않는다. 목록에 없는 태그는 여전히 전부 실패한다.
+    authnav_tag = '<script type="module" src="/assets/v2/js/authnav.js" defer>'
+    allowed_literals = {static_ads_tag, authnav_tag}
     script_tags = re.findall(r"<script[^>]*>", p.html)
     assert all(
-        'type="application/ld+json"' in tag or tag == static_ads_tag
+        'type="application/ld+json"' in tag or tag in allowed_literals
         for tag in script_tags
     ), script_tags
 

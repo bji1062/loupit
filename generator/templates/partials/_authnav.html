@@ -1,0 +1,8 @@
+{# _authnav.html — 로그인 진입점 슬롯(SC14). **기본 hidden** 이고 authnav.js 만 노출시킨다.
+   정적 렌더가 아닌 이유는 _header.html 주석 참조(prod·beta 가 같은 산출물을 공유).
+   손으로 쓴 gnb 페이지(web/index.html·web/compare/index.html)에도 같은 마크업이 들어간다 —
+   바꿀 때 양쪽을 함께 고쳐라(생성기 테스트가 두 곳의 동기화를 검사한다). #}
+<a class="authnav" data-authnav hidden href="/login">
+  <svg class="authnav-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.5c-4.4 0-8 2.2-8 4.9V22h16v-2.6c0-2.7-3.6-4.9-8-4.9Z"/></svg>
+  <span data-authnav-label>로그인</span>
+</a>

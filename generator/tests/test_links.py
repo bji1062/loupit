@@ -19,6 +19,30 @@ _ALLOWED_STATIC_ROUTES = {"/", "/compare", "/privacy", "/terms", "/disclaimer", 
 _INTERNAL_HREF_RE = re.compile(r'href="(/[^"#][^"]*)"')
 
 
+def _in_hidden_authnav_slot(html: str, href_pos: int) -> bool:
+    """이 href 가 **숨겨진 로그인 진입점 슬롯**(SC14) 안에 있는지.
+
+    GC-20 의 계약은 "**눌리는** 내부 링크에 죽은 것이 없음"이다. authnav 슬롯은 마크업에서
+    `hidden` 이고 `authnav.js` 가 `/members/me` 프로브 결과로만 노출한다 — M9 가 꺼진 prod 에선
+    영원히 숨겨진 채이고(그리고 그 경로는 nginx 가 의도적으로 404 로 막는다), 켜진 호스트에선
+    비로소 실재하는 라우트가 된다. 즉 대상 유효성이 **환경 의존**이라 생성물 경로 집합으로
+    판정할 수 없다. `/login` 을 `_ALLOWED_STATIC_ROUTES` 에 넣는 것은 "prod 에서도 해석된다"는
+    **거짓 주장**이 되므로 택하지 않았다.
+
+    대신 이 예외는 좁게 유지된다: "M9 링크는 **오직** 숨겨진 authnav 슬롯 안에만 존재해야 한다"를
+    `test_authnav.py::test_no_visible_login_link_in_static_html` 이 반대 방향으로 강제한다.
+    두 테스트를 합치면 GC-20 단독보다 강하다 — 노출된 M9 링크는 어느 쪽에서든 잡힌다.
+    """
+    start = html.rfind("<a", 0, href_pos)
+    if start == -1:
+        return False
+    end = html.find(">", href_pos)
+    if end == -1:
+        return False
+    tag = html[start:end + 1]
+    return "data-authnav" in tag and "hidden" in tag
+
+
 def _build_all_pages(fake_bundle, fake_now):
     """프로덕션(build.run)과 **동일 배선**으로 전 페이지를 만든다.
 
@@ -50,13 +74,16 @@ def test_gc20_all_internal_hrefs_resolve_to_generated_pages_or_allowed_routes(
 
     missing = []
     for p in pages:
-        for href in _INTERNAL_HREF_RE.findall(p.html):
+        for m in _INTERNAL_HREF_RE.finditer(p.html):
+            href = m.group(1)
             path_only = href.split("?", 1)[0].split("#", 1)[0]
             if path_only in _ALLOWED_STATIC_ROUTES:
                 continue
             if path_only in generated_route_paths:
                 continue
             if path_only.startswith("/assets/"):  # 정적 자산(css/font) 참조
+                continue
+            if _in_hidden_authnav_slot(p.html, m.start()):
                 continue
             missing.append((p.path, href))
 

@@ -1,6 +1,14 @@
-{# _header.html — 전역 랜드마크 헤더(NFR13). 로그인·계정 UI 없음(INV-1). #}
+{# _header.html — 전역 랜드마크 헤더(NFR13).
+   로그인 진입점은 **정적으로 렌더하지 않는다**(2026-07-28). 이 산출물은 prod 와 beta 가
+   같은 바이트를 서빙하므로(beta 의 web/dist 는 프로덕션 dist 심링크) 빌드 시점 분기가
+   불가능하다. 슬롯만 `hidden` 으로 두고 authnav.js 가 `/members/me` 프로브 결과로 채운다:
+   404=M9 꺼짐(숨김 유지·현재 prod) / 401=로그인 / 200=닉네임. 상세는 authnav.js 주석.
+   ※ 구 주석의 "로그인·계정 UI 없음(INV-1)" 은 SC14 이전 서술이다 — 현행 INV-1 은
+     **익명 API 표면**(GET 5종 + 비교 로그 POST 1종, SC14 쓰기는 별도 열거)에 대한 불변식이고
+     UI 를 규정하지 않는다(SPEC/04 §전역 불변식). 여기서 새 라우트를 만들지도 않는다. #}
 <a href="/" class="site-logo">{{ cfg.site_name }}</a>
 <nav aria-label="주 메뉴">
   <a href="/">홈</a>
   <a href="{{ cfg.compare_path }}">비교하기</a>
+  {% include "partials/_authnav.html" %}
 </nav>

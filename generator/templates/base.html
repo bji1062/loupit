@@ -25,5 +25,8 @@
    JS 없이 완성(NFR24)이며 이 스크립트는 enhancement 전용 — 실패해도 본문 무손상. #}
 {% include "partials/_consent_banner.html" %}
 <script type="module" src="/assets/v2/js/static-ads.js" defer></script>
+{# 로그인 진입점(SC14). defer 모듈이라 본문 렌더를 막지 않고, 슬롯이 없거나 M9 가 꺼진 것이
+   세션에 캐시돼 있으면 네트워크도 타지 않는다. 상세는 web/assets/js/authnav.js 주석. #}
+<script type="module" src="/assets/v2/js/authnav.js" defer></script>
 </body>
 </html>
