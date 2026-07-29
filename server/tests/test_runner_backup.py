@@ -30,12 +30,41 @@ from server.tests.conftest import (  # noqa: E402  (ROOT 계산 뒤 임포트 �
 )
 
 # 게이트가 지워버리는 **시드로 재현 불가한** 테이블 = 백업/재주입 대상. 재주입 순서는 FK
-# 부모→자식이라 참여 7테이블이 먼저고, 메일 2테이블은 FK 가 없어 뒤에 붙는다.
-BACKUP_EXPECTED_ORDER = list(PARTICIPATION_CREATE_ORDER) + list(MAIL_OPS_CREATE_ORDER)
+# 부모→자식이라 참여 테이블이 먼저고, 메일 2테이블은 FK 가 없어 뒤에 붙는다.
+#
+# ⚠ `TCOMPANY_EMAIL_DOMAIN` 은 **제외**한다 — FK 위상으로는 참여 테이블이지만 **내용은 시드**다
+#   (`db/seed/company_email_domain.sql`). 백업 목록에 두면 재시드가 넣은 행 위에 백업분을 또
+#   넣어 **PK 충돌**이 난다(2026-07-29 실제 릴리스에서 발생: `Duplicate entry '1'`).
+#   더 나빴던 건 2차 피해다: 덤프에서 이 테이블이 앞쪽이라 **뒤따르던 메일 2테이블이 통째로
+#   복원되지 않았다**(mysql 클라이언트가 첫 오류에서 중단). 아래 SEED_RESTORABLE 파생 검사가
+#   이 조합을 원천 차단한다.
+BACKUP_EXPECTED_ORDER = [t for t in PARTICIPATION_CREATE_ORDER if t != "TCOMPANY_EMAIL_DOMAIN"] + list(
+    MAIL_OPS_CREATE_ORDER
+)
 
-# 참조 테이블은 `load.py --fresh` 재시드로 복원되고, TCOMPARE_LOG 는 전용 경로
-# (backup_compare_log)가 따로 있다 — 둘 다 PART_TABLES 대상이 아니다.
-SEED_RESTORABLE = set(_REFERENCE_CREATE_ORDER)
+
+def _seed_sql_tables() -> set[str]:
+    """`db/seed/*.sql` 이 INSERT/REPLACE 하는 테이블 — **파일에서 파생**한다.
+
+    하드코딩 사본을 두지 않는 이유는 이 파일 머리말과 같다. 시드 파일이 새로 생기거나 대상
+    테이블이 바뀌면 아래 불변식이 자동으로 따라간다."""
+    seed_dir = os.path.join(ROOT, "db", "seed")
+    found: set[str] = set()
+    for name in os.listdir(seed_dir):
+        if not name.endswith(".sql"):
+            continue
+        with open(os.path.join(seed_dir, name), encoding="utf-8") as f:
+            text = f.read()
+        found |= {
+            m.upper()
+            for m in re.findall(r"(?:INSERT|REPLACE)\s+(?:IGNORE\s+)?INTO\s+`?([A-Za-z_]+)`?", text)
+        }
+    return found
+
+
+# 시드 경로가 되살리는 테이블 = 백업 대상이 **아니다**. 참조 6종은 `load.py --fresh` 가,
+# 나머지는 `db/seed/*.sql` 이 복원한다(TCOMPARE_LOG 는 전용 backup_compare_log 경로).
+SEED_RESTORABLE = set(_REFERENCE_CREATE_ORDER) | _seed_sql_tables()
 
 
 def _script() -> str:
@@ -81,6 +110,24 @@ def test_every_non_seed_table_is_backed_up():
     )
     stale = sorted(listed - set(TABLE_CREATE_ORDER))
     assert not stale, f"PART_TABLES 에 격리 사이클 밖 테이블: {stale} (오타·삭제 잔재)"
+
+
+def test_no_double_restore_collision():
+    """**시드가 되살리는 테이블은 백업 대상이 아니다** — 이중 복원은 PK 충돌을 낸다.
+
+    2026-07-29 실제 릴리스가 여기서 깨졌다: `TCOMPANY_EMAIL_DOMAIN` 은 FK 위상상 참여
+    테이블이라 PART_TABLES 에 있었는데 내용은 시드(`db/seed/company_email_domain.sql`)다.
+    재시드가 31행을 넣은 뒤 백업분을 또 넣으려다 `Duplicate entry '1'` 로 실패했고,
+    **덤프에서 뒤따르던 메일 2테이블이 통째로 복원되지 않았다**(mysql 이 첫 오류에서 중단).
+
+    즉 이 충돌은 자기 자신만 깨는 게 아니라 **뒤에 있는 모든 테이블의 데이터를 날린다**.
+    그래서 "충돌 나면 고친다"가 아니라 배포 전에 조합 자체를 금지한다."""
+    collide = sorted(set(_part_tables()) & SEED_RESTORABLE)
+    assert not collide, (
+        f"시드가 복원하는 테이블이 백업 목록에도 있다: {collide} — 재주입 시 PK 충돌로 "
+        f"그 테이블은 물론 **덤프에서 뒤따르는 테이블까지 복원되지 않는다**. "
+        f"PART_TABLES 에서 빼라(시드 경로가 이미 되살린다)."
+    )
 
 
 def test_backup_runs_before_trap_and_gate():

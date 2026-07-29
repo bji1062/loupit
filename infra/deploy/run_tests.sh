@@ -61,7 +61,13 @@ _cmp_reinject_done=0
 #   ⚠ 이 목록은 `server/tests/conftest.py` 의 PARTICIPATION_CREATE_ORDER + MAIL_OPS_CREATE_ORDER
 #     에서 **파생**돼야 한다 — test_runner_backup.py 가 두 파일의 일치와 "격리 사이클의 비시드
 #     테이블은 전부 여기 있어야 한다"를 강제한다(사본 드리프트로 데이터를 잃은 전례가 있다).
-PART_TABLES="TMEMBER TCOMPANY_EMAIL_DOMAIN TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION"
+# ⚠ `TCOMPANY_EMAIL_DOMAIN` 은 **제외**한다(2026-07-29, 실제 릴리스가 여기서 깨졌다).
+#   FK 위상으로는 참여 테이블이지만 내용은 **시드**다(`db/seed/company_email_domain.sql`).
+#   백업 목록에 두면 재시드가 넣은 31행 위에 백업분을 또 넣어 `Duplicate entry '1'` 로 실패하고,
+#   더 나쁘게는 **덤프에서 뒤따르는 테이블(메일 2종)이 통째로 복원되지 않는다** — mysql 클라이언트가
+#   첫 오류에서 멈추기 때문이다. 실제로 그 경로로 웹훅 이벤트 3행·억제 1행을 잃었다(덤프에서 수동 복구).
+#   test_runner_backup.py::test_no_double_restore_collision 이 이 조합을 배포 전에 금지한다.
+PART_TABLES="TMEMBER TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION"
 PART_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_participation.XXXXXX.sql")"
 _part_dump_ok=0
 _part_reinject_done=0
