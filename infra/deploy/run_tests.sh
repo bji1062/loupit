@@ -54,7 +54,14 @@ _cmp_reinject_done=0
 #     (b) load.py --fresh 가 그 DDL 을 CREATE(현재 참조 5테이블만), (c) conftest 가 참여 테이블을
 #     TABLE_CREATE_ORDER 에 편입(③) 이 필요하다. 그 전(현 익명 배포)엔 테이블이 없어 존재검사로
 #     걸러져 전 과정 no-op 다 — 즉 본 확장은 '안전 선행 장치'이고 데이터가 생기기 전에 자리를 잡는다.
-PART_TABLES="TMEMBER TCOMPANY_EMAIL_DOMAIN TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TBENEFIT_EDIT_LOG"
+# 2026-07-29(SP-AUTH-16): 메일 배달 결과 2테이블을 **함께** 보호한다. 억제 목록
+# (TMAIL_SUPPRESSION)은 웹훅으로만 쌓이는 비시드 데이터라 여기서 빠지면 릴리스마다 사라지고,
+# 그 순간 하드 바운스 주소로 재발송이 재개돼 도메인 평판이 깎인다. FK 가 없어 재주입 순서
+# 제약도 없으므로 참여 7테이블 뒤에 붙인다.
+#   ⚠ 이 목록은 `server/tests/conftest.py` 의 PARTICIPATION_CREATE_ORDER + MAIL_OPS_CREATE_ORDER
+#     에서 **파생**돼야 한다 — test_runner_backup.py 가 두 파일의 일치와 "격리 사이클의 비시드
+#     테이블은 전부 여기 있어야 한다"를 강제한다(사본 드리프트로 데이터를 잃은 전례가 있다).
+PART_TABLES="TMEMBER TCOMPANY_EMAIL_DOMAIN TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION"
 PART_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_participation.XXXXXX.sql")"
 _part_dump_ok=0
 _part_reinject_done=0

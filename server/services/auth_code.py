@@ -46,6 +46,12 @@ class CodeResult:
     TOO_MANY = "too_many"  # → 429
 
 
+# 코드 **발급** 결과 중 유일한 비정상 신호(SP-AUTH-16). 라우트가 409 `mail_suppressed` 로
+# 매핑한다. 정상(발송·쿨다운 무발송)은 None 이라, 기존 호출부의 `await issue_…()` 는 그대로
+# 동작한다 — 반환값을 무시하면 예전과 같은 균일 204 다.
+SUPPRESSED = "suppressed"
+
+
 def _normalize_email(email: str) -> str:
     """**계정 식별키** 정규화 — 공백 제거 + 소문자.
 
@@ -153,17 +159,27 @@ async def recent_unconsumed_exists(target_hash: str, purpose: str, comp_id: int 
     return row is not None
 
 
-async def issue_login_code(email: str) -> None:
+async def issue_login_code(email: str) -> str | None:
     """로그인 코드 발급 — 해시만 저장(+login_code_ttl_min), 원문은 메일로만(무저장).
 
     계정 유무와 무관하게 항상 균일 204(호출측 member.py, 계정 열거 방지). 단 재전송 쿨다운 창 안에
     미소비 코드가 있으면 **무발송**(메일 폭탄·섀도잉 완화) — 응답은 여전히 204라 열거 단서가 없다.
-    쿨다운 판정은 **배달 주소**(`_hash_target`) 기준이라 `+태그`/도트 변형으로 우회되지 않는다."""
+    쿨다운 판정은 **배달 주소**(`_hash_target`) 기준이라 `+태그`/도트 변형으로 우회되지 않는다.
+
+    반환값: 정상 처리(발송·쿨다운 무발송 포함)는 `None`, **억제된 주소면 `SUPPRESSED`**
+    (SP-AUTH-16). 억제는 균일 204 계약의 예외다 — 계정의 속성이 아니라 **주소의 배달 가능성**
+    이라 알려줘도 계정 열거가 되지 않고, 숨기면 그 사용자는 영영 로그인하지 못한 채 이유도
+    모른다(P1-4 가 지목한 공백)."""
     from server import mailer  # 지연 import(라우트 조립 순서 무관)
+    from server.services import mail_events  # 지연 import(순환 방지 — mail_events 가 이 모듈을 쓴다)
 
     s = get_settings()
     norm = _normalize_email(email)
     target_hash = _hash_target(norm)
+    # 억제 확인은 **코드 발급보다 먼저**다. 배달되지 않을 코드를 만들면 재전송 쿨다운만
+    # 잡아먹어, 사용자가 곧바로 다른 주소로 바꿔도 60초를 기다리게 된다.
+    if await mail_events.is_suppressed(norm):
+        return SUPPRESSED
     if await recent_unconsumed_exists(target_hash, "login"):
         return  # 쿨다운 중 — 무발송(균일 204 유지)
     code = _gen_code()

@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Response
 
 from server.deps import require_csrf, require_member
 from server.models.employment import EmployRequestIn, EmployVerifyCodeIn, EmployVerifyIn
-from server.services import employment
+from server.services import auth_code, employment
 from server.services.auth_code import CodeResult
 
 router = APIRouter(tags=["employment"])
@@ -24,13 +24,18 @@ async def request_employ_code(
     """회사 이메일로 인증 코드 발송 (AE-1·2, FR-105).
 
     등록 도메인 일치 → 204. 도메인 미등록 회사 → 409 manual_required(수동 승인 유도).
-    도메인 불일치 → 422."""
+    도메인 불일치 → 422. **반송 이력 주소 → 409 mail_suppressed**(SP-AUTH-16).
+
+    ⚠ 두 409 는 **`detail` 로만 구분된다**. 프론트(`verify.js sendOutcome`)가 409 를 전부
+    manual_required 로 단정하면, 사용자는 오지 않을 수동 승인을 기다리게 된다."""
     status = await employment.domain_status(body.comp_id, body.company_email)
     if status == employment.DomainStatus.NO_DOMAINS:
         raise HTTPException(status_code=409, detail="manual_required")
     if status == employment.DomainStatus.MISMATCH:
         raise HTTPException(status_code=422, detail="회사 이메일 도메인이 일치하지 않습니다.")
-    await employment.issue_employ_code(body.comp_id, member["MBR_ID"], body.company_email)
+    issued = await employment.issue_employ_code(body.comp_id, member["MBR_ID"], body.company_email)
+    if issued == auth_code.SUPPRESSED:
+        raise HTTPException(status_code=409, detail="mail_suppressed")
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 

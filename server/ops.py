@@ -134,6 +134,61 @@ def cmd_revoke_verification(conn, args) -> int:
     return 0
 
 
+def cmd_list_suppressed(conn, args) -> int:
+    """발송 억제 목록 조회(SP-AUTH-16).
+
+    ⚠ **원문 주소는 어디에도 없다** — 저장된 것은 배달주소의 SHA-256 뿐이다(T9·NFR30). 그래서
+    "누가 막혔는지"는 이 목록만으로 알 수 없고, 해제하려면 **사용자가 알려준 주소를 넣어**
+    같은 해시를 다시 계산해야 한다(`release-suppression <이메일>`). 불편하지만 의도한 설계다:
+    DB 가 유출돼도 반송된 수신함 목록이 통째로 새지 않는다."""
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT MAIL_SUPP_ID, TARGET_HASH_VAL, REASON_CD, SRC_SVIX_MSG_ID, INS_DTM, RELEASED_DTM "
+            "FROM TMAIL_SUPPRESSION "
+            + ("" if args.all else "WHERE RELEASED_DTM IS NULL ")
+            + "ORDER BY INS_DTM DESC LIMIT %s",
+            (args.limit,),
+        )
+        rows = cur.fetchall()
+    if not rows:
+        print("억제 중인 주소 없음.")
+        return 0
+    for r in rows:
+        state = "해제됨" if r["RELEASED_DTM"] else "억제 중"
+        print(
+            f"[{r['MAIL_SUPP_ID']}] {state} · {r['REASON_CD']} · {r['INS_DTM']} · "
+            f"hash={r['TARGET_HASH_VAL'][:16]}… · svix={r['SRC_SVIX_MSG_ID'] or '-'}"
+        )
+    print(f"— {len(rows)}건")
+    return 0
+
+
+def cmd_release_suppression(conn, args) -> int:
+    """억제 해제 — 오탐·주소 복구 대응(SP-AUTH-16).
+
+    **이 명령이 없으면 억제는 영구 잠금이다.** 위조·오탐 바운스 한 건으로 사용자가 로그인을
+    영영 못 하게 되는 상황을 되돌리는 유일한 수단이라, 기능과 함께 반드시 존재해야 한다.
+
+    행을 지우지 않고 `RELEASED_DTM` 을 채운다 — 언제 누가 풀었는지가 남아야 반복 오탐을
+    추적할 수 있다. 같은 주소가 다시 하드 바운스하면 웹훅이 `RELEASED_DTM=NULL` 로 되살린다."""
+    from server.services.auth_code import _hash_target
+
+    target_hash = _hash_target(args.email)
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE TMAIL_SUPPRESSION SET RELEASED_DTM=UTC_TIMESTAMP(), MOD_ID=%s "
+            "WHERE TARGET_HASH_VAL=%s AND RELEASED_DTM IS NULL",
+            (args.by, target_hash),
+        )
+        n = cur.rowcount
+    conn.commit()
+    # 주소 원문은 출력하지 않는다(운영 로그·터미널 기록에 남는다 — NFR31 과 같은 이유).
+    print(f"억제 해제: hash={target_hash[:16]}… — {n}건.")
+    if n == 0:
+        print("  (해당 주소는 억제 중이 아니다 — 이미 해제됐거나 다른 주소일 수 있다)")
+    return 0
+
+
 # delete-benefit 편집 이력 before 스냅샷 필드(benefit_edit._snapshot 와 동일 형식·소문자 키).
 _SNAP_MAP = {
     "benefit_cd": "BENEFIT_CD", "benefit_nm": "BENEFIT_NM", "benefit_ctgr_cd": "BENEFIT_CTGR_CD",
@@ -207,6 +262,17 @@ def build_parser() -> argparse.ArgumentParser:
     dp.add_argument("benefit_id", type=int)
     dp.add_argument("--note", default=None, help="삭제 사유(편집 이력에 기록)")
     dp.set_defaults(func=cmd_delete_benefit)
+
+    # ── 메일 발송 억제(SP-AUTH-16) ──
+    sp = sub.add_parser("list-suppressed", help="발송 억제 목록(반송·스팸신고 주소)")
+    sp.add_argument("--all", action="store_true", help="해제분까지 포함")
+    sp.add_argument("--limit", type=int, default=50)
+    sp.set_defaults(func=cmd_list_suppressed)
+
+    rs = sub.add_parser("release-suppression", help="억제 해제(오탐·주소 복구) — 이메일 원문 필요")
+    rs.add_argument("email", help="해제할 주소. 저장된 것은 해시뿐이라 원문으로 재계산한다")
+    rs.add_argument("--by", type=int, default=None, help="결정 운영자 ID(감사)")
+    rs.set_defaults(func=cmd_release_suppression)
 
     return p
 

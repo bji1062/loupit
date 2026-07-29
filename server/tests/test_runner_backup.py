@@ -17,17 +17,25 @@ import re
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RUN_TESTS = os.path.join(ROOT, "infra", "deploy", "run_tests.sh")
 
-# SP-DB-17 참여 7테이블 — FK 부모→자식 생성순서(= 재주입 안전순서). conftest.TABLE_CREATE_ORDER(③)·
-# SPEC/02 SP-DB-17 생성순서와 동일해야 한다.
-PARTICIPATION_FK_ORDER = [
-    "TMEMBER",
-    "TCOMPANY_EMAIL_DOMAIN",
-    "TSESSION",
-    "TAUTH_CODE",
-    "TEMPLOY_VERIFICATION",
-    "TEMPLOY_VRF_REQUEST",
-    "TBENEFIT_EDIT_LOG",
-]
+# ⚠ **하드코딩 사본을 없앴다(2026-07-29)**. 구 판본은 참여 7테이블 목록을 여기 한 벌 더 적어
+# 두고 그것과만 대조했다 — 그래서 `TMAIL_EVENT`·`TMAIL_SUPPRESSION`(SP-AUTH-16) 이 격리
+# 사이클에 편입됐을 때 **이 가드가 통과했다**(실측). 즉 게이트가 매 릴리스 그 두 테이블을
+# DROP/CREATE 하는데 백업 목록엔 없는 상태 = 프로덕션 억제 목록 소실을, 가드가 못 본 것이다.
+# 이제 conftest(단일 출처)에서 파생시켜 **새 테이블이 추가되면 자동으로 빨개진다**.
+from server.tests.conftest import (  # noqa: E402  (ROOT 계산 뒤 임포트 — 무 DB 상수만 읽는다)
+    MAIL_OPS_CREATE_ORDER,
+    PARTICIPATION_CREATE_ORDER,
+    TABLE_CREATE_ORDER,
+    _REFERENCE_CREATE_ORDER,
+)
+
+# 게이트가 지워버리는 **시드로 재현 불가한** 테이블 = 백업/재주입 대상. 재주입 순서는 FK
+# 부모→자식이라 참여 7테이블이 먼저고, 메일 2테이블은 FK 가 없어 뒤에 붙는다.
+BACKUP_EXPECTED_ORDER = list(PARTICIPATION_CREATE_ORDER) + list(MAIL_OPS_CREATE_ORDER)
+
+# 참조 테이블은 `load.py --fresh` 재시드로 복원되고, TCOMPARE_LOG 는 전용 경로
+# (backup_compare_log)가 따로 있다 — 둘 다 PART_TABLES 대상이 아니다.
+SEED_RESTORABLE = set(_REFERENCE_CREATE_ORDER)
 
 
 def _script() -> str:
@@ -35,18 +43,44 @@ def _script() -> str:
         return f.read()
 
 
+def _part_tables() -> list[str]:
+    m = re.search(r'PART_TABLES="([^"]*)"', _script())
+    assert m, "PART_TABLES 정의 부재"
+    return m.group(1).split()
+
+
 def test_run_tests_sh_exists():
     assert os.path.isfile(RUN_TESTS), f"릴리스 게이트 스크립트 부재: {RUN_TESTS}"
 
 
-def test_part_tables_lists_all_seven_in_fk_order():
-    """PART_TABLES 가 참여 7테이블을 FK 부모→자식 순으로 정확히 나열(재주입 순서 안전)."""
-    m = re.search(r'PART_TABLES="([^"]*)"', _script())
-    assert m, "PART_TABLES 정의 부재"
-    listed = m.group(1).split()
-    assert listed == PARTICIPATION_FK_ORDER, (
-        f"PART_TABLES 순서/집합이 SP-DB-17 FK 생성순서와 불일치: {listed}"
+def test_part_tables_matches_conftest_source_of_truth():
+    """PART_TABLES = 참여 7 + 메일 2, FK 부모→자식 순(재주입 순서 안전).
+
+    목록을 conftest 에서 **파생**시킨다 — 사본을 두면 갈라지고, 갈라진 쪽이 조용히 데이터를
+    잃는다(구 판본이 정확히 그랬다: 파일 머리말 참조)."""
+    listed = _part_tables()
+    assert listed == BACKUP_EXPECTED_ORDER, (
+        f"PART_TABLES 순서/집합이 conftest 와 불일치\n  실제: {listed}\n  기대: {BACKUP_EXPECTED_ORDER}"
     )
+
+
+def test_every_non_seed_table_is_backed_up():
+    """**핵심 불변식**: 격리 사이클 안에서 시드로 복원되지 않는 테이블은 전부 백업 대상이다.
+
+    게이트는 서빙 스키마의 `TABLE_CREATE_ORDER` 를 DROP/CREATE 한다. 참조 테이블은
+    `load.py --fresh` 가 되살리고 TCOMPARE_LOG 는 전용 경로가 있지만, 그 외 테이블은
+    **백업/재주입이 유일한 생존 수단**이다. 새 테이블을 conftest 에만 넣고 여기를 잊으면
+    릴리스마다 조용히 소실된다 — 이 테스트가 그 조합을 원천 차단한다.
+    """
+    listed = set(_part_tables())
+    must_backup = set(TABLE_CREATE_ORDER) - SEED_RESTORABLE
+    missing = sorted(must_backup - listed)
+    assert not missing, (
+        f"격리 사이클에 있는데 백업 목록에 없는 테이블: {missing} — "
+        f"run_tests.sh 의 PART_TABLES 에 추가하라(릴리스마다 데이터 소실)"
+    )
+    stale = sorted(listed - set(TABLE_CREATE_ORDER))
+    assert not stale, f"PART_TABLES 에 격리 사이클 밖 테이블: {stale} (오타·삭제 잔재)"
 
 
 def test_backup_runs_before_trap_and_gate():

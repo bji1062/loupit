@@ -77,8 +77,15 @@ async def _get_or_create_member(email: str) -> tuple[dict, bool]:
 
 @router.post("/members/login-code", status_code=204)
 async def request_login_code(body: LoginCodeIn, _csrf: None = Depends(require_csrf)) -> Response:
-    """로그인 코드 발송 — 계정 유무 무관 균일 204(계정 열거 차단, AL-1, FR-102)."""
-    await auth_code.issue_login_code(body.email)
+    """로그인 코드 발송 — 계정 유무 무관 균일 204(계정 열거 차단, AL-1, FR-102).
+
+    **유일한 예외: 억제된 주소 → 409 `mail_suppressed`**(SP-AUTH-16). 균일 204 가 숨기려는 것은
+    *계정의 존재*이고, 억제가 드러내는 것은 *주소의 배달 가능성*이라 열거 단서가 되지 않는다
+    (공격자는 자기가 메일을 보내 같은 사실을 확인할 수 있다). 반대로 이걸 숨기면 반송 주소를
+    가진 사용자는 영영 로그인하지 못한 채 이유도 모른다 — P1-4 가 지목한 바로 그 공백이다.
+    문구는 프론트가 소유한다(`manual_required` 선례와 동일하게 기계 토큰만 보낸다)."""
+    if await auth_code.issue_login_code(body.email) == auth_code.SUPPRESSED:
+        raise HTTPException(status_code=409, detail="mail_suppressed")
     return Response(status_code=204, headers={"Cache-Control": "no-store"})
 
 

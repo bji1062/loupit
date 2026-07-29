@@ -44,31 +44,40 @@ def _mail_location_bodies() -> dict[str, str]:
       삼켰으면 조용히 통과시키지 말고 **즉시 실패**시킨다."""
     out: dict[str, str] = {}
     for conf in _NGINX_CONFS:
-        text = (ROOT / conf).read_text(encoding="utf-8")
         for loc in _MAIL_LOCATIONS:
-            m = re.search(rf"^[ \t]*location[ \t]*=[ \t]*{re.escape(loc)}[ \t]*\{{[ \t]*$", text, re.M)
-            assert m, (
-                f"{conf} 에서 `location = {loc}` 를 찾지 못했다 — 계약이 삭제됐거나 "
-                f"conf 포맷이 이 파서의 기대(한 줄 `location = <경로> {{`)와 다르다"
-            )
-            depth, opened, body = 0, False, []
-            for line in text[m.start():].splitlines():
-                body.append(line)
-                code = line.split("#", 1)[0]  # 주석 속 중괄호는 세지 않는다(문자열 안 `#` 은
-                depth += code.count("{") - code.count("}")  # 조기 절단 → 시끄럽게 실패하는 쪽)
-                if depth > 0:
-                    opened = True
-                elif opened:
-                    break
-            assert opened and depth == 0, f"{conf}:{loc} 블록의 중괄호가 닫히지 않았다"
-            joined = "\n".join(body)
-            assert not re.search(r"^[ \t]*location\b", joined[len(body[0]):], re.M), (
-                f"{conf}:{loc} 본문이 **다음 location 블록을 삼켰다** — 이웃의 지시자가 이 블록의 "
-                "어서션을 대신 만족시켜 거짓 통과가 된다. conf 의 짝 없는 중괄호를 확인하라"
-            )
-            out[f"{conf}:{loc}"] = joined
+            out[f"{conf}:{loc}"] = _exact_location_body(conf, loc)
     assert len(out) == len(_NGINX_CONFS) * len(_MAIL_LOCATIONS)
     return out
+
+
+def _exact_location_body(conf: str, loc: str) -> str:
+    """`location = <loc> { … }` 본문 한 덩어리. 위 독스트링의 교훈을 **단일 구현**으로 소유한다.
+
+    2026-07-29: 웹훅 블록 가드가 생기면서 파서가 필요한 곳이 둘이 됐다. 복사하지 않고 여기로
+    뽑았다 — 이 파서는 양방향 거짓말을 실측으로 잡아 고친 물건이라, 사본을 두면 고치지 않은
+    쪽이 조용히 거짓 통과를 만든다."""
+    text = (ROOT / conf).read_text(encoding="utf-8")
+    m = re.search(rf"^[ \t]*location[ \t]*=[ \t]*{re.escape(loc)}[ \t]*\{{[ \t]*$", text, re.M)
+    assert m, (
+        f"{conf} 에서 `location = {loc}` 를 찾지 못했다 — 계약이 삭제됐거나 "
+        f"conf 포맷이 이 파서의 기대(한 줄 `location = <경로> {{`)와 다르다"
+    )
+    depth, opened, body = 0, False, []
+    for line in text[m.start():].splitlines():
+        body.append(line)
+        code = line.split("#", 1)[0]  # 주석 속 중괄호는 세지 않는다(문자열 안 `#` 은
+        depth += code.count("{") - code.count("}")  # 조기 절단 → 시끄럽게 실패하는 쪽)
+        if depth > 0:
+            opened = True
+        elif opened:
+            break
+    assert opened and depth == 0, f"{conf}:{loc} 블록의 중괄호가 닫히지 않았다"
+    joined = "\n".join(body)
+    assert not re.search(r"^[ \t]*location\b", joined[len(body[0]):], re.M), (
+        f"{conf}:{loc} 본문이 **다음 location 블록을 삼켰다** — 이웃의 지시자가 이 블록의 "
+        "어서션을 대신 만족시켜 거짓 통과가 된다. conf 의 짝 없는 중괄호를 확인하라"
+    )
+    return joined
 
 
 def _proxy_read_timeouts() -> dict[str, int]:
@@ -264,4 +273,77 @@ async def test_MG7_test_suite_never_uses_real_smtp_mailer():
     m = mailer.get_mailer()
     assert not isinstance(m, mailer.SmtpMailer), (
         f"테스트에서 실 SMTP 메일러가 선택됨: {type(m).__name__} — conftest 전역 스텁이 깨졌다"
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SP-AUTH-16 (P1-4 바운스 웹훅) — 엣지 계약
+#
+# 웹훅은 **제공자(Resend/Svix)가 호출하는 공개 POST** 라 우리 프론트의 관례가 하나도 통하지
+# 않는다. 그래서 엣지에서 두 가지가 동시에 참이어야 한다:
+#   (1) Layer A(`X-Loupit-Client`) **면제** — 제공자는 그 헤더를 붙일 리 없다
+#   (2) Layer B(봇 UA) 통과 — 서버 레벨 `if ($loupit_bad_bot) return 403` 이 **모든**
+#       location 에 앞서 적용되므로, 발신 UA 가 차단 패턴에 걸리면 이벤트를 통째로 잃는다
+#
+# (2)가 특히 조용한 실패다: 403 을 받은 제공자는 재시도하다 포기하고, 우리는 "바운스가 없네"로
+# 오독한다. 그래서 화이트리스트를 회귀로 못박는다.
+# ══════════════════════════════════════════════════════════════════════════════
+
+_WEBHOOK_LOCATION = "/api/v1/webhooks/resend"
+
+
+def test_MG10_webhook_location_exists_in_both_vhosts():
+    """prod·beta 양쪽에 웹훅 블록이 있다.
+
+    수신 호스트는 prod 하나지만 conf 는 대칭으로 둔다 — 나중에 beta 로 시험하려 할 때 nginx
+    를 또 고쳐 손으로 배치해야 하는 상황(함정 ⑭)을 미리 없앤다. 실제 게이팅은 앱의 시크릿
+    유무가 한다(시크릿 없으면 라우터 미등록 → 404)."""
+    for conf in _NGINX_CONFS:
+        body = _exact_location_body(conf, _WEBHOOK_LOCATION)
+        assert "proxy_pass" in body, f"{conf} 웹훅 블록에 proxy_pass 가 없다"
+
+
+def test_MG11_webhook_is_exempt_from_layer_a():
+    """웹훅 블록에 `X-Loupit-Client` 게이트가 **없어야** 한다.
+
+    있으면 제공자의 모든 요청이 403 이 되고, 그건 재시도 소진 후 **영구 데이터 손실**이다.
+    면제해도 안전한 근거는 서명이다 — 이 엔드포인트의 인증은 헤더 게이트가 아니라 HMAC 이고,
+    앱이 검증한다(`server/services/webhook_sig.py`). 헤더 게이트는 위조 방어에 아무 기여도
+    하지 않는다(값이 공개 상수라 누구나 붙일 수 있다)."""
+    for conf in _NGINX_CONFS:
+        body = _exact_location_body(conf, _WEBHOOK_LOCATION)
+        assert "http_x_loupit_client" not in body, (
+            f"{conf} 웹훅 블록에 Layer A 게이트가 있다 — 제공자는 그 헤더를 붙일 수 없어 "
+            "모든 이벤트가 403 으로 유실된다"
+        )
+
+
+def test_MG12_webhook_has_rate_limit():
+    """공개 POST 라 리밋은 필요하다 — 서명 검증조차 공짜가 아니다(HMAC + 본문 읽기).
+
+    단 **메일 존(`loupit_mail`, 3r/m)을 쓰면 안 된다**: 그 버킷은 사용자 로그인 발송과
+    공유라, 웹훅 폭주가 곧 로그인 마비가 된다. 일반 존(`loupit_api`)을 쓴다."""
+    for conf in _NGINX_CONFS:
+        body = _exact_location_body(conf, _WEBHOOK_LOCATION)
+        assert re.search(r"limit_req\s+zone=loupit_api", body), f"{conf} 웹훅 블록에 일반 리밋 부재"
+        assert "loupit_mail" not in body, (
+            f"{conf} 웹훅 블록이 메일 존을 소비한다 — 웹훅 폭주가 사용자 로그인 발송을 굶긴다"
+        )
+
+
+def test_MG13_webhook_sender_ua_whitelisted_in_bot_defense():
+    """봇 방어 화이트리스트에 발신자(svix·resend)가 있어야 한다.
+
+    Layer B 는 **서버 레벨**이라 location 으로 못 피한다. map 은 첫 일치 우선이므로
+    화이트리스트 항목이 차단 패턴보다 **위**에 있어야 한다."""
+    text = (ROOT / "infra/nginx/loupit-botdefense.conf").read_text(encoding="utf-8")
+    allow_positions = []
+    for pattern in ("svix", "resend"):
+        m = re.search(rf'^\s*"~\*[^"]*{pattern}[^"]*"\s+0\s*;', text, re.M)
+        assert m, f"봇 방어 화이트리스트에 {pattern} UA 항목이 없다 — 웹훅이 403 으로 유실될 수 있다"
+        allow_positions.append(m.start())
+    first_block = re.search(r'^\s*"~\*[^"]*"\s+1\s*;', text, re.M)
+    assert first_block, "차단 항목이 하나도 없다 — 봇 방어가 사라졌는가"
+    assert max(allow_positions) < first_block.start(), (
+        "웹훅 화이트리스트가 차단 패턴보다 아래에 있다 — map 은 첫 일치 우선이라 무력하다"
     )

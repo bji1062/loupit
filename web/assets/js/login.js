@@ -41,6 +41,13 @@ export function messageFor(err, phase) {
   const s = err.status;
   if (phase === 'send') {
     if (s === 422) return '이메일 형식을 확인해주세요.';
+    // 409 mail_suppressed — 이 주소로 보낸 메일이 반송된 이력이 있어 발송을 멈춘 상태다
+    // (SP-AUTH-16). **"잠시 후 다시"는 거짓 안내다**: 기다린다고 풀리지 않고, 사용자가 할 수
+    // 있는 유일한 행동은 다른 주소를 쓰는 것이다. 이걸 일반 오류로 흘리면 그 사용자는 영영
+    // 로그인하지 못한 채 이유도 모른다(P1-4 가 지목한 공백).
+    if (s === 409 && err.data && err.data.detail === 'mail_suppressed') {
+      return '이 주소로 보낸 메일이 반송되고 있어요. 다른 이메일 주소를 사용해주세요.';
+    }
     // 발송 경로의 429 는 **엣지 IP 리밋 한 뜻뿐**이다 — 앱 핸들러(`POST /members/login-code`)는
     // 계정 열거 차단을 위해 균일 204 만 낸다. 그래서 여기서만 초를 노출할 수 있다.
     if (s === 429) return throttleMessage(err.retryAfter);

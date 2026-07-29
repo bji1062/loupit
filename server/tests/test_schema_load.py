@@ -36,6 +36,21 @@ EXPECTED_COLUMNS: dict[str, dict[str, dict]] = {
         "COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
         "ALIAS_NM": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
     },
+    # SP-AUTH-16(P1-4 바운스 웹훅). TARGET_HASH_VAL 은 TAUTH_CODE 와 **같은 CHAR(64)**여야
+    # 조인이 성립한다 — 길이가 갈라지면 상관관계가 조용히 0건이 된다.
+    "TMAIL_EVENT": {
+        "MAIL_EVENT_ID": {"DATA_TYPE": "bigint", "IS_NULLABLE": "NO"},
+        "SVIX_MSG_ID": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
+        "EVENT_TYPE_CD": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
+        "TARGET_HASH_VAL": {"DATA_TYPE": "char", "IS_NULLABLE": "NO", "CHARACTER_MAXIMUM_LENGTH": 64},
+        "BOUNCE_TYPE_CD": {"DATA_TYPE": "varchar", "IS_NULLABLE": "YES", "COLUMN_DEFAULT": None},
+    },
+    "TMAIL_SUPPRESSION": {
+        "MAIL_SUPP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
+        "TARGET_HASH_VAL": {"DATA_TYPE": "char", "IS_NULLABLE": "NO", "CHARACTER_MAXIMUM_LENGTH": 64},
+        "REASON_CD": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
+        "RELEASED_DTM": {"DATA_TYPE": "datetime", "IS_NULLABLE": "YES", "COLUMN_DEFAULT": None},
+    },
     "TCOMPANY_BENEFIT": {
         "BENEFIT_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
         "COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
@@ -212,7 +227,12 @@ def test_SC3_verified_by_id_absent(schema_db, db_name):
 # 하나만 둔다 — 앱은 INSERT 만 하고 UPDATE/DELETE 가 없으므로 MOD_* 는 의미가 없고, 편집 주체는
 # 감사 컬럼이 아니라 **도메인 컬럼 `ACTOR_MBR_ID`**(FK→TMEMBER, ON DELETE SET NULL)가 들고 있다.
 # SPEC/02 §SC-4 가 명시한 예외이며, 부재 자체를 아래 SC-4c 가 적극 검증한다(면제 = 무검증 아님).
-AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG"}
+# TMAIL_EVENT 면제(SP-AUTH-16): 웹훅 수신 원장은 불변 append-only 라 `INS_DTM` 하나만 둔다 —
+# 앱은 INSERT 만 하고(중복은 UNIQUE 로 무시) UPDATE/DELETE 가 없으므로 MOD_* 는 의미가 없다.
+# 입력 주체도 언제나 제공자(Resend) 하나라 INS_ID 가 담을 정보가 없다. 부재 자체는 SC-4d 가
+# 적극 검증한다. 반면 TMAIL_SUPPRESSION 은 **해제(RELEASED_DTM)로 상태가 바뀌므로 면제하지
+# 않는다** — 누가 언제 억제를 풀었는지는 감사 대상이다.
+AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG", "TMAIL_EVENT"}
 
 
 @pytest.mark.parametrize("table", [t for t in TABLE_CREATE_ORDER if t not in AUDIT_EXEMPT_TABLES])
@@ -247,6 +267,40 @@ def test_SC4c_edit_log_append_only_contract(schema_db, db_name):
     )
     # 편집 주체는 감사 컬럼이 아니라 도메인 FK 가 보유한다(탈퇴 시 SET NULL, 이력 존치).
     assert "ACTOR_MBR_ID" in cols, "편집 주체 컬럼(ACTOR_MBR_ID) 부재"
+
+
+def test_SC4d_mail_event_ledger_contract(schema_db, db_name):
+    """SP-AUTH-16: TMAIL_EVENT append-only + **수신자 원문 무저장** 계약(SC-4b·4c 와 같은 형식).
+
+    두 가지를 동시에 고정한다:
+      1. append-only — MOD_* 가 생기면 배달 증거가 사후 수정 가능해진다.
+      2. **평문 주소 컬럼 부재** — 웹훅 페이로드에는 평문 수신자가 실려 오므로, 편의로
+         `TO_EMAIL` 같은 컬럼을 하나 붙이는 순간 DB 유출 시 수신함 목록이 통째로 샌다.
+         해시(TARGET_HASH_VAL)만 남긴다는 T9·NFR30 규약을 스키마 수준에서 강제한다.
+    """
+    cols = set(_columns(schema_db, db_name, "TMAIL_EVENT"))
+    assert "INS_DTM" in cols, "append-only 원장에 수신 시각(INS_DTM)이 없다"
+    forbidden = {"INS_ID", "MOD_ID", "MOD_DTM"} & cols
+    assert not forbidden, f"TMAIL_EVENT 는 append-only 인데 수정 감사 컬럼 발견: {sorted(forbidden)}"
+    assert "TARGET_HASH_VAL" in cols, "수신자 해시 컬럼 부재 — 상관관계를 잡을 수 없다"
+    leaky = {c for c in cols if "EMAIL" in c or "ADDR" in c or c.endswith("_TO")}
+    assert not leaky, (
+        f"TMAIL_EVENT 에 평문 수신자로 의심되는 컬럼: {sorted(leaky)} — 해시만 저장한다(T9·NFR30)"
+    )
+
+
+def test_SC4e_mail_suppression_is_releasable_and_hashed(schema_db, db_name):
+    """SP-AUTH-16: 억제 목록은 **해제 가능**해야 하고 평문 주소를 담지 않는다.
+
+    해제 경로가 없으면 위조·오탐 바운스 한 건이 그 주소의 로그인을 **영구히** 막는다.
+    운영자가 되돌릴 수 있어야 하고(RELEASED_DTM), 되돌린 사실이 감사에 남아야 한다(MOD_*).
+    """
+    cols = set(_columns(schema_db, db_name, "TMAIL_SUPPRESSION"))
+    assert "RELEASED_DTM" in cols, "억제 해제 컬럼(RELEASED_DTM) 부재 — 영구 잠금이 된다"
+    assert {"MOD_ID", "MOD_DTM"} <= cols, "해제는 상태 변경이라 수정 감사 컬럼이 필요하다"
+    assert "TARGET_HASH_VAL" in cols
+    leaky = {c for c in cols if "EMAIL" in c or "ADDR" in c}
+    assert not leaky, f"TMAIL_SUPPRESSION 에 평문 수신자 의심 컬럼: {sorted(leaky)}"
 
 
 # ── SC-5: 문자셋/엔진 ──

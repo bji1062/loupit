@@ -54,6 +54,17 @@ describe('sendOutcome — 코드 발송 실패 분류', () => {
     assert.equal(o.kind, 'manual');
     assert.equal(o.msg, '');
   });
+  // ── P1-4: 같은 409 인데 뜻이 다르다 — detail 로 갈라야 한다 ──
+  test('409 mail_suppressed → 반송 안내(수동 승인 흐름으로 오독 금지)', () => {
+    const o = sendOutcome(new ApiError(409, '/employment/verify-code', { detail: 'mail_suppressed' }));
+    assert.notEqual(o.kind, 'manual', '반송을 수동 승인으로 오독하면 오지 않을 승인을 기다린다');
+    assert.match(o.msg, /반송/);
+    assert.doesNotMatch(o.msg, /잠시 후/);
+  });
+  test('409 manual_required(detail 명시) → 기존 수동 승인 폴백 유지', () => {
+    const o = sendOutcome(new ApiError(409, '/employment/verify-code', { detail: 'manual_required' }));
+    assert.equal(o.kind, 'manual');
+  });
   test('422 → 도메인 불일치 안내', () => { assert.match(sendOutcome(e(422)).msg, /도메인/); });
   test('401 → 이 경로엔 코드 대조가 없으므로 세션 만료로 단정', () => {
     const o = sendOutcome(e(401));

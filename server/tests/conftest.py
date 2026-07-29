@@ -115,9 +115,19 @@ PARTICIPATION_CREATE_ORDER = [
     "TEMPLOY_VERIFICATION", "TEMPLOY_VRF_REQUEST", "TBENEFIT_EDIT_LOG",
 ]
 
-# 활성 격리 사이클 = 참조 6 + 참여 7. 참여가 뒤에 오는 것이 FK 부모→자식 순서를 만족한다
-# (TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — test_schema_isolation SI-4).
-TABLE_CREATE_ORDER = _REFERENCE_CREATE_ORDER + PARTICIPATION_CREATE_ORDER
+# ── 메일 배달 결과 2테이블(SP-AUTH-16, P1-4 바운스 웹훅) ────────────────────────────
+# 참여 7테이블과 **별도 그룹**인 이유: FK 가 하나도 없고 M9 스위치와 무관하게 존재한다
+# (M9 OFF 인 프로덕션도 웹훅을 받아 억제 목록을 쌓는다 — db/schema.sql 의 해당 절 참조).
+# FK 가 없으므로 생성 순서 제약도 없다 → 목록 맨 뒤에 둔다(SI-4 는 FK 부모만 본다).
+#
+# ⚠ **여기 넣는 것만으로는 부족하다**: 게이트가 서빙 스키마를 DROP/CREATE 하므로
+# `infra/deploy/run_tests.sh` 의 백업/재주입 목록에도 반드시 함께 넣어야 한다. 안 그러면
+# **릴리스마다 프로덕션 억제 목록이 소실**된다(TCOMPARE_LOG·참여 7테이블과 똑같은 위험).
+MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION"]
+
+# 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 2. 참여가 뒤에 오는 것이 FK 부모→자식 순서를
+# 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).
+TABLE_CREATE_ORDER = _REFERENCE_CREATE_ORDER + PARTICIPATION_CREATE_ORDER + MAIL_OPS_CREATE_ORDER
 TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
 

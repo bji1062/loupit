@@ -214,3 +214,105 @@ def test_AO_parser_dispatch():
     assert d.func is ops.cmd_delete_benefit and d.benefit_id == 3 and d.note == "반달"
     with pytest.raises(SystemExit):  # 서브명령 필수
         p.parse_args([])
+
+
+# ── SP-AUTH-16: 메일 발송 억제 운영 명령 ──────────────────────────────────────
+class _SuppCursor(_FakeCursor):
+    """억제 테이블 전용 스텁 — UPDATE 조건(해시·미해제)만 재현한다."""
+
+    def execute(self, sql, params=()):
+        self._result, self.rowcount = [], 0
+        if "SET NAMES" in sql:
+            return
+        if "FROM TMAIL_SUPPRESSION" in sql:
+            rows = self.store["suppressions"]
+            if "RELEASED_DTM IS NULL" in sql:
+                rows = [r for r in rows if r["RELEASED_DTM"] is None]
+            self._result = [dict(r) for r in rows]
+        elif "UPDATE TMAIL_SUPPRESSION" in sql:
+            mod_id, target_hash = params
+            for r in self.store["suppressions"]:
+                if r["TARGET_HASH_VAL"] == target_hash and r["RELEASED_DTM"] is None:
+                    r["RELEASED_DTM"], r["MOD_ID"] = "2026-07-29 00:00:00", mod_id
+                    self.rowcount += 1
+
+    def fetchall(self):
+        return self._result
+
+
+class _SuppConn(_FakeConn):
+    def cursor(self):
+        return _SuppCursor(self.store)
+
+
+def _supp_store(target_hash: str, released=None):
+    return {
+        "suppressions": [{
+            "MAIL_SUPP_ID": 1, "TARGET_HASH_VAL": target_hash, "REASON_CD": "hard_bounce",
+            "SRC_SVIX_MSG_ID": "msg_1", "INS_DTM": "2026-07-29 00:00:00",
+            "RELEASED_DTM": released, "MOD_ID": None,
+        }]
+    }
+
+
+def test_AO4_release_suppression_reverses_lockout():
+    """**억제 해제는 기능의 필수 짝이다** — 없으면 오탐·위조 바운스 한 건이 영구 잠금이 된다.
+
+    행을 지우지 않고 RELEASED_DTM 을 채워 "언제 누가 풀었는가"를 남긴다(반복 오탐 추적)."""
+    from server.services.auth_code import _hash_target
+
+    email = "user@example.com"
+    store = _supp_store(_hash_target(email))
+    conn = _SuppConn(store)
+    args = argparse.Namespace(email=email, by=7)
+
+    assert ops.cmd_release_suppression(conn, args) == 0
+    row = store["suppressions"][0]
+    assert row["RELEASED_DTM"] is not None, "해제되지 않았다"
+    assert row["MOD_ID"] == 7, "해제 운영자가 감사에 안 남았다"
+
+
+def test_AO4b_release_matches_by_delivery_address_hash():
+    """`+태그`·도트 변형으로 신고해도 같은 수신함이면 해제된다(억제 등록과 같은 키)."""
+    from server.services.auth_code import _hash_target
+
+    store = _supp_store(_hash_target("ab@gmail.com"))
+    conn = _SuppConn(store)
+    ops.cmd_release_suppression(conn, argparse.Namespace(email="a.b+tag@gmail.com", by=None))
+    assert store["suppressions"][0]["RELEASED_DTM"] is not None
+
+
+def test_AO4c_release_never_prints_plaintext_address(capsys):
+    """출력에 원문 주소가 없어야 한다 — 터미널·운영 로그에 남는다(NFR31 과 같은 이유)."""
+    from server.services.auth_code import _hash_target
+
+    email = "secret.person@corp.example.com"
+    conn = _SuppConn(_supp_store(_hash_target(email)))
+    ops.cmd_release_suppression(conn, argparse.Namespace(email=email, by=None))
+    out = capsys.readouterr().out
+    assert email not in out and "corp.example.com" not in out
+
+
+def test_AO4d_release_of_unsuppressed_is_noop_and_reports():
+    """억제 중이 아니면 0건 — 조용히 성공한 척하지 않고 그 사실을 알린다."""
+    from server.services.auth_code import _hash_target
+
+    store = _supp_store(_hash_target("other@example.com"), released="2026-07-01 00:00:00")
+    conn = _SuppConn(store)
+    assert ops.cmd_release_suppression(conn, argparse.Namespace(email="other@example.com", by=None)) == 0
+
+
+def test_AO4e_list_suppressed_runs(capsys):
+    from server.services.auth_code import _hash_target
+
+    conn = _SuppConn(_supp_store(_hash_target("x@example.com")))
+    ops.cmd_list_suppressed(conn, argparse.Namespace(all=False, limit=50))
+    assert "hard_bounce" in capsys.readouterr().out
+
+
+def test_AO4f_parser_dispatch_for_suppression():
+    p = ops.build_parser()
+    a = p.parse_args(["release-suppression", "a@b.com", "--by", "3"])
+    assert a.func is ops.cmd_release_suppression and a.email == "a@b.com" and a.by == 3
+    b = p.parse_args(["list-suppressed", "--all"])
+    assert b.func is ops.cmd_list_suppressed and b.all is True

@@ -85,6 +85,20 @@ describe('messageFor', () => {
     const err = new ApiError(429, '/members/login-code', null, 20);
     assert.match(messageFor(err, 'send'), /20초 뒤에/);
   });
+  // ── P1-4: 반송 이력 주소(409 mail_suppressed) ──
+  test('발송 409 mail_suppressed → 반송 안내 + 다른 주소 유도', () => {
+    const err = new ApiError(409, '/members/login-code', { detail: 'mail_suppressed' });
+    const msg = messageFor(err, 'send');
+    assert.match(msg, /반송/, '반송 사실을 알려야 한다');
+    assert.match(msg, /다른 이메일|다른 주소/, '해결 행동(다른 주소)을 제시해야 한다');
+    // **"잠시 후 다시" 는 거짓 안내다** — 반송 주소는 기다린다고 풀리지 않는다.
+    assert.doesNotMatch(msg, /잠시 후/);
+  });
+  test('발송 409 이지만 다른 detail → 일반 문구(과잉 단정 금지)', () => {
+    const msg = messageFor(new ApiError(409, '/members/login-code', { detail: 'other' }), 'send');
+    assert.doesNotMatch(msg, /반송/);
+  });
+
   test('발송 429 + Retry-After 없음 → 기존 "잠시 후" 폴백', () => {
     assert.match(messageFor(e(429), 'send'), /잠시 후/);
     assert.doesNotMatch(messageFor(e(429), 'send'), /\d+초/);

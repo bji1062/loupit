@@ -38,7 +38,18 @@ export function resendWaitSec(lastSentMs, nowMs, cooldownSec = RESEND_COOLDOWN_S
 // 이 경로엔 코드 대조가 없어 401 은 세션 만료 한 뜻뿐이다(require_member).
 export function sendOutcome(err) {
   const s = err instanceof ApiError ? err.status : 0;
-  if (s === 409) return { kind: 'manual', msg: '' }; // manual_required — 도메인 미등록 회사
+  // ⚠ 409 는 **두 뜻**이다 — `detail` 로 갈라야 한다(2026-07-29, SP-AUTH-16).
+  //   manual_required : 도메인 미등록 회사 → 수동 승인 폴백(오류 아님)
+  //   mail_suppressed : 이 주소로 보낸 메일이 반송돼 발송을 멈춘 상태 → 다른 주소를 써야 한다
+  // 구 판본은 409 를 전부 manual 로 단정했다. 그대로 두면 반송 사용자가 **오지 않을 수동
+  // 승인을 무한정 기다린다**. 미지의 409 는 기존 동작(manual)을 유지해 회귀를 만들지 않는다.
+  if (s === 409) {
+    const detail = err && err.data ? err.data.detail : null;
+    if (detail === 'mail_suppressed') {
+      return { kind: 'error', msg: '이 주소로 보낸 메일이 반송되고 있어요. 다른 회사 이메일 주소를 사용해주세요.' };
+    }
+    return { kind: 'manual', msg: '' }; // manual_required — 도메인 미등록 회사
+  }
   if (s === 422) return { kind: 'error', msg: '회사 이메일 도메인이 이 회사와 일치하지 않아요.' };
   if (s === 401) return { kind: 'session', msg: '로그인이 만료됐어요. 다시 로그인해주세요.' };
   // 발송 경로의 429 는 **엣지 IP 리밋 한 뜻뿐**이다(앱 핸들러는 204/409/422 만 낸다) →

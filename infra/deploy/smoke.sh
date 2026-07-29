@@ -153,6 +153,29 @@ else
   fail=1
 fi
 
+# ── SM-24: 메일 배달 웹훅이 Layer A 에 막히지 않는가(SP-INFRA-3.4.8 · P1-4, 2026-07-29) ──
+#
+# 제공자(Resend/Svix)는 `X-Loupit-Client` 를 붙일 수 없다. 엣지가 그걸 요구하면 **모든 이벤트가
+# 403** 이 되고, 재시도 소진 뒤엔 영구 손실이다. 게다가 조용해서 "반송이 없네"로 오독한다.
+#
+# 판정은 **"403 이 아니다"** 하나다 — 앱 상태와 무관하게 성립하도록 일부러 느슨하게 잡았다:
+#   · 시크릿 미설정(현재 기본) → 라우터 미등록 → **404**  ← 엣지는 통과했다는 뜻
+#   · 시크릿 설정 후          → 서명 없음        → **401**  ← 역시 엣지 통과
+# 둘 다 정상이고, **403 만이 회귀**(Layer A 재선언·봇 UA 차단)다. 메일은 0통, 버킷 소비도
+# 없다(loupit_mail 이 아니라 loupit_api 를 쓴다 — 그 자체가 MG-12 의 라이브 확인이기도 하다).
+WEBHOOK_EP="${BASE}/api/v1/webhooks/resend"
+sm24(){
+  _c="$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Content-Type: application/json' -d '{}' "${WEBHOOK_EP}")"
+  echo "$_c" > "${SMOKE_TMP}/sm24.code"
+  [ "$_c" != 403 ]
+}
+if sm24; then
+  echo "  OK  SM-24 웹훅 Layer A 면제(코드 $(cat "${SMOKE_TMP}/sm24.code") — 403 아님)"
+else
+  echo "  FAIL SM-24 웹훅이 403 — Layer A 재선언 또는 봇 UA 차단. 이대로면 바운스 이벤트가 전량 유실된다" >&2
+  fail=1
+fi
+
 chk "SM-5 company static"   "[ \"\$(code ${BASE}/company/${SAMPLE_SLUG:-samsung-elec})\" = 200 ]"  # SAMPLE_SLUG로 실 slug 지정(기본값은 실재 slug)
 chk "SM-7 http2"            "curl -sI --http2 ${BASE}/ | grep -qi '^HTTP/2 200'"
 chk "SM-8 hsts"             "curl -sI ${BASE}/ | grep -qi 'strict-transport-security: max-age=15768000; includesubdomains'"

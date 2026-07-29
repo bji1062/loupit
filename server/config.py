@@ -103,6 +103,15 @@ class Settings(BaseSettings):
     comp_email_hmac_pepper: str = ""  # 회사 이메일 HMAC 키(재직 인증 필수 — 미설정 시 재직 경로 기동 실패, SP-AUTH-7)
     login_code_hmac_pepper: str = ""  # 로그인 코드 HMAC 키(보안강화, 보안점검 2026-07-23). 6자리 코드는 저엔트로피(10^6)라 무키 해시는 DB 유출 시 오프라인 무차별로 복원됨 → 운영 필수 주입
 
+    # 메일 배달 결과 웹훅 (SP-AUTH-16, P1-4 — 2026-07-29)
+    #
+    # Resend(Svix) 웹훅 서명 시크릿. **비어 있으면 웹훅 라우터를 등록하지 않는다**(fail-closed,
+    # main.create_app). 이 엔드포인트는 바운스를 받으면 그 주소의 메일 발송을 막으므로, 검증
+    # 불가 상태로 열려 있으면 위조 이벤트 하나로 임의 주소의 로그인을 영구 차단할 수 있다.
+    # 값은 Resend 대시보드에서 웹훅을 만들 때 발급된다(`whsec_…`). M9 스위치와 무관하다 —
+    # 지금 실발송은 beta 지만 발신 도메인·무료 티어를 공유하므로 억제 목록은 prod 에 모은다.
+    resend_webhook_secret: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]

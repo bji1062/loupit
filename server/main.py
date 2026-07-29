@@ -25,6 +25,7 @@ from server.routers import (
     companies,
     employment,
     health,
+    mail_webhook,
     member,
     reference,
     trending,
@@ -195,6 +196,18 @@ def create_app() -> FastAPI:
         app.include_router(member.router, prefix=p)
         app.include_router(employment.router, prefix=p)
         app.include_router(benefit_edit.router, prefix=p)
+
+    # 메일 배달 웹훅(SP-AUTH-16) — **M9 게이트 밖**이고 시크릿이 있을 때만 등록한다.
+    #
+    # M9 밖인 이유: 수신 호스트는 prod(M9 OFF)다. 지금 실발송하는 것은 beta 지만 발신 도메인·
+    # 무료 티어를 공유하므로 억제 목록은 한 곳에 모여야 하고, prod 는 항상 떠 있다.
+    #
+    # 시크릿 조건인 이유(fail-closed): 이 엔드포인트는 바운스를 받으면 그 주소의 발송을 막는다.
+    # 검증 불가 상태로 열려 있으면 위조 이벤트 하나로 **임의 주소의 로그인을 영구 차단**할 수
+    # 있다(표적 잠금). 부수 효과로, 시크릿을 넣기 전까지 익명 표면(INV-1)은 그대로다 —
+    # 표면 변화가 **명시적 설정**에만 따라오게 만든 것이다(test_m9_gate M9G2 와 정합).
+    if s.resend_webhook_secret:
+        app.include_router(mail_webhook.router, prefix=p)
     return app
 
 

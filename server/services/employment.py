@@ -58,17 +58,23 @@ async def active_verification(mbr_id: int, comp_id: int) -> dict | None:
     )
 
 
-async def issue_employ_code(comp_id: int, mbr_id: int, company_email: str) -> None:
+async def issue_employ_code(comp_id: int, mbr_id: int, company_email: str) -> str | None:
     """재직 인증 코드 발급 — 해시만 저장(+login_code_ttl_min), 회사 이메일로 발송. 원문 무저장.
 
     쿨다운 조회키(`auth_code._hash_target`)는 **배달 주소** 기준이라 `+태그` 변형으로 같은 회사
     수신함에 폭탄을 넣는 우회가 막힌다(로그인 경로와 동일 결함·동일 수정, 2026-07-27).
-    회사 스코프(COMP_ID)는 그대로 유지된다 — 다른 회사 인증 요청까지 막지 않는다."""
+    회사 스코프(COMP_ID)는 그대로 유지된다 — 다른 회사 인증 요청까지 막지 않는다.
+
+    반환값 규약은 로그인 경로와 같다: 정상 `None`, 억제된 주소면 `auth_code.SUPPRESSED`
+    (SP-AUTH-16). 회사 메일서버가 반송하는 주소로 코드를 계속 쏘면 발신 도메인 평판만 깎인다."""
     from server import mailer  # 지연 import(조립 순서 무관)
+    from server.services import mail_events  # 지연 import(순환 방지)
 
     s = get_settings()
     norm = auth_code._normalize_email(company_email)
     target_hash = auth_code._hash_target(norm)
+    if await mail_events.is_suppressed(norm):
+        return auth_code.SUPPRESSED
     if await auth_code.recent_unconsumed_exists(target_hash, _PURPOSE, comp_id):
         return  # 재전송 쿨다운 중 — 무발송(회사 이메일 폭탄 완화, 호출측 204 유지)
     code = auth_code._gen_code()

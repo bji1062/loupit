@@ -263,3 +263,48 @@ CREATE TABLE IF NOT EXISTS TBENEFIT_EDIT_LOG (
   FOREIGN KEY (BENEFIT_ID)   REFERENCES TCOMPANY_BENEFIT(BENEFIT_ID) ON DELETE SET NULL,
   FOREIGN KEY (ACTOR_MBR_ID) REFERENCES TMEMBER(MBR_ID)              ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='복지 편집 이력 (불변 append-only, 나무위키식 공개 — 누가·언제·before→after)';
+
+-- ============================================================================
+-- 메일 배달 결과 2테이블 — SP-AUTH-16 (P1-4 바운스 웹훅, 2026-07-29 신설)
+--
+-- **참여 7테이블과 의도적으로 분리한다(FK 0개).** M9(로그인)가 꺼진 프로덕션에서도 웹훅을
+-- 받아야 하기 때문이다 — 지금 실발송하는 것은 beta 지만 발신 도메인·무료 티어는 prod 와
+-- 공유하므로, 억제 목록은 M9 스위치와 무관하게 한 곳에 모여야 한다. FK 를 걸면 M9 OFF 스키마
+-- (참여 테이블 부재)에서 생성 자체가 실패한다.
+--
+-- **수신자 원문은 저장하지 않는다**(T9·AU-4·NFR30 동일 규약). 웹훅 페이로드에는 평문 주소가
+-- 오지만, TAUTH_CODE.TARGET_HASH_VAL 과 **똑같은 규칙**(SHA-256(배달주소 정규화),
+-- auth_code._delivery_address)으로 해시해 넣는다. 그래야 원문 없이도 발송 기록과 상관관계가
+-- 잡히고, DB 유출 시 수신함 목록이 새지 않는다.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS TMAIL_EVENT (
+  MAIL_EVENT_ID     BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '메일 이벤트 PK',
+  SVIX_MSG_ID       VARCHAR(64)  NOT NULL COMMENT 'Svix 메시지 ID — at-least-once 배달의 중복 제거 키. 같은 이벤트가 두 번 와도 1행(수신자와 복합 UNIQUE)',
+  EVENT_TYPE_CD     VARCHAR(32)  NOT NULL COMMENT '이벤트 종류 (email.bounced, email.delivered, email.complained, email.failed, email.delivery_delayed, email.suppressed)',
+  TARGET_HASH_VAL   CHAR(64)     NOT NULL COMMENT '수신 배달주소 SHA-256 (원문 무저장, T9). TAUTH_CODE.TARGET_HASH_VAL 과 동일 규칙이라 발송 기록과 조인 가능',
+  PROVIDER_MSG_ID   VARCHAR(64)  DEFAULT NULL COMMENT '제공자(Resend) email_id — 대시보드 역추적용 상관키',
+  BOUNCE_TYPE_CD    VARCHAR(16)  DEFAULT NULL COMMENT '바운스 종류 (Permanent=영구/Transient=일시/Undetermined=미상). 억제는 Permanent 만',
+  BOUNCE_SUBTYPE_CD VARCHAR(32)  DEFAULT NULL COMMENT '바운스 세부 (General, NoEmail, Suppressed, MailboxFull 등 제공자 값 그대로)',
+  EVENT_DTM         DATETIME     DEFAULT NULL COMMENT '제공자가 기록한 이벤트 발생 시각 (수신 시각과 구분 — 재전송 시 벌어진다)',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '수신 일시 (불변 append-only — 감사 4종 미적용, MOD 없음)',
+  -- (메시지, 수신자) 복합 UNIQUE: 재전송 중복은 막으면서 **다중 수신자 이벤트를 삼키지 않는다**.
+  -- SVIX_MSG_ID 단독 UNIQUE 로 두면 수신자가 여럿인 이벤트에서 두 번째 이후가 조용히 유실된다
+  -- (우리 발송은 항상 1인이지만, 원장이 제공자 페이로드를 잘라내는 설계는 두지 않는다).
+  UNIQUE KEY uq_mail_event_svix (SVIX_MSG_ID, TARGET_HASH_VAL),
+  INDEX idx_mail_event_target (TARGET_HASH_VAL, EVENT_TYPE_CD),
+  INDEX idx_mail_event_dtm (INS_DTM)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='메일 전달 이벤트 원장 (불변 append-only, 수신자 원문 무저장 — 웹훅 수신분)';
+
+CREATE TABLE IF NOT EXISTS TMAIL_SUPPRESSION (
+  MAIL_SUPP_ID    INT AUTO_INCREMENT PRIMARY KEY COMMENT '발송 억제 PK',
+  TARGET_HASH_VAL CHAR(64)    NOT NULL COMMENT '억제 대상 배달주소 SHA-256 (원문 무저장). 주소당 1행(UNIQUE) — 재바운스는 UPDATE',
+  REASON_CD       VARCHAR(24) NOT NULL COMMENT '억제 사유 (hard_bounce, complaint, suppressed) — 값집합 SP-AUTH-16',
+  SRC_SVIX_MSG_ID VARCHAR(64) DEFAULT NULL COMMENT '근거 이벤트의 Svix 메시지 ID. **FK 아님** — 원장은 보존 퍼지 대상이라 FK 를 걸면 퍼지가 막히거나 억제가 함께 지워진다',
+  RELEASED_DTM    DATETIME    DEFAULT NULL COMMENT '억제 해제 일시 (NULL = 억제 중). 운영자가 ops.py 로 해제하며, 해제 이력을 남기려고 행을 지우지 않는다',
+  INS_ID  INT COMMENT '입력자 ID (웹훅 자동 등록은 NULL)',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID (운영자 해제 시 기록)',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  UNIQUE KEY uq_mail_supp_target (TARGET_HASH_VAL)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='메일 발송 억제 목록 (하드 바운스·스팸신고 주소 — 재발송 차단, 원문 무저장)';
