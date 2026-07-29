@@ -49,3 +49,18 @@ class EmployRequestIn(BaseModel):
         if not v:
             raise ValueError("증빙 내용을 입력하세요.")
         return v
+
+
+class CompanyRequestIn(BaseModel):
+    """POST /employment/company-requests — 회사 등록 요청(SP-AUTH-17).
+
+    검색에 없는 회사를 등록해 달라는 요청이다. `comp_id` 가 **없는 것이 핵심** —
+    아직 존재하지 않는 회사라서 참조할 ID 가 없다(EmployRequestIn 과의 결정적 차이).
+
+    `ref_url` 은 **선택**이다(사용자 결정). 있으면 운영자가 빨리 확인할 수 있을 뿐,
+    없다고 요청을 막지 않는다 — 막으면 URL 을 못 찾는 사용자가 그냥 이탈한다.
+    정규화·스킴 검증은 `services.company_request` 가 소유한다(모델은 형태만 본다).
+    """
+
+    comp_nm: str = Field(..., min_length=1, max_length=100)
+    ref_url: str | None = Field(default=None, max_length=500)

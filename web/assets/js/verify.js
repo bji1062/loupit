@@ -6,7 +6,8 @@
 // 한다 — 화면 루트(#verify-card)가 있을 때만 초기화하므로 node:test import 시 부작용 0.
 
 import {
-  getMe, searchCompanies, requestEmployCode, verifyEmployment, submitEmployRequest, ApiError,
+  getMe, searchCompanies, requestEmployCode, verifyEmployment, submitEmployRequest,
+  submitCompanyRequest, ApiError,
 } from './api.js';
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
@@ -98,6 +99,24 @@ export function verifyOutcome(err, ctx = {}) {
   return { kind: 'error', msg: '인증에 실패했어요. 잠시 후 다시 시도해주세요.', clearCode: false, retryCode: true };
 }
 
+// ── 순수: 회사 등록 요청 결과 분류(SP-AUTH-17) ──
+// 서버는 202/409/429/422 로 갈린다. 각각 사용자가 **다음에 할 행동이 다르므로** 뭉치면 안 된다:
+//   202 접수됨 → 기다린다 / 409 이미 요청함 → 기다린다(중복 요청 불필요)
+//   429 상한   → 기존 요청이 처리될 때까지 못 넣는다 / 422 형식 → 입력을 고친다
+export function companyRequestOutcome(err) {
+  if (!err) return { kind: 'ok', msg: '등록 요청을 접수했어요. 운영자 확인 후 등록되면 재직 인증을 할 수 있어요.' };
+  const s = err instanceof ApiError ? err.status : 0;
+  if (s === 409) return { kind: 'dup', msg: '이미 같은 회사로 요청하셨어요. 확인 후 등록해 드릴게요.' };
+  if (s === 429) return { kind: 'throttled', msg: '대기 중인 요청이 많아요. 먼저 처리된 뒤에 다시 요청해주세요.' };
+  if (s === 422) {
+    // 서버가 준 사유를 그대로 보여준다 — 사용자가 방금 입력한 값에 대한 형식 안내다.
+    const d = err.data && typeof err.data.detail === 'string' ? err.data.detail : null;
+    return { kind: 'invalid', msg: d || '입력을 확인해주세요.' };
+  }
+  if (s === 401) return { kind: 'session', msg: '로그인이 만료됐어요. 다시 로그인해주세요.' };
+  return { kind: 'error', msg: '요청에 실패했어요. 잠시 후 다시 시도해주세요.' };
+}
+
 // ── 순수: 회사 검색 결과 1건 → <li>(전부 textContent — XSS 안전). document 주입. ──
 export function renderCompanyItem(doc, r) {
   const li = doc.createElement('li');
@@ -160,27 +179,75 @@ export function initVerifyPage() {
     }
   }
 
+  // ── 회사 등록 요청(SP-AUTH-17) ──
+  $('comp-request-open').addEventListener('click', () => {
+    $('comp-request-step').hidden = false;
+    $('req-comp-nm').focus();
+  });
+
+  $('comp-request-send').addEventListener('click', async (e) => {
+    clrMsg();
+    const name = $('req-comp-nm').value.trim();
+    const url = $('req-ref-url').value.trim();
+    if (!name) { setErr('회사명을 입력해주세요.'); $('req-comp-nm').focus(); return; }
+    await withBusy(e.currentTarget, '보내는 중…', async () => {
+      let outcome;
+      try {
+        await submitCompanyRequest(name, url);
+        outcome = companyRequestOutcome(null);
+      } catch (err) {
+        outcome = companyRequestOutcome(err);
+        if (outcome.kind === 'session') { location.href = '/login'; return; }
+      }
+      if (outcome.kind === 'ok' || outcome.kind === 'dup') {
+        // 접수됐으면 폼을 닫는다 — 열어두면 같은 요청을 반복해 넣게 된다.
+        $('comp-request-step').hidden = true;
+        $('comp-none').hidden = true;
+        setOk(outcome.msg);
+      } else {
+        setErr(outcome.msg);
+      }
+    });
+  });
+
   // ── 회사 검색(디바운스 + 최신 요청만 반영) ──
   let searchSeq = 0, searchTimer = null;
   $('comp-search').addEventListener('input', () => {
     clearTimeout(searchTimer);
     const q = $('comp-search').value.trim();
     const results = $('comp-results');
-    if (!q) { results.hidden = true; results.textContent = ''; return; }
+    if (!q) { results.hidden = true; results.textContent = ''; hideNoneBlock(); return; }
     searchTimer = setTimeout(async () => {
       const seq = ++searchSeq;
       try {
         const rows = await searchCompanies(q);
         if (seq !== searchSeq) return; // 오래된 응답 폐기
-        renderResults(rows);
+        renderResults(rows, q);
       } catch { /* 검색 실패는 조용히(재입력 유도) */ }
     }, 250);
   });
 
-  function renderResults(rows) {
+  // ── 검색 결과 없음 블록(SP-AUTH-17) ──
+  // 구 판본은 0건이면 목록을 숨기기만 해서 **화면이 아무 반응도 하지 않았다** — 사용자는
+  // 자기가 잘못 쳤는지, 서비스가 고장인지, 회사가 없는 건지 구분할 수 없었다.
+  function hideNoneBlock() {
+    $('comp-none').hidden = true;
+    $('comp-request-step').hidden = true;
+  }
+
+  function showNoneBlock(q) {
+    // 검색어는 **textContent 로만** 넣는다(사용자 입력 → XSS 안전, 이 파일의 기존 규약).
+    $('comp-none-msg').textContent = `‘${q}’ 검색 결과가 없어요.`;
+    $('comp-none').hidden = false;
+    $('comp-request-step').hidden = true;   // 버튼을 눌러야 폼이 열린다(요청 흐름 명시)
+    $('req-comp-nm').value = q;             // 방금 친 이름을 그대로 채워 재입력을 없앤다
+  }
+
+  function renderResults(rows, q) {
     const ul = $('comp-results');
     ul.textContent = '';
-    if (!rows || !rows.length) { ul.hidden = true; return; }
+    if (!rows || !rows.length) { ul.hidden = true; showNoneBlock(q); return; }
+    hideNoneBlock();
     for (const r of rows) {
       const li = renderCompanyItem(document, r);
       const pick = () => selectCompany(r);

@@ -128,6 +128,11 @@ export const verifyEmployment = (comp_id, company_email, code) =>
 export const submitEmployRequest = (comp_id, evidence) =>
   apiSend('POST', '/employment/requests', { comp_id, evidence }); // 202 pending / 409 중복 대기
 
+
+// 회사 등록 요청(SP-AUTH-17) — 검색에 **없는** 회사용이라 comp_id 가 없다.
+// ref_url 은 선택: 비우면 null 로 보낸다(빈 문자열을 보내면 서버가 형식 오류로 본다).
+export const submitCompanyRequest = (comp_nm, ref_url) =>
+  apiSend('POST', '/employment/company-requests', { comp_nm, ref_url: ref_url || null });
 // 복지 편집(SP-AUTH-9·10, FR-108~110). 등록·수정·편집용 조회는 세션+재직 게이트(credentialed+CSRF);
 // 편집용 조회 응답은 base_dtm(낙관동시성 토큰)·benefit_id(PUT 대상 PK)를 행마다 동봉한다.
 // 편집 이력 조회는 익명 공개 GET(무쿠키 apiFetch — 스크래핑 방어 헤더만 부착).

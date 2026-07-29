@@ -264,6 +264,26 @@ CREATE TABLE IF NOT EXISTS TBENEFIT_EDIT_LOG (
   FOREIGN KEY (ACTOR_MBR_ID) REFERENCES TMEMBER(MBR_ID)              ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='복지 편집 이력 (불변 append-only, 나무위키식 공개 — 누가·언제·before→after)';
 
+CREATE TABLE IF NOT EXISTS TCOMPANY_REQUEST (
+  COMP_REQUEST_ID  INT AUTO_INCREMENT PRIMARY KEY COMMENT '회사 등록 요청 PK',
+  MBR_ID           INT          NOT NULL COMMENT '요청 회원 FK (TMEMBER.MBR_ID)',
+  -- ⚠ **TCOMPANY FK 가 없다 — 그게 이 테이블의 존재 이유다.** 검색해도 없는 회사를 요청하는
+  --   창구라, 요청 시점에 참조할 COMP_ID 가 아직 없다(TEMPLOY_VRF_REQUEST 와 결정적 차이).
+  REQ_COMP_NM      VARCHAR(100) NOT NULL COMMENT '요청한 회사명 (사용자 입력 원문 — 등록 전이라 FK 불가)',
+  REF_URL_CTNT     VARCHAR(500) DEFAULT NULL COMMENT '참고 URL (복지 안내·채용 페이지). **선택** — 있으면 운영자 확인이 빨라진다. http/https 만 허용(javascript:·data: 차단)',
+  STATUS_CD        VARCHAR(12)  NOT NULL DEFAULT 'pending' COMMENT '처리 상태 (pending, approved, rejected) — 등록 여부는 **운영자 판단**이며 자동 등록은 없다',
+  DECIDED_BY_ID    INT          DEFAULT NULL COMMENT '결정 운영자 ID (CLI)',
+  DECIDED_DTM      DATETIME     DEFAULT NULL COMMENT '결정 일시',
+  DECIDE_NOTE_CTNT VARCHAR(500) DEFAULT NULL COMMENT '결정 사유·비고',
+  INS_ID  INT COMMENT '입력자 ID',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  INDEX idx_compreq_status (STATUS_CD, INS_DTM),
+  INDEX idx_compreq_member (MBR_ID, INS_DTM),
+  FOREIGN KEY (MBR_ID) REFERENCES TMEMBER(MBR_ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회사 등록 요청 큐 (검색 결과 없는 회사 — 운영자 판단으로만 등록, 자동 생성 없음)';
+
 -- ============================================================================
 -- 메일 배달 결과 2테이블 — SP-AUTH-16 (P1-4 바운스 웹훅, 2026-07-29 신설)
 --

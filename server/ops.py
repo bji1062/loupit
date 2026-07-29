@@ -193,6 +193,58 @@ def cmd_release_suppression(conn, args) -> int:
     return 0
 
 
+
+def cmd_list_company_requests(conn, args) -> int:
+    """회사 등록 요청 큐 조회(SP-AUTH-17).
+
+    ⚠ 회사명·URL 은 **사용자 입력 원문**이다. 서비스 계층이 제어문자를 제거하고 URL 스킴을
+    http/https 로 제한하지만, 여기서도 값을 신뢰해 자동으로 무언가 하지 않는다 — 출력해서
+    사람이 읽고 판단하는 것이 이 명령의 전부다."""
+    with conn.cursor(pymysql.cursors.DictCursor) as cur:
+        cur.execute(
+            "SELECT r.COMP_REQUEST_ID, r.MBR_ID, m.NICKNAME_NM, r.REQ_COMP_NM, r.REF_URL_CTNT, "
+            "       r.STATUS_CD, r.INS_DTM "
+            "  FROM TCOMPANY_REQUEST r LEFT JOIN TMEMBER m ON m.MBR_ID = r.MBR_ID "
+            + ("" if args.all else "WHERE r.STATUS_CD='pending' ")
+            + "ORDER BY r.INS_DTM LIMIT %s",
+            (args.limit,),
+        )
+        rows = cur.fetchall()
+    if not rows:
+        print("회사 등록 요청 없음.")
+        return 0
+    print(f"회사 등록 요청 {len(rows)}건:")
+    for r in rows:
+        who = r["NICKNAME_NM"] or f"(탈퇴 회원 {r['MBR_ID']})"
+        print(f"  #{r['COMP_REQUEST_ID']}  [{r['STATUS_CD']}]  {r['REQ_COMP_NM']}  — {who}  {r['INS_DTM']}")
+        print(f"      참고 URL: {r['REF_URL_CTNT'] or '(없음 — 직접 조사 필요)'}")
+    return 0
+
+
+def cmd_decide_company_request(conn, args) -> int:
+    """회사 등록 요청 승인/거부 표시(SP-AUTH-17).
+
+    🚨 **이 명령은 회사를 만들지 않는다.** 상태만 바꾼다. 실제 등록은 `db/seed` 에 회사·복지
+    데이터를 넣는 별도 작업이며, 그 판단(등록할 가치가 있는 회사인가·데이터를 확보할 수
+    있는가)이 이 기능의 핵심이다. 승인 표시는 '검토했고 등록하기로 했다'는 기록일 뿐이다."""
+    status = "approved" if args.approve else "rejected"
+    with conn.cursor() as cur:
+        cur.execute(
+            "UPDATE TCOMPANY_REQUEST SET STATUS_CD=%s, DECIDED_BY_ID=%s, "
+            "       DECIDED_DTM=UTC_TIMESTAMP(), DECIDE_NOTE_CTNT=%s, MOD_ID=%s "
+            " WHERE COMP_REQUEST_ID=%s AND STATUS_CD='pending'",
+            (status, args.by, args.note, args.by, args.req_id),
+        )
+        n = cur.rowcount
+    conn.commit()
+    print(f"회사 등록 요청 #{args.req_id} → {status} ({n}건).")
+    if n == 0:
+        print("  (pending 상태가 아니다 — 이미 처리됐거나 없는 ID)")
+    elif status == "approved":
+        print("  ⚠ 상태만 바뀌었다. 실제 회사 등록은 db/seed 작업으로 별도 수행하라.")
+    return 0
+
+
 # delete-benefit 편집 이력 before 스냅샷 필드(benefit_edit._snapshot 와 동일 형식·소문자 키).
 _SNAP_MAP = {
     "benefit_cd": "BENEFIT_CD", "benefit_nm": "BENEFIT_NM", "benefit_ctgr_cd": "BENEFIT_CTGR_CD",
@@ -277,6 +329,20 @@ def build_parser() -> argparse.ArgumentParser:
     rs.add_argument("email", help="해제할 주소. 저장된 것은 해시뿐이라 원문으로 재계산한다")
     rs.add_argument("--by", type=int, default=None, help="결정 운영자 ID(감사)")
     rs.set_defaults(func=cmd_release_suppression)
+
+    cq = sub.add_parser("list-company-requests", help="회사 등록 요청 큐(검색에 없는 회사)")
+    cq.add_argument("--all", action="store_true", help="처리분까지 포함")
+    cq.add_argument("--limit", type=int, default=50)
+    cq.set_defaults(func=cmd_list_company_requests)
+
+    dq = sub.add_parser("decide-company-request", help="회사 등록 요청 승인/거부 표시(회사 생성 아님)")
+    dq.add_argument("req_id", type=int)
+    g = dq.add_mutually_exclusive_group(required=True)
+    g.add_argument("--approve", action="store_true")
+    g.add_argument("--reject", action="store_true")
+    dq.add_argument("--by", type=int, default=None, help="결정 운영자 ID(감사)")
+    dq.add_argument("--note", default=None, help="결정 사유")
+    dq.set_defaults(func=cmd_decide_company_request)
 
     return p
 

@@ -112,7 +112,12 @@ REMOVED_TABLES = [
 # 재시드 후 재주입)가 담당한다 — TCOMPARE_LOG 와 완전히 같은 역할분담(#1)이다.
 PARTICIPATION_CREATE_ORDER = [
     "TMEMBER", "TCOMPANY_EMAIL_DOMAIN", "TSESSION", "TAUTH_CODE",
-    "TEMPLOY_VERIFICATION", "TEMPLOY_VRF_REQUEST", "TBENEFIT_EDIT_LOG",
+    "TEMPLOY_VERIFICATION", "TEMPLOY_VRF_REQUEST",
+    # 회사 등록 요청 큐(2026-07-29). FK 부모는 TMEMBER 하나뿐이라 위치 제약이 느슨하지만,
+    # 같은 '요청 큐' 성격인 TEMPLOY_VRF_REQUEST 옆에 둔다. ⚠ TCOMPANY FK 가 **없다** —
+    # 아직 존재하지 않는 회사를 요청하는 창구라서다(db/schema.sql 의 해당 절 참조).
+    "TCOMPANY_REQUEST",
+    "TBENEFIT_EDIT_LOG",
 ]
 
 # ── 메일 배달 결과 2테이블(SP-AUTH-16, P1-4 바운스 웹훅) ────────────────────────────

@@ -35,6 +35,27 @@
     <label for="comp-search">회사</label>
     <input id="comp-search" autocomplete="off" placeholder="회사명 검색 (예: 삼성전자)">
     <ul id="comp-results" class="comp-results" hidden role="listbox" aria-label="회사 후보"></ul>
+
+    <!-- ①-b 검색 결과 없음 → 회사 등록 요청(SP-AUTH-17) ─────────────────────────
+         구 판본은 결과가 0건이면 목록을 **숨기기만** 해서 화면이 무반응이었고, 수동 승인
+         요청조차 comp_id 가 필요해 등록되지 않은 회사는 막다른 길이었다. 등록 회사가
+         95개뿐이라 대부분의 사용자가 여기서 이탈한다. -->
+    <div id="comp-none" hidden>
+      <p class="auth-sent" id="comp-none-msg" aria-live="polite"></p>
+      <button type="button" class="auth-btn secondary" id="comp-request-open">회사를 등록해 주세요</button>
+    </div>
+
+    <div id="comp-request-step" hidden>
+      <label for="req-comp-nm">회사명</label>
+      <input id="req-comp-nm" maxlength="100" autocomplete="off" placeholder="예: 우리회사 주식회사">
+      <label for="req-ref-url">복지 안내 또는 채용 페이지 주소 <span class="auth-optional">(선택)</span></label>
+      <input id="req-ref-url" type="url" maxlength="500" autocomplete="off"
+             placeholder="https://example.com/careers">
+      <p class="auth-hint">URL 은 넣지 않아도 요청할 수 있어요. 다만 <strong>주소를 남겨주시면 훨씬 빨리 등록</strong>됩니다.</p>
+      <button class="auth-btn" id="comp-request-send">등록 요청 보내기</button>
+      <p class="auth-hint">등록 여부는 운영자가 확인 후 결정합니다.</p>
+    </div>
+
     <p id="comp-selected" class="auth-sent" hidden>선택: <strong id="comp-name"></strong> <button type="button" class="auth-link" id="comp-change">변경</button></p>
 
     <!-- ② 회사 이메일 → 코드 -->

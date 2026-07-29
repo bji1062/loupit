@@ -58,6 +58,10 @@ def test_TS1_participation_surface_exact(app_instance):
         ("/api/v1/employment/verify-code", "POST"),                   # FR-105 재직 코드 발송
         ("/api/v1/employment/verify", "POST"),                        # FR-106 재직 인증
         ("/api/v1/employment/requests", "POST"),                      # FR-107 수동 승인 요청
+        # SP-AUTH-17(2026-07-29): 회사 등록 요청. 위 requests 와 형제지만 `comp_id` 를 받지
+        # 않는다 — 검색에 **없는** 회사가 대상이라 참조할 ID 가 아직 없다. 요청은 회사를
+        # 만들지 않고 큐에만 들어간다(등록은 운영자 판단).
+        ("/api/v1/employment/company-requests", "POST"),
         ("/api/v1/companies/{comp_id}/benefits", "POST"),             # FR-108 복지 등록
         ("/api/v1/companies/{comp_id}/benefits/{benefit_id}", "PUT"), # FR-109 복지 수정
         # P1-4(SP-AUTH-16): 제공자(Resend/Svix)가 호출하는 **공개 POST**. 참여 라우트가 아니고

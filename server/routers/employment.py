@@ -9,8 +9,10 @@ from __future__ import annotations
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from server.deps import require_csrf, require_member
-from server.models.employment import EmployRequestIn, EmployVerifyCodeIn, EmployVerifyIn
-from server.services import auth_code, employment
+from server.models.employment import (
+    CompanyRequestIn, EmployRequestIn, EmployVerifyCodeIn, EmployVerifyIn,
+)
+from server.services import auth_code, company_request, employment
 from server.services.auth_code import CodeResult
 
 router = APIRouter(tags=["employment"])
@@ -73,5 +75,38 @@ async def submit_request(
     outcome = await employment.submit_manual_request(member["MBR_ID"], body.comp_id, body.evidence)
     if outcome == "dup":
         raise HTTPException(status_code=409, detail="이미 대기 중인 요청이 있습니다.")
+    response.headers["Cache-Control"] = "no-store"
+    return {"status": "pending"}
+
+
+@router.post("/employment/company-requests", status_code=202)
+async def submit_company_request(
+    body: CompanyRequestIn, response: Response,
+    _csrf: None = Depends(require_csrf), member: dict = Depends(require_member),
+) -> dict:
+    """회사 등록 요청 — **검색에 없는 회사**의 출구 (SP-AUTH-17, FR-107 확장).
+
+    위 `/employment/requests` 와 형제지만 결정적으로 다르다: 저쪽은 회사가 **있고** 도메인만
+    없을 때, 이쪽은 회사가 **아예 없을 때**다. 그래서 `comp_id` 를 받지 않는다.
+
+    ⚠ 이 요청은 **회사를 만들지 않는다**. 등록은 전적으로 운영자 판단이다(사용자 결정) —
+    자동 생성하면 복지 0건짜리 빈 회사가 비교 서비스에 쌓인다.
+
+    202 접수 / 409 같은 회사 pending 중복 / 429 회원당 pending 상한 초과.
+    """
+    try:
+        outcome = await company_request.submit(member["MBR_ID"], body.comp_nm, body.ref_url)
+    except ValueError as exc:
+        # 정규화·스킴 검증 실패(빈 이름·비 http 스킴 등). 사유를 그대로 노출해도 안전하다 —
+        # 사용자가 방금 입력한 값에 대한 형식 안내이고 서버 내부 정보가 없다.
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    if outcome == "dup":
+        raise HTTPException(status_code=409, detail="이미 같은 회사로 요청하셨어요.")
+    if outcome == "too_many":
+        raise HTTPException(
+            status_code=429,
+            detail=f"처리 대기 중인 요청이 {company_request.MAX_PENDING_PER_MEMBER}건이에요. "
+                   "먼저 처리된 뒤에 다시 요청해주세요.",
+        )
     response.headers["Cache-Control"] = "no-store"
     return {"status": "pending"}

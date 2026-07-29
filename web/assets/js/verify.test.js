@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { ApiError } from './api.js';
 import {
   CODE_TTL_SEC, RESEND_COOLDOWN_SEC, isValidEmail, isValidCode, countdownText,
-  resendWaitSec, sendOutcome, verifyOutcome, renderCompanyItem,
+  resendWaitSec, sendOutcome, verifyOutcome, renderCompanyItem, companyRequestOutcome,
 } from './verify.js';
 
 class FakeEl {
@@ -191,5 +191,54 @@ describe('renderCompanyItem — textContent-only(XSS 안전)', () => {
   test('업종 없으면 업종 노드 생략', () => {
     const li = renderCompanyItem(fakeDoc, { comp_id: 1, comp_nm: '삼성전자' });
     assert.equal(li.children.length, 0);
+  });
+});
+
+describe('companyRequestOutcome — 회사 등록 요청 결과 분류(SP-AUTH-17)', () => {
+  // 검색에 없는 회사는 구 판본에서 **막다른 길**이었다(화면 무반응 + comp_id 없이는 폴백 불가).
+  // 상태코드마다 사용자가 할 행동이 달라서, 뭉뚱그리면 "기다려야 하는데 재시도"하거나
+  // "고쳐야 하는데 기다리는" 오답이 나온다.
+  test('성공(err 없음) → 접수 안내 + 다음 단계 설명', () => {
+    const o = companyRequestOutcome(null);
+    assert.equal(o.kind, 'ok');
+    assert.match(o.msg, /접수/);
+    assert.match(o.msg, /운영자/, '누가 결정하는지 알려야 한다(자동 등록이 아니다)');
+  });
+
+  test('409 → 이미 요청함(중복 재요청 유도 금지)', () => {
+    const o = companyRequestOutcome(new ApiError(409, '/x'));
+    assert.equal(o.kind, 'dup');
+    assert.match(o.msg, /이미/);
+    assert.doesNotMatch(o.msg, /다시 시도/, '중복인데 재시도를 권하면 큐만 부푼다');
+  });
+
+  test('429 → 상한(기다려야 함)', () => {
+    const o = companyRequestOutcome(new ApiError(429, '/x'));
+    assert.equal(o.kind, 'throttled');
+    assert.match(o.msg, /대기|처리/);
+  });
+
+  test('422 → 서버가 준 형식 사유를 그대로 노출', () => {
+    const err = new ApiError(422, '/x', { detail: 'http:// 또는 https:// 로 시작하는 주소만 넣을 수 있다' });
+    const o = companyRequestOutcome(err);
+    assert.equal(o.kind, 'invalid');
+    assert.match(o.msg, /https/);
+  });
+
+  test('422 인데 detail 이 문자열이 아니면 일반 문구로 폴백', () => {
+    // pydantic 검증 실패는 detail 이 **배열**이다(main.py 의 422 핸들러) — 그대로 찍으면
+    // 사용자에게 `[object Object]` 가 보인다.
+    const o = companyRequestOutcome(new ApiError(422, '/x', { detail: [{ msg: 'x' }] }));
+    assert.equal(o.kind, 'invalid');
+    assert.doesNotMatch(o.msg, /object/i);
+  });
+
+  test('401 → 세션 만료(로그인으로 보냄)', () => {
+    assert.equal(companyRequestOutcome(new ApiError(401, '/x')).kind, 'session');
+  });
+
+  test('그 외·네트워크 오류 → 일반 실패', () => {
+    assert.equal(companyRequestOutcome(new ApiError(500, '/x')).kind, 'error');
+    assert.equal(companyRequestOutcome(new Error('network')).kind, 'error');
   });
 });
