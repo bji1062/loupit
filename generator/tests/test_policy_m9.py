@@ -15,10 +15,18 @@
 """
 from __future__ import annotations
 
+import os
+import subprocess
+import sys
+from pathlib import Path
+
 import pytest
 
 from generator.config import GenConfig
 from generator.content.policy import build_policy_docs, required_items
+
+# generator/tests/test_policy_m9.py → parents[2] = 리포 루트(하위 프로세스 cwd 용, PM-10)
+ROOT = Path(__file__).resolve().parents[2]
 
 PRE_M9 = GenConfig(m9_enabled=False)
 POST_M9 = GenConfig(m9_enabled=True)
@@ -161,12 +169,41 @@ def test_PM11_server_and_generator_agree_on_every_env_value(monkeypatch, raw):
     )
 
 
-def test_PM10_gen_default_is_off_without_env(monkeypatch):
-    """기본값 = OFF. `M9_ENABLED` 없이 만든 GenConfig 는 로그인 전 문안을 낸다.
+def test_PM10_gen_default_is_off_without_env():
+    """기본값 = OFF. `M9_ENABLED` 가 **환경에 없으면** GenConfig 는 로그인 전 문안을 낸다.
 
-    프로덕션 `server/.env` 에 키가 없으므로 재빌드해도 문안이 조용히 바뀌지 않는다."""
-    monkeypatch.delenv("M9_ENABLED", raising=False)
-    assert GenConfig().m9_enabled is False
+    ⚠ **`monkeypatch.delenv` 로는 검증할 수 없다**(2026-07-29 릴리스가 이걸로 깨졌다).
+    `GenConfig` 의 필드 기본값은 `os.environ.get(...)` 을 **모듈 임포트 시점에** 평가해
+    클래스에 박아 넣는다 — 테스트가 나중에 환경변수를 지워도 이미 늦다. 구 판본은
+    "프로덕션 .env 에 키가 없으므로"라는 전제 위에서만 우연히 통과하고 있었고, M9 를 켜서
+    `release.sh` 가 그 키를 export 하는 순간 거짓 실패를 냈다.
+
+    그래서 **깨끗한 환경의 하위 프로세스**에서 새로 임포트해 확인한다. 모듈 리로드
+    (`importlib.reload`)로도 되지만, 이미 임포트한 다른 테스트에 전역 부작용을 남긴다."""
+    env = {k: v for k, v in os.environ.items() if k != "M9_ENABLED"}
+    out = subprocess.run(
+        [sys.executable, "-c",
+         "from generator.config import GenConfig; print(GenConfig().m9_enabled)"],
+        cwd=str(ROOT), env=env, capture_output=True, text=True,
+    )
+    assert out.returncode == 0, f"하위 프로세스 실패: {out.stderr}"
+    assert out.stdout.strip() == "False", (
+        f"M9_ENABLED 부재인데 생성기 기본이 OFF 가 아니다: {out.stdout.strip()!r}"
+    )
+
+
+def test_PM10b_gen_follows_env_when_present():
+    """반대 방향 — 환경에 `M9_ENABLED=1` 이 있으면 임포트 시점에 ON 으로 바인딩된다.
+
+    PM-10 과 짝이다: 둘 다 있어야 "환경이 문안을 지배한다"가 양방향으로 고정된다."""
+    env = {**os.environ, "M9_ENABLED": "1"}
+    out = subprocess.run(
+        [sys.executable, "-c",
+         "from generator.config import GenConfig; print(GenConfig().m9_enabled)"],
+        cwd=str(ROOT), env=env, capture_output=True, text=True,
+    )
+    assert out.returncode == 0, f"하위 프로세스 실패: {out.stderr}"
+    assert out.stdout.strip() == "True"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
