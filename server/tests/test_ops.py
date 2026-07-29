@@ -237,12 +237,28 @@ class _SuppCursor(_FakeCursor):
                     self.rowcount += 1
 
     def fetchall(self):
-        return self._result
+        # 실제 pymysql 과 동일: DictCursor 를 요구하지 않았으면 **튜플**을 준다.
+        if getattr(self, "_as_dict", False):
+            return self._result
+        return [tuple(r.values()) for r in self._result]
 
 
 class _SuppConn(_FakeConn):
-    def cursor(self):
-        return _SuppCursor(self.store)
+    """⚠ **커서 종류를 실제 pymysql 처럼 모사한다**(2026-07-29 프로덕션에서 실결함으로 배움).
+
+    구 스텁은 인자를 무시하고 **항상 dict 행**을 돌려줬다. 그래서 `conn.cursor()`(기본 커서)로
+    조회하고 `r["RELEASED_DTM"]` 로 읽는 코드가 **테스트에서는 통과**했는데, 실제로는 기본
+    커서가 **튜플**을 주므로 `TypeError: tuple indices must be integers` 로 죽었다 — 라이브에서
+    `list-suppressed` 를 처음 돌렸을 때 그대로 터졌다(거짓 초록).
+
+    이제 `DictCursor` 를 명시하지 않으면 튜플을 돌려준다 — 규약을 어기면 테스트가 먼저 죽는다."""
+
+    def cursor(self, cursorclass=None):
+        import pymysql
+
+        cur = _SuppCursor(self.store)
+        cur._as_dict = cursorclass is pymysql.cursors.DictCursor
+        return cur
 
 
 def _supp_store(target_hash: str, released=None):

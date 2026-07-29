@@ -67,6 +67,13 @@ def app_with_m9(monkeypatch):
             monkeypatch.delenv("M9_ENABLED", raising=False)
         else:
             monkeypatch.setenv("M9_ENABLED", value)
+        # ⚠ 웹훅 시크릿을 **빈 값으로 고정**한다(2026-07-29). 이 파일의 주장은 "M9 하나가 표면을
+        #   가른다"이므로 다른 변수는 상수여야 한다. conftest 가 `server/.env` 를 로드하는 탓에
+        #   운영 서버에서 돌리면 웹훅 라우터가 함께 켜져 M9G2 가 깨졌다(실측) — `.env` 에
+        #   `M9_ENABLED=0` 을 넣으면 안 되는 이유와 정확히 같은 부류다.
+        #   `delenv` 로는 부족하다: pydantic 이 **dotenv 파일**을 다시 읽으므로 빈 값으로 덮어야
+        #   프로세스 환경변수가 파일보다 우선한다. 웹훅 자체 계약은 test_mail_webhook 이 소유.
+        monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "")
         get_settings.cache_clear()
         return create_app()
 

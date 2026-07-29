@@ -140,8 +140,12 @@ def cmd_list_suppressed(conn, args) -> int:
     ⚠ **원문 주소는 어디에도 없다** — 저장된 것은 배달주소의 SHA-256 뿐이다(T9·NFR30). 그래서
     "누가 막혔는지"는 이 목록만으로 알 수 없고, 해제하려면 **사용자가 알려준 주소를 넣어**
     같은 해시를 다시 계산해야 한다(`release-suppression <이메일>`). 불편하지만 의도한 설계다:
-    DB 가 유출돼도 반송된 수신함 목록이 통째로 새지 않는다."""
-    with conn.cursor() as cur:
+    DB 가 유출돼도 반송된 수신함 목록이 통째로 새지 않는다.
+
+    ⚠ `DictCursor` **필수**(cmd_list_pending 과 동일 규약). 기본 커서는 튜플을 주므로
+    `r["RELEASED_DTM"]` 가 `TypeError` 로 죽는다 — 초판이 정확히 그랬고, 스텁이 항상 dict 를
+    돌려주는 바람에 단위 테스트는 통과했다(거짓 초록. 지금은 스텁이 커서 종류를 모사한다)."""
+    with conn.cursor(pymysql.cursors.DictCursor) as cur:
         cur.execute(
             "SELECT MAIL_SUPP_ID, TARGET_HASH_VAL, REASON_CD, SRC_SVIX_MSG_ID, INS_DTM, RELEASED_DTM "
             "FROM TMAIL_SUPPRESSION "

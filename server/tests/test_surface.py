@@ -9,11 +9,23 @@ from fastapi.routing import APIRoute
 
 
 @pytest.fixture
-def app_instance():
-    """앱 표면 검사 전용 — fake_data/client 픽스처 불필요(라우트/미들웨어 구조만 본다)."""
+def app_instance(monkeypatch):
+    """앱 표면 검사 전용 — fake_data/client 픽스처 불필요(라우트/미들웨어 구조만 본다).
+
+    ⚠ **웹훅 시크릿을 고정한다**(2026-07-29). `mail_webhook` 라우터는 `RESEND_WEBHOOK_SECRET`
+    유무로 등록이 갈리는데, conftest 가 `server/.env` 를 로드하므로 **운영 서버에서 돌리면 켜지고
+    새 체크아웃에서는 꺼져** 같은 코드가 서로 다른 표면을 낸다. Tier-0 게이트가 환경에 따라
+    흔들리면 안 되므로 여기서 ON 으로 못박고, 기대 집합에 웹훅을 **명시 선언**한다
+    (= 이 라우트도 "계획 밖 쓰기 0" 감시망 안에 그대로 둔다). OFF 쪽 계약은 MW-1 이 소유한다."""
+    from server.config import get_settings
     from server.main import create_app
 
-    return create_app()
+    monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "whsec_dGVzdC1zdXJmYWNlLWZpeGVk")
+    get_settings.cache_clear()
+    try:
+        yield create_app()
+    finally:
+        get_settings.cache_clear()
 
 
 def test_TS1_participation_surface_exact(app_instance):
@@ -48,6 +60,11 @@ def test_TS1_participation_surface_exact(app_instance):
         ("/api/v1/employment/requests", "POST"),                      # FR-107 수동 승인 요청
         ("/api/v1/companies/{comp_id}/benefits", "POST"),             # FR-108 복지 등록
         ("/api/v1/companies/{comp_id}/benefits/{benefit_id}", "PUT"), # FR-109 복지 수정
+        # P1-4(SP-AUTH-16): 제공자(Resend/Svix)가 호출하는 **공개 POST**. 참여 라우트가 아니고
+        # M9 게이트 밖이며, `RESEND_WEBHOOK_SECRET` 이 있을 때만 등록된다(위 픽스처가 고정).
+        # 인증은 세션·CSRF 헤더가 아니라 **HMAC 서명**이다 — 익명 쓰기가 하나 더 늘었다는 사실을
+        # Tier-0 표면에 정직하게 선언해 둔다.
+        ("/api/v1/webhooks/resend", "POST"),
     }, f"참여 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {

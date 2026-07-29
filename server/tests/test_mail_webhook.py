@@ -60,10 +60,11 @@ def app_factory(monkeypatch):
     from server.main import create_app
 
     def _make(secret: str | None, *, m9: str | None = None):
-        if secret is None:
-            monkeypatch.delenv("RESEND_WEBHOOK_SECRET", raising=False)
-        else:
-            monkeypatch.setenv("RESEND_WEBHOOK_SECRET", secret)
+        # ⚠ `None`(미설정)을 `delenv` 로 표현하면 **안 된다**(2026-07-29 실측): pydantic 이
+        #   `server/.env` 를 다시 읽으므로, 운영 서버처럼 파일에 시크릿이 있으면 지워도 되살아나
+        #   MW-1(라우터 부재)이 깨진다. 프로세스 환경변수가 dotenv 보다 우선하므로 **빈 문자열로
+        #   덮어야** '미설정'이 재현된다.
+        monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "" if secret is None else secret)
         if m9 is None:
             monkeypatch.delenv("M9_ENABLED", raising=False)
         else:
