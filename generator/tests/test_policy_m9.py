@@ -118,7 +118,9 @@ def test_PM7_on_p1_distinguishes_anonymous_from_contribution():
     [
         (PRE_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6"}),
         (PRE_M9, "terms", {"T1", "T2", "T3", "T4"}),
-        (POST_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P7"}),
+        # P8·P9 는 2026-07-29 신설 — 회원 제도와 **함께** 발생하는 고지 의무다(위탁·국외이전 /
+        # 보유기간·권리·보호책임자). 이 정확일치 계약이 "새 항목을 조용히 추가"를 막는다.
+        (POST_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"}),
         (POST_M9, "terms", {"T1", "T2", "T3", "T4", "T5"}),
     ],
 )
@@ -165,3 +167,83 @@ def test_PM10_gen_default_is_off_without_env(monkeypatch):
     프로덕션 `server/.env` 에 키가 없으므로 재빌드해도 문안이 조용히 바뀌지 않는다."""
     monkeypatch.delenv("M9_ENABLED", raising=False)
     assert GenConfig().m9_enabled is False
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# P8·P9 — 회원 제도가 생기면서 **새로 발생하는** 고지 의무 (2026-07-29 신설)
+#
+# P7·T5 는 "회원 제도가 있다"는 사실을 고지해 **허위 기재**를 해소한다. 그러나 그것만으로는
+# 처리방침이 완성되지 않는다 — 회원 제도가 생기는 순간 아래가 함께 발생한다:
+#   · 로그인 코드를 **Resend(국외)** 로 보내므로 **처리위탁·국외이전**이 실재한다(§26·§28-8)
+#   · 코드 5분·세션 30일·재직인증 365일 등 **보유기간**이 실재한다(§30①3)
+#   · 열람·정정·삭제·처리정지를 요구할 **정보주체**가 실재한다(§30①5·§35~37)
+#   · **개인정보 보호책임자** 지정·공개 의무가 발생한다(§31②·§30①6)
+# 익명 배포에는 이 중 어느 것도 해당하지 않으므로, P7·T5 와 **같은 스위치**로 함께 켜야 한다.
+#
+# ⚠ 이 테스트들은 문안의 *법적 충분성*을 판정하지 않는다(그건 사람이 할 일이다). 판정하는 것은
+#   **"코드가 실제로 하는 일이 문안에 나타나는가"** 하나다 — 값이 바뀌면(예: 세션 TTL) 문안도
+#   같이 바뀌게 강제하는 것이 목적이다.
+# ══════════════════════════════════════════════════════════════════════════════
+
+def test_PM12_p8_discloses_consignment_and_cross_border():
+    """P8: 메일 발송 위탁(Resend)과 국외이전을 고지한다.
+
+    구 문안의 제3자 절(P4)은 **Google 광고 쿠키만** 다뤄서 메일 발송 위탁을 덮지 못했다.
+    로그인 코드는 우리 서버가 아니라 외부 사업자를 통해 나가므로 별도 항목이 필요하다."""
+    text = _text(_doc(POST_M9, "privacy"))
+    assert "Resend" in text, "수탁자명이 없다 — 누구에게 위탁하는지 알 수 없다"
+    for token in ("위탁", "국외"):
+        assert token in text, f"P8 에 '{token}' 고지가 없다"
+    # 무엇이 넘어가는지·왜 넘어가는지·거부하면 어떻게 되는지가 함께 있어야 고지가 성립한다.
+    assert "이메일 주소" in text
+    assert "미국" in text, "이전 국가 미기재"
+
+
+def test_PM13_p9_discloses_retention_rights_and_officer():
+    """P9: 보유기간·정보주체 권리·보호책임자.
+
+    보유기간은 **코드의 실제 설정값**과 일치해야 한다 — 아래 PM-14 가 그 결합을 강제한다."""
+    text = _text(_doc(POST_M9, "privacy"))
+    for token in ("보유", "파기"):
+        assert token in text, f"P9 에 '{token}' 고지가 없다"
+    for right in ("열람", "정정", "삭제", "처리정지"):
+        assert right in text, f"정보주체 권리 '{right}' 안내가 없다"
+    assert "개인정보 보호책임자" in text, "보호책임자 지정·공개(§31②) 표기가 없다"
+
+
+def test_PM14_retention_periods_match_server_config():
+    """**문안의 보유기간이 서버 설정값과 일치**한다 — 드리프트 방지의 핵심 가드.
+
+    처리방침이 "세션 30일"이라고 적었는데 코드가 90일로 바뀌면 그 순간 허위 기재가 된다.
+    사람이 두 파일을 대조하는 규율에 맡기지 않고 테스트가 강제한다."""
+    from server.config import Settings
+
+    s = Settings(_env_file=None)
+    text = _text(_doc(POST_M9, "privacy"))
+    assert f"{s.login_code_ttl_min}분" in text, f"인증 코드 보유기간({s.login_code_ttl_min}분) 불일치"
+    assert f"{s.session_ttl_days}일" in text, f"세션 보유기간({s.session_ttl_days}일) 불일치"
+    assert f"{s.employ_vrf_ttl_days}일" in text, f"재직 인증 보유기간({s.employ_vrf_ttl_days}일) 불일치"
+
+
+def test_PM15_p8_p9_absent_when_m9_off():
+    """OFF 배포에는 P8·P9 가 **없어야** 한다 — 위탁도 회원도 없는데 고지하면 그것도 거짓이다."""
+    ids = {s.req_id for s in _doc(PRE_M9, "privacy").sections}
+    assert "P8" not in ids and "P9" not in ids
+    text = _text(_doc(PRE_M9, "privacy"))
+    assert "Resend" not in text and "개인정보 보호책임자" not in text
+
+
+def test_PM16_p8_p9_are_required_items_only_when_m9_on():
+    """필수 항목 계약(PC-2)에 P8·P9 가 M9 조건부로 편입됐는가."""
+    assert required_items(POST_M9)["privacy"] >= {"P7", "P8", "P9"}
+    assert required_items(PRE_M9)["privacy"].isdisjoint({"P7", "P8", "P9"})
+
+
+def test_PM17_contact_is_config_driven_not_hardcoded():
+    """연락처는 `policy_contact` 단일 설정값에서 온다 — 전용 주소로 바꿀 때 코드 수정 0.
+
+    ⚠ 도메인 전용 주소(privacy@jobcho.wiki)를 쓰려면 **먼저 그 주소가 메일을 받을 수 있어야**
+    한다(2026-07-29 현재 jobcho.wiki 에는 MX 가 없어 반송된다). 도달 불가능한 연락처를 처리방침에
+    싣는 것은 권리 행사 경로를 막는 것이라 없는 것보다 나쁘다."""
+    custom = GenConfig(m9_enabled=True, policy_contact="privacy@example.test")
+    assert "privacy@example.test" in _text(_doc(custom, "privacy"))
