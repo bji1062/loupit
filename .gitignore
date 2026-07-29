@@ -54,6 +54,11 @@ public/generated/
 sitemap.xml
 robots.txt.generated
 
+# ── 복지 스크래핑 원문 (parse-benefits 입력) ──
+# 회사 채용/복지 페이지 원문 사본 — RESEARCH §5-4 원본 미복제 원칙에 따라 커밋하지 않는다.
+# 파싱 산출물(db/seed/benefit/sql/*.sql)만 저장소에 남긴다.
+db/seed/benefit/raw/*.txt
+
 # ── 광고/제휴 비공개 키 (있다면) ──
 ads.local.*
 
