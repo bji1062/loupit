@@ -65,10 +65,9 @@ def app_factory(monkeypatch):
         #   MW-1(라우터 부재)이 깨진다. 프로세스 환경변수가 dotenv 보다 우선하므로 **빈 문자열로
         #   덮어야** '미설정'이 재현된다.
         monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "" if secret is None else secret)
-        if m9 is None:
-            monkeypatch.delenv("M9_ENABLED", raising=False)
-        else:
-            monkeypatch.setenv("M9_ENABLED", m9)
+        # 같은 이유로 M9 OFF 도 `delenv` 가 아니라 명시적 "0" 이다 — 활성화 후 `.env` 에
+        # `M9_ENABLED=1` 이 생기면 delenv 로는 OFF 를 표현할 수 없다(릴리스 게이트가 잡았다).
+        monkeypatch.setenv("M9_ENABLED", "0" if m9 is None else m9)
         get_settings.cache_clear()
         return create_app()
 

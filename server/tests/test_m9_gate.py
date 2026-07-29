@@ -63,10 +63,13 @@ def app_with_m9(monkeypatch):
     from server.main import create_app
 
     def _make(value: str | None):
-        if value is None:
-            monkeypatch.delenv("M9_ENABLED", raising=False)
-        else:
-            monkeypatch.setenv("M9_ENABLED", value)
+        # ⚠ `None`(=OFF)을 `delenv` 로 표현하면 **안 된다**(2026-07-29 릴리스 게이트가 잡음):
+        #   pydantic 이 `server/.env` 를 다시 읽으므로, 활성화로 그 파일에 `M9_ENABLED=1` 이
+        #   생긴 순간 지워도 되살아나 OFF 표면을 **표현할 수 없게** 된다. 프로세스 환경변수가
+        #   dotenv 보다 우선하므로 명시적 falsy 값으로 덮는다.
+        #   (같은 파일 M9G1 은 `Settings(_env_file=None)` 로 dotenv 자체를 우회해 '키 부재 =
+        #    기본 OFF'를 따로 검증하므로, 여기서 "0" 을 써도 기본값 계약은 그대로 지켜진다.)
+        monkeypatch.setenv("M9_ENABLED", "0" if value is None else value)
         # ⚠ 웹훅 시크릿을 **빈 값으로 고정**한다(2026-07-29). 이 파일의 주장은 "M9 하나가 표면을
         #   가른다"이므로 다른 변수는 상수여야 한다. conftest 가 `server/.env` 를 로드하는 탓에
         #   운영 서버에서 돌리면 웹훅 라우터가 함께 켜져 M9G2 가 깨졌다(실측) — `.env` 에
