@@ -9,13 +9,17 @@ import { store } from './store.js';
 
 // ── SP-ADS-3.1 page_type 게이팅 결정(순수, node:test 대상) ─────────────────
 // 배치 표(FRD 09 정본)와 1:1. 표 외 위치·개수 추가 금지.
-export const PAGE_TYPES = ['landing', 'company', 'combo', 'input', 'result', 'policy'];
+export const PAGE_TYPES = ['landing', 'company', 'combo', 'guide', 'input', 'result', 'policy'];
 
 export function adPolicy(pageType) {
   switch (pageType) {
     case 'landing': return { auto: 'ON',  manual: ['content_bottom'],                affiliate: 'optional' };
     case 'company': return { auto: 'ON',  manual: ['content_mid', 'content_bottom'], affiliate: 'on' };
     case 'combo':   return { auto: 'ON',  manual: ['content_mid', 'content_bottom'], affiliate: 'on' };
+    // 가이드(SC11 편집 콘텐츠, 2026-07-29): 광고는 company/combo와 같지만 **제휴는 없다**.
+    // 편집 글 안에 제휴 링크가 섞이면 독자가 어디까지가 분석이고 어디부터가 광고인지
+    // 알 수 없고, 그건 이 콘텐츠를 만든 이유(신뢰) 자체를 깎아먹는다.
+    case 'guide':   return { auto: 'ON',  manual: ['content_mid', 'content_bottom'], affiliate: 'none' };
     case 'result':  return { auto: 'OFF', manual: ['report_bottom'],                 affiliate: 'optional' };
     case 'input':   return { auto: 'OFF', manual: [],                                affiliate: 'none' };   // 무광고 강제(Tier-0 UT-ADS-GATE-1)
     case 'policy':  return { auto: 'OFF', manual: [],                                affiliate: 'none' };

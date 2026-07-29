@@ -4,6 +4,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ meta_title }}</title>
 <meta name="description" content="{{ meta_desc }}">
+{#- 본문 임계 미달 페이지만 색인 제외(SP-GEN-13). `is defined` 가드가 필요한 이유:
+    StrictUndefined 환경이라 이 partial 을 쓰는 모든 템플릿이 변수를 넘겨야 하는데,
+    정책·404·인덱스는 임계 판정 대상이 아니라 아예 넘기지 않는다.
+    `follow` 인 것은 의도다 — 색인에서 빼는 것과 링크 그래프를 끊는 것은 다른 결정이고,
+    회사 페이지의 가나다순 링(GC-26)이 끊기면 나머지 페이지 크롤 경로가 사라진다. -#}
+{% if noindex is defined and noindex %}
+<meta name="robots" content="noindex, follow">
+{% endif %}
 <link rel="canonical" href="{{ canonical }}">
 <meta property="og:title" content="{{ og.title }}">
 <meta property="og:description" content="{{ og.description }}">

@@ -9,9 +9,11 @@ import json
 import logging
 from pathlib import Path
 
+from generator.content.combos import commentary_for
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, _group_benefits, _truncate
+from generator.quality import render_with_thin_policy
 from generator.slug import combo_slug, validate_combo_paths
 
 log = logging.getLogger(__name__)
@@ -170,7 +172,18 @@ def render_all(env, ctx, cfg, pairs=None) -> list[Page]:
         vm["company_links"] = company_links
         vm["related"] = related
         seo = _combo_seo(ctx.by_eng[eng_first], ctx.by_eng[eng_second], url, cfg)
-        html = tpl.render(**vm, **seo, cfg=cfg, footer_links=POLICY_FOOTER_LINKS)
+        # 쌍별 손글씨 해설(SP-CONTENT-1). 없으면 해설 없이 렌더되고 임계 판정이
+        # 그 페이지를 색인에서 뺀다 — 해설 없는 조합을 색인에 남기는 것이야말로
+        # §G-5-4 가 경고한 "구조 동일 페이지 양산"이다.
+        html, noindex = render_with_thin_policy(
+            tpl,
+            cfg.thin_page_min_chars,
+            **vm,
+            **seo,
+            commentary=commentary_for(eng_first, eng_second),
+            cfg=cfg,
+            footer_links=POLICY_FOOTER_LINKS,
+        )
         pages.append(
             Page(
                 path=f"vs/{path}.html",
@@ -178,6 +191,8 @@ def render_all(env, ctx, cfg, pairs=None) -> list[Page]:
                 html=html,
                 title=seo["meta_title"],
                 description=seo["meta_desc"],
+                in_sitemap=not noindex,
+                noindex=noindex,
             )
         )
     return pages

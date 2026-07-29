@@ -70,6 +70,16 @@
     </table>
   </section>
 
+  {#- 쌍별 손글씨 해설(SP-CONTENT-1). 조합 페이지는 구조가 전부 같아 데이터만 바꿔
+      양산하면 programmatic thin content 가 된다 — 고유 해설이 그 페이지를 페이지답게
+      만드는 유일한 부분이다(§G-5-4). -#}
+  {% if commentary %}
+  <section class="combo-commentary" aria-label="이 비교를 읽는 법">
+    <h2>이 비교를 읽는 법</h2>
+    {% for p in commentary %}<p>{{ p }}</p>{% endfor %}
+  </section>
+  {% endif %}
+
   <p class="prefill-notice">본 요약은 개인 입력 없는 사전값 기준입니다. 나에게 맞는 비교는 아래 비교 툴에서 직접 입력해 확인하세요.</p>
   <p class="cta"><a href="{{ compare_href }}">비교 툴에서 열기</a></p>
 

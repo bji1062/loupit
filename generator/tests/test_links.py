@@ -7,10 +7,11 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, policy
+from generator.pages import about, combo, company, company_index, guide, policy
 from generator.render import make_env
 
 _ALLOWED_STATIC_ROUTES = {"/", "/compare", "/privacy", "/terms", "/disclaimer", "/ads"}
@@ -57,6 +58,8 @@ def _build_all_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + combo.render_all(env, ctx, CFG, pairs=pairs)
+        + guide.render_all(env, ctx, CFG)  # 가이드 12+인덱스 (2026-07-29 신설)
+        + about.render_all(env, ctx, CFG)  # 소개·문의 (2026-07-29 신설)
         + policy.render_all(env, ctx)
     )
 
@@ -95,3 +98,33 @@ def test_gc20_no_hrefs_point_to_404_page(fake_bundle, fake_now, fake_combination
     for p in pages:
         for href in _INTERNAL_HREF_RE.findall(p.html):
             assert "/404" not in href
+
+
+# ── GC-20b: 생성 라우트를 nginx 가 실제로 서빙하는가 (2026-07-29) ──────────────
+# 클린 URL 은 nginx location 블록이 있어야만 해석된다. 새 페이지 타입을 만들고 conf 를
+# 잊으면 사이트에는 링크가 보이는데 눌러 보면 404 인 상태가 된다 — 그리고 `release.sh` 는
+# nginx conf 를 배포하지 않으므로(함정 ⑭) 이 실수는 배포 파이프라인이 잡아 주지 않는다.
+
+NGINX_CONF = Path(__file__).resolve().parents[2] / "infra" / "nginx" / "loupit.conf"
+
+# 정확일치 블록: `location = /guide {` / 접두 블록: `location ^~ /guide/ {`
+_EXACT_LOC_RE = re.compile(r"location\s*=\s*(/\S*)")
+_PREFIX_LOC_RE = re.compile(r"location\s*\^~\s*(/\S*?)\s*\{")
+
+
+def _nginx_routes() -> tuple[set[str], list[str]]:
+    conf = NGINX_CONF.read_text(encoding="utf-8")
+    return set(_EXACT_LOC_RE.findall(conf)), _PREFIX_LOC_RE.findall(conf)
+
+
+def test_gc20b_every_generated_route_has_an_nginx_location(fake_bundle, fake_now, fake_combinations_path):
+    exact, prefixes = _nginx_routes()
+    unserved = []
+    for p in _build_all_pages(fake_bundle, fake_now):
+        if not p.path.endswith(".html") or p.path == "404.html":
+            continue
+        route = "/" + p.path[: -len(".html")]
+        if route in exact or any(route.startswith(pre) for pre in prefixes):
+            continue
+        unserved.append(route)
+    assert not unserved, f"nginx location 없는 생성 라우트(클릭 시 404): {sorted(set(unserved))}"

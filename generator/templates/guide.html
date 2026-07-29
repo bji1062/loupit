@@ -1,0 +1,66 @@
+{# guide.html — 가이드 본문 shell (SP-GEN-15, SP-CONTENT-2 문안 소비).
+   구조화 `sections` 순회 렌더 + 목차 + 데이터 표 + 관련 글 + 광고 슬롯.
+   문안 원문은 `GuideSection.paragraphs`로 삽입되며 autoescape만 적용(`|safe` 없음). #}
+{% extends "base.html" %}
+{% set page_type = 'guide' %}
+{% from "partials/_ad_slot.html" import ad_slot %}
+{% block jsonld %}{% include "partials/_jsonld_article.html" %}{% endblock %}
+{% block main %}
+<article class="guide-page">
+  <p class="guide-group"><a href="/guide">{{ group_label }}</a></p>
+  <h1>{{ title }}</h1>
+  <p class="guide-lede">{{ lede }}</p>
+
+  {% if sections %}
+  <nav class="guide-toc" aria-label="목차">
+    <ul>
+    {% for s in sections %}<li><a href="#{{ s.anchor }}">{{ s.heading }}</a></li>{% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% for s in sections %}
+  <section id="{{ s.anchor }}">
+    <h2>{{ s.heading }}</h2>
+    {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+    {% if s.bullets %}
+    <ul class="guide-bullets">
+    {% for b in s.bullets %}<li>{{ b }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+    {% if s.table %}
+    <figure class="guide-table">
+      <figcaption>{{ s.table.caption }}</figcaption>
+      <table>
+        <thead><tr>{% for c in s.table.columns %}<th scope="col">{{ c }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {% for row in s.table.rows %}
+          <tr>{% for cell in row %}<td>{{ cell }}</td>{% endfor %}</tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </figure>
+    {% endif %}
+  </section>
+  {% if loop.first %}{{ ad_slot("content_mid") }}{% endif %}
+  {% endfor %}
+
+  {#- 데이터 기준 시점: 본문 수치가 언제 계산된 것인지 밝히지 않으면 글이 늙어도
+      독자가 알 수 없다. 정책 문서의 '최종 수정일'과 같은 역할. -#}
+  <p class="guide-asof">본문의 모든 수치는 {{ as_of }} 기준 잡초 데이터에서 계산되었습니다.</p>
+
+  <p class="cta"><a href="{{ compare_href }}">두 회사 직접 비교해 보기</a></p>
+
+  {% if related %}
+  <section class="related-guides" aria-label="관련 글">
+    <h2>이어서 읽기</h2>
+    <ul>
+    {% for label, route in related %}<li><a href="{{ route }}">{{ label }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  {% include "partials/_disclaimer.html" %}
+  {{ ad_slot("content_bottom") }}
+</article>
+{% endblock %}

@@ -22,9 +22,9 @@ import re
 from pathlib import Path
 
 from generator.config import CFG
-from generator.content.policy import POLICY_FOOTER_LINKS
+from generator.content.policy import POLICY_FOOTER_LINKS, SITE_NAV_LINKS
 from generator.context import build_context
-from generator.pages import combo, company, policy
+from generator.pages import about, combo, company, guide, policy
 from generator.render import make_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -146,3 +146,40 @@ def test_gc27b_hand_written_shells_have_company_index_link():
     for shell in (LANDING_SHELL, COMPARE_SHELL):
         html = shell.read_text(encoding="utf-8")
         assert _INDEX_LINK in _extract_site_nav_links(html), f"{shell.name}: 회사 인덱스 진입문 없음"
+
+
+# ── PC-5b: 사이트 탐색 nav 3곳 일치 (2026-07-29 가이드·소개·문의 추가) ───────
+# `/guide`·`/about`·`/contact` 는 어디서도 링크되지 않으면 심사관도 크롤러도 도달하지
+# 못한다 — 2026-07-19 회사 페이지가 sitemap 외 진입 경로 0건이던 고아 문제와 같은 구조다.
+# 그래서 링크 목록을 상수 하나로 두고 소비처 3곳의 일치를 여기서 강제한다.
+
+
+def test_pc5b_generated_pages_site_nav_matches_constant(fake_bundle, fake_now, fake_combinations_path):
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    pages = (
+        company.render_all(env, ctx)
+        + combo.render_all(env, ctx, CFG)
+        + guide.render_all(env, ctx, CFG)
+        + about.render_all(env, ctx, CFG)
+        + policy.render_all(env, ctx)
+    )
+    for p in pages:
+        assert _extract_site_nav_links(p.html) == list(SITE_NAV_LINKS), f"{p.path}: 사이트 탐색 nav 불일치"
+
+
+def test_pc5b_hand_written_shells_site_nav_matches_constant():
+    """무빌드 HTML이라 하드코딩 — 상수와 갈라지면 여기서 잡는다."""
+    for shell in (LANDING_SHELL, COMPARE_SHELL):
+        html = shell.read_text(encoding="utf-8")
+        assert _extract_site_nav_links(html) == list(SITE_NAV_LINKS), f"{shell.name}: 사이트 탐색 nav 불일치"
+
+
+def test_pc5b_site_nav_targets_are_actually_generated(fake_bundle, fake_now):
+    """푸터가 가리키는 라우트가 실제 생성 파일과 일치해야 한다 — 죽은 링크 0건."""
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    generated = {f"/{p.path[:-5]}" for p in guide.render_all(env, ctx, CFG) + about.render_all(env, ctx, CFG)}
+    generated.add("/companies")  # company_index.render 가 별도로 생성
+    for _, route in SITE_NAV_LINKS:
+        assert route in generated, f"푸터 링크 {route} 에 대응하는 생성 페이지가 없다"

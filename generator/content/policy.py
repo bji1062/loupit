@@ -135,6 +135,24 @@ POLICY_FOOTER_LINKS = (
     ("광고·제휴 고지", "/ads"),
 )
 
+# 전역 푸터 **사이트 탐색** nav 정본 (2026-07-29 확장). 소비처는 POLICY_FOOTER_LINKS 와
+# 같은 3곳(생성기 `_footer.html` · 수기 셸 `web/index.html`·`web/compare/index.html`)이고
+# 일치는 `test_footer_links.py` 가 강제한다.
+#
+# 왜 정책 링크와 분리하는가: 이들은 법적 고지가 아니라 콘텐츠·신뢰 페이지다. 같은 nav 에
+# 섞으면 PC-5 가 지키는 "정책 4종" 계약이 흐려지고, 정책 문서가 아닌 것이 정책 문서처럼
+# 보인다. 분리해 두면 어느 쪽이 늘어도 다른 쪽 계약이 깨지지 않는다.
+#
+# 왜 푸터에 넣는가: `/guide`·`/about`·`/contact` 가 어디서도 링크되지 않으면 심사관도
+# 크롤러도 도달하지 못한다 — 2026-07-19 회사 페이지가 sitemap 외 진입 경로 0건이던
+# 고아 문제와 같은 구조다.
+SITE_NAV_LINKS = (
+    ("등록 회사 목록", "/companies"),
+    ("복지·연봉 가이드", "/guide"),
+    ("잡초 소개", "/about"),
+    ("문의·정정 요청", "/contact"),
+)
+
 
 def _privacy(cfg) -> PolicyDoc:
     """개인정보처리방침 문안 (P1~P6, M9 시 +P7, SP-POL-3, FR-81).

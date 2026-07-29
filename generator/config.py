@@ -76,6 +76,11 @@ class GenConfig:
     site_name: str = "jobcho.wiki"
     lang: str = "ko"
     desc_max: int = 155  # meta description 절단 상한
+    # 본문 임계(자) — 미달 페이지는 noindex + sitemap 제외 (SP-GEN-13).
+    # 1,000 인 근거: §G-1 실측에서 회사 페이지 중앙이 1,279자였고 그 아래 23개가
+    # 눈에 띄게 부실했다. 임계를 더 올리면 정상 페이지까지 잘려 색인 자산이 줄고,
+    # 더 내리면 반려 사유였던 얇은 페이지가 그대로 남는다. 0 이면 판정 비활성.
+    thin_page_min_chars: int = 1000
     # sitemap에 포함되는 비-생성 정적 URL(랜딩 등). /compare(툴 셸)는 색인 대상 제외.
     extra_sitemap_paths: tuple = ("/",)
     # 정책 페이지 4종 (문안 소유 = SP-POL, 렌더·SEO = 본 생성기)

@@ -22,6 +22,10 @@ class Page:
     description: str  # meta description(중복 검증용)
     in_sitemap: bool = True  # 404 등은 False
     content_type: str = "text/html; charset=utf-8"
+    # 본문 임계 미달로 색인에서 제외됐는가 (SP-GEN-13, 2026-07-29 AdSense 반려 대응).
+    # 기본값이 False 인 것은 계약이다 — 새 페이지 타입이 조용히 색인에서 빠지면
+    # 아무도 모른다. 제외는 항상 명시적 판정의 결과여야 한다.
+    noindex: bool = False
 
 
 @dataclass

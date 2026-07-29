@@ -14,14 +14,34 @@ from datetime import date
 from generator.bundle import load_bundle, load_bundle_json
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, policy
+from generator.pages import about, combo, company, company_index, guide, policy
 from generator.pages import sitemap as sitemap_page
+from generator.quality import visible_text_len
 from generator.release import stage_and_swap, write_manifest
 from generator.render import make_env
 
 
 def _today_iso() -> str:
     return date.today().isoformat()
+
+
+def _report_noindex(pages) -> list:
+    """본문 임계 미달로 색인에서 뺀 페이지를 stdout 에 알린다 (SP-GEN-13).
+
+    조용한 제외를 막는 것이 목적이다 — 임계는 파생 판정이라 데이터가 나빠지면
+    아무 경고 없이 색인 자산이 줄 수 있다. 빌드 로그에 숫자가 남으면 그 변화가
+    보인다. 판정 자체는 `generator.quality` 가 소유하고 여기서는 표면화만 한다.
+    """
+    excluded = [p for p in pages if p.noindex]
+    if not excluded:
+        return excluded
+    print(
+        f"[thin-page] 본문 {CFG.thin_page_min_chars}자 미만 {len(excluded)}건 "
+        f"noindex + sitemap 제외 (전체 {len(pages)}건)"
+    )
+    for p in excluded:
+        print(f"[thin-page]   - {p.path} ({visible_text_len(p.html)}자)")
+    return excluded
 
 
 def run(
@@ -47,9 +67,14 @@ def run(
     pages += company.render_all(env, ctx, combo_pairs=combo_pairs)  # 회사 ~95 (SP-GEN-5·6)
     pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
+    # 가이드 12 + 인덱스 1 (SP-GEN-15, SC11) — 2026-07-29 AdSense 반려 대응 편집 콘텐츠.
+    # 회사·조합 뒤에 두는 이유는 없다(순서 무관). sitemap·검증·스왑은 아래 공통 경로가 처리한다.
+    pages += guide.render_all(env, ctx, CFG)
+    pages += about.render_all(env, ctx, CFG)  # 소개·문의 2 (SP-GEN-16)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     if only:  # 개발용 경로 접두 필터
         pages = [p for p in pages if any(p.path.startswith(o) for o in only)]
+    _report_noindex(pages)
     resolved_lastmod = lastmod or _today_iso()
     site_urls = [p.url for p in pages if p.in_sitemap] + [
         CFG.site_origin + path for path in CFG.extra_sitemap_paths

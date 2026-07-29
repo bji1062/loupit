@@ -80,9 +80,28 @@ def test_work_style_label_unknown_returns_key():
 
 
 def test_badge_state_official_and_not_expired():
-    b = {"badge_cd": "official", "expires_dtm": "2099-12-31"}
+    """사람이 공식 페이지에서 직접 확인한 항목만 "공식 확인"이다."""
+    b = {"badge_cd": "official", "expires_dtm": "2099-12-31", "badge_src_cd": "scrape_official"}
     r = badge_state(b, NOW)
     assert r == {"code": "official", "label": "공식 확인"}
+
+
+def test_badge_state_ai_parsed_official_is_downgraded_in_wording():
+    """자동 파싱 산출물은 "공식 확인"이라 단언하지 않는다 (§G-3 과잉 주장 해소).
+
+    출처는 공식 페이지라 코드는 official 계열이지만, 추출을 기계가 한 이상
+    '확인했다'고 말할 근거가 없다 — 1,246건이 이 경로다.
+    """
+    b = {"badge_cd": "official", "expires_dtm": "2099-12-31", "badge_src_cd": "ai_parse"}
+    r = badge_state(b, NOW)
+    assert r == {"code": "official-derived", "label": "공식 페이지 기반"}
+
+
+def test_badge_state_official_without_src_cd_is_not_upgraded():
+    """출처 방식을 모르면 낮은 쪽으로 말한다 — 모름을 '확인함'으로 올리면 안 된다."""
+    b = {"badge_cd": "official", "expires_dtm": "2099-12-31"}
+    r = badge_state(b, NOW)
+    assert r["label"] == "공식 페이지 기반"
 
 
 def test_badge_state_estimated_and_not_expired():
@@ -105,7 +124,7 @@ def test_badge_state_expired_overrides_official():
 
 
 def test_badge_state_no_expires_dtm_not_stale():
-    b = {"badge_cd": "official", "expires_dtm": None}
+    b = {"badge_cd": "official", "expires_dtm": None, "badge_src_cd": "scrape_official"}
     r = badge_state(b, NOW)
     assert r["code"] == "official"
 

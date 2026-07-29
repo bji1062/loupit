@@ -1,0 +1,4 @@
+{# _jsonld_article.html — JSON-LD Article (SP-GEN-15, NFR8). 가이드 전용.
+   `jsonld` 필터가 script breakout-safe 이스케이프(NFR21)를 이미 적용했으므로
+   `| safe`가 허용되는 예외 경로다(_jsonld_org.html 과 동일 계약). #}
+<script type="application/ld+json">{{ jsonld | jsonld | safe }}</script>

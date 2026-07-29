@@ -67,7 +67,7 @@ beforeEach(() => {
 // ── T-08.1.1: ads.js 공개 심볼 존재(구조 스모크) ────────────────────────────
 describe('T-08.1.1 ads.js 모듈 골격·공개 심볼 스모크', () => {
   test('공개 심볼 전량 export', () => {
-    assert.deepEqual(PAGE_TYPES, ['landing', 'company', 'combo', 'input', 'result', 'policy']);
+    assert.deepEqual(PAGE_TYPES, ['landing', 'company', 'combo', 'guide', 'input', 'result', 'policy']);
     for (const fn of [
       mountAds, adPolicy, filterAffiliate, resolveSlotId, loadAffiliate,
       initConsentBanner, getConsent, setConsent, isPersonalized, parseConsent,
@@ -96,6 +96,15 @@ describe('T-08.3.1 adPolicy 배치 표 게이팅 (UT-ADS-GATE-1~5)', () => {
       assert.equal(p.auto, 'ON');
       assert.equal(p.affiliate, 'on');
     }
+  });
+
+  test('UT-ADS-GATE-6: guide → 광고는 company와 동일하되 제휴는 none(편집 콘텐츠 분리)', () => {
+    const p = adPolicy('guide');
+    assert.deepEqual(p.manual, ['content_mid', 'content_bottom']);
+    assert.equal(p.auto, 'ON');
+    // 편집 글 안에 제휴 링크가 섞이면 분석과 광고의 경계가 사라진다 — 이 콘텐츠를
+    // 만든 이유(신뢰) 자체를 깎아먹으므로 'on'으로 바뀌면 안 된다.
+    assert.equal(p.affiliate, 'none');
   });
 
   test('UT-ADS-GATE-4: landing → auto ON, manual=[content_bottom], affiliate optional', () => {

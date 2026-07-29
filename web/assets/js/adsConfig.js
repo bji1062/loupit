@@ -18,6 +18,8 @@ export const adsConfig = {
     company_bottom: AD_SLOT_PLACEHOLDER,
     combo_mid:      AD_SLOT_PLACEHOLDER,
     combo_bottom:   AD_SLOT_PLACEHOLDER,
+    guide_mid:      AD_SLOT_PLACEHOLDER,   // SC11 가이드(2026-07-29 신설)
+    guide_bottom:   AD_SLOT_PLACEHOLDER,
     result_bottom:  AD_SLOT_PLACEHOLDER,
   },
 };
@@ -27,6 +29,7 @@ export const SLOT_ID_MAP = {
   landing: { content_bottom: 'landing_bottom' },
   company: { content_mid: 'company_mid', content_bottom: 'company_bottom' },
   combo:   { content_mid: 'combo_mid',   content_bottom: 'combo_bottom' },
+  guide:   { content_mid: 'guide_mid',   content_bottom: 'guide_bottom' },
   result:  { report_bottom: 'result_bottom' },
 };
 

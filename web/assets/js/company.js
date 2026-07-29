@@ -49,8 +49,15 @@ export function groupBenefitsByCategory(benefits) {
   return { groups, total };
 }
 
-function badgeFor(b) { // directory.js 배지 관례와 동일(공식/추정)
-  if (b.badge_cd === 'official') return el('span', { class: 'badge badge-official', text: '공식' });
+function badgeFor(b) { // 정본 = generator/format.py badge_state (같은 데이터에 두 라벨 금지)
+  // 2026-07-29: badge_cd='official' 전량이 '공식'으로 표시되던 것을 출처 방식으로 가른다.
+  // 실데이터 1,317건 중 1,246건이 badge_src_cd='ai_parse'(자동 파싱)라, 전부 '공식'이라
+  // 말하는 것은 확인하지 않은 것을 확인했다고 말하는 것이었다(HANDOFF-2026-07-19 §G-3).
+  if (b.badge_cd === 'official') {
+    return b.badge_src_cd === 'scrape_official'
+      ? el('span', { class: 'badge badge-official', text: '공식' })
+      : el('span', { class: 'badge badge-official-derived', text: '공식 페이지 기반' });
+  }
   return el('span', { class: 'badge badge-est', text: '추정' });
 }
 

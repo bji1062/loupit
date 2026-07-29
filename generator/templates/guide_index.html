@@ -1,0 +1,27 @@
+{# guide_index.html — 가이드 목록 `/guide` (SP-GEN-15). 묶음별로 전 문서를 링크해
+   크롤러 진입문 겸 사용자 탐색 경로가 된다(`companies.html` 과 같은 역할).
+   page_type 미선언 → 광고 없음(ads.js 'default'). 목록 페이지에 광고를 얹지 않는
+   편이 심사·가독 양쪽에 낫다. #}
+{% extends "base.html" %}
+{% block main %}
+<article class="guide-index">
+  <h1>{{ index_title }}</h1>
+  <p class="index-lead">{{ index_lede }}</p>
+
+  {% for group_key, group_label, docs in groups %}
+  <section class="guide-group-block" id="{{ group_key }}">
+    <h2>{{ group_label }}</h2>
+    <ul class="guide-index-list">
+    {% for d in docs %}
+      <li>
+        <a href="{{ d.route }}">{{ d.title }}</a>
+        <p class="guide-index-lede">{{ d.lede }}</p>
+      </li>
+    {% endfor %}
+    </ul>
+  </section>
+  {% endfor %}
+
+  <p class="cta"><a href="{{ cfg.compare_path }}">두 회사 비교하기</a></p>
+</article>
+{% endblock %}

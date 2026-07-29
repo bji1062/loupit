@@ -37,9 +37,10 @@ describe('T-08.2.1 adsConfig 설정 구조 스모크', () => {
     assert.equal(adsConfig.DENY_FALLBACK, 'nonpersonalized');
   });
 
-  test('AD_SLOT 6키 전부 초기 플레이스홀더', () => {
+  test('AD_SLOT 8키 전부 초기 플레이스홀더', () => {
     assert.deepEqual(Object.keys(adsConfig.AD_SLOT).sort(), [
-      'combo_bottom', 'combo_mid', 'company_bottom', 'company_mid', 'landing_bottom', 'result_bottom',
+      'combo_bottom', 'combo_mid', 'company_bottom', 'company_mid',
+      'guide_bottom', 'guide_mid', 'landing_bottom', 'result_bottom',
     ]);
     for (const v of Object.values(adsConfig.AD_SLOT)) assert.equal(v, AD_SLOT_PLACEHOLDER);
   });
@@ -58,6 +59,7 @@ describe('T-08.2.1 adsConfig 설정 구조 스모크', () => {
       landing: { content_bottom: 'landing_bottom' },
       company: { content_mid: 'company_mid', content_bottom: 'company_bottom' },
       combo:   { content_mid: 'combo_mid',   content_bottom: 'combo_bottom' },
+      guide:   { content_mid: 'guide_mid',   content_bottom: 'guide_bottom' },
       result:  { report_bottom: 'result_bottom' },
     });
   });

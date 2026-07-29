@@ -8,6 +8,7 @@ import os
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
 
+from generator.content.policy import SITE_NAV_LINKS
 from generator.format import badge_state, iso_date, jsonld_dumps, krw_manwon, work_style_label
 
 _DEFAULT_TEMPLATES_DIR = os.path.join(os.path.dirname(__file__), "templates")
@@ -27,4 +28,10 @@ def make_env(templates_dir: str = _DEFAULT_TEMPLATES_DIR) -> Environment:
     env.filters["jsonld"] = jsonld_dumps
     env.filters["isodate"] = iso_date
     env.filters["ws_label"] = work_style_label
+    # 사이트 탐색 링크는 페이지별 데이터가 아니라 전역 상수라 globals 로 둔다.
+    # 렌더 인자로 돌리면 페이지 타입이 늘 때마다 8개 호출부에 같은 줄을 추가해야 하고,
+    # 하나만 빠뜨리면 그 페이지 푸터에서 조용히 링크가 사라진다(StrictUndefined 가
+    # 잡아 주긴 하지만, 애초에 빠뜨릴 수 없게 두는 편이 낫다).
+    # `footer_links`(정책 4종)는 기존 계약(PC-5)이라 그대로 인자로 남긴다.
+    env.globals["site_nav_links"] = SITE_NAV_LINKS
     return env

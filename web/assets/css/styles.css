@@ -46,6 +46,9 @@
 
   /* ── 3) 배지·밴드·광고 라벨 색(--bg-1 위 대비 AA) ── */
   --badge-official-fg:#046a4e; --badge-official-bg:#e6f6ee;
+  /* 공식 페이지 기반(자동 파싱) — 공식 계열이되 확인 강도가 낮아 채도를 낮춘다.
+     '공식 확인'과 색까지 같으면 문구를 갈라 놓은 의미가 시각적으로 사라진다. */
+  --badge-derived-fg:#3a5a4c;  --badge-derived-bg:#eef3f0;
   --badge-est-fg:#9a5108;      --badge-est-bg:#fbefdb;
   --badge-expired-fg:#b23a0b;  --badge-expired-bg:#fceadd;
   --badge-qual-fg:var(--t2);   --badge-qual-bg:#eef0f2;
@@ -225,6 +228,7 @@ main p { margin-top:var(--sp-3); }
   background:var(--badge-qual-bg); color:var(--badge-qual-fg);
 }
 .badge-official { background:var(--badge-official-bg); color:var(--badge-official-fg); }
+.badge-official-derived { background:var(--badge-derived-bg); color:var(--badge-derived-fg); }
 .badge-est { background:var(--badge-est-bg); color:var(--badge-est-fg); }
 .badge-expired, .benefit-expires { color:var(--badge-expired-fg); font-weight:var(--fw-medium); }
 .chip {

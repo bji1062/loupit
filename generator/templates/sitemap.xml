@@ -1,0 +1,12 @@
+{#- sitemap.xml — 전 색인 대상 URL (SP-GEN-9, NFR9). `render_sitemap`이 정렬·중복
+    제거를 끝낸 `urls`를 넘긴다. 이 템플릿은 형식만 소유한다.
+
+    ⚠ 이 파일은 `.gitignore` 의 `sitemap.xml` 규칙(빌드 산출물용)에 삼켜져 한동안
+    추적되지 않았고, 새 클론에서 `TemplateNotFound` 로 빌드가 죽었다. 예외 규칙
+    `!generator/templates/sitemap.xml` 이 그것을 막는다 — 지우지 말 것. -#}
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+{% for url in urls %}
+  <url><loc>{{ url }}</loc><lastmod>{{ lastmod }}</lastmod></url>
+{% endfor %}
+</urlset>

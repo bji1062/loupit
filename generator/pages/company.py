@@ -11,6 +11,7 @@ from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.format import badge_state, iso_date, krw_manwon
+from generator.quality import render_with_thin_policy
 from generator.slug import combo_slug
 
 # 관련 회사 링크 개수 상한 (FR-63 확장, 2026-07-19 고아 페이지 해소).
@@ -251,7 +252,12 @@ def render_all(env, ctx, combo_pairs=None) -> list[Page]:
         url = f"{CFG.site_origin}/company/{slug}"
         vm = _company_view(c, ctx, now)
         seo = _company_seo(c, ctx, url)
-        html = tpl.render(
+        # 본문 임계 미달이면 색인에서 뺀다(SP-GEN-13). 판정이 렌더 **결과** 기준이라
+        # 데이터가 보강되면 코드 변경 없이 색인에 복귀한다 — 제외 목록을 두지 않는
+        # 이유가 이것이다.
+        html, noindex = render_with_thin_policy(
+            tpl,
+            CFG.thin_page_min_chars,
             **vm,
             **seo,
             related_companies=_related_companies(c, ctx),
@@ -266,6 +272,8 @@ def render_all(env, ctx, combo_pairs=None) -> list[Page]:
                 html=html,
                 title=seo["meta_title"],
                 description=seo["meta_desc"],
+                in_sitemap=not noindex,
+                noindex=noindex,
             )
         )
     return pages

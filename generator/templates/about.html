@@ -1,0 +1,47 @@
+{# about.html — 소개·문의 shell (SP-GEN-16, SP-CONTENT-3 문안 소비).
+   정책 페이지와 같은 구조화 순회 렌더. page_type 미선언 → 광고 없음
+   (ads.js 'default'). 신뢰를 목적으로 만든 페이지에 광고를 얹으면 목적과 충돌한다. #}
+{% extends "base.html" %}
+{% block main %}
+<article class="about-page">
+  <h1>{{ title }}</h1>
+  <p class="about-lede">{{ lede }}</p>
+
+  {% if sections %}
+  <nav class="about-toc" aria-label="목차">
+    <ul>
+    {% for s in sections %}<li><a href="#{{ s.anchor }}">{{ s.heading }}</a></li>{% endfor %}
+    </ul>
+  </nav>
+  {% endif %}
+
+  {% for s in sections %}
+  <section id="{{ s.anchor }}">
+    <h2>{{ s.heading }}</h2>
+    {% for p in s.paragraphs %}<p>{{ p }}</p>{% endfor %}
+    {% if s.bullets %}
+    <ul class="about-bullets">
+    {% for b in s.bullets %}<li>{{ b }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+  </section>
+  {% endfor %}
+
+  {% if contact_href %}
+  <p class="about-contact"><a href="{{ contact_href }}" rel="nofollow">{{ policy_contact }}</a></p>
+  {% else %}
+  <p class="about-contact">{{ policy_contact }}</p>
+  {% endif %}
+
+  {% if related %}
+  <section class="related" aria-label="관련 문서">
+    <h2>관련 문서</h2>
+    <ul>
+    {% for label, route in related %}<li><a href="{{ route }}">{{ label }}</a></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <p class="last-modified">최종 수정일: {{ last_modified }}</p>
+</article>
+{% endblock %}

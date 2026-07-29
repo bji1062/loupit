@@ -1,6 +1,7 @@
 """T-07.5 회사 상세 본문 렌더 테스트 (GC-6·11·12·13·14·15·16·17)."""
 from __future__ import annotations
 
+import copy
 import re
 
 from generator.config import CFG
@@ -123,9 +124,22 @@ def test_gc13_stale_badge_label_present_for_expired_benefit(fake_bundle, fake_no
     assert "만료·재확인 필요" in p.html
 
 
+def test_gc13_derived_badge_label_present_for_ai_parsed(fake_bundle, fake_now):
+    """자동 파싱 항목은 "공식 확인"이 아니라 "공식 페이지 기반"으로 표시된다(§G-3)."""
+    bundle = copy.deepcopy(fake_bundle)
+    b = bundle["companies"][0]["benefits"][0]  # 식대 지원(scrape_official)
+    b["badge_src_cd"] = "ai_parse"
+    p = _samsung(bundle, fake_now)
+    assert "공식 페이지 기반" in p.html
+
+
 def test_gc13_badge_is_text_label_not_only_color(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
-    assert re.search(r'class="badge badge-(official|est|stale)"[^>]*>(공식 확인|추정|만료·재확인 필요)', p.html)
+    assert re.search(
+        r'class="badge badge-(official|official-derived|est|stale)"[^>]*>'
+        r"(공식 확인|공식 페이지 기반|추정|만료·재확인 필요)",
+        p.html,
+    )
 
 
 # ── GC-14: 출처 스킴 화이트리스트(http/https만 링크) ────────────────────────

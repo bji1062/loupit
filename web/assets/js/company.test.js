@@ -18,7 +18,9 @@ function ben(cd, nm, amt, ctgr, over = {}) {
 const SAMSUNG = {
   comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', industry_nm: '반도체', aliases: ['삼전'],
   benefits: [
-    ben('meal', '식대', 240, 'perks'),
+    // badge_src_cd='scrape_official' = 사람이 공식 페이지에서 직접 확인 → '공식'.
+    // 이 필드가 없는 나머지 항목은 '공식 페이지 기반'으로 갈린다(2026-07-29 §G-3).
+    ben('meal', '식대', 240, 'perks', { badge_src_cd: 'scrape_official' }),
     ben('bus', '통근버스', 120, 'perks', { badge_cd: 'est' }),
     ben('health', '건강검진', 60, 'health'),
     ben('daycare', '사내 어린이집', null, 'family'),
@@ -104,6 +106,8 @@ describe('renderCompanyView — 상세/후보목록/무결과', () => {
     assert.match(text, /420만원/, '복지 총가치 합계');
     assert.ok(mount().querySelector('.badge-official'), '공식 배지');
     assert.ok(mount().querySelector('.badge-est'), '추정 배지');
+    // 출처 방식을 모르는 official 항목(건강검진·어린이집)은 '공식'으로 단언하지 않는다.
+    assert.ok(mount().querySelector('.badge-official-derived'), '공식 페이지 기반 배지');
     assert.ok(mount().querySelector('.cp-compare-cta'), '비교 시작 CTA');
   });
 
