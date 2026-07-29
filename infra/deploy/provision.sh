@@ -35,6 +35,13 @@ sudo chown -R "${APP_USER}:${APP_USER}" "${ROOT_DIR}"
 sudo chmod 755 "${ROOT_DIR}" "${ROOT_DIR}/web" "${ROOT_DIR}/web/dist" "${ROOT_DIR}/server/venv"
 sudo chown "${APP_USER}:${APP_USER}" /var/backups/loupit
 sudo chmod 750 /var/backups/loupit
+# 백업 2차 사본(미러). `/db` 는 별도 블록 디바이스라 루트 디스크 장애와 함께 죽지 않는다.
+# 전용 하위 디렉터리를 쓴다 — 미러 로테이션이 `loupit-*.sql.gz` 를 글롭으로 지우므로
+# 다른 덤프가 섞인 `/db/backups` 직하를 가리키면 그것까지 삭제된다(docs/OPS-backup.md §1-1b).
+# `/db` 미마운트 환경(로컬 검증 등)에서는 건너뛴다 — 미러는 선택 기능이다.
+if [ -d /db ]; then
+  sudo install -d -o "${APP_USER}" -g "${APP_USER}" -m 750 /db/backups/loupit
+fi
 # Nginx(www-data)가 /home/ubuntu/loupit/web을 읽으려면 상위 디렉토리 탐색권한 필요
 sudo chmod 711 /home/ubuntu || true
 # 프록시 임시버퍼 디렉터리는 반드시 워커 사용자(www-data) 소유여야 한다.

@@ -1,6 +1,6 @@
 # SP-INFRA-10.2 — loupit MySQL 백업(mysqldump) 1회성 유닛. loupit-backup.timer가 스케줄한다.
 [Unit]
-Description=loupit MySQL 백업 (mysqldump, 14일 보관)
+Description=loupit MySQL 백업 (mysqldump, 1차 14일 + /db 미러 7일)
 After=mysql.service
 Wants=mysql.service
 
@@ -11,7 +11,8 @@ Group=ubuntu
 WorkingDirectory=/home/ubuntu/loupit
 # DB 크레덴셜은 오퍼레이터 환경(별도 EnvironmentFile, server/.env에는 미상주 — SP-INFRA-6.2·7.2).
 # '-' 접두: 파일 부재여도 유닛은 기동하고 backup.sh 가 DB_PASSWORD 미설정을 명확히 로그하며 실패한다.
-# 키: DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/BACKUP_DIR/RETENTION_DAYS (infra/env/backup.env.example 참고).
+# 키: DB_HOST/DB_PORT/DB_USER/DB_PASSWORD/DB_NAME/BACKUP_DIR/RETENTION_DAYS
+#     + MIRROR_DIR/MIRROR_RETENTION_DAYS(2차 사본, 선택) — infra/env/backup.env.example 참고.
 EnvironmentFile=-/home/ubuntu/loupit/infra/env/backup.env
 ExecStart=/usr/bin/bash /home/ubuntu/loupit/infra/deploy/backup.sh
 

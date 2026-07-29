@@ -16,17 +16,25 @@ DB_USER="${DB_USER:-APP_LOUPIT}"     # 실환경 정합 기본값(ALL ON LOUPIT.
 DB_NAME="${DB_NAME:-LOUPIT}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/loupit}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
+# 2차 사본(다른 블록 디바이스). 비어 있으면 미러 없음 — 기존 동작 그대로다.
+#   루트 디스크 손실 → 미러(/db)로 복구 · /db 볼륨 손실 → 1차(/var/backups)로 복구.
+#   ⚠ 같은 머신이라 **머신 손실은 여전히 두 사본을 함께 잃는다**(서버 밖 사본은 별개 과제).
+MIRROR_DIR="${MIRROR_DIR:-}"
+MIRROR_RETENTION_DAYS="${MIRROR_RETENTION_DAYS:-7}"
 : "${DB_PASSWORD:?DB_PASSWORD 미설정 — infra/env/backup.env(EnvironmentFile)로 주입}"
 
 TS="$(date +%Y%m%d)"
 OUT="${BACKUP_DIR}/loupit-${TS}.sql.gz"
 TMP="${OUT}.partial.$$"              # 원자성: 완성·검증 통과 후에만 최종 이름으로 mv
 DEFAULTS_FILE=""
+MIRROR_TMP=""
 
 cleanup() {
   # 부분 산출물·비밀 파일 정리(성공/실패 무관). mv 성공 시 TMP는 이미 없으므로 rm -f는 무해.
   [ -n "${DEFAULTS_FILE}" ] && rm -f "${DEFAULTS_FILE}"
   rm -f "${TMP}"
+  [ -n "${MIRROR_TMP}" ] && rm -f "${MIRROR_TMP}"
+  return 0                           # 정리는 실패해도 종료코드를 바꾸지 않는다
 }
 trap cleanup EXIT
 
@@ -78,3 +86,27 @@ find "${BACKUP_DIR}" -maxdepth 1 -name 'loupit-*.sql.gz' -mtime "+${RETENTION_DA
 find "${BACKUP_DIR}" -maxdepth 1 -name 'loupit-*.sql.gz.partial.*' -mtime +1 -delete
 
 echo "backup done: ${OUT} ($(du -h "${OUT}" | cut -f1))"
+
+# ── 2차 사본(다른 블록 디바이스) ───────────────────────────────────────────
+# 여기까지 왔으면 1차 백업은 **이미 확정**됐다. 미러가 실패해도 1차를 되돌리지 않는다 —
+# 다만 종료코드는 비0으로 올려 systemd 가 실패로 표시하게 둔다(조용한 미러 실패는
+# 미러가 없는 것보다 나쁘다. 있다고 믿게 만들기 때문이다).
+if [ -n "${MIRROR_DIR}" ]; then
+  mkdir -p "${MIRROR_DIR}"
+  MIRROR_OUT="${MIRROR_DIR}/$(basename "${OUT}")"
+  MIRROR_TMP="${MIRROR_OUT}.partial.$$"   # 미러 파일시스템 안에서 만든다 → mv 가 원자적 rename
+
+  cp -f "${OUT}" "${MIRROR_TMP}"
+  # 사본도 독립 검증한다 — 디스크가 차면 cp 는 조용히 잘린 파일을 남길 수 있다.
+  if ! gunzip -t "${MIRROR_TMP}" 2>/dev/null; then
+    echo "backup MIRROR FAILED: 사본 gzip 검증 실패 — ${MIRROR_TMP} 폐기 (1차 ${OUT} 는 정상)" >&2
+    exit 1
+  fi
+  mv -f "${MIRROR_TMP}" "${MIRROR_OUT}"
+  MIRROR_TMP=""                            # 확정됐으니 trap 이 지우지 않게 비운다
+
+  find "${MIRROR_DIR}" -maxdepth 1 -name 'loupit-*.sql.gz' -mtime "+${MIRROR_RETENTION_DAYS}" -delete
+  find "${MIRROR_DIR}" -maxdepth 1 -name 'loupit-*.sql.gz.partial.*' -mtime +1 -delete
+
+  echo "backup mirrored: ${MIRROR_OUT} (보관 ${MIRROR_RETENTION_DAYS}일)"
+fi

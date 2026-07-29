@@ -34,8 +34,35 @@ chown ubuntu:ubuntu infra/env/backup.env
 | `DB_USER` | `APP_LOUPIT` | 실계정. 덤프는 SELECT만 필요 |
 | `DB_PASSWORD` | (필수) | 미설정 시 스크립트가 명확히 실패 |
 | `DB_NAME` | `LOUPIT` | **대문자**(서빙 스키마) |
-| `BACKUP_DIR` | `/var/backups/loupit` | |
+| `BACKUP_DIR` | `/var/backups/loupit` | 1차 사본(루트 디스크) |
 | `RETENTION_DAYS` | `14` | |
+| `MIRROR_DIR` | (없음) | 2차 사본 경로. 비면 미러 없음 |
+| `MIRROR_RETENTION_DAYS` | `7` | 1차와 **독립** 보관 주기 |
+
+### 1-1b. 2차 사본(미러) — 디바이스 장애 대비 (2026-07-29)
+
+1차는 루트 디스크(`/`)에, 2차는 **별도 iSCSI 볼륨**(`/db`)에 둔다. 한쪽 디바이스가 죽어도
+다른 쪽이 남는다:
+
+| 잃는 것 | 남는 것 |
+|---|---|
+| 루트 디스크 | `/db/backups/loupit` 미러(7일분) + 살아 있는 DB |
+| `/db` 볼륨 (DB 데이터 + 미러 동시 손실) | `/var/backups/loupit` 1차(14일분) |
+| **머신 전체** | **없음 — 미해결 위험** |
+
+> ⚠ **이건 서버 밖 사본이 아니다.** 머신을 잃으면 두 사본을 함께 잃는다. 실회원·재직인증·
+> 편집이력은 시드로 재현할 수 없으므로 서버 밖 사본은 여전히 남은 과제다.
+
+동작 규칙 — `backup.sh` 는 **1차를 확정한 뒤에만** 미러를 만진다. 미러가 실패해도 1차는
+그대로 남고, 종료코드만 비0으로 올려 systemd 가 실패로 표시한다(조용한 미러 실패는 미러가
+없는 것보다 나쁘다 — 있다고 믿게 만들기 때문이다). 사본은 복사 후 `gunzip -t` 로 독립
+검증하고, 임시 파일을 미러 파일시스템 안에서 만들어 `mv` 가 원자적 rename 이 되게 한다.
+
+⚠ **`MIRROR_DIR` 은 전용 하위 디렉터리여야 한다.** 로테이션이 `loupit-*.sql.gz` 글롭으로
+지우므로, 다른 덤프가 섞인 디렉터리를 가리키면 그것까지 삭제된다(`/db/backups` 직하에
+`loupit-3db-premigrate-20260727.sql.gz` 가 있다 — 그래서 `/db/backups/loupit` 을 쓴다).
+
+계약은 `server/tests/test_backup_mirror.py`(BK-1~BK-5)가 소유한다.
 
 ### 1-2. 디렉토리·유닛 배치 (provision.sh 해당 단계)
 
@@ -46,6 +73,7 @@ chown ubuntu:ubuntu infra/env/backup.env
 sudo mkdir -p /var/backups/loupit
 sudo chown ubuntu:ubuntu /var/backups/loupit
 sudo chmod 750 /var/backups/loupit
+sudo install -d -o ubuntu -g ubuntu -m 750 /db/backups/loupit   # 2차 사본(미러)
 sudo cp infra/systemd/loupit-backup.service /etc/systemd/system/
 sudo cp infra/systemd/loupit-backup.timer   /etc/systemd/system/
 sudo systemctl daemon-reload
