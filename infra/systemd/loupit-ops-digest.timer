@@ -1,0 +1,13 @@
+# /etc/systemd/system/loupit-ops-digest.timer
+# 일 1회 23:00 UTC = **08:00 KST**(한국 아침) — 운영자가 하루를 시작할 때 큐가 눈에 들어오게.
+# 서버 시간대는 UTC 다(timedatectl 확인) — OnCalendar 도 UTC 로 해석된다.
+[Unit]
+Description=loupit 일 1회 운영자 큐 요약 타이머
+
+[Timer]
+OnCalendar=*-*-* 23:00:00
+# 서버가 꺼져 있던 동안의 발화를 기동 후 한 번 보충한다(백업 타이머와 같은 규약).
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -90,6 +90,10 @@ class Settings(BaseSettings):
     smtp_pass: str = ""
     smtp_from: str = ""  # 발신 주소(표시명 포함 가능)
 
+    # 운영자 큐 일일 요약 수신 주소(`ops digest --send`). 비면 발송이 **명시적으로 실패**한다 —
+    # 조용히 넘어가면 "알림이 있다"고 믿게 된다. 요약은 건수·ID 만 담고 사용자 입력은 담지 않는다.
+    ops_digest_to: str = ""
+
     # 세션·코드 TTL·시도 상한 (SP-AUTH-4·5·12, FR-101·112)
     session_ttl_days: int = 30  # 세션 만료(FR-101)
     login_code_ttl_min: int = 5  # 로그인/인증 코드 만료(FR-102·105, NFR31). 5분(2026-07-24, 사용자 결정: 10분은 김)

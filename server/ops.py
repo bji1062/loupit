@@ -4,7 +4,13 @@
 접근 권한을 가진 운영자(A5)만 이 CLI로 처리한다(공격면·관리자 인증 시스템 회피). 승인·거부·
 취소는 감사 흔적(`DECIDED_BY_ID`·`DECIDED_DTM`)을 남긴다. 사용자 대면 DELETE 라우트는 없다.
 
+⚠ **CLI 만으로는 부족하다는 것이 2026-07-29 에 실측됐다** — 회사 등록 요청 #1 이 약 1시간 40분
+방치됐고 아무도 몰랐다. **알림 없는 큐는 큐가 아니다.** 그래서 `digest` 를 두고
+`loupit-ops-digest.timer` 가 일 1회 밀어준다(SP-AUTH-8.1). 위 "웹 관리자 페이지 없음" 결정은
+유지되며, 알림은 그 결정을 바꾸지 않고 공백만 메운다.
+
 명령:
+  digest [--send]                      큐 3종 요약 출력(기본) / 발송. 타이머가 일 1회 --send
   list-pending                         수동 승인 대기 큐 조회
   approve <req_id> [--by N] [--note S] 승인 → manual 재직 인증 생성(+employ_vrf_ttl_days)
   reject  <req_id> [--by N] [--note S] 거부(사유 기록)
@@ -26,6 +32,7 @@ import pymysql
 from dotenv import load_dotenv
 
 from server.config import get_settings
+from server.mailer import SERVICE_NAME, get_mailer
 
 
 def _connect() -> pymysql.connections.Connection:
@@ -253,6 +260,96 @@ _SNAP_MAP = {
 }
 
 
+# ── 운영자 큐 일일 요약 (2026-07-29 신설) ─────────────────────────────────
+# 배경: 회사 등록 요청 #1 이 약 1시간 40분 방치됐고, 운영자가 `list-*` 를 직접 치기 전까지
+# 아무도 몰랐다. 알림 배선이 전무했다(코드에 notify 흔적 0건·타이머는 백업 하나·크론 없음).
+#
+# 설계 판단 둘:
+#   ① **건수와 ID 만 보낸다.** 증빙 원문에는 재직증명서 링크 같은 사용자 제출물이 들어오고
+#      닉네임·회사명도 사용자 입력이다. 메일에 실으면 위탁 발송자(Resend)와 외부 수신함을
+#      거치는 **새 개인정보 흐름**이 생긴다. "가서 봐야 한다"를 알리는 게 목적이니 건수로 충분하다.
+#   ② **큐가 비어도 보낸다.** 대기가 있을 때만 보내면 침묵이 "대기 없음"과 "타이머 고장"의
+#      두 뜻이 된다. 침묵을 성공으로 읽는 알림은 없는 것보다 나쁘다 — 있다고 믿게 만든다.
+#      대신 제목에 건수와 마커를 실어 열지 않고도 판단하게 한다.
+DIGEST_MARK = "🔴"
+
+_DIGEST_QUERIES = (
+    ("pending", "재직 수동 승인", "list-pending",
+     "SELECT VRF_REQUEST_ID AS id FROM TEMPLOY_VRF_REQUEST WHERE STATUS_CD='pending' ORDER BY INS_DTM"),
+    ("company", "회사 등록 요청", "list-company-requests",
+     "SELECT COMP_REQUEST_ID AS id FROM TCOMPANY_REQUEST WHERE STATUS_CD='pending' ORDER BY INS_DTM"),
+    ("suppressed", "메일 발송 억제", "list-suppressed",
+     "SELECT MAIL_SUPP_ID AS id FROM TMAIL_SUPPRESSION WHERE RELEASED_DTM IS NULL ORDER BY INS_DTM DESC"),
+)
+
+
+def collect_digest(conn) -> dict[str, list[int]]:
+    """세 큐의 **대기 중 ID 목록**만 모은다(내용은 읽지 않는다 — 위 판단 ①)."""
+    out: dict[str, list[int]] = {}
+    for key, _label, _cmd, sql in _DIGEST_QUERIES:
+        with conn.cursor(pymysql.cursors.DictCursor) as cur:
+            cur.execute(sql)
+            out[key] = [r["id"] for r in cur.fetchall()]
+    return out
+
+
+def digest_subject(digest: dict[str, list[int]]) -> str:
+    """제목만 보고 판단할 수 있어야 한다 — 매일 오는 메일 중에서 골라내야 하므로."""
+    total = sum(len(v) for v in digest.values())
+    parts = " · ".join(f"{label} {len(digest[key])}" for key, label, _c, _s in _DIGEST_QUERIES)
+    mark = f"{DIGEST_MARK} " if total else ""
+    return f"[{SERVICE_NAME}] {mark}운영 큐 {total}건 — {parts}"
+
+
+def digest_body(digest: dict[str, list[int]]) -> str:
+    lines = ["운영 큐 요약", ""]
+    for key, label, cmd, _sql in _DIGEST_QUERIES:
+        ids = digest[key]
+        marker = DIGEST_MARK if ids else "  "
+        detail = "  " + " ".join(f"#{i}" for i in ids) if ids else ""
+        lines.append(f"{marker} {label:<14} {len(ids)}건{detail}")
+    lines += [
+        "",
+        "내용(증빙·회사명·주소)은 이 메일에 담지 않는다 — 서버에서 확인하라:",
+    ]
+    lines += [f"  python3 -m server.ops {cmd}" for _k, _l, cmd, _s in _DIGEST_QUERIES]
+    return "\n".join(lines)
+
+
+def cmd_digest(conn, args) -> int:
+    """큐 요약 출력(기본) 또는 발송(`--send`).
+
+    기본이 발송 없음인 이유: 사람이 확인차 실행할 때마다 메일이 나가면 안 된다.
+    타이머만 `--send` 를 붙인다."""
+    digest = collect_digest(conn)
+    subject = digest_subject(digest)
+    body = digest_body(digest)
+    total = sum(len(v) for v in digest.values())
+
+    if not args.send:
+        print(subject)
+        print()
+        print(body)
+        return 0
+
+    if getattr(args, "only_if_pending", False) and total == 0:
+        print("대기 0건 + --only-if-pending → 발송 생략 (⚠ 침묵이 고장과 구분되지 않는다)")
+        return 0
+
+    to = args.to or get_settings().ops_digest_to
+    if not to:
+        print("발송 실패: 수신 주소 없음 — server/.env 의 OPS_DIGEST_TO 를 설정하라.")
+        return 2
+
+    try:
+        get_mailer().send_notice(to, subject, body)
+    except Exception as e:  # noqa: BLE001 — 원인 종류와 무관하게 비0으로 알려야 한다
+        print(f"발송 실패: {type(e).__name__}: {e}")
+        return 1
+    print(f"요약 발송 완료 → {to} ({total}건)")
+    return 0
+
+
 def _benefit_snapshot(row: dict) -> str:
     """삭제 복지의 before 스냅샷 JSON — benefit_edit._snapshot 와 동일 형식(공개 이력 diff 정합)."""
     snap = {lo: row.get(up) for lo, up in _SNAP_MAP.items()}
@@ -329,6 +426,13 @@ def build_parser() -> argparse.ArgumentParser:
     rs.add_argument("email", help="해제할 주소. 저장된 것은 해시뿐이라 원문으로 재계산한다")
     rs.add_argument("--by", type=int, default=None, help="결정 운영자 ID(감사)")
     rs.set_defaults(func=cmd_release_suppression)
+
+    dg = sub.add_parser("digest", help="큐 3종 요약 출력(기본) / --send 로 운영자에게 발송")
+    dg.add_argument("--send", action="store_true", help="메일 발송(없으면 화면 출력만)")
+    dg.add_argument("--to", default="", help="수신 주소(생략 시 OPS_DIGEST_TO)")
+    dg.add_argument("--only-if-pending", action="store_true",
+                    help="대기 0건이면 발송 생략. ⚠ 침묵이 '고장'과 구분되지 않는다 — 기본값 아님")
+    dg.set_defaults(func=cmd_digest)
 
     cq = sub.add_parser("list-company-requests", help="회사 등록 요청 큐(검색에 없는 회사)")
     cq.add_argument("--all", action="store_true", help="처리분까지 포함")

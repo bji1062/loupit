@@ -51,6 +51,9 @@ class ConsoleMailer:
     async def send_employ_code(self, email: str, code: str) -> None:
         print(f"[ConsoleMailer] 재직 인증 코드 → {email}: {code}")
 
+    def send_notice(self, to: str, subject: str, body: str) -> None:
+        print(f"[ConsoleMailer] 공지 → {to}: {subject}\n{body}")
+
 
 class SmtpMailer:
     """운영용 — stdlib smtplib(STARTTLS). 블로킹 전송을 asyncio.to_thread 로 오프로드한다.
@@ -85,6 +88,14 @@ class SmtpMailer:
     async def send_employ_code(self, email: str, code: str) -> None:
         ttl = get_settings().login_code_ttl_min
         await asyncio.to_thread(self._send, email, _EMPLOY_SUBJECT, _body(code, ttl))
+
+    def send_notice(self, to: str, subject: str, body: str) -> None:
+        """운영자 대상 공지(큐 요약 등). **동기**다 — 유일한 호출자가 `ops` CLI(systemd
+        oneshot)라서 이벤트 루프가 없다. 코드 발송 경로는 async 를 유지한다(요청 핸들러 안).
+
+        ⚠ 인증 코드를 여기로 보내지 마라. 코드 발송은 TTL·NFR31 규약을 가진 위 두 메서드가
+        소유한다 — 범용 통로로 코드를 흘리면 그 규약을 우회하게 된다."""
+        self._send(to, subject, body)
 
 
 def resolve_sender(s) -> str:
