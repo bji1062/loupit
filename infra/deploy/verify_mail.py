@@ -1,15 +1,27 @@
 #!/usr/bin/env python3
-"""SMTP 설정 검증기 — 앱을 거치지 않고 메일 경로만 단계별로 확인한다.
+"""메일 설정 검증기 — 앱을 거치지 않고 호스트별 메일 경로를 단계별로 확인한다.
 
 사용법(리포 루트에서):
-    python3 infra/deploy/verify_mail.py                 # 설정·연결·인증까지만(발송 없음)
-    python3 infra/deploy/verify_mail.py you@example.com # 위 + 실제 테스트 메일 1통 발송
+    python3 infra/deploy/verify_mail.py                  # prod: smtp 기대 + 연결·인증(발송 없음)
+    python3 infra/deploy/verify_mail.py you@example.com  # 위 + 실제 테스트 메일 1통 발송
+    sudo python3 infra/deploy/verify_mail.py --host beta # beta: **console 기대**(실발송하면 실패)
 
-`server/.env` 를 그대로 읽으므로, 앱이 보게 될 설정과 정확히 같은 값을 검증한다.
+**왜 호스트 인자가 필요한가**(2026-07-29, P3-② ): 구 판본은 `server/.env` 만 읽고
+`mailer_mode != 'smtp'` 를 실패로 봤다. 그래서 "베타는 실발송하면 **안 된다**"라는 반대 방향
+불변식을 **표현할 수조차 없었다** — 베타가 prod 자격증명을 상속해 prod 발신 도메인과 무료 티어
+쿼터를 쓰고 있었는데도 이 검증기는 초록이었다. 기대값을 호스트가 소유하게 바꾼다.
+
+**유효 설정을 런타임과 같은 방식으로 합성한다**: systemd `EnvironmentFile` 이 프로세스 env 를
+채우고, pydantic 이 그 위에서 `server/.env` 를 폴백으로 읽는다. 그래서 대상 호스트의
+EnvironmentFile 을 os.environ 에 먼저 얹은 뒤 `Settings()` 를 만든다 — `.env.beta` 만 읽으면
+"상속으로 채워지는 값"을 놓쳐 지금 고치려는 결함을 그대로 못 본다.
+
 비밀번호는 어떤 경우에도 출력하지 않는다.
 """
 from __future__ import annotations
 
+import os
+import re
 import smtplib
 import ssl
 import sys
@@ -18,6 +30,30 @@ from email.message import EmailMessage
 from pathlib import Path
 
 sys.path.insert(0, "/home/ubuntu/loupit")
+
+ROOT = Path("/home/ubuntu/loupit")
+
+# 호스트별 기대 메일 모드. **이 표가 정책이다** — 값이 아니라 의도를 적는다.
+#   prod : 실사용자 로그인 코드를 보내는 유일한 호스트 → smtp 필수
+#   beta : 실발송 금지. prod 발신 도메인·무료 티어 쿼터를 나눠 쓰면 안 된다(P3-②)
+HOSTS = {
+    "prod": {"env_file": None, "expect": "smtp"},
+    "beta": {"env_file": ROOT / "server" / ".env.beta", "expect": "console"},
+}
+
+_ENV_LINE = re.compile(r"^\s*([A-Z0-9_]+)\s*=\s*(.*?)\s*$")
+
+
+def load_environment_file(path: Path) -> dict[str, str]:
+    """systemd EnvironmentFile 을 프로세스 env 로 얹는 것과 같게 해석한다(주석·빈 줄 무시)."""
+    out: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        m = _ENV_LINE.match(line)
+        if m:
+            out[m.group(1)] = m.group(2).strip("'\"")
+    return out
 
 
 def ok(m):
@@ -33,9 +69,29 @@ def info(m):
 
 
 def main() -> int:
-    to = sys.argv[1] if len(sys.argv) > 1 else None
+    argv = sys.argv[1:]
+    host = "prod"
+    if "--host" in argv:
+        i = argv.index("--host")
+        host = argv[i + 1] if i + 1 < len(argv) else ""
+        del argv[i:i + 2]
+    if host not in HOSTS:
+        bad(f"--host 는 {sorted(HOSTS)} 중 하나여야 한다 (받은 값: {host!r})")
+        return 2
+    expect = HOSTS[host]["expect"]
+    env_file = HOSTS[host]["env_file"]
+    to = argv[0] if argv else None
 
-    print("\n[1] 설정 로드 (server/.env)")
+    print(f"\n[1] 설정 로드 (호스트={host}, 기대 mailer_mode={expect!r})")
+    if env_file is not None:
+        try:
+            overlay = load_environment_file(env_file)
+        except PermissionError:
+            bad(f"{env_file} 를 읽을 수 없다 — `sudo` 로 실행하라(EnvironmentFile 은 root 소유 600)")
+            return 2
+        info(f"EnvironmentFile {env_file} → {len(overlay)}개 키를 프로세스 env 로 얹음")
+        os.environ.update(overlay)
+
     from server.config import Settings
 
     s = Settings()
@@ -43,23 +99,41 @@ def main() -> int:
         info(f"{k:12s} = {getattr(s, k)!r}")
     info(f"{'smtp_pass':12s} = {'설정됨(' + str(len(s.smtp_pass)) + '자)' if s.smtp_pass else '비어있음'}")
 
-    if s.mailer_mode != "smtp":
-        bad(f"mailer_mode={s.mailer_mode!r} — 실발송하려면 'smtp' 여야 한다(지금은 코드가 로그로 나감)")
+    if s.mailer_mode != expect:
+        if expect == "smtp":
+            bad(f"mailer_mode={s.mailer_mode!r} — 실발송하려면 'smtp' 여야 한다(지금은 코드가 로그로 나감)")
+        else:
+            # 반대 방향 어서션. 이게 없으면 "베타가 prod 자격증명을 상속했다"를 초록으로 지나친다.
+            bad(
+                f"mailer_mode={s.mailer_mode!r} — {host} 는 {expect!r} 여야 한다. "
+                f"{env_file} 에 MAILER_MODE 가 없어 prod 의 server/.env 를 상속했을 가능성이 크다 "
+                "→ prod 발신 도메인·무료 티어 쿼터를 나눠 쓰게 된다(P3-②)."
+            )
         return 1
-    ok("mailer_mode=smtp")
+    ok(f"mailer_mode={s.mailer_mode}")
 
     print("\n[2] get_mailer() fail-closed 검사")
     try:
-        from server.mailer import SmtpMailer, get_mailer
+        from server.mailer import ConsoleMailer, SmtpMailer, get_mailer
 
+        want = SmtpMailer if expect == "smtp" else ConsoleMailer
         m = get_mailer()
-        if not isinstance(m, SmtpMailer):
-            bad(f"SmtpMailer 가 아님: {type(m).__name__}")
+        if not isinstance(m, want):
+            bad(f"{want.__name__} 가 아님: {type(m).__name__}")
             return 1
-        ok(f"SmtpMailer 선택됨 (From={m._from!r})")
+        ok(f"{want.__name__} 선택됨" + (f" (From={m._from!r})" if isinstance(m, SmtpMailer) else ""))
     except RuntimeError as e:
         bad(f"설정 거부됨: {e}")
         return 1
+
+    if expect != "smtp":
+        # 여기서 끝낸다 — SMTP 연결·인증·발송은 실발송 호스트에만 의미가 있다.
+        print(f"\n{host} 는 실발송 호스트가 아니다. SMTP 연결 검사는 건너뛴다.")
+        if to:
+            bad(f"{host} 에 발송 대상({to})을 준 것은 모순이다 — 이 호스트는 메일을 보내지 않는다.")
+            return 1
+        ok(f"{host} 메일 설정 정상 — 실발송 경로 없음(prod 쿼터·평판과 분리)")
+        return 0
 
     print(f"\n[3] TCP 연결 → {s.smtp_host}:{s.smtp_port}")
     t0 = time.time()
