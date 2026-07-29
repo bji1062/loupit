@@ -279,7 +279,7 @@ def test_PM16_p8_p9_are_required_items_only_when_m9_on():
 def test_PM17_contact_is_config_driven_not_hardcoded():
     """연락처는 `policy_contact` 단일 설정값에서 온다 — 전용 주소로 바꿀 때 코드 수정 0.
 
-    ⚠ 도메인 전용 주소(privacy@jobcho.wiki)를 쓰려면 **먼저 그 주소가 메일을 받을 수 있어야**
+    ⚠ 도메인 전용 주소(contact@jobcho.wiki)를 쓰려면 **먼저 그 주소가 메일을 받을 수 있어야**
     한다(2026-07-29 현재 jobcho.wiki 에는 MX 가 없어 반송된다). 도달 불가능한 연락처를 처리방침에
     싣는 것은 권리 행사 경로를 막는 것이라 없는 것보다 나쁘다."""
     custom = GenConfig(m9_enabled=True, policy_contact="privacy@example.test")
