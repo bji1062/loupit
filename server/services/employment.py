@@ -48,6 +48,23 @@ async def domain_status(comp_id: int, email: str) -> str:
     return DomainStatus.OK if _normalize_domain(email) in registered else DomainStatus.MISMATCH
 
 
+async def registered_domains(comp_id: int) -> list[str]:
+    """회사에 등록된 활성 도메인 목록(정렬).
+
+    불일치(422) 안내가 **실제 등록 도메인을 보여주기** 위해 쓴다. 도메인만 알려주고
+    "다르다"고만 하면 사용자는 무엇을 고쳐야 할지 모른다.
+
+    노출 판단: 이 도메인들은 애초에 회사 공식 사이트에 게시된 주소에서 확증한 **공개
+    정보**이고, 도메인을 안다고 그 주소로 오는 메일을 받을 수는 없다(코드는 그 주소로만
+    간다). 그래서 노출해도 인증 강도가 낮아지지 않는다.
+    """
+    rows = await database.fetch_all(
+        "SELECT EMAIL_DOMAIN_NM FROM TCOMPANY_EMAIL_DOMAIN WHERE COMP_ID=%s AND ACTIVE_YN=TRUE",
+        (comp_id,),
+    )
+    return sorted({r["EMAIL_DOMAIN_NM"].strip().lower() for r in rows})
+
+
 async def active_verification(mbr_id: int, comp_id: int) -> dict | None:
     """활성(미폐기·미만료) 재직 인증 1건 → deps.require_employment·중복 인증 검사용(없으면 None)."""
     return await database.fetch_one(

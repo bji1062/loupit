@@ -51,7 +51,18 @@ export function sendOutcome(err) {
     }
     return { kind: 'manual', msg: '' }; // manual_required — 도메인 미등록 회사
   }
-  if (s === 422) return { kind: 'error', msg: '회사 이메일 도메인이 이 회사와 일치하지 않아요.' };
+  // ⚠ 422 는 **막다른 길이면 안 된다**(2026-07-29). 회사에 도메인이 하나라도 등록되면
+  // 그 회사는 409 manual_required 폴백을 잃는다 — 그 순간부터 계열사·자회사 주소를 쓰는
+  // 재직자는 "일치하지 않아요" 한 줄만 보고 갈 곳이 없어진다. 도메인 커버리지를 넓힐수록
+  // 넓어지는 막다른 길이라, 검색 0건(SP-AUTH-17)과 같은 방식으로 수동 승인 경로를 연다.
+  // FastAPI 자체 검증 422 는 detail 이 **배열**이라 구조로 갈린다 — 그건 기존대로 오류다.
+  if (s === 422) {
+    const d = err && err.data ? err.data.detail : null;
+    if (d && !Array.isArray(d) && d.code === 'domain_mismatch') {
+      return { kind: 'manual', msg: '', domains: Array.isArray(d.domains) ? d.domains : [] };
+    }
+    return { kind: 'error', msg: '회사 이메일 도메인이 이 회사와 일치하지 않아요.' };
+  }
   if (s === 401) return { kind: 'session', msg: '로그인이 만료됐어요. 다시 로그인해주세요.' };
   // 발송 경로의 429 는 **엣지 IP 리밋 한 뜻뿐**이다(앱 핸들러는 204/409/422 만 낸다) →
   // `Retry-After`(nginx map, 20초)를 알면 숫자로 노출한다. 모르면 기존 문구로 폴백(적대검토 ③).
@@ -68,6 +79,21 @@ export function sendOutcome(err) {
     };
   }
   return { kind: 'error', msg: '코드 발송에 실패했어요. 잠시 후 다시 시도해주세요.' };
+}
+
+// ── 순수: 도메인 불일치 안내 문장 ──
+// 문장 단위로 나눠 돌려준다 — 호출부가 <br> 로 잇는다(a59a921·565e036 과 같은 규약).
+// "다르다"만 말하면 사용자는 무엇을 고쳐야 할지 모른다 → **등록 도메인을 실제로 보여준다**.
+// 도메인 목록이 비는 경우(경합으로 그 사이 도메인이 내려간 경우 등)도 문장이 성립해야 한다.
+export function mismatchLines(domains) {
+  const list = (Array.isArray(domains) ? domains : []).filter(Boolean).map((d) => '@' + d);
+  return [
+    list.length
+      ? `현재 등록된 도메인은 ${list.join(', ')} 이에요.`
+      : '입력하신 주소는 이 회사에 등록된 도메인이 아니에요.',
+    '도메인이 바뀌었거나 계열사·자회사 주소를 쓰신다면 아래에 증빙을 남겨주세요.',
+    '운영자 승인 후 사용하실 수 있어요.',
+  ];
 }
 
 // ── 순수: 코드 검증(POST /employment/verify) 실패 분류 ──
@@ -282,6 +308,23 @@ export function initVerifyPage() {
 
   const sendKey = (compId, email) => compId + '|' + email.toLowerCase();
 
+  // 수동 승인 안내 문구. **기본값(도메인 미등록)은 HTML 이 소유한다** — 여기 문자열을 복제하면
+  // 문안 수정이 두 곳으로 갈라져 한쪽만 바뀐다. 초기 텍스트를 그대로 붙잡아 두고 복원한다.
+  const manualIntroDefault = $('manual-intro') ? $('manual-intro').textContent : '';
+
+  // domains 가 없으면 기본 문구(409 경로), 있으면 등록 도메인 안내(422 경로).
+  // innerHTML 을 쓰지 않는다 — 값이 DB 에서 오므로 노드로 조립해 주입 경로 자체를 없앤다.
+  function setManualIntro(domains) {
+    const el = $('manual-intro');
+    if (!el) return;
+    if (!domains) { el.textContent = manualIntroDefault; return; }
+    el.textContent = '';
+    mismatchLines(domains).forEach((line, i) => {
+      if (i) el.appendChild(document.createElement('br'));
+      el.appendChild(document.createTextNode(line));
+    });
+  }
+
   // ── ② 회사 이메일 → 코드 발송(도메인 판정) ──
   $('emp-send').addEventListener('click', async () => {
     clrMsg();
@@ -317,9 +360,10 @@ export function initVerifyPage() {
       $('code-step').hidden = false; $('manual-step').hidden = true; $('emp-code').focus();
       startTimer('emp-timer'); // 유효시간 카운트다운 시작
     } catch (err) {
-      const { kind, msg } = sendOutcome(err);
+      const { kind, msg, domains } = sendOutcome(err);
       if (selected !== target) return;   // 늦은 실패도 마찬가지 — 남의 화면에 오류를 뿌리지 않는다
-      if (kind === 'manual') { // 도메인 미등록 → 수동 승인 폴백
+      if (kind === 'manual') { // 도메인 미등록(409) · 등록 도메인 불일치(422) → 수동 승인 폴백
+        setManualIntro(domains);         // 두 경로의 안내 문구가 다르다(422 는 등록 도메인을 보여준다)
         $('manual-step').hidden = false; $('code-step').hidden = true; stopTimer('emp-timer');
         return;
       }

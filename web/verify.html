@@ -74,9 +74,13 @@
       <button class="auth-btn" id="emp-verify">인증하기</button>
     </div>
 
-    <!-- ④ 수동 승인 폴백(도메인 미등록 회사) -->
+    <!-- ④ 수동 승인 폴백 — 두 경로가 여기로 온다(2026-07-29)
+         ① 도메인 미등록 회사(409 manual_required) — 아래 기본 문구 그대로
+         ② 등록 도메인과 불일치(422 domain_mismatch) — verify.js 가 문구를 등록 도메인 안내로 교체
+         ②를 폴백에 넣지 않으면, 회사에 도메인이 하나라도 생기는 순간 계열사·자회사 주소를
+         쓰는 재직자가 갈 곳을 잃는다(도메인 커버리지를 넓힐수록 넓어지는 막다른 길). -->
     <div id="manual-step" hidden>
-      <p class="auth-sent">이 회사는 아직 도메인 자동 인증이 없어요. 재직 증빙을 남기면 운영자가 확인해 드려요.</p>
+      <p class="auth-sent" id="manual-intro">이 회사는 아직 도메인 자동 인증이 없어요. 재직 증빙을 남기면 운영자가 확인해 드려요.</p>
       <label for="evidence">재직 증빙</label>
       <textarea id="evidence" maxlength="1000" placeholder="예: 재직증명서 링크, 사원증 사진 링크, 회사 이메일 캡처 링크 등"></textarea>
       <button class="auth-btn" id="manual-send">수동 승인 요청</button>

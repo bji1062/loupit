@@ -571,6 +571,63 @@ describe('verify.html + initVerifyPage', () => {
     await tick();
     assert.equal($('manual-step').hidden, true);
     assert.match($('verify-ok').textContent, /접수했어요/);
+    assert.match($('manual-intro').textContent, /도메인 자동 인증이 없어요/,
+      '409 경로는 HTML 기본 문구를 그대로 쓴다');
+  });
+
+  // ── 2026-07-29: 도메인 등록이 만드는 새 막다른 길을 연다 ──
+  // 회사에 도메인이 하나라도 등록되면 그 회사는 409 manual_required 폴백을 잃는다.
+  // 그 순간부터 계열사·자회사 주소를 쓰는 재직자는 422 한 줄에 갇힌다 — 도메인 커버리지를
+  // 넓힐수록 넓어지는 회귀라, 검색 0건(SP-AUTH-17)과 같은 방식으로 길을 낸다.
+  test('도메인 불일치(422 domain_mismatch) → 수동 승인 폼 + 등록 도메인 안내', async () => {
+    mockApi([
+      ['GET', '/members/me', { status: 200, body: { nickname: 'n', status: 'active', verifications: [] } }],
+      SEARCH_OK,
+      ['POST', '/employment/verify-code', {
+        status: 422, body: { detail: { code: 'domain_mismatch', domains: ['samsung.com'] } },
+      }],
+    ]);
+    initVerifyPage();
+    await tick();
+    $('comp-search').value = '삼성';
+    $('comp-search').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    await tick(320);
+    $('comp-results').querySelector('li').click();
+    $('comp-email').value = 'hong@samsungsds.com';
+    $('emp-send').click();
+    await tick();
+
+    assert.equal($('manual-step').hidden, false, '422 를 막다른 길로 두면 안 된다');
+    assert.equal($('code-step').hidden, true);
+    assert.equal($('verify-err').hidden, true, '오류가 아니라 폴백 경로다');
+    const intro = $('manual-intro');
+    assert.match(intro.textContent, /@samsung\.com/, '무엇이 등록돼 있는지 보여줘야 고칠 수 있다');
+    assert.match(intro.textContent, /계열사/);
+    assert.match(intro.textContent, /승인/);
+    assert.equal(intro.querySelectorAll('br').length, 2, '문장 단위 줄바꿈(3문장 = <br> 2개)');
+    assert.equal(intro.querySelectorAll('*:not(br)').length, 0, 'innerHTML 주입 경로 없음');
+  });
+
+  test('FastAPI 검증 422(detail 배열) → 폴백을 열지 않고 오류로 남는다', async () => {
+    mockApi([
+      ['GET', '/members/me', { status: 200, body: { nickname: 'n', status: 'active', verifications: [] } }],
+      SEARCH_OK,
+      ['POST', '/employment/verify-code', {
+        status: 422, body: { detail: [{ loc: ['body', 'company_email'], msg: 'invalid' }] },
+      }],
+    ]);
+    initVerifyPage();
+    await tick();
+    $('comp-search').value = '삼성';
+    $('comp-search').dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+    await tick(320);
+    $('comp-results').querySelector('li').click();
+    $('comp-email').value = 'hong@samsung.com';
+    $('emp-send').click();
+    await tick();
+
+    assert.equal($('manual-step').hidden, true, '입력 형식 오류를 수동 승인으로 보내면 안 된다');
+    assert.equal($('verify-err').hidden, false);
   });
 });
 

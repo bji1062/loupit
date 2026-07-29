@@ -9,6 +9,7 @@ import { ApiError } from './api.js';
 import {
   CODE_TTL_SEC, RESEND_COOLDOWN_SEC, isValidEmail, isValidCode, countdownText,
   resendWaitSec, sendOutcome, verifyOutcome, renderCompanyItem, companyRequestOutcome,
+  mismatchLines,
 } from './verify.js';
 
 class FakeEl {
@@ -65,7 +66,30 @@ describe('sendOutcome — 코드 발송 실패 분류', () => {
     const o = sendOutcome(new ApiError(409, '/employment/verify-code', { detail: 'manual_required' }));
     assert.equal(o.kind, 'manual');
   });
-  test('422 → 도메인 불일치 안내', () => { assert.match(sendOutcome(e(422)).msg, /도메인/); });
+  test('422(구조 없음) → 도메인 불일치 안내', () => { assert.match(sendOutcome(e(422)).msg, /도메인/); });
+  // ── 2026-07-29: 422 도 막다른 길이면 안 된다 ──
+  // 회사에 도메인이 등록되는 순간 그 회사는 409 manual_required 폴백을 잃는다. 계열사·자회사
+  // 주소를 쓰는 재직자가 갈 곳을 잃지 않도록 422 도 수동 승인으로 잇는다.
+  test('422 domain_mismatch → 수동 승인 폴백 + 등록 도메인 전달', () => {
+    const o = sendOutcome(new ApiError(422, '/employment/verify-code', {
+      detail: { code: 'domain_mismatch', domains: ['hanwha.com', 'hanwhasystems.com'] },
+    }));
+    assert.equal(o.kind, 'manual', '422 를 오류로 끝내면 사용자가 갈 곳이 없다');
+    assert.deepEqual(o.domains, ['hanwha.com', 'hanwhasystems.com']);
+  });
+  test('422 FastAPI 검증 오류(detail 이 배열) → 폴백 아님(입력을 고쳐야 한다)', () => {
+    const o = sendOutcome(new ApiError(422, '/employment/verify-code', {
+      detail: [{ loc: ['body', 'company_email'], msg: 'value is not a valid email address' }],
+    }));
+    assert.equal(o.kind, 'error', '입력 형식 오류를 수동 승인으로 보내면 안 된다');
+  });
+  test('422 domain_mismatch + domains 누락 → 폴백은 열되 목록은 빈 배열', () => {
+    const o = sendOutcome(new ApiError(422, '/employment/verify-code', {
+      detail: { code: 'domain_mismatch' },
+    }));
+    assert.equal(o.kind, 'manual');
+    assert.deepEqual(o.domains, []);
+  });
   test('401 → 이 경로엔 코드 대조가 없으므로 세션 만료로 단정', () => {
     const o = sendOutcome(e(401));
     assert.equal(o.kind, 'session');
@@ -85,6 +109,33 @@ describe('sendOutcome — 코드 발송 실패 분류', () => {
   test('그 외·비 ApiError → 발송 실패', () => {
     assert.match(sendOutcome(e(500)).msg, /발송에 실패/);
     assert.match(sendOutcome(new Error('net')).msg, /발송에 실패/);
+  });
+});
+
+describe('mismatchLines — 불일치 안내 문장', () => {
+  test('등록 도메인을 실제로 보여준다(무엇을 고쳐야 하는지 알 수 있게)', () => {
+    const lines = mismatchLines(['hanwha.com']);
+    assert.match(lines[0], /@hanwha\.com/);
+    assert.match(lines.join(' '), /계열사/);
+    assert.match(lines.join(' '), /승인/);
+  });
+  test('복수 도메인은 모두 나열', () => {
+    const lines = mismatchLines(['a.com', 'b.co.kr']);
+    assert.match(lines[0], /@a\.com/);
+    assert.match(lines[0], /@b\.co\.kr/);
+  });
+  test('목록이 비어도 문장이 성립한다(경합으로 도메인이 내려간 경우)', () => {
+    for (const empty of [[], null, undefined, 'nope']) {
+      const lines = mismatchLines(empty);
+      assert.equal(lines.length, 3);
+      assert.ok(lines.every((l) => typeof l === 'string' && l.length > 0));
+      assert.doesNotMatch(lines[0], /@/, '빈 목록인데 "@" 가 남으면 문장이 깨진 것이다');
+    }
+  });
+  test('문장 단위로 쪼개 돌려준다(호출부가 <br> 로 잇는 규약)', () => {
+    const lines = mismatchLines(['x.com']);
+    assert.equal(lines.length, 3);
+    assert.ok(lines.every((l) => !l.includes('<')), '마크업은 호출부 소유다');
   });
 });
 

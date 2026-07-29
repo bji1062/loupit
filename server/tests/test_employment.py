@@ -268,6 +268,44 @@ async def test_AE1_domain_mismatch_422(employ_env):
 
 
 @pytest.mark.asyncio
+async def test_AE1_domain_mismatch_422_carries_registered_domains(employ_env):
+    """422 는 막다른 길이면 안 된다(2026-07-29).
+
+    회사에 도메인이 하나라도 등록되면 그 회사는 409 manual_required 폴백을 잃는다.
+    계열사·자회사 주소를 쓰는 재직자가 갈 곳을 잃지 않도록, 프론트가 "현재 등록된
+    도메인은 …" 을 보여주고 수동 승인으로 이을 수 있게 **기계가 읽는 구조**로 싣는다.
+    FastAPI 자체 검증 422 는 detail 이 리스트라 `code` 로 갈린다.
+    """
+    c, store, cap = employ_env
+    r = await c.post("/api/v1/employment/verify-code",
+                     json={"comp_id": 10, "company_email": "hong@gmail.com"}, headers=_AUTH)
+    assert r.status_code == 422
+    detail = r.json()["detail"]
+    assert isinstance(detail, dict), "문자열이면 프론트가 등록 도메인을 보여줄 수 없다"
+    assert detail["code"] == "domain_mismatch"
+    assert detail["domains"] == ["samsung.com"]
+    assert not cap.get("code"), "불일치인데 코드를 발송하면 안 된다"
+
+
+@pytest.mark.asyncio
+async def test_registered_domains_sorted_and_normalized(monkeypatch):
+    """대소문자·공백이 섞여 들어와도 안내에 그대로 새어 나가지 않는다."""
+    async def _fetch_all(sql, params=()):
+        return [{"EMAIL_DOMAIN_NM": " HANWHA.com "}, {"EMAIL_DOMAIN_NM": "hanwhasystems.com"},
+                {"EMAIL_DOMAIN_NM": "hanwha.com"}]
+    monkeypatch.setattr(employment.database, "fetch_all", _fetch_all)
+    assert await employment.registered_domains(1) == ["hanwha.com", "hanwhasystems.com"]
+
+
+@pytest.mark.asyncio
+async def test_registered_domains_empty_company(monkeypatch):
+    async def _fetch_all(sql, params=()):
+        return []
+    monkeypatch.setattr(employment.database, "fetch_all", _fetch_all)
+    assert await employment.registered_domains(1) == []
+
+
+@pytest.mark.asyncio
 async def test_verify_code_match_sends_and_204(employ_env):
     c, store, cap = employ_env
     r = await c.post("/api/v1/employment/verify-code",

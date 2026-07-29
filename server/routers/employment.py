@@ -29,12 +29,25 @@ async def request_employ_code(
     도메인 불일치 → 422. **반송 이력 주소 → 409 mail_suppressed**(SP-AUTH-16).
 
     ⚠ 두 409 는 **`detail` 로만 구분된다**. 프론트(`verify.js sendOutcome`)가 409 를 전부
-    manual_required 로 단정하면, 사용자는 오지 않을 수동 승인을 기다리게 된다."""
+    manual_required 로 단정하면, 사용자는 오지 않을 수동 승인을 기다리게 된다.
+
+    ⚠ 422 는 **막다른 길이 아니어야 한다**(2026-07-29). 회사에 도메인이 하나라도 등록되면
+    그 회사는 `no_domains` 폴백을 잃는다 — 계열사·자회사 주소를 쓰는 재직자가 그 순간
+    갈 곳이 없어진다. 그래서 `detail` 에 **등록 도메인 목록을 실어** 프론트가 "현재 도메인은
+    …" 을 보여주고 수동 승인으로 이어가게 한다. 도메인 커버리지를 넓힐수록 이 경로가
+    넓어지므로, 문자열이 아니라 **기계가 읽는 구조**로 보낸다(FastAPI 자체 검증 422 와
+    구분해야 하므로 `code` 를 함께 싣는다 — 그쪽 `detail` 은 리스트다)."""
     status = await employment.domain_status(body.comp_id, body.company_email)
     if status == employment.DomainStatus.NO_DOMAINS:
         raise HTTPException(status_code=409, detail="manual_required")
     if status == employment.DomainStatus.MISMATCH:
-        raise HTTPException(status_code=422, detail="회사 이메일 도메인이 일치하지 않습니다.")
+        raise HTTPException(
+            status_code=422,
+            detail={
+                "code": "domain_mismatch",
+                "domains": await employment.registered_domains(body.comp_id),
+            },
+        )
     issued = await employment.issue_employ_code(body.comp_id, member["MBR_ID"], body.company_email)
     if issued == auth_code.SUPPRESSED:
         raise HTTPException(status_code=409, detail="mail_suppressed")
