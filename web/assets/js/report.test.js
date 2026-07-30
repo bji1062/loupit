@@ -156,32 +156,48 @@ describe('renderCatButterfly 버터플라이 차트', () => {
   });
 });
 
-// ── T-06.11.4: renderBands 배지 라벨·만료 경고·safeUrl ──────────────────────
+// ── T-06.11.4: renderBands 배지 라벨·만료 경고 (2026-07-30 개정: 출처 링크 제거) ──
+//
+// 구 테스트는 "https 는 <a> 로, javascript: 는 '비표시' 텍스트로"라는 **스킴 화이트리스트**를
+// 쟀다. 이제 출처를 아예 렌더하지 않으므로 더 강한 명제를 잰다 — 검증이 느슨해진 게 아니라
+// **검증할 대상 자체를 없앴다**(URL 주입 경로 소멸). URL 은 응답에 계속 실려 오지만 화면엔
+// 나오지 않는다(사용자 결정: 저장하되 노출하지 않는다).
 describe('T-06.11.4 renderBands', () => {
-  test('공식/추정/만료 배지 라벨·safeUrl 링크화/위험스킴 텍스트', () => {
-    const now = Date.now();
-    const items = [
-      { benefit_nm: '공식항목', badge_cd: 'official', expires_dtm: null, badge_src_url_ctnt: 'https://x.co/a' },
-      { benefit_nm: '추정항목', badge_cd: 'est', expires_dtm: null, badge_src_url_ctnt: null },
-      { benefit_nm: '만료항목', badge_cd: 'official', expires_dtm: '2000-01-01T00:00:00Z', badge_src_url_ctnt: 'javascript:alert(1)' },
-    ];
+  const ITEMS = [
+    { benefit_nm: '공식항목', badge_cd: 'official', expires_dtm: null, badge_src_url_ctnt: 'https://x.co/a' },
+    { benefit_nm: '추정항목', badge_cd: 'est', expires_dtm: null, badge_src_url_ctnt: null },
+    { benefit_nm: '만료항목', badge_cd: 'official', expires_dtm: '2000-01-01T00:00:00Z', badge_src_url_ctnt: 'javascript:alert(1)' },
+  ];
+
+  test('공식/추정/만료 배지 라벨 + 밴드 표시', () => {
     const mount = new FakeElement('div');
-    renderBands({ totalRange: [100, 200] }, items, mount, now);
+    renderBands({ totalRange: [100, 200] }, ITEMS, mount, Date.now());
     const list = mount.children[0];
     assert.equal(list.children.length, 3);
     assert.equal(list.children[0].children[1].textContent, '공식');
     assert.equal(list.children[1].children[1].textContent, '추정');
     assert.equal(list.children[2].children[1].textContent, '만료');
-    // safeUrl 링크: 첫 항목은 <a href=...>, 마지막은 javascript: → 비표시 텍스트
-    const firstLinkNode = list.children[0].children[2];
-    assert.equal(firstLinkNode.tagName, 'a');
-    assert.equal(firstLinkNode.attributes.href, 'https://x.co/a');
-    const lastNode = list.children[2].children[2];
-    assert.equal(lastNode.tagName, 'span');
-    assert.ok(lastNode.textContent.includes('비표시'));
-    // 밴드 표시(계수 재계산 없이 slotResult.totalRange 그대로 표시)
+    // 계수 재계산 없이 slotResult.totalRange 를 그대로 표시(RP-1)
     assert.ok(mount.allText().includes('100'));
     assert.ok(mount.allText().includes('200'));
+  });
+
+  test('출처 URL 은 어떤 형태로도 렌더되지 않는다', () => {
+    const mount = new FakeElement('div');
+    renderBands({ totalRange: [100, 200] }, ITEMS, mount, Date.now());
+    const list = mount.children[0];
+    // 항목당 노드는 이름·배지 **둘뿐**이다. 셋째가 생기면 출처가 되살아난 것이다.
+    for (const li of list.children) assert.equal(li.children.length, 2, '출처 노드가 남아 있다');
+    const text = mount.allText();
+    assert.ok(!text.includes('x.co/a'), '출처 URL 이 노출됐다');
+    assert.ok(!text.includes('javascript:'), '위험 스킴이 노출됐다');
+    assert.ok(!text.includes('출처'), '출처 라벨이 남아 있다');
+  });
+
+  test('자기검증 — 표본이 실제로 URL 을 담고 있다', () => {
+    // 표본에 URL 이 없으면 "URL 이 안 보인다"는 언제나 참이라 아무것도 증명하지 못한다(함정 ㉙).
+    assert.ok(ITEMS.some((i) => (i.badge_src_url_ctnt || '').startsWith('https://')));
+    assert.ok(ITEMS.some((i) => (i.badge_src_url_ctnt || '').startsWith('javascript:')));
   });
 });
 

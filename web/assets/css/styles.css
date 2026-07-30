@@ -260,7 +260,7 @@ main p { margin-top:var(--sp-3); }
 .benefit-name { font-weight:var(--fw-semibold); color:var(--t1); }
 .benefit-amount { color:var(--brand); font-weight:var(--fw-semibold); white-space:nowrap; }
 .benefit-note { color:var(--t3); }
-.benefit-src, .benefit-verified { color:var(--t4); font-size:var(--fs-xs); }
+.benefit-verified { color:var(--t4); font-size:var(--fs-xs); }  /* .benefit-src 는 출처 열 제거로 삭제(2026-07-30) */
 
 /* 코랄 콜아웃 CTA(풀블리드) */
 .cta {
@@ -336,7 +336,6 @@ main p { margin-top:var(--sp-3); }
 .rp-band-body { color:var(--band-label-fg); font-size:var(--fs-xs); padding:var(--sp-1) 0 var(--sp-2); }
 .band-list { margin-top:var(--sp-2); }
 .band-item { display:flex; justify-content:space-between; gap:var(--sp-3); padding:var(--sp-1) 0; font-size:var(--fs-sm); }
-.band-src { color:var(--t4); font-size:var(--fs-xs); }
 .cat-delta-table { width:100%; border-collapse:collapse; margin-top:var(--sp-2); }
 .cat-delta-table th, .cat-delta-table td { padding:var(--sp-2); text-align:right; font-size:var(--fs-sm); border-bottom:var(--bw) solid var(--border); }
 .cat-delta-table th:first-child, .cat-delta-table td:first-child, .cat-delta-nm { text-align:left; color:var(--t3); }

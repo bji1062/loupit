@@ -128,17 +128,35 @@ def test_gc13_badge_is_text_label_not_only_color(fake_bundle, fake_now):
     assert re.search(r'class="badge badge-(official|est|stale)"[^>]*>(공식 확인|추정|만료·재확인 필요)', p.html)
 
 
-# ── GC-14: 출처 스킴 화이트리스트(http/https만 링크) ────────────────────────
+# ── GC-14: 출처 아웃링크 미노출 (2026-07-30 개정) ──────────────────────────
+#
+# 구 GC-14 는 "`javascript:` 는 링크화하지 않고 `https` 는 링크화한다"는 **스킴 화이트리스트**
+# 가드였다. 이제 출처 링크를 아예 만들지 않으므로 그보다 **강한 명제**를 잰다 —
+# 검증이 느슨해진 게 아니라 **검증할 대상 자체를 없앴다**(주입 경로 소멸).
 
 
-def test_gc14_javascript_scheme_source_url_not_linked(fake_bundle, fake_now):
+def test_gc14_source_url_never_appears_in_html(fake_bundle, fake_now):
+    """출처 URL 은 **어떤 형태로도** 회사 페이지 HTML 에 나타나지 않는다.
+
+    URL 은 DB·API 에 그대로 남는다(사용자 결정: 저장하되 노출하지 않는다). 여기서 막는 것은
+    **화면 노출**이다. 계기는 링크 전수 감사 — 출처 12건 중 3건이 죽어 있었고, 404 로 가는
+    '출처' 는 배지 옆에서 검증을 약속해 놓고 못 지키는 것이라 없느니만 못했다.
+    """
     p = _samsung(fake_bundle, fake_now)
-    assert "javascript:" not in p.html
+    assert "javascript:" not in p.html, "위험 스킴이 그대로 실렸다"
+    assert "ex.com/samsung/perks" not in p.html, "출처 URL 이 노출됐다"
+    assert 'class="benefit-src"' not in p.html, "출처 열이 남아 있다"
+    assert ">출처</a>" not in p.html, "출처 링크가 남아 있다"
 
 
-def test_gc14_https_scheme_source_url_is_linked(fake_bundle, fake_now):
-    p = _samsung(fake_bundle, fake_now)
-    assert 'href="https://ex.com/samsung/perks"' in p.html
+def test_gc14_fixture_actually_contains_source_urls(fake_bundle):
+    """**자기검증** — 위 어서션이 공회전하지 않는지 확인한다.
+
+    픽스처에 URL 이 하나도 없으면 "URL 이 안 보인다"는 언제나 참이라 아무것도 증명하지 못한다
+    (함정 ㉙: '위반이 없다'만 주장하는 가드는 스스로 초록일 수 있다)."""
+    urls = [b.get("badge_src_url_ctnt") for c in fake_bundle["companies"] for b in c["benefits"]]
+    assert any(u and u.startswith("https://") for u in urls), "픽스처에 https 출처가 없다"
+    assert any(u and u.startswith("javascript:") for u in urls), "픽스처에 위험 스킴 표본이 없다"
 
 
 # ── GC-15: 면책 노출 ─────────────────────────────────────────────────────

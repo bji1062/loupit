@@ -1,6 +1,6 @@
 // web/assets/js/report.js — 리포트 DOM 렌더(SP-FE-9.4, FR-40·41·42·45, NFR21, SP-ENGINE-2.2·13).
 // 구 SP-RPT 대역 흡수. 엔진 calc.js는 import하지 않는다(값은 이미 계산됨) — dom.js·store.js만 사용.
-import { el, safeUrl } from './dom.js';
+import { el } from './dom.js';
 import { recent } from './store.js';
 
 // 9카테고리 표시 라벨(SP-GEN CATEGORY_LABEL과 동일 어휘 사용 — 화면 간 용어 일관성).
@@ -363,7 +363,7 @@ export function renderBenefitMatrix(rows, mountEl, ctx = {}) {
   return mountEl;
 }
 
-// ── T-06.11.4 renderBands — 항목 배지·밴드 표시·safeUrl 출처(FR-41) ────────
+// ── T-06.11.4 renderBands — 항목 배지·밴드 표시(FR-41). 출처 링크는 내지 않는다 ──
 function badgeLabel(item, now) {
   const expired = item.expires_dtm != null && Date.parse(item.expires_dtm) < now;
   if (expired) return '만료'; // RP-2 만료 경고색
@@ -382,11 +382,10 @@ export function renderBands(slotResult, benItems, mountEl, now = Date.now()) {
     const li = el('li', { class: 'band-item' });
     li.append(el('span', { class: 'band-item-nm', text: item.benefit_nm })); // RP-4 textContent
     li.append(el('span', { class: badgeClass(item, now), text: badgeLabel(item, now) }));
-    if (item.badge_src_url_ctnt) {
-      const href = safeUrl(item.badge_src_url_ctnt); // RP-3: http/https만 링크화
-      if (href) li.append(el('a', { class: 'band-src', href, target: '_blank', rel: 'noopener', text: '출처' }));
-      else li.append(el('span', { class: 'band-src band-src--unsafe', text: '출처(비표시)' }));
-    }
+    // ⚠ 출처 아웃링크는 **렌더하지 않는다**(2026-07-30 사용자 결정, 정적 복지표와 동일).
+    //    `item.badge_src_url_ctnt` 는 응답에 계속 실려 오지만 화면에는 내지 않는다.
+    //    링크를 만들지 않으므로 스킴 화이트리스트(safeUrl)도 여기선 필요 없어졌다 —
+    //    검증이 필요 없어진 게 아니라 **검증할 대상 자체를 없앤 것**이다.
     list.append(li);
   }
   mountEl.append(list);
