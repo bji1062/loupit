@@ -18,9 +18,34 @@
 
 from __future__ import annotations
 
+import json
+from datetime import datetime, timedelta, timezone
+
 import pytest
 
 from server import ops
+
+
+def _drill_json(tmp_path, *, ok=True, days_ago=0, detail="테이블 16 · 회사 102"):
+    """복원 훈련 상태 파일 한 개를 만든다(경과일은 지금 기준으로 역산)."""
+    at = datetime.now(timezone.utc) - timedelta(days=days_ago)
+    p = tmp_path / f"drill-{ok}-{days_ago}.json"
+    p.write_text(json.dumps({
+        "at": at.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "ok": ok, "source": "loupit-20260730.sql.gz", "detail": detail,
+    }))
+    return str(p)
+
+
+@pytest.fixture(autouse=True)
+def pinned_drill_state(tmp_path, monkeypatch):
+    """기본 훈련 상태를 **신선한 성공**으로 고정한다.
+
+    ⚠ 이게 없으면 OD-1~8 이 이 호스트의 실제 `/var/backups/loupit/restore-drill.json` 을
+    읽는다. 파일이 없는 머신에서는 "알 수 없음 = 알람"이 되어 OD-5b(대기 0건이면 발송 생략)가
+    **환경에 따라 깨진다.** OD-6 주석이 적어 둔 함정 그대로다 — 테스트가 환경의 부재(또는
+    존재)에 기대면 그 환경이 바뀌는 날 반드시 깨진다."""
+    monkeypatch.setattr(ops, "DRILL_STATE_PATH", _drill_json(tmp_path))
 
 
 class _FakeCursor:
@@ -203,11 +228,80 @@ def test_OD8_send_failure_is_reported(busy_conn, monkeypatch, capsys):
     assert "실패" in capsys.readouterr().out
 
 
+# ── OD-9~13: 복원 훈련 상태 (2026-07-30) ──────────────────────────────────
+#
+# 훈련이 실패해도 아무도 안 보면 훈련이 아니다. 새 발송 경로를 만드는 대신, **배달까지 실증된**
+# 일일 요약에 얹었다. 여기서 고정하는 것은 "무엇을 알람으로 볼 것인가"다.
+
+
+def test_OD9_실패도_낡음도_알수없음도_모두_알람이다(tmp_path):
+    """세 가지 사건이 전부 마커를 띄워야 한다.
+
+    특히 **알 수 없음**을 빼면 안 된다 — 경로가 틀린 채 배포된 순간부터 영원히 조용해지고,
+    그 침묵은 "훈련이 잘 돌고 있다"와 구분되지 않는다."""
+    성공 = ops.collect_drill_status(_drill_json(tmp_path, ok=True, days_ago=1))
+    실패 = ops.collect_drill_status(_drill_json(tmp_path, ok=False, days_ago=1))
+    낡음 = ops.collect_drill_status(_drill_json(tmp_path, ok=True, days_ago=ops.DRILL_STALE_DAYS + 5))
+    없음 = ops.collect_drill_status(str(tmp_path / "no-such-file.json"))
+
+    assert not ops.drill_is_alarming(성공)
+    assert ops.drill_is_alarming(실패), "훈련 실패가 조용하다"
+    assert ops.drill_is_alarming(낡음), "타이머가 죽어 상태가 낡아도 조용하다"
+    assert ops.drill_is_alarming(없음), "상태를 못 읽는 것을 정상으로 읽고 있다"
+
+
+def test_OD10_훈련_알람은_제목에_뜬다(empty_conn, tmp_path):
+    """본문에만 두면 '큐 0건' 제목을 보고 안 여는 날이 반복돼 그 줄은 없는 것과 같다."""
+    digest = ops.collect_digest(empty_conn)
+    실패 = ops.collect_drill_status(_drill_json(tmp_path, ok=False))
+    제목 = ops.digest_subject(digest, 실패)
+    assert ops.DIGEST_MARK in 제목 and "복원훈련" in 제목
+    # 대조군 — 정상이면 큐가 비었으니 마커가 없어야 한다(항상 빨간 알람은 알람이 아니다).
+    정상 = ops.collect_drill_status(_drill_json(tmp_path, ok=True))
+    assert ops.DIGEST_MARK not in ops.digest_subject(digest, 정상)
+
+
+def test_OD11_only_if_pending_이어도_훈련_알람은_뚫고_나간다(empty_conn, tmp_path, monkeypatch):
+    """`--only-if-pending` 은 **큐 건수만** 본다. 그대로 두면 백업이 깨져도 큐가 비면 침묵한다."""
+    m = _FakeMailer()
+    monkeypatch.setattr(ops, "get_mailer", lambda: m)
+    args = _Args(send=True, to="ops@example.com", only_if_pending=True,
+                 drill_state=_drill_json(tmp_path, ok=False))
+    assert ops.cmd_digest(empty_conn, args) == 0
+    assert len(m.sent) == 1, "훈련이 실패했는데 큐가 비었다는 이유로 침묵했다"
+
+
+def test_OD12_상태파일_파손이_요약_전체를_죽이지_않는다(empty_conn, tmp_path, monkeypatch):
+    """부수 기능이 본 기능을 죽이면 안 된다 — 훈련 줄 하나 때문에 큐 알림까지 잃을 수는 없다."""
+    깨진파일 = tmp_path / "broken.json"
+    깨진파일.write_text("{ this is not json")
+    m = _FakeMailer()
+    monkeypatch.setattr(ops, "get_mailer", lambda: m)
+    args = _Args(send=True, to="ops@example.com", drill_state=str(깨진파일))
+    assert ops.cmd_digest(empty_conn, args) == 0
+    assert len(m.sent) == 1
+    assert "재직 수동 승인" in m.sent[0][2], "큐 요약이 사라졌다"
+
+
+def test_OD13_훈련_줄에도_사용자_내용은_없다(empty_conn, tmp_path):
+    """OD-4 와 같은 규약 — 새로 얹은 줄이 그 규약을 뚫지 않는지 함께 본다.
+
+    훈련 상태의 `detail` 은 스크립트가 만드는 집계 문자열이지 DB 행이 아니다. 다만 나중에
+    누군가 거기에 회사명·이메일을 넣을 수 있으므로 규약을 여기서도 못박는다."""
+    digest = ops.collect_digest(empty_conn)
+    drill = ops.collect_drill_status(_drill_json(tmp_path))
+    body = ops.digest_body(digest, drill)
+    assert "복원 훈련" in body
+    assert "@" not in body, "이메일 주소가 새어 나갔다"
+    assert "://" not in body, "URL 이 새어 나갔다"
+
+
 class _Args:
-    def __init__(self, send=False, to="", only_if_pending=False):
+    def __init__(self, send=False, to="", only_if_pending=False, drill_state=None):
         self.send = send
         self.to = to
         self.only_if_pending = only_if_pending
+        self.drill_state = drill_state
 
 
 class _FakeSettings:

@@ -76,6 +76,13 @@ sudo cp "${ROOT_DIR}/infra/systemd/loupit-backup.service" /etc/systemd/system/lo
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-backup.timer" /etc/systemd/system/loupit-backup.timer
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-ops-digest.service" /etc/systemd/system/loupit-ops-digest.service
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-ops-digest.timer" /etc/systemd/system/loupit-ops-digest.timer
+sudo cp "${ROOT_DIR}/infra/systemd/loupit-restore-drill.service" /etc/systemd/system/loupit-restore-drill.service
+sudo cp "${ROOT_DIR}/infra/systemd/loupit-restore-drill.timer" /etc/systemd/system/loupit-restore-drill.timer
+# 테스트 DB 상호 배제 락(0666) — 훈련(User=ubuntu)과 pytest(사람: ubuntu 또는 root)가 같은
+# 파일을 flock 한다. 먼저 만든 쪽의 0644 소유가 남으면 **다른 쪽이 열지 못해 훈련이 죽는다**
+# (2026-07-30 실발현). tmpfiles 로 선언해야 재부팅(/run/lock 은 tmpfs) 후에도 유지된다.
+sudo cp "${ROOT_DIR}/infra/systemd/tmpfiles-loupit.conf" /etc/tmpfiles.d/loupit.conf
+sudo systemd-tmpfiles --create /etc/tmpfiles.d/loupit.conf
 # MySQL 설정: apt 설치 경로만 /etc/mysql/mysql.conf.d 를 읽는다. 이 호스트처럼 tarball 설치
 # (/data/mysql, /etc/my.cnf 만 읽음)면 디렉토리가 없어 cp 가 set -e 로 전체 abort 하므로 스킵·경고.
 if [ -d /etc/mysql/mysql.conf.d ]; then
@@ -105,6 +112,10 @@ sudo systemctl enable --now loupit-backup.timer
 # 운영자 큐 요약(일 1회 23:00 UTC = 08:00 KST). ⚠ `server/.env` 에 OPS_DIGEST_TO 가 없으면
 # 발송이 **명시적으로 실패**한다(exit 2) — 조용히 넘어가면 "알림이 있다"고 믿게 된다.
 sudo systemctl enable --now loupit-ops-digest.timer
+# 복원 훈련(주 1회 일요일 03:30 UTC = 12:30 KST). 백업이 **복원되는지**는 백업이 온전한지와
+# 다른 질문이다 — 복원해 본 적 없는 백업은 백업이 아니라 백업이라는 믿음이다.
+# 결과는 일일 요약 메일에 실린다(server/ops.py 가 restore-drill.json 을 읽는다).
+sudo systemctl enable --now loupit-restore-drill.timer
 
 echo "[5/6] certbot·방화벽 부트스트랩 호출 (SP-INFRA-4·8, 별도 스크립트)"
 echo "  최초 인증서 발급은 :80이 활성화된 뒤 수동 실행: infra/deploy 문서(SP-INFRA-4.1) 참고"

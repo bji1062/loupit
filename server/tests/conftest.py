@@ -72,6 +72,66 @@ def pytest_configure(config):
         assert_test_target(os.environ.get("DB_NAME"), allow_serving=allow_serving)
     except ServingSchemaError as exc:
         pytest.exit(f"[C-1 안전장치] {exc}", returncode=3)
+    _acquire_testdb_lock()
+
+
+# ── 테스트 DB 상호 배제 락 (2026-07-30, restore-drill 신설과 함께) ──────────────────
+# 주간 복원 훈련(`infra/deploy/restore-drill.sh`)이 같은 `loupit_test` 에 프로덕션 덤프를
+# 복원했다가 지운다. 그 DB 계정은 `LOUPIT`·`loupit_beta`·`loupit_test` 세 곳에만 권한이 있고
+# CREATE DATABASE 권한이 없어(2026-07-30 실측) 훈련 대상을 따로 만들 수 없기 때문이다.
+#
+# 겹치면 서로를 망가뜨린다 → 두 쪽이 **같은 파일**을 flock 한다. 락이 한쪽에만 있으면 락이
+# 아니다. 여기서 잡지 않으면 훈련 쪽 `flock -n` 은 언제나 성공하고 상호 배제는 없는 것이다.
+_TESTDB_LOCK_FILE = os.environ.get("DRILL_LOCK_FILE", "/var/lock/loupit-testdb.lock")
+_TESTDB_LOCK_WAIT_SEC = 180
+_testdb_lock_fh = None  # 프로세스 수명 동안 열어 둔다(닫히면 락이 풀린다)
+
+
+def _acquire_testdb_lock() -> None:
+    """훈련과 겹치지 않게 테스트 DB 락을 잡는다. 잡을 수 없으면 **이유를 말하고** 중단한다.
+
+    실패를 삼키지 않는 이유: 조용히 진행하면 훈련이 세션 도중 테이블을 드롭해 **원인을 알 수
+    없는 무작위 실패**로 나타난다. 그건 진단에 몇 시간이 든다. 반대로 락을 아예 열 수 없는
+    환경(권한 없음·`/var/lock` 부재)은 훈련도 못 도는 환경이므로, 그때는 경고만 하고 진행한다
+    — 없는 경쟁자를 이유로 테스트를 막으면 그게 더 나쁘다."""
+    global _testdb_lock_fh
+    import fcntl
+    import time
+
+    try:
+        fh = open(_TESTDB_LOCK_FILE, "w")
+    except OSError as exc:  # 락 파일을 못 연다 = 훈련도 못 돈다 → 경쟁자 없음
+        print(f"[testdb-lock] 락 파일 사용 불가({exc}) — 상호 배제 없이 진행한다.")
+        return
+
+    deadline = time.monotonic() + _TESTDB_LOCK_WAIT_SEC
+    while True:
+        try:
+            fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            _testdb_lock_fh = fh  # 참조를 남겨 GC 로 닫히지 않게 한다
+            return
+        except BlockingIOError:
+            if time.monotonic() >= deadline:
+                fh.close()
+                pytest.exit(
+                    f"[testdb-lock] {_TESTDB_LOCK_FILE} 이 {_TESTDB_LOCK_WAIT_SEC}초째 잠겨 있다 — "
+                    "복원 훈련(loupit-restore-drill.service)이 도는 중일 수 있다. "
+                    "`systemctl status loupit-restore-drill` 로 확인하라.",
+                    returncode=3,
+                )
+            time.sleep(1)
+
+
+def pytest_unconfigure(config):
+    """세션 종료 시 락을 명시적으로 놓는다.
+
+    프로세스가 죽으면 커널이 어차피 flock 을 푼다 — 이건 정확성이 아니라 **위생**이다.
+    안 닫으면 인터프리터 종료 때 `ResourceWarning: unclosed file` 이 매 실행마다 찍히고,
+    그런 상시 경고는 진짜 경고를 묻는다."""
+    global _testdb_lock_fh
+    if _testdb_lock_fh is not None:
+        _testdb_lock_fh.close()
+        _testdb_lock_fh = None
 
 # 생성 순서(FK 부모→자식, SP-DB-8). DROP은 이 역순(자식→부모)으로 수행한다.
 # 역할분담(#1, 2026-07-18): 이 계층은 테스트 격리를 위해 TCOMPARE_LOG 를 계속 DROP/CREATE

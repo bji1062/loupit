@@ -293,26 +293,95 @@ def collect_digest(conn) -> dict[str, list[int]]:
     return out
 
 
-def digest_subject(digest: dict[str, list[int]]) -> str:
-    """제목만 보고 판단할 수 있어야 한다 — 매일 오는 메일 중에서 골라내야 하므로."""
+# ── 복원 훈련 상태 (2026-07-30 신설) ──────────────────────────────────────
+# 주간 복원 훈련(`infra/deploy/restore-drill.sh`)이 남긴 상태를 요약에 함께 싣는다.
+#
+# **왜 별도 알림 경로를 만들지 않았나**: 훈련이 실패해도 아무도 안 보면 훈련이 아니다. 그런데
+# 새 발송 경로를 하나 더 만들면 그 경로도 언젠가 조용히 죽고, 그 죽음을 감시할 것이 또 필요해진다.
+# 일일 요약은 **웹훅으로 배달까지 실증된** 채널이므로 여기에 얹는 것이 가장 안전하다.
+#
+# **경과일을 함께 본다**: 훈련이 "실패"한 것과 "아예 돌지 않은 것"은 다른 사건인데, 실패만
+# 보면 둘째를 영영 놓친다. 타이머가 죽으면 상태 파일은 그냥 낡아 갈 뿐 아무 소리도 내지 않는다.
+DRILL_STATE_PATH = "/var/backups/loupit/restore-drill.json"
+DRILL_STALE_DAYS = 10  # 주기(7일) + 여유 3일. 이 이상 낡으면 타이머 고장을 의심한다.
+
+
+def collect_drill_status(path: str | None = None) -> dict:
+    """복원 훈련 상태를 읽는다. 읽을 수 없으면 **그 사실 자체를 상태로** 돌려준다.
+
+    파일이 없다/깨졌다를 예외로 흘리면 요약 메일 전체가 안 나가고, 그러면 큐 알림까지 함께
+    잃는다. 부수 기능이 본 기능을 죽이면 안 된다."""
+    from datetime import datetime, timezone
+    from pathlib import Path
+
+    p = Path(path or DRILL_STATE_PATH)
+    try:
+        raw = json.loads(p.read_text())
+        at = datetime.strptime(raw["at"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except FileNotFoundError:
+        return {"known": False, "reason": "상태 파일 없음(훈련이 한 번도 안 돌았거나 경로가 다르다)"}
+    except Exception as exc:  # noqa: BLE001 — 형식 파손·권한 등 원인 무관
+        return {"known": False, "reason": f"상태 파일을 읽을 수 없다({type(exc).__name__})"}
+
+    age_days = (datetime.now(timezone.utc) - at).total_seconds() / 86400
+    return {
+        "known": True,
+        "ok": bool(raw.get("ok")),
+        "at": raw["at"],
+        "age_days": age_days,
+        "stale": age_days > DRILL_STALE_DAYS,
+        "source": raw.get("source", ""),
+        "detail": raw.get("detail", ""),
+    }
+
+
+def drill_is_alarming(drill: dict) -> bool:
+    """제목에 🔴 를 띄울 사건인가 — 실패 / 낡음 / 알 수 없음 셋 다 알람이다.
+
+    "알 수 없음"을 알람에서 빼면, 경로가 틀린 채 배포된 순간부터 영원히 조용해진다."""
+    return (not drill.get("known")) or (not drill.get("ok")) or bool(drill.get("stale"))
+
+
+def drill_line(drill: dict) -> str:
+    if not drill.get("known"):
+        return f"{DIGEST_MARK} 복원 훈련        알 수 없음 — {drill.get('reason', '')}"
+    mark = DIGEST_MARK if drill_is_alarming(drill) else "  "
+    verdict = "성공" if drill.get("ok") else "실패"
+    age = int(drill.get("age_days", 0))
+    stale = " ⚠주기 초과" if drill.get("stale") else ""
+    return (f"{mark} 복원 훈련        {verdict} ({age}일 전{stale})"
+            f"  {drill.get('source', '')}  {drill.get('detail', '')}")
+
+
+def digest_subject(digest: dict[str, list[int]], drill: dict | None = None) -> str:
+    """제목만 보고 판단할 수 있어야 한다 — 매일 오는 메일 중에서 골라내야 하므로.
+
+    큐가 비어도 **복원 훈련이 문제면 제목에 마커를 띄운다.** 본문에만 두면 "큐 0건" 제목을
+    보고 열지 않는 날이 반복되고, 그러면 그 줄은 없는 것과 같다."""
     total = sum(len(v) for v in digest.values())
     parts = " · ".join(f"{label} {len(digest[key])}" for key, label, _c, _s in _DIGEST_QUERIES)
-    mark = f"{DIGEST_MARK} " if total else ""
-    return f"[{SERVICE_NAME}] {mark}운영 큐 {total}건 — {parts}"
+    alarm = bool(total) or (drill is not None and drill_is_alarming(drill))
+    mark = f"{DIGEST_MARK} " if alarm else ""
+    suffix = " · 복원훈련 확인필요" if drill is not None and drill_is_alarming(drill) else ""
+    return f"[{SERVICE_NAME}] {mark}운영 큐 {total}건 — {parts}{suffix}"
 
 
-def digest_body(digest: dict[str, list[int]]) -> str:
+def digest_body(digest: dict[str, list[int]], drill: dict | None = None) -> str:
     lines = ["운영 큐 요약", ""]
     for key, label, cmd, _sql in _DIGEST_QUERIES:
         ids = digest[key]
         marker = DIGEST_MARK if ids else "  "
         detail = "  " + " ".join(f"#{i}" for i in ids) if ids else ""
         lines.append(f"{marker} {label:<14} {len(ids)}건{detail}")
+    if drill is not None:
+        lines += ["", "백업 건강", "", drill_line(drill)]
     lines += [
         "",
         "내용(증빙·회사명·주소)은 이 메일에 담지 않는다 — 서버에서 확인하라:",
     ]
     lines += [f"  python3 -m server.ops {cmd}" for _k, _l, cmd, _s in _DIGEST_QUERIES]
+    if drill is not None:
+        lines.append("  journalctl -u loupit-restore-drill -n 30   # 복원 훈련 로그")
     return "\n".join(lines)
 
 
@@ -322,8 +391,9 @@ def cmd_digest(conn, args) -> int:
     기본이 발송 없음인 이유: 사람이 확인차 실행할 때마다 메일이 나가면 안 된다.
     타이머만 `--send` 를 붙인다."""
     digest = collect_digest(conn)
-    subject = digest_subject(digest)
-    body = digest_body(digest)
+    drill = collect_drill_status(getattr(args, "drill_state", None))
+    subject = digest_subject(digest, drill)
+    body = digest_body(digest, drill)
     total = sum(len(v) for v in digest.values())
 
     if not args.send:
@@ -332,7 +402,9 @@ def cmd_digest(conn, args) -> int:
         print(body)
         return 0
 
-    if getattr(args, "only_if_pending", False) and total == 0:
+    # ⚠ `--only-if-pending` 는 큐 건수만 본다. 복원 훈련이 실패해도 큐가 비면 침묵한다 —
+    #   그래서 훈련 알람이 있으면 이 생략을 무시한다. 안 그러면 "조용한 백업 고장"이 된다.
+    if getattr(args, "only_if_pending", False) and total == 0 and not drill_is_alarming(drill):
         print("대기 0건 + --only-if-pending → 발송 생략 (⚠ 침묵이 고장과 구분되지 않는다)")
         return 0
 
@@ -431,7 +503,10 @@ def build_parser() -> argparse.ArgumentParser:
     dg.add_argument("--send", action="store_true", help="메일 발송(없으면 화면 출력만)")
     dg.add_argument("--to", default="", help="수신 주소(생략 시 OPS_DIGEST_TO)")
     dg.add_argument("--only-if-pending", action="store_true",
-                    help="대기 0건이면 발송 생략. ⚠ 침묵이 '고장'과 구분되지 않는다 — 기본값 아님")
+                    help="대기 0건이면 발송 생략. ⚠ 침묵이 '고장'과 구분되지 않는다 — 기본값 아님. "
+                         "복원 훈련 알람이 있으면 이 생략은 무시된다")
+    dg.add_argument("--drill-state", default=None,
+                    help=f"복원 훈련 상태 파일 경로(기본 {DRILL_STATE_PATH})")
     dg.set_defaults(func=cmd_digest)
 
     cq = sub.add_parser("list-company-requests", help="회사 등록 요청 큐(검색에 없는 회사)")

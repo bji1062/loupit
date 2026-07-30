@@ -1,0 +1,19 @@
+# /etc/systemd/system/loupit-restore-drill.timer
+# 주 1회 일요일 03:30 UTC = **12:30 KST**. 서버 시간대는 UTC 다(timedatectl).
+#
+# 왜 03:30 인가: 백업 타이머가 03:00 이고 덤프는 수 초면 끝난다. 30분을 띄워 그날 백업을
+# 바로 검증하되, 백업이 늦어져도 훈련이 어제 파일을 집도록 여유를 둔다.
+# 왜 주 1회인가: 훈련은 loupit_test 를 통째로 갈아엎으므로 pytest 와 경합한다. 매일 돌리면
+# 경합 확률만 커지고, 백업 경로가 깨지는 사건은 매일 일어나지 않는다.
+[Unit]
+Description=loupit 주 1회 복원 훈련 타이머
+
+[Timer]
+OnCalendar=Sun *-*-* 03:30:00
+# 서버가 꺼져 있던 동안의 발화를 기동 후 한 번 보충한다(백업·요약 타이머와 같은 규약).
+Persistent=true
+# 여러 타이머가 같은 분에 몰리지 않게 흩뿌린다(백업과 30분 차이라 필수는 아니지만 관례).
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

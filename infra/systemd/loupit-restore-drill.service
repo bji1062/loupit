@@ -1,0 +1,26 @@
+# 복원 훈련(주 1회) — 최신 백업이 **정말 복원되는지** 증명한다.
+# gzip 무결성과 트레일러 검사는 "파일이 온전한가"이지 "이 파일로 되살릴 수 있는가"가 아니다.
+[Unit]
+Description=loupit 복원 훈련 (최신 백업 → loupit_test 복원·검증·정리)
+After=mysql.service
+Wants=mysql.service
+# 백업 직후에 돌면 그날 덤프를 바로 검증한다. 백업이 실패했다면 훈련은 어제 파일을 쓴다
+# (최신 파일을 고르는 방식이라 자동으로 그렇게 된다) — 훈련이 백업 실패를 가리지 않게
+# 두 유닛의 성공/실패는 각각 독립으로 남는다.
+After=loupit-backup.service
+
+[Service]
+Type=oneshot
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/loupit
+# backup.sh 와 같은 크레덴셜을 쓴다(DB_HOST/PORT/USER/PASSWORD/DB_NAME/BACKUP_DIR/MIRROR_DIR).
+# '-' 접두: 파일이 없어도 유닛은 기동하고 스크립트가 DB_PASSWORD 미설정을 명확히 로그하며 실패한다.
+EnvironmentFile=-/home/ubuntu/loupit/infra/env/backup.env
+ExecStart=/usr/bin/bash /home/ubuntu/loupit/infra/deploy/restore-drill.sh
+
+# 관측: journalctl -u loupit-restore-drill · 그리고 결과는 일일 요약 메일에도 실린다
+# (server/ops.py 가 /var/backups/loupit/restore-drill.json 을 읽는다).
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=loupit-restore-drill

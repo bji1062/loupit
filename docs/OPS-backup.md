@@ -107,6 +107,50 @@ gunzip -t /var/backups/loupit/loupit-*.sql.gz && echo "gz OK"   # 무결성
 
 정상 백업은 gzip 무결성 통과 + 내부에 `-- Dump completed` 트레일러를 갖는다(backup.sh가 이 둘을 검증 후에만 최종 파일로 확정하므로, `loupit-*.sql.gz`로 남은 파일은 검증 통과분이다). 검증 실패분은 `.partial.<pid>`로 남았다가 정리된다.
 
+### 2-1. 복원 훈련 — "온전한가"와 "되살릴 수 있는가"는 다른 질문이다 (2026-07-30)
+
+위 검사는 전부 **파일이 온전한가**를 본다. 그 사이에 스키마 변경·권한·문자셋·FK 순서·덤프
+옵션이 조용히 끼어든다. **복원해 본 적 없는 백업은 백업이 아니라 백업이라는 믿음이다.**
+
+`loupit-restore-drill.timer` 가 **주 1회 일요일 03:30 UTC(12:30 KST)** 최신 백업을
+`loupit_test` 로 실제 복원해 검증하고 다시 비운다.
+
+```bash
+systemctl list-timers loupit-restore-drill.timer
+journalctl -u loupit-restore-drill -n 30
+cat /var/backups/loupit/restore-drill.json      # 마지막 결과(일일 요약 메일이 이걸 읽는다)
+sudo systemctl start loupit-restore-drill.service          # 즉시 1회
+DRILL_SRC=/var/backups/loupit/loupit-20260728.sql.gz \
+  bash infra/deploy/restore-drill.sh                        # 특정 파일로
+```
+
+검증 항목 — "에러가 없었다"가 아니라 **쓸 수 있는 상태인가**를 본다:
+
+| # | 검사 | 잡는 것 |
+|---|---|---|
+| 0 | 드롭 직후 테이블 0개(**양성 대조군**) | 드롭이 조용히 실패해 **낡은 데이터로 통과**하는 것 |
+| 1 | 덤프의 `CREATE TABLE` 이 전부 실제로 생성됨 | 부분 복원·중간 중단 |
+| 2 | `TCOMPANY`·`TCOMPANY_BENEFIT`·`TCOMPANY_TYPE`·`TBENEFIT_PRESET` 비어 있지 않음 | 구조만 남고 데이터를 잃은 덤프 |
+| 3 | 복지 → 회사 고아 행 0 | 덤프 주입이 FK 검사를 끄고 돌아 생긴 순서 파손 |
+
+⚠ **왜 `loupit_test` 인가**: DB 계정(`APP_LOUPIT`)은 `LOUPIT`·`loupit_beta`·`loupit_test`
+세 곳에만 권한이 있고 **CREATE DATABASE 권한이 없다**. 앞의 둘은 라이브라 스크립트가 이름으로
+거부한다. 그래서 훈련 중 **프로덕션 데이터가 잠시 테스트 DB 에 존재**하며, 종료 트랩이 무조건
+전 테이블을 지우고 비었는지 다시 확인한다.
+
+⚠ **pytest 와 같은 DB 를 쓴다** → 양쪽이 `/run/lock/loupit-testdb.lock` 을 flock 한다. 훈련은
+잠겨 있으면 건너뛰고(상태 파일은 **건드리지 않는다** — 건너뜀을 실패로 기록하면 직전 성공을
+덮어 오보가 된다), pytest 는 최대 180초 기다린 뒤 이유를 말하고 중단한다.
+락 파일은 `/etc/tmpfiles.d/loupit.conf` 가 **0666 으로 선언**한다 — 한쪽이 0644 로 먼저 만들면
+다른 쪽이 열지 못해 훈련이 죽는다(2026-07-30 실발현).
+
+**관측은 일일 요약 메일이 한다.** 훈련이 실패해도 아무도 안 보면 훈련이 아니다. 새 발송 경로를
+만드는 대신 배달까지 실증된 채널에 얹었다. 요약은 **실패·낡음(10일 초과)·상태를 못 읽음** 셋 다
+🔴 로 띄우고 제목에도 표시하며, `--only-if-pending` 이어도 훈련 알람은 뚫고 나간다.
+
+> ⓘ 백업 이후 스키마를 추가한 날에는 "서빙에는 있으나 이 백업에는 없는 테이블" 경고가 뜬다.
+> 그날 하루는 정상이고 다음 03:00 백업이 해소한다. **며칠 지속되면 백업 경로를 의심하라.**
+
 ## 3. 복원
 
 ⚠ 파괴적 작업. `restore.sh`가 대상 DB를 출력하고 `yes` 확인을 요구한다(`RESTORE_CONFIRM=1`로 생략 가능).
