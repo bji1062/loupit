@@ -3,7 +3,7 @@
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { EDIT_TYPE_LABELS, PAGE_LIMIT, diffFields, fmtDtm, renderEntry, nextCursor, hasMore } from './edits.js';
+import { EDIT_TYPE_LABELS, PAGE_LIMIT, companyBackHref, diffFields, fmtDtm, renderEntry, nextCursor, hasMore } from './edits.js';
 
 // ── 최소 in-memory document 스텁(renderEntry 전용) ──────────────────────────
 class FakeEl {
@@ -113,5 +113,39 @@ describe('renderEntry — textContent-only(XSS 안전)', () => {
     const li = renderEntry(fakeDoc, { nickname: '직장인-1', edit_type: 'create', after: { benefit_nm: '식대', benefit_amt: 220 }, dtm: '2026-01-01T00:00:00' });
     const hasNote = li.children.some((c) => c.className === 'log-note');
     assert.equal(hasNote, false);
+  });
+});
+
+describe('companyBackHref — 편집 이력 → 회사 상세 링크 (2026-07-30 결함 수정)', () => {
+  // 🚨 원래 이 링크는 `loadHistory` 안에서 **숫자 COMP_ID** 로 만들어져 **항상 404** 였다
+  //    (`/company/40`). 정적 회사 페이지 경로는 `comp_eng_nm` 의 슬러그다.
+  //    실측: `/company/40` → 404 · `/company/samsung-elec` → 200 · `/company/cj` → 200.
+  test('comp_eng_nm 슬러그로 주소를 만든다(밑줄 → 하이픈)', () => {
+    assert.equal(companyBackHref({ comp_id: 40, comp_eng_nm: 'samsung_elec' }), '/company/samsung-elec');
+    assert.equal(companyBackHref({ comp_id: 1, comp_eng_nm: 'cj' }), '/company/cj');
+  });
+
+  test('숫자 COMP_ID 경로는 절대 만들지 않는다(이번 결함 그 자체)', () => {
+    for (const c of [{ comp_id: 40, comp_eng_nm: 'samsung_elec' }, { comp_id: 1, comp_eng_nm: 'cj' }]) {
+      assert.doesNotMatch(companyBackHref(c) || '', /^\/company\/\d+$/);
+    }
+  });
+
+  test('슬러그를 못 얻으면 null — 링크를 만들지 않는다', () => {
+    // 404 로 가는 링크보다 **링크 없음**이 낫다(막다른 길 금지). 회사명이 '회사 #N' 으로
+    // 폴백하는 것과 같은 판단이다. 여기서 숫자 ID 로 폴백하면 결함이 되살아난다.
+    assert.equal(companyBackHref(null), null);
+    assert.equal(companyBackHref(undefined), null);
+    assert.equal(companyBackHref({ comp_id: 3 }), null, 'comp_eng_nm 부재');
+    assert.equal(companyBackHref({ comp_id: 3, comp_eng_nm: '' }), null);
+    assert.equal(companyBackHref({ comp_id: 3, comp_eng_nm: '   ' }), null);
+  });
+
+  test('규칙 소유자는 directory.js 다 — 여기서 다시 구현하지 않는다', async () => {
+    const { companyHref } = await import('./directory.js');
+    for (const eng of ['cj', 'samsung_elec', 'lg-chem', 'SK_Hynix']) {
+      assert.equal(companyBackHref({ comp_eng_nm: eng }), companyHref(eng),
+        '슬러그 규칙이 갈라졌다 — 정본은 generator/slug.py, 미러는 directory.js 하나뿐이어야 한다');
+    }
   });
 });

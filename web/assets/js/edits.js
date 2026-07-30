@@ -4,6 +4,9 @@
 // 삽입한다(XSS 안전 — 편집 사유는 서버가 데이터로 그대로 반환하므로 표시 계층 이스케이프가 방어선).
 
 import { getEdits, getCompany, searchCompanies, ApiError } from './api.js';
+// 회사 상세 URL 생성은 **directory.js 가 소유**한다(정본은 generator/slug.py). 여기서 규칙을
+// 다시 쓰면 세 곳으로 갈라진다 — company.js 가 benefitLine 을 가져다 쓰는 것과 같은 전례.
+import { companyHref } from './directory.js';
 
 export const EDIT_TYPE_LABELS = { create: '등록', update: '수정', delete: '삭제' };
 // 9카테고리 표시 라벨 — company.js·report.js·edit.js 와 동일 어휘.
@@ -14,6 +17,14 @@ export const CATEGORY_LABELS = {
 // 한 페이지 건수. 서버가 각 행에 `edit_id`(키셋 커서)를 주므로 '더 보기'로 계속 이어 받는다
 // (사용자 결정 2026-07-25 — offset 페이징의 경계 중복·누락을 피한 커서 방식).
 export const PAGE_LIMIT = 50;
+
+// ── 순수: '회사 정보 보기' 링크 주소. 슬러그가 없으면 null = 링크 미생성 ──────────
+// 🚨 2026-07-30 이전에는 여기가 아니라 loadHistory 안에서 **숫자 COMP_ID** 로 주소를 만들어
+//    (`/company/1`) **항상 404** 였다. 정적 회사 페이지 경로는 `comp_eng_nm` 의 슬러그다
+//    (`/company/cj`·`/company/samsung-elec`). 규칙은 directory.js 가 소유한다.
+export function companyBackHref(company) {
+  return companyHref(company && company.comp_eng_nm);
+}
 
 // ── 순수: 다음 페이지 커서 = 마지막(가장 오래된) 행의 edit_id. 없으면 null ──
 export function nextCursor(items) {
@@ -170,12 +181,19 @@ export function initEditsPage() {
     }
     // 성공 후에만 제목·회사 링크 노출. 회사명은 공개 상세에서(실패해도 폴백 유지).
     let compNm = '회사 #' + compId;
-    try { const c = await getCompany(compId); if (c && c.comp_nm) compNm = c.comp_nm; } catch { /* 폴백 유지 */ }
+    let backHref = null;
+    try {
+      const c = await getCompany(compId);
+      if (c && c.comp_nm) compNm = c.comp_nm;
+      backHref = companyBackHref(c);
+    } catch { /* 폴백 유지 */ }
     $('comp-title').textContent = compNm + ' 편집 이력';
     $('comp-title').hidden = false;
+    // 슬러그를 못 얻으면 **링크를 만들지 않는다** — 404 로 가는 링크보다 링크 없음이 낫다
+    // (막다른 길 금지, 함정 ㉘). 회사명 폴백('회사 #N')과 같은 판단이다.
     const backLink = $('company-link');
-    backLink.href = '/company/' + encodeURIComponent(compId); // 공개 상세로(있으면)
-    backLink.hidden = false;
+    if (backHref) { backLink.href = backHref; backLink.hidden = false; }
+    else { backLink.removeAttribute('href'); backLink.hidden = true; }
     $('edit-log').textContent = '';
     if (!items.length) { $('edits-empty').hidden = false; return; }
     appendItems(items);

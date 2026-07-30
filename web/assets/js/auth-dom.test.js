@@ -652,13 +652,20 @@ describe('edits.html + initEditsPage', () => {
     const calls = mockApi([
       ['GET', 'before=', { status: 200, body: tail }],   // 커서 있는 요청이 먼저 매칭돼야 한다
       ['GET', '/edits', { status: 200, body: full }],
-      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자' } }],
+      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec' } }],
     ]);
     initEditsPage();
     await tick();
     assert.match($('comp-title').textContent, /삼성전자 편집 이력/);
     assert.equal($('comp-title').hidden, false);
-    assert.equal($('company-link').getAttribute('href'), '/company/40');
+    // 🚨 2026-07-30: 이 줄은 원래 `/company/40`(숫자 COMP_ID)을 기대했다 — **테스트가 결함을
+    //    고정하고 있었다.** 정적 회사 페이지 경로는 `comp_eng_nm` 슬러그이고 숫자 경로는 항상
+    //    404 다(`/company/40` 실측 404 · `/company/samsung-elec` 200). 목업도 실제 API 응답에
+    //    맞춰 `comp_eng_nm` 을 싣도록 고쳤다 — **응답에 없는 필드를 전제한 목업**이 이 결함을
+    //    가려 주고 있었다.
+    assert.equal($('company-link').getAttribute('href'), '/company/samsung-elec');
+    assert.doesNotMatch($('company-link').getAttribute('href'), /^\/company\/\d+$/,
+      '숫자 COMP_ID 경로는 정적 페이지가 없어 항상 404 다');
     assert.equal($('edit-log').querySelectorAll('li.log-entry').length, PAGE_LIMIT);
     assert.equal($('edits-more').hidden, false, '상한만큼 받았으면 더 보기 노출');
     assert.equal(calls[0].path.includes('before'), false, '첫 요청엔 커서 없음');
@@ -675,7 +682,7 @@ describe('edits.html + initEditsPage', () => {
   test('첫 페이지가 상한 미달이면 더 보기 없음', async () => {
     mockApi([
       ['GET', '/edits', { status: 200, body: page(50, 2) }],
-      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자' } }],
+      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec' } }],
     ]);
     initEditsPage();
     await tick();
@@ -686,7 +693,7 @@ describe('edits.html + initEditsPage', () => {
   test('이력 0건 → 빈 안내(제목은 노출)', async () => {
     mockApi([
       ['GET', '/edits', { status: 200, body: [] }],
-      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자' } }],
+      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec' } }],
     ]);
     initEditsPage();
     await tick();
@@ -710,7 +717,7 @@ describe('edits.html + initEditsPage', () => {
     const calls = mockApi([
       ['GET', 'before=', (n) => ({ status: 200, body: n === 1 ? p2 : p3 })],
       ['GET', '/edits', { status: 200, body: p1 }],
-      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자' } }],
+      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec' } }],
     ]);
     initEditsPage();
     await tick();
@@ -746,7 +753,7 @@ describe('edits.html + initEditsPage', () => {
     mockApi([
       ['GET', 'before=', { status: 500, body: { detail: 'x' } }],
       ['GET', '/edits', { status: 200, body: full }],
-      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자' } }],
+      ['GET', '/companies/40', { status: 200, body: { comp_id: 40, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec' } }],
     ]);
     initEditsPage();
     await tick();
