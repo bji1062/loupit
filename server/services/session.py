@@ -54,15 +54,24 @@ async def revoke_session(raw: str) -> None:
 
 
 async def purge_expired() -> int:
-    """만료·폐기 세션 + 만료·소비 코드 퍼지(retention, FR-101). 반환=삭제 세션 행 수.
+    """만료·폐기 세션 + 만료·소비 코드 + 오래된 발송 백오프 상태 퍼지(retention, FR-101).
+    반환=삭제 **세션** 행 수.
 
-    lifespan 스케줄러가 주기 호출한다. 대상 테이블이 비어 있으면 무영향(no-op)."""
+    lifespan 스케줄러가 주기 호출한다. 대상 테이블이 비어 있으면 무영향(no-op).
+
+    ⚠ 백오프 상태(TMAIL_SEND_RATE)의 보존은 **창보다 길다**(기본 7일 > 24시간). 짧으면 퍼지가
+    백오프 중인 주소의 카운터를 되감아 **퍼지 자체가 우회 수단**이 된다. 이 순서 감각이
+    TAUTH_CODE 와 반대라는 점에 주의하라 — 코드는 빨리 지울수록 안전하지만, 억제 상태는
+    빨리 지울수록 위험하다."""
     deleted = await database.execute(
         "DELETE FROM TSESSION WHERE EXPIRES_DTM <= UTC_TIMESTAMP() OR REVOKED_DTM IS NOT NULL"
     )
     await database.execute(
         "DELETE FROM TAUTH_CODE WHERE EXPIRES_DTM <= UTC_TIMESTAMP() OR CONSUMED_DTM IS NOT NULL"
     )
+    from server.services import auth_code  # 지연 import(순환 방지)
+
+    await auth_code.purge_send_rate(get_settings().mail_rate_retention_days)
     return deleted
 
 

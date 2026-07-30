@@ -328,3 +328,38 @@ CREATE TABLE IF NOT EXISTS TMAIL_SUPPRESSION (
   MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
   UNIQUE KEY uq_mail_supp_target (TARGET_HASH_VAL)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='메일 발송 억제 목록 (하드 바운스·스팸신고 주소 — 재발송 차단, 원문 무저장)';
+
+-- ============================================================================
+-- 배달주소 기준 발송 백오프 상태 — SP-AUTH-18 (P1-3, 2026-07-30 신설)
+--
+-- **왜 TAUTH_CODE 로는 못 세는가**: 재전송 쿨다운은 "창 안에 미소비 코드가 있는가"로 판정하는데,
+-- 그 행은 `login_code_ttl_min`(5분) 뒤 만료되고 `session.purge_expired` 가 지운다. 즉 코드 행은
+-- **5분보다 긴 시간 규모를 표현할 수 없다.** 하루 단위 누적을 세려면 퍼지에 살아남는 별도 상태가
+-- 필요하다 — 그것이 이 테이블이다.
+--
+-- **원장이 아니라 카운터다.** 발송 1건당 1행을 남기면 사실상 발송 로그가 되어, 원문을 안 담아도
+-- "이 수신함이 언제 몇 번" 이라는 새 개인정보 흐름이 생긴다. 여기 있는 것은 주소당 **한 행**의
+-- 집계뿐이고, 자료형이 그 불변식을 보장한다(`ops digest` 가 건수만 보내는 것과 같은 규약).
+--
+-- **하드 상한이 아니라 백오프인 이유**: 하루 N통에서 딱 끊으면 제3자가 피해자의 하루치를 태워
+-- **피해자를 그날 로그인 불가로 만드는 반대 방향 사고**가 된다(같은 위험을 auth_code.
+-- _DOT_INSENSITIVE_DOMAINS 주석이 이미 지적한다). 대신 누적 발송량에 따라 쿨다운을 지수적으로
+-- 늘려 하루 상한을 1,440 → 약 33통으로 낮추되, **영구 차단은 만들지 않는다**.
+--
+-- 창은 UTC 자정이 아니라 **첫 발송 기준 롤링 24시간**이다. 자정 정렬이면 23:59 에 소진한 공격자가
+-- 00:00 에 새 예산을 받아 창을 걸치면 두 배가 된다.
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS TMAIL_SEND_RATE (
+  MAIL_RATE_ID     INT AUTO_INCREMENT PRIMARY KEY COMMENT '발송 속도 상태 PK',
+  TARGET_HASH_VAL  CHAR(64) NOT NULL COMMENT '배달주소 SHA-256 (원문 무저장, T9). TAUTH_CODE.TARGET_HASH_VAL 과 동일 규칙 — `+태그`·구글도트를 접은 뒤 해시',
+  SENT_CNT         INT      NOT NULL DEFAULT 0 COMMENT '현재 창에서 이 수신함으로 실제 발송한 횟수 (접미 _CNT, SP-DB-1.2). 쿨다운 무발송·억제는 세지 않는다 — 발송한 것만 센다',
+  WINDOW_START_DTM DATETIME NOT NULL COMMENT '현재 창 시작 일시(UTC). 여기서 mail_rate_window_hours 가 지나면 SENT_CNT 를 0으로 되감는다',
+  LAST_SENT_DTM    DATETIME DEFAULT NULL COMMENT '마지막 실발송 일시(UTC). NULL = 아직 한 번도 안 보냄. 백오프 판정의 기준점이며, 이 컬럼 조건이 동시 요청의 원자 직렬화기 역할을 한다',
+  INS_ID  INT COMMENT '입력자 ID (시스템 자동 — 항상 NULL)',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID (시스템 자동 — 항상 NULL)',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  UNIQUE KEY uq_mail_rate_target (TARGET_HASH_VAL),
+  INDEX idx_mail_rate_last_sent (LAST_SENT_DTM)  -- 보존 퍼지용(오래된 주소 정리)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='배달주소별 발송 백오프 상태 (주소당 1행 집계 — 발송 원장 아님, 원문 무저장)';

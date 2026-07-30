@@ -96,6 +96,13 @@ def test_AU5_sc14_config_fields_present(monkeypatch):
     assert s.mail_resend_cooldown_sec == 60
     assert s.daily_edit_limit == 30
     assert s.employ_vrf_ttl_days == 365
+    # 배달주소 발송 백오프 (P1-3·SP-AUTH-18, 2026-07-30)
+    assert s.mail_burst_free_sends == 5
+    assert s.mail_cooldown_max_sec == 3600
+    assert s.mail_rate_window_hours == 24
+    assert s.mail_rate_retention_days == 7
+    # 설정 사이의 불변식 — 보존이 창보다 짧으면 퍼지가 백오프를 되감아 우회 수단이 된다.
+    assert s.mail_rate_retention_days * 24 > s.mail_rate_window_hours
     # 비밀 pepper (SP-AUTH-4·7, NFR30) — 기본 빈문자
     assert s.session_hash_pepper == ""
     assert s.comp_email_hmac_pepper == ""

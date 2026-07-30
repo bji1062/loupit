@@ -94,6 +94,11 @@ async def issue_employ_code(comp_id: int, mbr_id: int, company_email: str) -> st
         return auth_code.SUPPRESSED
     if await auth_code.recent_unconsumed_exists(target_hash, _PURPOSE, comp_id):
         return  # 재전송 쿨다운 중 — 무발송(회사 이메일 폭탄 완화, 호출측 204 유지)
+    # 주소 단위 백오프(P1-3). 여기서 특히 중요하다 — 재직 쿨다운은 **회사별 스코프**라
+    # 회사를 바꿔 가며 요청하면 쿨다운을 N배로 우회할 수 있었다. 이 백오프는 회사와 무관하게
+    # **배달 주소 하나**를 기준으로 세므로 그 곱셈을 닫는다.
+    if not await auth_code.try_consume_send_slot(target_hash):
+        return  # 백오프 중 — 무발송(호출측 204 유지)
     code = auth_code._gen_code()
     await database.execute(
         "INSERT INTO TAUTH_CODE (PURPOSE_CD, CODE_HASH_VAL, TARGET_HASH_VAL, COMP_ID, MBR_ID, EXPIRES_DTM, ATTEMPT_CNT) "

@@ -67,7 +67,11 @@ _cmp_reinject_done=0
 #   더 나쁘게는 **덤프에서 뒤따르는 테이블(메일 2종)이 통째로 복원되지 않는다** — mysql 클라이언트가
 #   첫 오류에서 멈추기 때문이다. 실제로 그 경로로 웹훅 이벤트 3행·억제 1행을 잃었다(덤프에서 수동 복구).
 #   test_runner_backup.py::test_no_double_restore_collision 이 이 조합을 배포 전에 금지한다.
-PART_TABLES="TMEMBER TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TCOMPANY_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION"
+# 2026-07-30(SP-AUTH-18, P1-3): `TMAIL_SEND_RATE` 추가. 배달주소별 발송 백오프 상태이며
+#   여기서 빠지면 **릴리스가 곧 백오프 우회 수단**이 된다 — 게이트가 테이블을 DROP/CREATE 하는
+#   순간 모든 수신함의 누적이 0으로 되감기기 때문이다. 시드가 아니라 런타임에만 쌓이는 값이라
+#   백업/재주입 말고는 살아남을 길이 없다(TMAIL_SUPPRESSION 과 같은 성격).
+PART_TABLES="TMEMBER TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TCOMPANY_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION TMAIL_SEND_RATE"
 PART_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_participation.XXXXXX.sql")"
 _part_dump_ok=0
 _part_reinject_done=0

@@ -128,7 +128,11 @@ PARTICIPATION_CREATE_ORDER = [
 # ⚠ **여기 넣는 것만으로는 부족하다**: 게이트가 서빙 스키마를 DROP/CREATE 하므로
 # `infra/deploy/run_tests.sh` 의 백업/재주입 목록에도 반드시 함께 넣어야 한다. 안 그러면
 # **릴리스마다 프로덕션 억제 목록이 소실**된다(TCOMPARE_LOG·참여 7테이블과 똑같은 위험).
-MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION"]
+#
+# TMAIL_SEND_RATE(2026-07-30, P1-3 배달주소 백오프)도 같은 그룹이다 — FK 0개, M9 무관.
+# 내용은 "이 수신함에 최근 몇 통" 이라는 억제 상태이고, 릴리스에서 날아가면 백오프가 통째로
+# 되감겨 **릴리스가 곧 우회 수단**이 된다(퍼지 보존기간을 창보다 길게 잡은 것과 같은 이유).
+MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION", "TMAIL_SEND_RATE"]
 
 # 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 2. 참여가 뒤에 오는 것이 FK 부모→자식 순서를
 # 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).

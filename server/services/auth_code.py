@@ -136,11 +136,11 @@ async def recent_unconsumed_exists(target_hash: str, purpose: str, comp_id: int 
     `+태그`/도트 변형이 매번 다른 키가 돼 쿨다운이 한 번도 발화하지 않는다(적대검토 2026-07-27
     확증). 정확히 그 우회를 막는 것이 이 함수의 존재 이유다.
 
-    **막지 못하는 것(정직한 상한)**: 쿨다운은 창당 1통을 허용하므로 한 수신함 기준
-    `86400/mail_resend_cooldown_sec` 통/일(기본 60초 → 1,440통/일)은 여전히 가능하다. 절대 상한을
-    낮추려면 쿨다운 값을 올리거나 배달 주소 기준 **일일 상한**이 따로 필요하다 — 후자는 만료·소비
-    코드를 지우는 리텐션 퍼지(`session.purge_expired`) 때문에 TAUTH_CODE 행 카운트로는 셀 수 없어
-    별도 저장이 든다(미구현, 상위 결정 대기)."""
+    **이 함수가 보는 시간 규모의 한계**: 판정 근거인 코드 행은 `login_code_ttl_min`(5분) 뒤
+    만료되고 `purge_expired` 가 지운다. 따라서 여기에 **5분보다 긴 쿨다운을 넣으면 조용히
+    무력해진다** — 창은 남았는데 행이 사라져 매번 미스가 난다. 하루 단위 누적 억제는 퍼지에
+    살아남는 별도 상태가 필요하고, 그것을 `try_consume_send_slot`(TMAIL_SEND_RATE)이 맡는다
+    (P1-3 해소, 2026-07-30)."""
     cooldown = get_settings().mail_resend_cooldown_sec
     if cooldown <= 0:
         return False
@@ -157,6 +157,120 @@ async def recent_unconsumed_exists(target_hash: str, purpose: str, comp_id: int 
             (target_hash, purpose, comp_id, cooldown),
         )
     return row is not None
+
+
+# ── 배달주소 기준 발송 백오프 (P1-3 / SP-AUTH-18, 2026-07-30) ────────────────────
+
+def effective_cooldown_sec(sent_in_window: int) -> int:
+    """이 수신함에 **주소 단위**로 걸 추가 대기(초). 0 이면 추가 제약 없음.
+
+    **왜 하드 상한이 아닌가.** "하루 N통까지"로 딱 끊으면, 제3자가 피해자 주소로 N통을 태워
+    **피해자를 그날 로그인 불가로 만드는 반대 방향 사고**가 된다. 이 코드베이스는 이미 같은
+    위험을 한 번 인식했다 — `_DOT_INSENSITIVE_DOMAINS` 주석의 "무관한 제3자의 코드 발송이
+    막히는 반대 방향 사고". 폭탄을 막으려다 잠금을 만들면 순수한 개선이 아니라 교환이다.
+
+    그래서 **끊는 대신 늦춘다**. 허용 버스트(`mail_burst_free_sends`)까지는 아무 제약이 없고
+    (=현행 동작 그대로), 그 뒤부터 발송 1건마다 대기가 2배로 늘어 `mail_cooldown_max_sec`
+    에서 멈춘다. 결과적으로 한 수신함의 하루 발송은 **1,440 → 약 33통**으로 줄지만, 아무리
+    두들겨 맞아도 최대 1시간만 기다리면 정당한 사용자는 반드시 코드를 받는다.
+
+    기본값(버스트 5 · 기준 60초 · 상한 3600초) 기준:
+        0~4 → 0초(용도별 쿨다운만) · 5 → 60 · 6 → 120 · 7 → 240 · … · 11 이상 → 3600
+
+    ⚠ `mail_cooldown_max_sec` 는 공격자에게 물리는 벌이자 **정당한 사용자가 겪을 최대 대기**다.
+      한쪽만 보고 올리지 마라.
+    """
+    s = get_settings()
+    if sent_in_window < s.mail_burst_free_sends:
+        return 0
+    # 2**n 폭주 방지 — 상한에 이미 걸린 뒤로는 지수를 더 키울 이유가 없다.
+    doublings = min(sent_in_window - s.mail_burst_free_sends, 30)
+    return min(s.mail_cooldown_max_sec, s.mail_resend_cooldown_sec * (2**doublings))
+
+
+async def try_consume_send_slot(target_hash: str) -> bool:
+    """이 수신함으로 지금 1통 보내도 되는가 — 된다면 카운터를 소비하고 True.
+
+    TAUTH_CODE 는 5분 뒤 퍼지되어 하루 규모를 표현할 수 없으므로(`recent_unconsumed_exists`
+    주석), 별도 상태 테이블 `TMAIL_SEND_RATE` 에 주소당 한 행을 둔다. 발송 원장이 아니라
+    **집계**다 — 발송 1건당 1행을 남기면 원문을 안 담아도 "이 수신함이 언제 몇 번"이라는 새
+    개인정보 흐름이 생긴다.
+
+    **동시성**: 마지막 UPDATE 의 `LAST_SENT_DTM <= 지금 - 대기` 조건이 직렬화기다. 두 요청이
+    같은 `sent` 를 읽어 같은 대기를 계산해도, 먼저 도착한 쪽이 `LAST_SENT_DTM` 을 밀어 두 번째
+    UPDATE 는 0행이 된다. 그래서 읽은 값이 한 박자 낡아도 **발송이 두 번 나가지는 않는다**
+    (대기 길이가 한 단계 낮게 적용될 수는 있다 — 그 오차는 의도적으로 허용한다).
+    ⓘ 여기서 `rowcount` 는 matched 가 아니라 **changed** 다(aiomysql 기본, 2026-07-30 실측).
+      `CLIENT_FOUND_ROWS` 를 켜면 이 판정이 통째로 뒤집힌다(함정 ㊵ 부류).
+
+    **실패는 열어 준다(fail-open)**. 이건 보안 경계가 아니라 남용 완화다. 상태 조회가 실패했다고
+    로그인 메일을 막으면 조회 장애가 곧 전면 로그인 장애가 된다(`mail_events.is_suppressed` 와
+    같은 판단). 대신 **경고 로그를 남긴다** — 조용히 열리면 보호가 사라진 줄도 모른다.
+    """
+    s = get_settings()
+    try:
+        # (1) 행 확보 — 이미 있으면 아무것도 하지 않는다(자기 대입은 변경이 아니라
+        #     `MOD_DTM ON UPDATE` 도 발화하지 않는다).
+        #     ⚠ `INSERT IGNORE` 를 쓰지 않는다: 그건 중복키뿐 아니라 **모든 오류를 경고로
+        #     낮춰** 데이터 절단·타입 오류까지 조용히 삼킨다. 게다가 중복마다 MySQL 경고를
+        #     내서 발송 경로가 매번 경고를 찍는다(2026-07-30 실측).
+        await database.execute(
+            "INSERT INTO TMAIL_SEND_RATE (TARGET_HASH_VAL, SENT_CNT, WINDOW_START_DTM) "
+            "VALUES (%s, 0, UTC_TIMESTAMP()) "
+            "ON DUPLICATE KEY UPDATE MAIL_RATE_ID = MAIL_RATE_ID",
+            (target_hash,),
+        )
+        # (2) 창이 지났으면 되감는다. 창을 SQL 한 문장으로 분리해 두면 아래 (3)·(4)가
+        #     "지금 창의 값"만 다루면 되고, 되감기 규칙이 두 곳에 흩어지지 않는다.
+        await database.execute(
+            "UPDATE TMAIL_SEND_RATE SET SENT_CNT = 0, WINDOW_START_DTM = UTC_TIMESTAMP() "
+            "WHERE TARGET_HASH_VAL=%s AND WINDOW_START_DTM <= UTC_TIMESTAMP() - INTERVAL %s HOUR",
+            (target_hash, s.mail_rate_window_hours),
+        )
+        # (3) 현재 창의 누적으로 대기를 계산한다(규칙은 effective_cooldown_sec 한 곳에만 있다).
+        row = await database.fetch_one(
+            "SELECT SENT_CNT FROM TMAIL_SEND_RATE WHERE TARGET_HASH_VAL=%s",
+            (target_hash,),
+        )
+        sent = int(row["SENT_CNT"]) if row else 0
+        wait = effective_cooldown_sec(sent)
+        # (4) 원자 소비. wait=0 이면 조건이 항상 참이라 그대로 통과한다 — 즉 버스트 구간에서는
+        #     이 함수가 카운터만 올리고 동작을 바꾸지 않는다.
+        consumed = await database.execute(
+            "UPDATE TMAIL_SEND_RATE "
+            "SET SENT_CNT = SENT_CNT + 1, LAST_SENT_DTM = UTC_TIMESTAMP() "
+            "WHERE TARGET_HASH_VAL=%s "
+            "AND (LAST_SENT_DTM IS NULL OR LAST_SENT_DTM <= UTC_TIMESTAMP() - INTERVAL %s SECOND)",
+            (target_hash, wait),
+        )
+    except Exception:  # 상태 테이블 부재(구 스키마)·DB 장애 — 발송을 막지 않는다
+        logger.exception(
+            "발송 백오프 상태 갱신 실패 — 이번 발송은 통과시킨다(fail-open). "
+            "TMAIL_SEND_RATE 존재 여부와 DB 상태를 확인하세요."
+        )
+        return True
+
+    if not consumed:
+        # 수신자 원문은 로그에도 남기지 않는다(NFR31) — 해시 앞자리만.
+        logger.warning(
+            "발송 백오프로 무발송: target=%s… 창내발송=%d회 대기=%d초. "
+            "한 수신함에 발송이 몰리고 있습니다(메일 폭탄 가능성).",
+            target_hash[:12], sent, wait,
+        )
+    return bool(consumed)
+
+
+async def purge_send_rate(retention_days: int) -> int:
+    """오래된 백오프 상태 행 삭제. 반환=삭제 행 수.
+
+    ⚠ 보존 기간은 **창보다 길어야 한다**. 짧으면 백오프 중인 주소의 상태가 퍼지에 지워져
+    공격자가 카운터를 되감을 수 있다(퍼지가 우회 수단이 된다). 기본 7일 > 창 24시간."""
+    return await database.execute(
+        "DELETE FROM TMAIL_SEND_RATE "
+        "WHERE (LAST_SENT_DTM IS NULL OR LAST_SENT_DTM <= UTC_TIMESTAMP() - INTERVAL %s DAY) "
+        "AND WINDOW_START_DTM <= UTC_TIMESTAMP() - INTERVAL %s DAY",
+        (retention_days, retention_days),
+    )
 
 
 async def issue_login_code(email: str) -> str | None:
@@ -182,6 +296,11 @@ async def issue_login_code(email: str) -> str | None:
         return SUPPRESSED
     if await recent_unconsumed_exists(target_hash, "login"):
         return  # 쿨다운 중 — 무발송(균일 204 유지)
+    # 주소 단위 백오프(P1-3). 쿨다운을 통과한 뒤에 물어야 한다 — 쿨다운으로 안 보낸 요청까지
+    # 카운터에 세면 "보내지도 않고 예산만 태우는" 상태가 된다. **보낸 것만 센다.**
+    if not await try_consume_send_slot(target_hash):
+        return  # 백오프 중 — 무발송(균일 204 유지). 코드 행도 만들지 않는다:
+                # 배달되지 않을 코드를 만들면 용도별 쿨다운까지 잡아먹어 두 겹으로 막힌다.
     code = _gen_code()
     await database.execute(
         "INSERT INTO TAUTH_CODE (PURPOSE_CD, CODE_HASH_VAL, TARGET_HASH_VAL, EXPIRES_DTM, ATTEMPT_CNT) "

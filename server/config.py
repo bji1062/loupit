@@ -100,6 +100,17 @@ class Settings(BaseSettings):
     code_max_attempts: int = 5  # 코드 검증 시도 상한(FR-112, NFR31)
     mail_resend_cooldown_sec: int = 60  # 재전송 쿨다운(FR-112)
     daily_edit_limit: int = 30  # 계정·회사당 일일 복지 편집 상한(FR-108·112)
+
+    # 배달주소 기준 발송 백오프 (P1-3, SP-AUTH-18 — 2026-07-30)
+    #
+    # 쿨다운은 창당 1통을 허용하므로 한 수신함 기준 `86400/60` = 1,440통/일이 가능했다.
+    # 여기서 하는 일은 **누적 발송량에 따라 쿨다운을 지수적으로 늘리는 것**이다. 하드 상한을
+    # 쓰지 않는 이유는 그것이 "제3자가 피해자의 예산을 태워 하루 종일 로그인을 막는" 반대 방향
+    # 사고를 만들기 때문이다(auth_code.effective_cooldown_sec 주석에 근거 전문).
+    mail_burst_free_sends: int = 5  # 이 횟수까지는 주소 단위 추가 제약 없음 — 용도별 쿨다운만 적용(현행 동작 그대로)
+    mail_cooldown_max_sec: int = 3600  # 백오프 상한. **정당한 사용자가 겪을 최대 대기**이기도 하다 — 올릴 때 그 대가를 같이 보라
+    mail_rate_window_hours: int = 24  # SENT_CNT 를 되감는 롤링 창(첫 발송 기준. UTC 자정 정렬 아님)
+    mail_rate_retention_days: int = 7  # TMAIL_SEND_RATE 행 보존 — 창(24h)보다 길어야 백오프가 퍼지로 사라지지 않는다
     employ_vrf_ttl_days: int = 365  # 재직 인증 만료(FR-106)
 
     # 비밀 pepper (SP-AUTH-4·7, NFR30) — 로그 금지
