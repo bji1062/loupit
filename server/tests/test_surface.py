@@ -16,11 +16,18 @@ def app_instance(monkeypatch):
     유무로 등록이 갈리는데, conftest 가 `server/.env` 를 로드하므로 **운영 서버에서 돌리면 켜지고
     새 체크아웃에서는 꺼져** 같은 코드가 서로 다른 표면을 낸다. Tier-0 게이트가 환경에 따라
     흔들리면 안 되므로 여기서 ON 으로 못박고, 기대 집합에 웹훅을 **명시 선언**한다
-    (= 이 라우트도 "계획 밖 쓰기 0" 감시망 안에 그대로 둔다). OFF 쪽 계약은 MW-1 이 소유한다."""
+    (= 이 라우트도 "계획 밖 쓰기 0" 감시망 안에 그대로 둔다). OFF 쪽 계약은 MW-1 이 소유한다.
+
+    ⚠ **운영 콘솔 화이트리스트도 같은 이유로 고정한다**(2026-07-30, SP-AUTH-19). `server/.env`
+    에 `OPERATOR_EMAILS` 를 넣는 순간 conftest 의 `load_dotenv` 가 그것을 읽어 콘솔 라우터가
+    등록되고, 이 게이트가 **운영 서버에서만 깨진다** — 함정 ㊷(환경의 부재/존재에 기대는 테스트)
+    그대로다. 여기서 ON 으로 못박고 기대 집합에 명시 선언해, 콘솔 쓰기도 감시망 안에 둔다.
+    OFF 쪽 계약과 노출 범위는 CO-8~10 이 소유한다."""
     from server.config import get_settings
     from server.main import create_app
 
     monkeypatch.setenv("RESEND_WEBHOOK_SECRET", "whsec_dGVzdC1zdXJmYWNlLWZpeGVk")
+    monkeypatch.setenv("OPERATOR_EMAILS", "surface-fixed@example.com")
     get_settings.cache_clear()
     try:
         yield create_app()
@@ -69,6 +76,14 @@ def test_TS1_participation_surface_exact(app_instance):
         # 인증은 세션·CSRF 헤더가 아니라 **HMAC 서명**이다 — 익명 쓰기가 하나 더 늘었다는 사실을
         # Tier-0 표면에 정직하게 선언해 둔다.
         ("/api/v1/webhooks/resend", "POST"),
+        # SP-AUTH-19(2026-07-30): SSH 터널 전용 운영 콘솔. 인터넷에서는 `require_loopback` 가
+        # 404 로 끊지만, **라우트가 존재한다는 사실 자체는 표면에 정직하게 선언**한다 —
+        # "안 보이니까 없는 것"으로 세면 감시망에 구멍이 생긴다.
+        # 되돌릴 수 없는 조작(복지 하드 삭제·인증 폐기)이 여기 **없다**는 것도 이 집합이 지킨다.
+        ("/api/v1/console/verifications/{req_id}/approve", "POST"),
+        ("/api/v1/console/verifications/{req_id}/reject", "POST"),
+        ("/api/v1/console/company-requests/{req_id}/decide", "POST"),
+        ("/api/v1/console/suppressions/{target_hash}/release", "POST"),
     }, f"참여 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {
@@ -80,6 +95,8 @@ def test_TS1_participation_surface_exact(app_instance):
         "/api/v1/members/me",                    # FR-104 마이페이지(세션)
         "/api/v1/companies/{comp_id}/edits",     # FR-110 편집 이력 공개 열람
         "/api/v1/companies/{comp_id}/benefits",  # FR-109 편집용 조회(재직 게이트·base_dtm 부트스트랩)
+        "/api/v1/console",                       # SP-AUTH-19 콘솔 화면(터널 전용·noindex)
+        "/api/v1/console/queues",                # SP-AUTH-19 큐 3종(운영자 세션 필수)
     }
     get_paths = {path for (path, method) in seen_paths_methods if method == "GET"}
     assert get_paths == expected_get_paths

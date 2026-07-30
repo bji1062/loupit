@@ -36,7 +36,7 @@ DRILL_DB="${DRILL_DB:-loupit_test}"
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/loupit}"
 MIRROR_DIR="${MIRROR_DIR:-}"
 STATE_FILE="${DRILL_STATE_FILE:-/var/backups/loupit/restore-drill.json}"
-LOCK_FILE="${DRILL_LOCK_FILE:-/var/lock/loupit-testdb.lock}"
+LOCK_FILE="${DRILL_LOCK_FILE:-/run/loupit/testdb.lock}"
 : "${DB_PASSWORD:?DB_PASSWORD 미설정 — infra/env/backup.env(EnvironmentFile)로 주입}"
 
 fail() { echo "복원 훈련 실패: $*" >&2; STATUS_DETAIL="$*"; exit 1; }

@@ -82,7 +82,11 @@ def pytest_configure(config):
 #
 # 겹치면 서로를 망가뜨린다 → 두 쪽이 **같은 파일**을 flock 한다. 락이 한쪽에만 있으면 락이
 # 아니다. 여기서 잡지 않으면 훈련 쪽 `flock -n` 은 언제나 성공하고 상호 배제는 없는 것이다.
-_TESTDB_LOCK_FILE = os.environ.get("DRILL_LOCK_FILE", "/var/lock/loupit-testdb.lock")
+# 🚨 `/var/lock` 에 두지 마라. 이 커널은 `fs.protected_regular=2` 라 **끈적·전체쓰기
+# 디렉터리(/run/lock, 1777)에서는 남이 소유한 파일을 열 수 없다** — root 도 마찬가지다.
+# 훈련(User=ubuntu)이 만든 락을 root 로 돌린 pytest 가 못 열어 상호 배제가 조용히 사라졌다
+# (2026-07-30 실발현). 모드 0666 으로도 안 된다 — 걸리는 것은 모드가 아니라 소유자 불일치다.
+_TESTDB_LOCK_FILE = os.environ.get("DRILL_LOCK_FILE", "/run/loupit/testdb.lock")
 _TESTDB_LOCK_WAIT_SEC = 180
 _testdb_lock_fh = None  # 프로세스 수명 동안 열어 둔다(닫히면 락이 풀린다)
 
@@ -92,7 +96,7 @@ def _acquire_testdb_lock() -> None:
 
     실패를 삼키지 않는 이유: 조용히 진행하면 훈련이 세션 도중 테이블을 드롭해 **원인을 알 수
     없는 무작위 실패**로 나타난다. 그건 진단에 몇 시간이 든다. 반대로 락을 아예 열 수 없는
-    환경(권한 없음·`/var/lock` 부재)은 훈련도 못 도는 환경이므로, 그때는 경고만 하고 진행한다
+    환경(`/run/loupit` 부재 등)은 훈련도 못 도는 환경이므로, 그때는 경고만 하고 진행한다
     — 없는 경쟁자를 이유로 테스트를 막으면 그게 더 나쁘다."""
     global _testdb_lock_fh
     import fcntl

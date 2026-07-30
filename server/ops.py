@@ -1,8 +1,15 @@
 """SP-AUTH-8 / FR-115 운영자 CLI — 수동 재직 승인·인증 취소 (`python -m server.ops`).
 
-런타임 API와 분리된 **동기 프로세스**(pymysql). 웹 관리자 페이지는 두지 않는다 — 서버 셸
-접근 권한을 가진 운영자(A5)만 이 CLI로 처리한다(공격면·관리자 인증 시스템 회피). 승인·거부·
-취소는 감사 흔적(`DECIDED_BY_ID`·`DECIDED_DTM`)을 남긴다. 사용자 대면 DELETE 라우트는 없다.
+런타임 API와 분리된 **동기 프로세스**(pymysql). 서버 셸 접근 권한을 가진 운영자(A5)만 쓴다.
+승인·거부·취소는 감사 흔적(`DECIDED_BY_ID`·`DECIDED_DTM`)을 남긴다. 사용자 대면 DELETE 라우트는 없다.
+
+⚠ **개정(2026-07-30)**: 구 문안은 "웹 관리자 페이지는 두지 않는다"였다. 근거는 ① 공격면 ②
+관리자 인증 시스템 회피 두 가지였고, **그 근거는 그대로 유지한다** — 다만 금지 대상을 "웹
+패널이라는 형태"에서 **"인터넷에 노출된 관리 화면"** 으로 좁혔다. SSH 터널 전용 운영 콘솔은
+두 근거를 지키면서 이 CLI 가 못 주는 것을 준다: **감사의 진정성**. 지금 `--by N` 은 사람이 손으로
+넣는 값이고 `DECIDED_BY_ID` 에는 FK 도 검증도 없어 **현재 감사 기록은 자율신고**다. 세션에서
+자동 주입해야 비로소 감사가 성립한다. 계약은 `SPEC/13` **SP-AUTH-19**.
+되돌릴 수 없는 명령(`delete-benefit`·`revoke-verification`)은 **이 CLI 에만 남는다**.
 
 ⚠ **CLI 만으로는 부족하다는 것이 2026-07-29 에 실측됐다** — 회사 등록 요청 #1 이 약 1시간 40분
 방치됐고 아무도 몰랐다. **알림 없는 큐는 큐가 아니다.** 그래서 `digest` 를 두고
@@ -24,7 +31,6 @@ NULL 이 되고 이력(before 스냅샷·COMP_ID)은 공개 편집 이력에 존
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import sys
 
@@ -33,6 +39,7 @@ from dotenv import load_dotenv
 
 from server.config import get_settings
 from server.mailer import SERVICE_NAME, get_mailer
+from server.services import operator
 
 
 def _connect() -> pymysql.connections.Connection:
@@ -50,21 +57,16 @@ def _connect() -> pymysql.connections.Connection:
     return conn
 
 
-def _manual_hash(mbr_id: int, comp_id: int, req_id: int) -> str:
-    """수동 인증용 COMP_EMAIL_HASH_VAL 대체값 — NOT NULL UNIQUE 충족·도메인 HMAC과 비충돌(원문 없음)."""
-    return hashlib.sha256(f"manual:{mbr_id}:{comp_id}:{req_id}".encode()).hexdigest()
+# 수동 인증 해시·결정 SQL 은 `services/operator.py` 가 소유한다 — CLI 와 운영 콘솔이 같은
+# 규칙을 두 번 구현하면 반드시 어긋난다(특히 `AND STATUS_CD='pending'` 가드).
+_manual_hash = operator.manual_hash
 
 
 def cmd_list_pending(conn, args) -> int:
     """수동 승인 대기 큐(STATUS=pending) 조회. 터미널 출력이라 표시 이스케이프 불요."""
     with conn.cursor(pymysql.cursors.DictCursor) as cur:
         cur.execute(
-            "SELECT r.VRF_REQUEST_ID, r.MBR_ID, m.NICKNAME_NM, r.COMP_ID, c.COMP_NM, "
-            "       r.EVIDENCE_CTNT, r.INS_DTM "
-            "FROM TEMPLOY_VRF_REQUEST r "
-            "JOIN TMEMBER m ON m.MBR_ID = r.MBR_ID "
-            "JOIN TCOMPANY c ON c.COMP_ID = r.COMP_ID "
-            "WHERE r.STATUS_CD='pending' ORDER BY r.INS_DTM"
+            operator.SQL_LIST_PENDING_VRF
         )
         rows = cur.fetchall()
     if not rows:
@@ -81,7 +83,7 @@ def cmd_approve(conn, args) -> int:
     """승인 → manual 재직 인증 생성 + 요청 approved(감사). 이미 활성 인증이면 인증 생성 스킵."""
     with conn.cursor(pymysql.cursors.DictCursor) as cur:
         cur.execute(
-            "SELECT MBR_ID, COMP_ID FROM TEMPLOY_VRF_REQUEST WHERE VRF_REQUEST_ID=%s AND STATUS_CD='pending'",
+            operator.SQL_FETCH_PENDING_VRF_REQUEST,
             (args.req_id,),
         )
         req = cur.fetchone()
@@ -90,22 +92,18 @@ def cmd_approve(conn, args) -> int:
             return 1
         mbr, comp = req["MBR_ID"], req["COMP_ID"]
         cur.execute(
-            "SELECT 1 FROM TEMPLOY_VERIFICATION WHERE MBR_ID=%s AND COMP_ID=%s AND REVOKED_DTM IS NULL "
-            "AND (EXPIRES_DTM IS NULL OR EXPIRES_DTM > UTC_TIMESTAMP())",
+            operator.SQL_ACTIVE_VERIFICATION_EXISTS,
             (mbr, comp),
         )
         if cur.fetchone():
             print(f"요청 #{args.req_id}: 이미 활성 재직 인증 존재 — 요청만 approved 처리.")
         else:
             cur.execute(
-                "INSERT INTO TEMPLOY_VERIFICATION "
-                "(MBR_ID, COMP_ID, VRF_METHOD_CD, COMP_EMAIL_HASH_VAL, EXPIRES_DTM, INS_ID) "
-                "VALUES (%s, %s, 'manual', %s, UTC_TIMESTAMP() + INTERVAL %s DAY, %s)",
+                operator.SQL_INSERT_MANUAL_VERIFICATION,
                 (mbr, comp, _manual_hash(mbr, comp, args.req_id), get_settings().employ_vrf_ttl_days, args.by),
             )
         cur.execute(
-            "UPDATE TEMPLOY_VRF_REQUEST SET STATUS_CD='approved', DECIDED_BY_ID=%s, "
-            "DECIDED_DTM=UTC_TIMESTAMP(), DECIDE_NOTE_CTNT=%s WHERE VRF_REQUEST_ID=%s",
+            operator.SQL_MARK_VRF_REQUEST_APPROVED,
             (args.by, args.note, args.req_id),
         )
     conn.commit()
@@ -117,8 +115,7 @@ def cmd_reject(conn, args) -> int:
     """거부 → 요청 rejected(사유 기록)."""
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE TEMPLOY_VRF_REQUEST SET STATUS_CD='rejected', DECIDED_BY_ID=%s, "
-            "DECIDED_DTM=UTC_TIMESTAMP(), DECIDE_NOTE_CTNT=%s WHERE VRF_REQUEST_ID=%s AND STATUS_CD='pending'",
+            operator.SQL_MARK_VRF_REQUEST_REJECTED,
             (args.by, args.note, args.req_id),
         )
         n = cur.rowcount
@@ -187,8 +184,7 @@ def cmd_release_suppression(conn, args) -> int:
     target_hash = _hash_target(args.email)
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE TMAIL_SUPPRESSION SET RELEASED_DTM=UTC_TIMESTAMP(), MOD_ID=%s "
-            "WHERE TARGET_HASH_VAL=%s AND RELEASED_DTM IS NULL",
+            operator.SQL_RELEASE_SUPPRESSION,
             (args.by, target_hash),
         )
         n = cur.rowcount
@@ -237,9 +233,7 @@ def cmd_decide_company_request(conn, args) -> int:
     status = "approved" if args.approve else "rejected"
     with conn.cursor() as cur:
         cur.execute(
-            "UPDATE TCOMPANY_REQUEST SET STATUS_CD=%s, DECIDED_BY_ID=%s, "
-            "       DECIDED_DTM=UTC_TIMESTAMP(), DECIDE_NOTE_CTNT=%s, MOD_ID=%s "
-            " WHERE COMP_REQUEST_ID=%s AND STATUS_CD='pending'",
+            operator.SQL_DECIDE_COMPANY_REQUEST,
             (status, args.by, args.note, args.by, args.req_id),
         )
         n = cur.rowcount

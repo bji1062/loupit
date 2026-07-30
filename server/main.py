@@ -23,6 +23,7 @@ from server.database import close_pool, init_pool
 from server.routers import (
     benefit_edit,
     companies,
+    console,
     employment,
     health,
     mail_webhook,
@@ -208,6 +209,18 @@ def create_app() -> FastAPI:
     # 표면 변화가 **명시적 설정**에만 따라오게 만든 것이다(test_m9_gate M9G2 와 정합).
     if s.resend_webhook_secret:
         app.include_router(mail_webhook.router, prefix=p)
+
+    # SSH 터널 전용 운영 콘솔(SP-AUTH-19) — **M9 + 화이트리스트 둘 다** 있어야 등록한다.
+    #
+    # M9 조건: 콘솔이 다루는 큐 2종(재직 수동 승인·회사 등록 요청)이 참여 테이블이다.
+    # 화이트리스트 조건(fail-closed): `OPERATOR_EMAILS` 가 비면 아무도 통과하지 못하므로
+    #   라우터가 있어 봐야 404 만 낸다. 그럴 바엔 **표면에 아예 없는 것**이 낫다 — 웹훅
+    #   시크릿과 같은 규약으로, 표면 변화가 명시적 설정에만 따라오게 한다(INV-1).
+    #
+    # ⚠ 노출 범위는 이 조건이 아니라 `deps.require_loopback` 가 지킨다. 설정을 켠 것과
+    #   인터넷에 연 것은 다른 사건이고, 후자는 nginx 를 거친 요청을 404 로 끊어 막는다.
+    if s.m9_enabled and s.operator_emails.strip():
+        app.include_router(console.router, prefix=p)
     return app
 
 

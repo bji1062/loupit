@@ -41,15 +41,22 @@ def test_T04_1_1_routers_package_file_allowlist():
 
     2026-07-29(SP-AUTH-16): `mail_webhook.py` 추가. 참여 3종과 달리 **M9 게이트 밖**이고
     `RESEND_WEBHOOK_SECRET` 이 있을 때만 등록되는 조건부 라우터다(main.create_app) — 파일이
-    존재하는 것과 표면에 노출되는 것이 다르며, 표면 계약은 test_m9_gate·test_surface 가 본다."""
+    존재하는 것과 표면에 노출되는 것이 다르며, 표면 계약은 test_m9_gate·test_surface 가 본다.
+
+    2026-07-30(SP-AUTH-19): `console.py` 추가 — SSH 터널 전용 운영 콘솔. **`admin.py` 가
+    아니다**: 그 이름은 레거시 델타로 영구 금지이며 아래 어서션이 계속 지킨다. 웹훅과 같은
+    조건부 라우터로, `M9_ENABLED` + `OPERATOR_EMAILS` 가 **둘 다** 있어야 등록된다.
+    노출 범위는 등록 조건이 아니라 `deps.require_loopback` 가 지킨다(test_console_gate CO-7)."""
     py_files = {f for f in os.listdir(ROUTERS_DIR) if f.endswith(".py")}
     expected = {
         "__init__.py", "health.py", "reference.py", "companies.py", "trending.py",
         "member.py", "employment.py", "benefit_edit.py",
         "mail_webhook.py",
+        "console.py",
     }
     assert py_files == expected, f"라우터 허용목록 불일치(대칭차): {py_files ^ expected}"
     assert "auth" in FORBIDDEN_MODULE_NAMES, "라우터명 'auth' 금지 유지(→ member.py, T10)"
+    assert "admin" in FORBIDDEN_MODULE_NAMES, "라우터명 'admin' 금지 유지(→ console.py, SP-AUTH-19)"
     assert "trending.py" in py_files, "trending.py 보존(§C item4)"
 
 
