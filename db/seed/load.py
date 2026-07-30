@@ -106,7 +106,12 @@ def _truncate_compare_log(cur) -> None:
 
 
 def _gather_counts(cur) -> dict:
-    """시드 적재 결과 실카운트(하한 스모크 검증용) — 백필까지 끝난 커밋 직전 동일 트랜잭션에서 조회."""
+    """시드 적재 결과 실카운트(하한 스모크 검증용) — 백필까지 끝난 커밋 직전 동일 트랜잭션에서 조회.
+
+    **상태**를 재는 값만 담는다(행 수·미완료 행 수). 백필이 돌려주는 `promoted`·`verified` 는
+    "이번에 **바뀐** 행 수"라 재적용에서는 0에 가까워 모드에 따라 뜻이 달라진다 — verify_counts 가
+    그 둘을 어떻게 다루는지는 그쪽 주석 참조.
+    """
     counts: dict = {}
     for key, table in (
         ("companies", "TCOMPANY"),
@@ -115,6 +120,15 @@ def _gather_counts(cur) -> dict:
         ("types", "TCOMPANY_TYPE"),
     ):
         cur.execute(f"SELECT COUNT(*) FROM {table}")
+        counts[key] = cur.fetchone()[0]
+    # 백필 완료 상태 — 모드와 무관하게 성립해야 하는 종료 조건.
+    for key, where in (
+        ("est_left", "BADGE_CD='est'"),
+        ("verified_null", "VERIFIED_DTM IS NULL"),
+        ("expires_null", "EXPIRES_DTM IS NULL"),
+        ("amt_source_null", "AMT_SOURCE_CD IS NULL"),
+    ):
+        cur.execute(f"SELECT COUNT(*) FROM TCOMPANY_BENEFIT WHERE {where}")
         counts[key] = cur.fetchone()[0]
     return counts
 
@@ -127,26 +141,44 @@ _MIN_PRESETS = 24     # 실측 28
 _MIN_TYPES = 6        # 큐레이션 상수 6종(고정)
 
 
-def verify_counts(stats: dict, counts: dict | None = None) -> None:
+def verify_counts(stats: dict, counts: dict | None = None, fresh: bool = True) -> None:
     """하한 assert(방어적 스모크) — 미달 시 AssertionError 로 비0 종료. 상세 검증은 pytest 스위트가 담당.
 
-    두 축을 본다: (1) 백필 통계(stats) — 승격·프로버넌스 단계가 기대 볼륨을 처리했는지,
-    (2) 실적재 카운트(counts) — 회사·복지·프리셋·유형 행이 시드 하한을 채웠는지.
-    옛 판본은 `promoted is not None` 만 확인해 사실상 무검증이었다(low #14).
+    🚨 **모드에 따라 뜻이 달라지는 값을 하한으로 재면 안 된다**(2026-07-30, prod 에서 실발현).
+    백필의 `promoted`·`verified` 는 UPDATE 로 **실제 바뀐 행 수**다. MySQL 은 matched 가 아니라
+    changed 를 돌려주므로, **멱등 재적용(fresh=False)에서는 이미 official·VERIFIED 인 기존 행이
+    0으로 세어진다.** 그래서 이 검증은 프로젝트가 prod 용으로 문서화한 재적용 경로에서 **항상
+    실패**했다(CJ 계열 7개사 추가 시 `verified: 148 < 1200`). 데이터는 정상이었고 어서션만 틀렸다 —
+    커밋 이후에 실행되는 검증이라 "실패했는데 반영은 됐다"는 최악의 모양이 된다.
+
+    → 볼륨(바뀐 행 수)은 **fresh 로드에서만** 재고, 재적용에서는 **종료 상태**를 잰다.
+      상태 검사는 모드와 무관하게 성립하고, "얼마나 일했나"보다 "끝났나"를 직접 확인하므로 더 강하다.
     """
-    # (1) 백필 통계 — 승격·프로버넌스 볼륨(단계5가 전량을 처리했는지)
+    # (1) 백필 완료 **상태** — 모드 무관. 이게 진짜 종료 조건이다.
+    if counts is not None:
+        for key, label in (("est_left", "미승격 est 잔존"), ("verified_null", "VERIFIED_DTM 미채움"),
+                           ("expires_null", "EXPIRES_DTM 미채움"), ("amt_source_null", "amt_source 미채움")):
+            if key in counts:
+                assert counts[key] == 0, f"백필 미완료 — {label}: {counts[key]}행"
+
+    # (2) 백필 볼륨 — **fresh 로드에서만** 의미가 있다(재적용은 바뀐 행이 적은 게 정상).
     promoted = stats.get("promoted")
     assert promoted is not None, "backfill 통계 누락(promoted)"
-    assert promoted >= _MIN_BENEFITS, f"복지 official 승격행 부족: {promoted} < {_MIN_BENEFITS}"
-    verified = stats.get("verified")
-    assert verified is not None and verified >= _MIN_BENEFITS, \
-        f"복지 프로버넌스 적용행 부족: {verified} < {_MIN_BENEFITS}"
+    if fresh:
+        assert promoted >= _MIN_BENEFITS, f"복지 official 승격행 부족: {promoted} < {_MIN_BENEFITS}"
+        verified = stats.get("verified")
+        assert verified is not None and verified >= _MIN_BENEFITS, \
+            f"복지 프로버넌스 적용행 부족: {verified} < {_MIN_BENEFITS}"
+    else:
+        assert stats.get("verified") is not None, "backfill 통계 누락(verified)"
+
     amt = stats.get("amt_source") or {}
     assert {"stated", "estimated", "none"} <= set(amt), f"amt_source 키 누락: {sorted(amt)}"
+    # amt_source 는 전량 재계산이라 모드와 무관하게 총량이 나온다.
     assert sum(amt.values()) >= _MIN_BENEFITS, \
         f"amt_source 합계 부족: {sum(amt.values())} < {_MIN_BENEFITS}"
 
-    # (2) 실적재 카운트 — 회사·복지·프리셋·유형(커넥션이 열려 있을 때 main 이 수집해 전달)
+    # (3) 실적재 카운트 — 회사·복지·프리셋·유형(커넥션이 열려 있을 때 main 이 수집해 전달)
     if counts is not None:
         assert counts.get("companies", 0) >= _MIN_COMPANIES, \
             f"회사 수 부족: {counts.get('companies')} < {_MIN_COMPANIES}"
@@ -189,7 +221,9 @@ def main(fresh: bool = False) -> dict:
     finally:
         conn.close()
 
-    verify_counts(stats, counts)
+    # ⚠ 이 검증은 **커밋 이후**에 돈다. 그래서 어서션이 틀리면 "실패했는데 반영은 됐다"가 된다 —
+    #    모드에 맞는 기준을 쓰는 것이 그만큼 중요하다(verify_counts 주석 참조).
+    verify_counts(stats, counts, fresh=fresh)
     return stats
 
 
