@@ -203,16 +203,83 @@ const root = document.getElementById('root');
 const msgEl = document.getElementById('msg');
 const say = (t) => { msgEl.textContent = t; };
 
-async function api(path, opts = {}) {
-  const res = await fetch('/api/v1/console' + path, {
+/** /api/v1 아래 아무 경로나 호출한다. 상태코드 해석은 호출부 몫. */
+async function req(path, opts = {}) {
+  return fetch('/api/v1' + path, {
     credentials: 'include',
     headers: { 'X-Loupit-Client': 'console', 'Content-Type': 'application/json' },
     ...opts,
   });
+}
+
+const NEEDS_LOGIN = Symbol('needs-login');
+
+async function api(path, opts = {}) {
+  const res = await req('/console' + path, opts);
+  if (res.status === 401) throw NEEDS_LOGIN;   // 세션 없음 → 로그인 단계로
   if (res.status === 404) throw new Error('운영자 세션이 아니거나 터널 밖 접근이다 (404)');
-  if (res.status === 401) throw new Error('로그인이 필요하다 — 이 주소에서 먼저 로그인하라');
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+// ── 로그인 단계 ─────────────────────────────────────────────────────────────
+// 이 폼이 **여기** 있어야 하는 이유: 세션 쿠키는 오리진별이라 jobcho.wiki 에서 받은 쿠키가
+// 127.0.0.1 로 오지 않는다. 그런데 정적 /login 페이지는 nginx 가 jobcho.wiki 에서만 서빙하고
+// 앱 포트는 /api/v1 만 낸다 → 터널 안에는 로그인할 화면이 아예 없었다. "로그인이 필요하다"고
+// 말하면서 그 방법을 주지 않는 화면은 막다른 길이다(함정 ㉘ — 실패 경로를 먼저 열어라).
+function renderLogin(reason) {
+  root.replaceChildren();
+  document.getElementById('who').textContent = '';
+  root.appendChild($('h2', null, '운영자 로그인'));
+  if (reason) root.appendChild($('div', 'meta', reason));
+  root.appendChild($('div', 'meta',
+    '이 주소(127.0.0.1)의 세션이 따로 필요하다 — 쿠키는 오리진별이라 jobcho.wiki 로그인은 여기 오지 않는다.'));
+
+  const box = $('div', 'item');
+  const row1 = $('div', 'rowbtns');
+  const email = $('input'); email.type = 'text'; email.placeholder = '운영자 이메일';
+  email.autocomplete = 'username';
+  const sendBtn = $('button', null, '코드 받기');
+  row1.appendChild(email); row1.appendChild(sendBtn);
+  box.appendChild(row1);
+
+  const row2 = $('div', 'rowbtns');
+  const code = $('input'); code.type = 'text'; code.placeholder = '6자리 코드';
+  code.inputMode = 'numeric'; code.maxLength = 6; code.autocomplete = 'one-time-code';
+  const loginBtn = $('button', null, '로그인');
+  row2.appendChild(code); row2.appendChild(loginBtn);
+  box.appendChild(row2);
+  root.appendChild(box);
+
+  sendBtn.onclick = async () => {
+    if (!email.value.trim()) { say('이메일을 입력하라.'); return; }
+    sendBtn.disabled = true;
+    try {
+      const res = await req('/members/login-code',
+        { method: 'POST', body: JSON.stringify({ email: email.value.trim() }) });
+      // 응답은 계정 유무와 무관하게 균일 204 다(계정 열거 방지). 억제된 주소만 409.
+      if (res.status === 204) say('코드를 보냈다. 메일함을 확인하라(5분 유효).');
+      else if (res.status === 409) say('이 주소는 반송 이력으로 발송이 억제돼 있다 — ops release-suppression 으로 해제하라.');
+      else say('예상 밖 응답: ' + res.status);
+    } catch (e) { say('실패: ' + e.message); }
+    sendBtn.disabled = false;
+  };
+
+  loginBtn.onclick = async () => {
+    loginBtn.disabled = true;
+    try {
+      const res = await req('/members/login', {
+        method: 'POST',
+        body: JSON.stringify({ email: email.value.trim(), code: code.value.trim() }),
+      });
+      if (res.ok) { say('로그인됨.'); await load(); return; }
+      // 상태코드 계약(SP-AUTH-13): 401 불일치 / 410 만료 / 429 시도 초과.
+      say({ 401: '코드가 맞지 않는다.', 410: '코드가 만료됐다 — 다시 받아라.',
+            429: '시도 횟수를 넘겼다 — 코드를 다시 받아라.' }[res.status]
+          || ('로그인 실패: ' + res.status));
+    } catch (e) { say('실패: ' + e.message); }
+    loginBtn.disabled = false;
+  };
 }
 
 /** 사용자 입력 원문 한 덩어리 — 텍스트로 보여주고 복사 버튼만 준다(링크 만들지 않음). */
@@ -240,7 +307,12 @@ function actionButton(label, fn) {
   b.onclick = async () => {
     b.disabled = true;
     try { const r = await fn(); say(JSON.stringify(r)); await load(); }
-    catch (e) { say('실패: ' + e.message); b.disabled = false; }
+    catch (e) {
+      // 작업 도중 세션이 만료될 수 있다. 그때 `e.message` 를 찍으면 undefined 가 뜬다
+      // (NEEDS_LOGIN 은 Error 가 아니라 Symbol 이다) — 다시 로그인 단계로 보낸다.
+      if (e === NEEDS_LOGIN) { renderLogin('작업 도중 세션이 만료됐다. 다시 로그인하라.'); return; }
+      say('실패: ' + e.message); b.disabled = false;
+    }
   };
   return b;
 }
@@ -249,9 +321,23 @@ async function load() {
   root.replaceChildren();
   say('불러오는 중…');
   let data;
-  try { data = await api('/queues'); } catch (e) { say(e.message); return; }
+  try {
+    data = await api('/queues');
+  } catch (e) {
+    // 세션 없음은 **오류가 아니라 다음 단계**다. 여기서 문구만 띄우면 막다른 길이 된다.
+    if (e === NEEDS_LOGIN) { renderLogin('세션이 없거나 만료됐다.'); return; }
+    say(e.message);
+    return;
+  }
   say('');
-  document.getElementById('who').textContent = '운영자: ' + data.operator;
+  const who = document.getElementById('who');
+  who.replaceChildren(document.createTextNode('운영자: ' + data.operator + '  '));
+  const out = $('button', null, '로그아웃');
+  out.onclick = async () => {
+    await req('/members/logout', { method: 'POST' });
+    renderLogin('로그아웃했다.');
+  };
+  who.appendChild(out);
 
   section('재직 수동 승인', data.verifications, (v) => {
     const el = $('div', 'item');

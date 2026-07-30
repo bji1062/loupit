@@ -232,3 +232,26 @@ def test_CO13_콘솔_페이지는_innerHTML_과_자동링크를_쓰지_않는다
     assert "noindex" in _PAGE, "검색엔진 차단 메타가 없다"
     # 자기검증 — 위 어서션들이 실제로 무언가를 보고 있는지(빈 문자열이면 전부 통과한다).
     assert "textContent" in code and len(code) > 2000, "페이지 본문을 못 읽었다 — 어서션이 공회전한다"
+
+
+def test_CO14_콘솔에_로그인_단계가_있다():
+    """**막다른 길 금지**(2026-07-30 실발현 — 관문만 만들고 입구를 안 만들었다).
+
+    세션 쿠키는 오리진별이라 `jobcho.wiki` 로그인이 `127.0.0.1` 로 오지 않는다. 그런데 정적
+    `/login` 페이지는 nginx 가 `jobcho.wiki` 에서만 서빙하고 앱 포트는 `/api/v1` 만 낸다 →
+    터널 안에는 **로그인할 화면이 아예 없었다.** 콘솔은 "로그인이 필요하다"고만 말하고 그
+    방법을 주지 않았다.
+
+    함정 ㉘ 과 같은 부류다 — 기능을 열기 전에 **그 기능의 실패 경로**가 갈 곳이 있는지 보라.
+    """
+    from server.routers.console import _PAGE
+
+    code = "\n".join(ln for ln in _PAGE.splitlines() if not ln.lstrip().startswith("//"))
+    for needed in ("renderLogin", "/members/login-code", "/members/login", "/members/logout"):
+        assert needed in code, f"콘솔에 {needed} 가 없다 — 터널 안에서 로그인할 방법이 없다"
+    # 401 을 **오류 문구**가 아니라 **다음 단계**로 다뤄야 한다.
+    assert "NEEDS_LOGIN" in code and "renderLogin(" in code, (
+        "401 을 문구로만 표시하고 있다 — 그건 막다른 길이다"
+    )
+    # 코드 발송 응답은 균일 204 다(계정 열거 방지). 억제 409 만 예외로 안내한다(SP-AUTH-16).
+    assert "409" in code, "억제된 주소 안내가 없다 — 그 사용자는 영영 이유를 모른다"
