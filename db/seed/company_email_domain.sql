@@ -255,8 +255,14 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 1건뿐이다. lg.com 과 lge.com 은 메일 인프라(MX·SPF 대역)도 완전히 분리돼 있다.
 -- ⚠ 단 lg.com 은 **"웹" 도메인으로는 그룹 공용**이다(www.lg.com = LG전자 글로벌 브랜드
 --    사이트, careers.lg.com = 통합채용). 웹 근거만 보면 판단이 뒤집힌다 — 메일 인프라로 판단하라.
+-- cj.net → CJ 계열 8개사(2026-07-30 병합). 그전엔 CJ올리브네트웍스 1개사뿐이라 **@cj.net 인증이
+-- 전부 그 회사로 갔다** — 목록에 선택지가 없었기 때문이다. CJ 계열사를 추가하면서 IN(...) 으로
+-- 합쳐, 이제 삼성(samsung.com 7사)·SK(sk.com 3사)와 같은 그룹단위 인증이 된다.
+-- 오매핑 비율이 18사 중 1사 → 18사 중 8사로 개선됐다(여전히 완전하지 않다는 점은 위 주석 참조).
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
-  SELECT COMP_ID, 'cj.net', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'cj';
+  SELECT COMP_ID, 'cj.net', TRUE FROM TCOMPANY
+   WHERE COMP_ENG_NM IN ('cj','cj_enm_ent','cj_enm_com','cj_freshway',
+                         'cj_oliveyoung','cj_logistics','cj_cheiljedang','cj_cgv');
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lg.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lg';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)

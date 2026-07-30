@@ -32,6 +32,23 @@ SEED200_VARS = {
 
 # ── 등록 예외 메타 override (DG-3 확정: 엔씨소프트 재이식 + 회사 메타 수동구성) ──
 CJ_OLIVE_ALIASES = ["CJ올리브네트웍스", "올리브네트웍스", "CJ OliveNetworks", "cj_olive_networks"]
+
+# CJ 계열 7개사(2026-07-30 신설) — 200-seed 목록에 없어 자기명 별칭만 붙는다(fallback 경고).
+# 사용자가 실제로 검색하는 이름은 법인명이 아니라 **브랜드**다(예: CJ ENM 커머스부문 → "CJ온스타일").
+# 별칭이 없으면 검색 0건 → SP-AUTH-17 회사 등록 요청으로 되돌아온다. 그게 이 목록의 존재 이유다.
+# ⚠ uq_comp_alias 는 (COMP_ID, ALIAS_NM) 복합이라 같은 별칭을 여러 회사에 붙일 수 있다 —
+#    "CJ ENM" 은 두 부문 모두에 붙여 어느 쪽을 찾든 결과가 나오게 한다.
+CJ_AFFILIATE_ALIASES: dict[str, list[str]] = {
+    "cj_enm_ent": ["CJ ENM 엔터테인먼트부문", "CJ ENM", "CJENM", "씨제이이엔엠", "CJ이엔엠",
+                   "ENM", "CJ ENM 엔터", "엔터테인먼트부문"],
+    "cj_enm_com": ["CJ ENM 커머스부문", "CJ ENM", "CJENM", "CJ온스타일", "온스타일", "CJ ONSTYLE",
+                   "CJ오쇼핑", "오쇼핑", "커머스부문"],
+    "cj_freshway": ["CJ프레시웨이", "프레시웨이", "CJ Freshway"],
+    "cj_oliveyoung": ["CJ올리브영", "올리브영", "올영", "Olive Young"],
+    "cj_logistics": ["CJ대한통운", "대한통운", "CJ Logistics"],
+    "cj_cheiljedang": ["CJ제일제당", "제일제당", "CJ CheilJedang"],
+    "cj_cgv": ["CJ CGV", "CGV", "씨지브이", "CJCGV"],
+}
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -158,5 +175,8 @@ def build_company_meta() -> dict:
         meta["ncsoft"]["industry_override"] = NCSOFT_INDUSTRY
     if "hyundai_mobis" in meta:
         meta["hyundai_mobis"]["aliases"] = _dedup(meta["hyundai_mobis"]["aliases"] + ["모비스"])
+    for eng, extra_aliases in CJ_AFFILIATE_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     return meta

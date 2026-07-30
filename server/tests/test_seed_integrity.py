@@ -25,11 +25,28 @@ def _rows(conn, sql, params=()):
         return cur.fetchall()
 
 
-# ── SI-1: CJ 예외 — CJ올리브네트웍스 1건, CJ그룹/CJ ENM 부재 ──
+# ── SI-1: CJ 예외 — `eng='cj'` 는 CJ올리브네트웍스다(오라벨 금지) ──
 def test_SI1_cj_exception_registered_name(seeded_db):
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM='CJ올리브네트웍스'") == 1
+    """`CJ.sql`(eng='cj') 파일명은 "CJ"지만 안의 데이터는 **CJ올리브네트웍스**(비상장 계열사) 것이다.
+    2026-07-09 결정(OI-1b)의 본뜻은 **"그 데이터를 CJ그룹/CJ ENM 으로 오라벨하지 마라"** 다.
+
+    ⚠ 초판은 `COMP_NM='CJ ENM'` 부재만 검사했는데, 그 문구는 **의도보다 넓었다** — 자기 데이터를
+    가진 CJ ENM 을 등록하는 것까지 금지했고, 2026-07-30 실제로 그 등록을 막았다(사용자 요청 #1).
+    그래서 **eng 키를 축으로** 다시 쓴다: 지켜야 할 것은 "eng='cj' 행의 이름"이지 "CJ ENM 의 부재"가
+    아니다. 함정 ㉗ 계열 — 가드의 문구가 의도와 어긋나면 옳은 변경을 막는다.
+    """
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_ENG_NM='cj'") == 1
+    cj_nm = _scalar(seeded_db, "SELECT COMP_NM FROM TCOMPANY WHERE COMP_ENG_NM='cj'")
+    assert cj_nm == "CJ올리브네트웍스", f"eng='cj' 는 CJ올리브네트웍스여야 한다(현재 {cj_nm!r})"
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM='CJ그룹'") == 0
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM='CJ ENM'") == 0
+    # CJ ENM 은 2026-07-30 부터 **부문별**로 등록된다(엔터/커머스 — 재충전 제도·성과 포상·
+    # 가족친화인증·채용 채널이 실제로 분리돼 있다). 부문 없는 단일 'CJ ENM' 은 여전히 금지 —
+    # 그러면 엔터부문 지원자에게 커머스부문 정보를 주게 된다.
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM='CJ ENM'") == 0, \
+        "부문 구분 없는 'CJ ENM' 단일 등록은 금지 — 엔터테인먼트/커머스로 나눈다"
+    for div in ("CJ ENM 엔터테인먼트부문", "CJ ENM 커머스부문"):
+        assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_NM=%s", (div,)) == 1, \
+            f"{div} 미등록"
 
 
 # ── SI-2: 엔씨소프트 예외 — 존재 + 별칭 ≥1 ──
@@ -142,7 +159,7 @@ def test_SI7_no_duplicate_alias_per_company(seeded_db):
 # ── SI-8: 200-seed 미등록 — 회사 수 = 95 (≠ 200) ──
 def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
-    assert count == 95
+    assert count == 102  # 95 + CJ 계열 7개사(2026-07-30)
     assert count != 200
 
 

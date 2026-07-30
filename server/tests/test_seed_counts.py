@@ -28,15 +28,24 @@ def test_SD2_benefit_preset_total_count(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TBENEFIT_PRESET") == 28
 
 
-# ── SD-3: 회사 95 (Tier-0) ──
-def test_SD3_company_count_is_95(seeded_db):
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 95
+# ── SD-3: 회사 102 (Tier-0) — 95 + CJ 계열 7개사(2026-07-30) ──
+def test_SD3_company_count_is_102(seeded_db):
+    """정확 카운트 핀. 회사 추가는 **의도적으로만** 가능해야 한다(시드 유실·중복 조기 발견).
+    회사를 늘리거나 줄일 땐 이 값과 SI-8·멱등성 스냅샷을 함께 갱신하라."""
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 102
 
 
-# ── SD-4: 복지 총행 1317(=1330-모비스13행), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 1465(=1330-모비스13행+CJ계열7사148행), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
+    """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
+
+    내역: 원본 1330 − 모비스 중복 13 = 1317 (2026-07 재이식분)
+          + CJ 계열 7개사 148행(2026-07-30) = 1465
+          엔터 22 · 커머스 24 · 프레시웨이 21 · 올리브영 22 · 대한통운 19 · 제일제당 20 · CGV 20
+          ⚠ 주식보상(RSU)은 일회성 부여 공시라 상시 제도가 아니어서 제외했다(-2행, 사용자 결정).
+    """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 1317, f"복지 총행 불일치: {count} (기대 1317 = 1330-모비스13)"
+    assert count == 1465, f"복지 총행 불일치: {count} (기대 1465 = 1317 + CJ계열 148)"
     assert count >= 1200
 
 

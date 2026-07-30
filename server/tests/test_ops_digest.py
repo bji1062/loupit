@@ -156,12 +156,29 @@ def test_OD5b_only_if_pending_suppresses_empty(empty_conn, busy_conn, monkeypatc
 
 # ── OD-6: 수신 주소 미설정은 조용히 넘어가지 않는다 ────────────────────────
 def test_OD6_missing_recipient_fails_loudly(busy_conn, monkeypatch, capsys):
+    """⚠ 이 테스트는 값을 **명시 고정**해야 한다(함정 ①).
+
+    초판은 `OPS_DIGEST_TO` 가 환경에 **없다**는 것을 전제했고, 운영 서버 `server/.env` 에 그 키를
+    넣은 날 바로 깨졌다(2026-07-30, 같은 세션에서 실제로 발생). conftest 가 `server/.env` 를
+    로드하므로 "키가 없는 환경"은 개발 머신에만 존재한다 — **테스트가 환경의 부재에 기대면
+    그 키를 쓰는 날 반드시 깨진다.** 그래서 설정을 스텁으로 고정한다.
+    """
     m = _FakeMailer()
     monkeypatch.setattr(ops, "get_mailer", lambda: m)
+    monkeypatch.setattr(ops, "get_settings", lambda: _FakeSettings(ops_digest_to=""))
     rc = ops.cmd_digest(busy_conn, _Args(send=True, to=""))
     assert rc != 0, "수신 주소가 없는데 성공으로 보고하면 '알림이 있다'고 믿게 된다"
     assert m.sent == []
     assert "OPS_DIGEST_TO" in capsys.readouterr().out
+
+
+def test_OD6b_falls_back_to_configured_recipient(busy_conn, monkeypatch):
+    """`--to` 를 안 주면 `OPS_DIGEST_TO` 를 쓴다 — 타이머가 그 경로로 돈다."""
+    m = _FakeMailer()
+    monkeypatch.setattr(ops, "get_mailer", lambda: m)
+    monkeypatch.setattr(ops, "get_settings", lambda: _FakeSettings(ops_digest_to="ops@example.com"))
+    assert ops.cmd_digest(busy_conn, _Args(send=True, to="")) == 0
+    assert m.sent and m.sent[0][0] == "ops@example.com"
 
 
 # ── OD-7: 기본은 발송 없음(사고 방지) ─────────────────────────────────────
@@ -191,3 +208,10 @@ class _Args:
         self.send = send
         self.to = to
         self.only_if_pending = only_if_pending
+
+
+class _FakeSettings:
+    """`ops.get_settings` 대체 — 환경(server/.env)에 기대지 않기 위한 명시 고정용."""
+
+    def __init__(self, ops_digest_to=""):
+        self.ops_digest_to = ops_digest_to

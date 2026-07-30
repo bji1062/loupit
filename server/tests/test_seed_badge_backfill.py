@@ -154,8 +154,23 @@ def test_SB10_badge_src_cd_domain(seeded_db):
 
 
 def test_SB10_scrape_official_companies_have_url(seeded_db):
-    """실 http URL 헤더를 가진 5개 회사(KT·삼성전자·LG전자·코웨이·현대모비스)."""
-    real_url_engs = {"kt", "samsung_elec", "lg_elec", "coway", "hyundai_mobis"}
+    """실 http URL 헤더를 가진 회사 = `BADGE_SRC_CD='scrape_official'`.
+
+    2026-07 재이식분은 95개사 중 **5개사만** 실 URL 을 가졌다(나머지 90개는 헤더가 "수동 입력").
+    2026-07-30 CJ 계열 7개사를 **CJ 소유 도메인 URL 과 함께** 추가해 12개사가 됐다 —
+    이 프로젝트의 프로버넌스가 실제로 개선된 지점이라 정확 카운트로 못박는다.
+
+    ⚠ 이 목록을 **파생형으로 만들지 않은 이유**: 헤더를 파싱해 기대값을 만들면 "헤더에 URL 이
+    있으면 URL 이 있다"는 동어반복이 된다. 여기서 지키려는 것은 **의도한 회사 집합**이므로
+    명시 열거가 맞다. 새 회사에 실 URL 을 넣으면 이 테스트가 빨개져 의도를 밝히게 한다.
+    """
+    real_url_engs = {
+        # 2026-07 재이식분(5)
+        "kt", "samsung_elec", "lg_elec", "coway", "hyundai_mobis",
+        # CJ 계열(2026-07-30, 7) — 근거는 전부 CJ 소유 도메인
+        "cj_enm_ent", "cj_enm_com", "cj_freshway", "cj_oliveyoung",
+        "cj_logistics", "cj_cheiljedang", "cj_cgv",
+    }
     rows = _rows(
         seeded_db,
         """
@@ -165,8 +180,10 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         """,
     )
     scrape_official_engs = {r[0] for r in rows}
-    assert len(scrape_official_engs) == 5
-    assert scrape_official_engs & real_url_engs, "실 URL 회사 집합과 교집합 없음"
+    assert scrape_official_engs == real_url_engs, (
+        f"실 URL 회사 집합 불일치 — 추가: {scrape_official_engs - real_url_engs} / "
+        f"누락: {real_url_engs - scrape_official_engs}"
+    )
 
     url_null_count = _scalar(
         seeded_db,
