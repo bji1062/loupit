@@ -85,6 +85,19 @@ else
   echo "    실호스트는 /etc/my.cnf 만 읽으므로 infra/mysql/loupit.cnf 항목을 수동 반영할 것."
 fi
 sudo cp "${ROOT_DIR}/infra/deploy/sshd-hardening.conf" /etc/ssh/sshd_config.d/loupit.conf
+# journald 보관 상한(2026-07-30 발견): 기본값엔 상한이 없어 실호스트에서 4.5개월 만에
+# 2.8G 까지 자랐다. 루트가 49G 뿐이라 방치하면 언젠가 디스크가 찬다. 드롭인이라
+# /etc/systemd/journald.conf(패키지 conffile)와 업그레이드 충돌하지 않는다.
+sudo mkdir -p /etc/systemd/journald.conf.d
+sudo cp "${ROOT_DIR}/infra/systemd/journald.conf.d/10-loupit-limits.conf" /etc/systemd/journald.conf.d/10-loupit-limits.conf
+sudo systemctl restart systemd-journald
+# nginx logrotate 크기 상한(P3-④): daily 만으론 트래픽 급증·공격 시 하루치가 디스크를
+# 채운다. /etc/logrotate.d/nginx 는 nginx-common 의 conffile 이라 통째로 덮어쓰면 상류
+# 변경을 잃는다 → **멱등 패치**로 한 줄만 끼운다.
+# ⚠ 백업 사본을 /etc/logrotate.d/ 안에 두지 마라 — logrotate 는 그 디렉터리를 전부 읽고
+#   기본 taboo 는 `.bak` 뿐이라 `nginx.bak-20260730` 같은 이름은 걸러지지 않아
+#   "duplicate log entry" 파싱 오류를 낸다(2026-07-30 실발현).
+sudo python3 "${ROOT_DIR}/infra/logrotate/patch_nginx_maxsize.py"
 sudo systemctl daemon-reload
 # 백업 타이머 가동(일 1회 03:00). 전제: /var/backups/loupit 는 [3/6]에서 생성·chown 완료 +
 # infra/env/backup.env(크레덴셜)가 이미 존재해야 첫 실행이 성공한다(docs/OPS-backup.md 설치 순서 참고).
