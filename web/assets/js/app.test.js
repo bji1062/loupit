@@ -15,6 +15,7 @@ function makeDocument() {
   }
   return {
     _registry: registry,
+    body: { dataset: {} },   // isLandingShell 이 data-page-type 을 읽는다(대문 판정)
     getElementById(id) { return registry.get(id) || null; },
     addEventListener() {},
     removeEventListener() {},
@@ -39,7 +40,7 @@ const {
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
   pickTrendingPair, restoreComparison,
   resolveBootScreen, hasSlotState, restoreLatestComparison, onPopState,
-  snapshotInput, restoreInputDraft, bindDraftPersist,
+  snapshotInput, restoreInputDraft, bindDraftPersist, isLandingShell,
 } = await import('./app.js');
 const { recent, inputDraft } = await import('./store.js');
 const { COMPARE_LOG_URL } = await import('./trending.js');
@@ -50,6 +51,7 @@ beforeEach(() => {
   globalThis.location.hash = '';
   globalThis.location.search = '';
   globalThis.history._calls = [];
+  globalThis.document.body.dataset.pageType = 'input'; // 기본은 비교 도구 셸(대문 아님)
   for (const id of Object.keys(INITIAL_HIDDEN)) {
     const e = new FakeEl();
     e.hidden = INITIAL_HIDDEN[id];
@@ -712,5 +714,57 @@ describe('boot — 초안은 상태만 되살리고 화면은 URL 이 정한다'
   test('초안이 없으면 종전과 동일(하위호환)', async () => {
     await boot({ loadReferenceFn: async () => REF });
     assert.equal(App.state.ui.screen, 'search');
+  });
+});
+
+// ── 대문은 항상 처음부터(2026-07-31 사용자 결정) ─────────────────────────────
+// "대문에서 새로고침하면 입력값이 초기화됐으면 좋겠다" — 대문은 신규 방문자의 첫 화면이지
+// 이어하기 화면이 아니다. 복원 생략에 그치지 않고 **지운다**: 남겨 두면 초기화한 사용자가
+// `/compare/` 에서 방금 지운 값을 다시 만나 약속이 깨진다.
+describe('boot — 대문(landing) 셸은 초안을 복원하지 않고 지운다', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [{ comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] }],
+  };
+  function seedDraft() {
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: 1 } }, salS: { a: { low: 4000, high: 5000 } } },
+    }));
+  }
+
+  test('isLandingShell — data-page-type 으로 판정(경로 파싱 아님)', () => {
+    assert.equal(isLandingShell({ body: { dataset: { pageType: 'landing' } } }), true);
+    assert.equal(isLandingShell({ body: { dataset: { pageType: 'input' } } }), false);
+    assert.equal(isLandingShell({ body: { dataset: {} } }), false);
+    assert.equal(isLandingShell(null), false, '무크래시');
+    assert.equal(isLandingShell({}), false);
+  });
+
+  test('대문 → 초안 미복원 + localStorage 에서 삭제', async () => {
+    seedDraft();
+    globalThis.document.body.dataset.pageType = 'landing';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.matched.a, null, '대문에서 회사가 이미 골라져 있으면 안 된다');
+    assert.deepEqual(App.state.salS.a, { low: null, high: null });
+    assert.equal(App.state.ui.screen, 'search');
+    assert.equal(globalThis.localStorage.getItem('loupit.inputDraft'), null,
+      '남겨 두면 /compare/ 에서 되살아나 "초기화"가 거짓말이 된다');
+  });
+
+  test('비교 도구 셸(`/compare/`) → 종전대로 복원', async () => {
+    seedDraft();
+    globalThis.document.body.dataset.pageType = 'input';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.matched.a.comp_id, 1);
+    assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 });
+  });
+
+  test('대문이어도 URL 프리필은 그대로 동작한다(URL 이 시킨 것은 별개)', async () => {
+    seedDraft();
+    globalThis.document.body.dataset.pageType = 'landing';
+    globalThis.location.search = '?a=samsung_elec';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.matched.a.comp_id, 1);
+    assert.equal(App.state.ui.screen, 'input');
   });
 });

@@ -150,7 +150,17 @@ export async function boot(hooks = {}) {
   // 초안 → 프리필 순서다. URL 이 지정한 슬롯만 아래에서 덮이므로, 정적 회사 페이지의
   // "이 회사로 비교하기"(`/compare/?a=<eng>`)로 돌아오면 **회사는 URL, 연봉·상승률은 초안**이
   // 된다 — 복지를 보러 다녀오는 동안 입력이 사라지지 않는다.
-  const draftRestored = restoreInputDraft();
+  // 대문(`/`)은 **항상 처음부터** 시작한다(2026-07-31 사용자 결정). 초안이 랜딩에서까지
+  // 되살아나면 "새로고침했는데 회사가 이미 골라져 있다"가 된다 — 대문은 신규 방문자의 첫
+  // 화면이지 이어하기 화면이 아니다. 이어서 하려면 비교 도구(`/compare/`)로 간다.
+  // ⚠ 복원을 생략하는 데 그치지 않고 **지운다**. 남겨 두면 대문에서 새로고침해 "초기화"한
+  //   사용자가 `/compare/` 로 갔을 때 방금 지운 값이 되살아나 약속이 깨진다.
+  // ⓘ 이래도 1단계의 핵심 왕복은 그대로다: 대문에서 입력 → (pagehide 저장) → 회사 페이지 →
+  //   "이 회사로 비교하기" → `/compare/?a=…` 는 **대문을 다시 로드하지 않으므로** 복원된다.
+  //   지워지는 것은 "이전에 하다 만 것"뿐이고, 지금 대문에서 쓰던 입력은 지켜진다.
+  const landing = isLandingShell();
+  if (landing) inputDraft.clear();
+  const draftRestored = landing ? false : restoreInputDraft();
   const prefilled = restoreFromPrefill(); // SP-FE-11 URL 파라미터 → 슬롯 프리필(있으면)
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
     const appEl = document.getElementById('app');
@@ -301,6 +311,14 @@ export function snapshotInput(state = App.state) {
     curPri: state.curPri,
     curSacrifice: state.curSacrifice ?? null,
   };
+}
+
+// 대문 셸인가 — 셸이 스스로 밝히는 `data-page-type` 을 쓴다(경로 파싱 금지: `/`·`/index.html`·
+// 트레일링 슬래시 변형을 다 맞춰야 하고, 셸이 늘면 조용히 틀린다). 이 값은 광고 마운트가
+// 이미 쓰던 마커라 새 계약을 만들지 않는다.
+export function isLandingShell(doc = (typeof document !== 'undefined' ? document : null)) {
+  const body = doc && doc.body;
+  return !!(body && body.dataset && body.dataset.pageType === 'landing');
 }
 
 // 초안 → 상태. 슬롯은 REF 로 다시 해석하므로 초안이 낡아도(회사 삭제 등) 조용히 건너뛴다.
