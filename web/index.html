@@ -31,7 +31,7 @@
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
     <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
-    <a href="#trending" class="gnb-link">실시간 비교</a>
+    <a href="#trending" class="gnb-link">비교 조합</a><!-- 위젯이 두 모드를 오가므로 중립 문구(2026-07-31) -->
     <form class="gnb-search" role="search" aria-label="회사 검색"> <!-- 제출 → A 슬롯 주입(ui.js bindHeaderSearch) -->
       <input type="search" placeholder="회사명으로 복지 찾기" aria-label="회사명으로 복지 찾기" autocomplete="off">
       <button type="submit" aria-label="검색">→</button>
@@ -132,9 +132,11 @@
 
   </div><!-- /.main-primary -->
 
-  <!-- 실시간 비교 TOP 10(익명 집계, INV-1 개정 2026-07-14) — trending.js가 로드 성공 시 hidden 해제.
-       접힘: 1~10위 순차 롤링 / 호버·포커스: 전체 펼침 / 클릭: 양 슬롯 프리필. -->
-  <aside id="trending" class="rail" hidden aria-label="실시간 비교 TOP 10"></aside>
+  <!-- 비교 조합 레일(익명 집계, INV-1 개정 2026-07-14) — trending.js가 렌더 성공 시 hidden 해제.
+       접힘: 1~10위 순차 롤링 / 호버·포커스: 전체 펼침 / 클릭: 양 슬롯 프리필.
+       모드는 JS가 정한다(data-mode): 집계 있으면 trending, 콜드스타트면 suggest(같은 업종 제안).
+       제목·aria-label도 JS가 모드에 맞춰 덮어쓰므로 여기 라벨은 중립값이다(2026-07-31). -->
+  <aside id="trending" class="rail" hidden aria-label="비교 조합"></aside>
 
   </div><!-- /.main-cols -->
 </main>

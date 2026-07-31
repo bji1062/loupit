@@ -168,13 +168,22 @@ export async function boot(hooks = {}) {
     },
     mountAds: mountAdsFn,
     reboot: () => boot(hooks),
+    // 양 슬롯 확정 = 기록 시점(2026-07-31 문턱 하향). 연봉·상승률까지 채운 사람만 세던
+    // 이전 기준으로는 11일간 집계가 0건이었다. sendCompareLog가 세션 내 쌍 중복을
+    // 스스로 걸러서 B-7(부풀림)을 막는다. 리포트 성공 시점 전송(위)은 그대로 두되,
+    // 같은 쌍이면 중복 제거에 걸려 한 번만 나간다.
+    onPairReady: (s) => { try { sendCompareLog(s); } catch { /* 무손상 */ } },
   };
   deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
   try { initConsentBannerFn(); } catch { /* 동의 배너 실패 무손상 */ } // 광고 동의 배너 배선(#12)
   try { mountAdsFn(); } catch { /* 광고 마운트 실패 무손상(MON6) */ } // page_type별 광고 배선(랜딩 등, #12)
-  // 실시간 비교 TOP 10 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
-  mountTrending({ onPick: (item) => pickTrendingPair(item, deps) });
+  // "많이 찾아본 조합" 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
+  // companies: 집계 0건일 때 같은 업종 폴백을 만들 재료(REF는 위에서 이미 로드됨 — 추가 네트워크 없음).
+  mountTrending({
+    companies: (App.state.REF && App.state.REF.companies) || [],
+    onPick: (item) => pickTrendingPair(item, deps),
+  });
   // 등록 회사 디렉토리(검색 카드 카운트 → 가나다순 목록 → 복지 펼침) — REF 재사용, 실패 무해.
   try { mountDirectory(App.state); } catch { /* 디렉토리 실패는 비교 툴 무손상 */ }
   // 부팅 뷰 결정(SP-FE-3.3 규칙 3·5): 해시가 요구한 뷰에 보여줄 상태가 없으면 강등한다.
@@ -220,6 +229,10 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
     }
     // 해석 실패 시 슬롯 미선택 유지(정상 검색 진입으로 폴백, P-3)
   }
+  // ⚠ 여기서는 익명 쌍 로그를 **일부러 보내지 않는다**(2026-07-31). 프리필은 사람이 고른
+  // 결과가 아니라 URL이 시킨 것이고, /compare/?a=…&b=… 는 JS를 실행하는 크롤러가 그대로
+  // 밟는 경로다(실측: GoogleOther가 /compare/?a=<slug> 를 계속 긁는다). 여기에 로그를 걸면
+  // 집계가 봇의 크롤 빈도를 재게 된다. 기록 시점은 사람이 슬롯을 채운 maybeAdvance 다.
   if (state.matched.a || state.matched.b) goFn('input', { push: false }); // 프리필 있으면 입력 뷰
 }
 
@@ -234,7 +247,10 @@ export function pickTrendingPair(item, deps = {}, state = App.state) {
     initWsState(state, slot);
     reflectSlotLabel(slot, comp.comp_nm);
   }
-  maybeAdvance(state, deps); // 양 슬롯 채움 → 입력뷰 렌더 + go('input')
+  // 양 슬롯 채움 → 입력뷰 렌더 + go('input'). **onPairReady는 일부러 끊는다**:
+  // 위젯이 보여준 조합을 클릭했다고 그 조합을 다시 집계에 넣으면 1위가 자기 자신을
+  // 계속 밀어올리는 자기강화 루프가 된다(한 사람이 클릭만 반복해도 순위가 굳는다).
+  maybeAdvance(state, { ...deps, onPairReady: null });
   return true;
 }
 

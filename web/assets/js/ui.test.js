@@ -174,6 +174,33 @@ describe('UI-4 선택 → 입력뷰 전진 + 비교하기 배선(MB-8·15)', () 
     assert.deepEqual(calls, []);
   });
 
+  // 로그 문턱 하향(2026-07-31): 회사 둘을 고른 시점이 기록 시점이다.
+  test('maybeAdvance: 양 슬롯 matched → onPairReady(state) 1회 호출', () => {
+    const state = stateWithMatches();
+    const seen = [];
+    maybeAdvance(state, { go: () => {}, onPairReady: (s) => seen.push(s) });
+    assert.equal(seen.length, 1);
+    assert.equal(seen[0], state);
+  });
+
+  test('한쪽만 matched → onPairReady 미호출(반쪽 선택은 기록하지 않는다)', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    const seen = [];
+    maybeAdvance(state, { go: () => {}, onPairReady: () => seen.push(1) });
+    assert.equal(seen.length, 0);
+  });
+
+  test('onPairReady가 throw해도 전진은 정상(로그 실패 무손상)', () => {
+    const state = stateWithMatches();
+    const calls = [];
+    assert.doesNotThrow(() => maybeAdvance(state, {
+      go: (v) => calls.push(v),
+      onPairReady: () => { throw new Error('네트워크'); },
+    }));
+    assert.deepEqual(calls, ['input']);
+  });
+
   test('btn-compare 클릭 → runReport 호출 + go("report")', () => {
     const state = stateWithMatches();
     state.salS.a = { low: 5000, high: 7000 };

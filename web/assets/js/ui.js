@@ -66,10 +66,17 @@ export function searchHooks(state, deps) {
 }
 
 // 양 슬롯 모두 채워지면 입력 뷰로 전진(회사 검색 기본 경로). 한쪽만이면 검색 뷰 유지.
+// deps.onPairReady: 두 회사가 확정된 시점 훅(app.js가 익명 쌍 로그를 건다, 2026-07-31).
+// 여기가 문턱인 이유 — 이전에는 "비교하기 성공"에서만 기록해 연봉·상승률까지 다 채운
+// 사용자만 집계에 잡혔고, 그 결과 11일간 집계가 0건이 됐다. 회사 둘을 고른 것 자체가
+// 이미 관심 신호다. 훅이 없으면(구 호출부·위젯 클릭) 아무 일도 하지 않는다.
 export function maybeAdvance(state, deps) {
   if (state.matched.a && state.matched.b) {
     renderInputView(state, deps);
     if (typeof deps.go === 'function') deps.go('input');
+    if (typeof deps.onPairReady === 'function') {
+      try { deps.onPairReady(state); } catch { /* 로그 실패는 비교 흐름에 무해 */ }
+    }
   }
 }
 

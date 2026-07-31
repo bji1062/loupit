@@ -268,6 +268,16 @@ describe('pickTrendingPair (트렌딩 위젯 클릭 배선)', () => {
     assert.equal(state.matched.a, null);
     assert.equal(went, false);
   });
+
+  // 자기강화 루프 차단(2026-07-31): 위젯이 보여준 조합을 클릭했다는 이유로 그 조합을
+  // 다시 집계에 넣으면 1위가 스스로를 계속 밀어올린다. 클릭 경로만 onPairReady를 끊는다.
+  test('위젯 클릭은 익명 쌍 로그를 남기지 않는다(onPairReady 미호출)', () => {
+    const state = refState();
+    const logged = [];
+    pickTrendingPair(ITEM, { go: () => {}, onPairReady: () => logged.push(1) }, state);
+    assert.equal(state.matched.b.comp_id, 2, '프리필 자체는 정상 동작');
+    assert.equal(logged.length, 0, '위젯 클릭이 집계를 밀어올리면 순위가 자기 자신으로 굳는다');
+  });
 });
 
 // ── T-06.10.2: runReport 재계산 오케스트레이션 ──────────────────────────────
