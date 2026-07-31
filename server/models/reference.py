@@ -39,6 +39,14 @@ class Benefit(BaseModel):  # FR-D5 / TCOMPANY_BENEFIT
     badge_src_cd: str | None = None  # ∈ {scrape_official,scrape_fallback,ai_parse,manual,user_report}
     badge_src_url_ctnt: str | None = None
     sort_order_no: int | None = None
+    # 출처 계보(2026-07-31) — `seed`(시드 원본=공식) | `edited`(공식·재직자 수정) | `member`(재직자 등록).
+    # DB 컬럼이 아니라 `services/reference.py` 가 편집 이력에서 **파생**한다(원장이 유일 근거).
+    #
+    # 🚨 여기 선언하지 않으면 **API 응답에서 조용히 사라진다** — 라우터가 `ReferenceBundle.
+    #    model_validate` 로 검증하며 모르는 필드를 떨어뜨리기 때문이다(2026-07-31 실발현:
+    #    정적 페이지는 빌더를 직접 써서 배지가 나오는데 비교 리포트·디렉터리는 영영 '공식'만
+    #    보였다). 번들에 필드를 더할 때는 **반드시 이 모델도 함께** 고쳐라.
+    edit_origin: str = "seed"
 
 
 class Company(BaseModel):  # FR-D4 / TCOMPANY (+aliases,+benefits 인라인)

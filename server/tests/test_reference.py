@@ -40,6 +40,8 @@ class _FakeCursor:
             self._last_rows = self._datasets["companies"]
         elif "TCOMPANY_ALIAS" in sql and "WHERE" not in sql:
             self._last_rows = self._datasets["aliases"]
+        elif "TBENEFIT_EDIT_LOG" in sql:
+            self._last_rows = self._datasets["edit_origin"]
         elif "TCOMPANY_BENEFIT" in sql and "WHERE" not in sql:
             self._last_rows = self._datasets["benefits"]
         else:
@@ -112,6 +114,13 @@ def _builder_datasets() -> dict[str, list[dict]]:
             {"comp_id": 1, "alias_nm": "testco"},
             {"comp_id": 2, "alias_nm": "노설명회사"},
         ],
+        # 편집 이력 파생 표본 — benefit_id 20(식대)만 재직자가 등록한 것으로 둔다.
+        # 그러면 복지 2행이 각각 member / seed 가 되어 **양쪽 경로가 실제로 실행**된다
+        # (한쪽만 나오면 다른 쪽 분기는 한 줄도 안 돌고 초록이 된다).
+        # 세 상태의 판정 규칙 자체는 아래 `_edit_origin` 단위 테스트가 소유한다.
+        "edit_origin": [
+            {"benefit_id": 20, "has_create": 1, "has_update": 0},
+        ],
         "benefits": [
             {
                 "comp_id": 1,
@@ -129,6 +138,7 @@ def _builder_datasets() -> dict[str, list[dict]]:
                 "badge_src_cd": "scrape_official",
                 "badge_src_url_ctnt": "https://testco.example/careers",
                 "sort_order_no": 1,
+                "benefit_id": 20,
             },
             {
                 "comp_id": 2,
@@ -146,6 +156,7 @@ def _builder_datasets() -> dict[str, list[dict]]:
                 "badge_src_cd": "ai_parse",
                 "badge_src_url_ctnt": None,
                 "sort_order_no": 1,
+                "benefit_id": 30,
             },
         ],
     }
@@ -408,3 +419,101 @@ async def test_TR7_contract_violation_returns_500(client, bundle_stub, monkeypat
     assert resp.status_code == 500
     assert resp.json() == {"detail": "일시적인 오류가 발생했습니다."}
     assert "부적합" not in resp.text
+
+
+# ── 출처 계보 파생 (2026-07-31, 배지 3종) ──────────────────────────────────
+#
+# 배지는 "누가 마지막으로 손댔나"를 말한다. 근거는 `TBENEFIT_EDIT_LOG` 하나뿐이고
+# 별도 컬럼을 두지 않는다 — 원장과 컬럼이 어긋나는 날 어느 쪽이 참인지 알 수 없기 때문이다.
+
+
+def test_edit_origin_rule():
+    """`create` 가 `update` 를 이긴다 — 등록 후 스스로 고쳐도 그 줄의 기원은 등록이다."""
+    from server.services.reference import _edit_origin
+
+    assert _edit_origin(None) == "seed", "이력이 없으면 시드 원본 = 공식"
+    assert _edit_origin({}) == "seed"
+    assert _edit_origin({"has_create": 0, "has_update": 1}) == "edited"
+    assert _edit_origin({"has_create": 1, "has_update": 0}) == "member"
+    assert _edit_origin({"has_create": 1, "has_update": 1}) == "member", "등록 기원이 이긴다"
+
+
+@pytest.mark.asyncio
+async def test_builder_attaches_edit_origin_and_hides_join_key():
+    """번들의 모든 복지가 `edit_origin` 을 갖고, **조인 키는 새어 나가지 않는다**.
+
+    `benefit_id` 는 파생을 위해 SQL 에서만 꺼내 쓰고 번들 계약에는 넣지 않는다 —
+    넣는 순간 공개 응답의 필드가 하나 늘고, 되돌리기 어려운 계약이 된다.
+    """
+    from server.services.reference import build_reference_bundle
+
+    bundle = await build_reference_bundle(_FakeConn(_builder_datasets()))
+    origins = [b["edit_origin"] for c in bundle["companies"] for b in c["benefits"]]
+    assert origins, "복지가 하나도 없다 — 이 테스트가 공회전한다"
+    assert set(origins) == {"member", "seed"}, f"양쪽 경로가 실행되지 않았다: {origins}"
+    for c in bundle["companies"]:
+        for b in c["benefits"]:
+            assert "benefit_id" not in b, "조인 키가 번들 계약으로 새어 나갔다"
+
+
+@pytest.mark.asyncio
+async def test_builder_survives_missing_edit_log():
+    """편집 이력 조회가 실패해도 **익명 열람은 죽지 않는다**(INV-1).
+
+    이 함수는 회사·복지 전체의 유일한 공급원이다. 참여(M9) 테이블 하나 때문에 익명 사용자가
+    빈 사이트를 보면 안 된다 → 전부 '시드 원본'(공식)으로 보고 계속한다. 대신 경고를 남긴다.
+    """
+    from server.services.reference import build_reference_bundle
+
+    datasets = _builder_datasets()
+    conn = _FakeConn(datasets)
+
+    original = conn._cursor.execute
+
+    async def boom(sql, params=()):
+        if "TBENEFIT_EDIT_LOG" in sql:
+            raise RuntimeError("테이블 없음 모의")
+        return await original(sql, params)
+
+    conn._cursor.execute = boom
+    bundle = await build_reference_bundle(conn)
+    origins = {b["edit_origin"] for c in bundle["companies"] for b in c["benefits"]}
+    assert origins == {"seed"}, "이력 실패 시 전부 시드로 떨어져야 한다"
+    assert sum(len(c["benefits"]) for c in bundle["companies"]) > 0, "복지가 사라졌다"
+
+
+@pytest.mark.asyncio
+async def test_response_model_keeps_every_builder_field():
+    """🚨 **빌더가 만든 필드는 응답 모델을 통과해야 한다.**
+
+    라우터는 `ReferenceBundle.model_validate(bundle)` 로 검증하는데, Pydantic 은 **모르는
+    필드를 조용히 떨어뜨린다.** 2026-07-31 에 실제로 그랬다 — `edit_origin` 을 빌더에만 넣고
+    모델에 선언하지 않아, 정적 페이지(빌더 직접 소비)는 새 배지가 나오는데 비교 리포트·
+    디렉터리(API 소비)는 영영 '공식'만 보였다. 서버도 클라이언트도 아무 오류를 내지 않는다.
+
+    특정 필드가 아니라 **일반 계약**으로 잰다 — 다음에 필드를 더할 때도 이 테스트가 잡는다.
+    """
+    from server.models.reference import ReferenceBundle
+    from server.services.reference import build_reference_bundle
+
+    bundle = await build_reference_bundle(_FakeConn(_builder_datasets()))
+    roundtrip = ReferenceBundle.model_validate(bundle).model_dump()
+
+    def missing(built, kept, path=""):
+        out = []
+        if isinstance(built, dict):
+            for k, v in built.items():
+                if k not in kept:
+                    out.append(f"{path}.{k}")
+                else:
+                    out += missing(v, kept[k], f"{path}.{k}")
+        elif isinstance(built, list) and built and isinstance(built[0], (dict, list)):
+            for i, v in enumerate(built):
+                if i < len(kept):
+                    out += missing(v, kept[i], f"{path}[{i}]")
+        return out
+
+    lost = missing(bundle, roundtrip)
+    assert not lost, f"응답 모델이 떨어뜨린 필드(= API 소비자는 영영 못 본다): {lost}"
+    # 자기검증 — 비교 대상이 비어 있으면 위 어서션은 언제나 참이다.
+    assert bundle["companies"] and bundle["companies"][0]["benefits"], "표본이 비었다"

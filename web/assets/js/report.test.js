@@ -194,6 +194,35 @@ describe('T-06.11.4 renderBands', () => {
     assert.ok(!text.includes('출처'), '출처 라벨이 남아 있다');
   });
 
+  test('출처 계보 배지 — 재직자 등록/수정이 badge_cd 를 이긴다', () => {
+    // 배지가 "누가 마지막으로 손댔나"를 말한다. 편집은 require_employment 게이트 뒤라
+    // 그 회사 재직 인증자만 남길 수 있다 — 그래서 '사용자'가 아니라 '재직자'다.
+    const items = [
+      { benefit_nm: '식대', badge_cd: 'official', expires_dtm: null, edit_origin: 'seed' },
+      { benefit_nm: '기숙사', badge_cd: 'official', expires_dtm: null, edit_origin: 'edited' },
+      { benefit_nm: '카페', badge_cd: 'official', expires_dtm: null, edit_origin: 'member' },
+    ];
+    const mount = new FakeElement('div');
+    renderBands({ totalRange: [0, 0] }, items, mount, Date.now());
+    const list = mount.children[0];
+    assert.equal(list.children[0].children[1].textContent, '공식');
+    assert.equal(list.children[1].children[1].textContent, '공식·수정');
+    assert.equal(list.children[2].children[1].textContent, '재직자 등록');
+    // 클래스도 갈라져야 색이 구분된다(라벨만 바뀌면 색맹 사용자에겐 같은 배지다).
+    assert.equal(list.children[1].children[1].className, 'badge badge--edited');
+    assert.equal(list.children[2].children[1].className, 'badge badge--member');
+  });
+
+  test('만료가 출처 계보를 이긴다 — 신선도가 최우선', () => {
+    // 뒤집히면 만료된 재직자 등록 항목이 '재직자 등록'으로만 보여, 사용자는 그 값이
+    // 낡았다는 가장 급한 정보를 놓친다. generator/format.py 와 같은 우선순위여야 한다.
+    const mount = new FakeElement('div');
+    renderBands({ totalRange: [0, 0] }, [
+      { benefit_nm: 'x', badge_cd: 'official', expires_dtm: '2000-01-01T00:00:00Z', edit_origin: 'member' },
+    ], mount, Date.now());
+    assert.equal(mount.children[0].children[0].children[1].textContent, '만료');
+  });
+
   test('자기검증 — 표본이 실제로 URL 을 담고 있다', () => {
     // 표본에 URL 이 없으면 "URL 이 안 보인다"는 언제나 참이라 아무것도 증명하지 못한다(함정 ㉙).
     assert.ok(ITEMS.some((i) => (i.badge_src_url_ctnt || '').startsWith('https://')));

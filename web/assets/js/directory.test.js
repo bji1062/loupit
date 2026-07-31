@@ -221,3 +221,39 @@ describe('회사 상세 링크(slugOf·companyHref)', () => {
     assert.equal(document.querySelector('.dir-detail-link'), null);
   });
 });
+
+
+// ── 출처 계보 배지 (2026-07-31) ─────────────────────────────────────────────
+// 배지가 "누가 마지막으로 손댔나"를 말한다. 편집은 require_employment 게이트 뒤라
+// **그 회사 재직 인증자만** 남길 수 있다 — 그래서 '사용자'가 아니라 '재직자'다.
+// 디렉터리 패널은 요약이라 짧은 라벨을 쓴다(만료·확인일은 회사 상세가 소유).
+describe('badgeFor — 출처 계보', () => {
+  beforeEach(() => loadDom());
+
+  const ben = (origin, badge_cd = 'official') => ({
+    benefit_cd: 'x', benefit_nm: '항목', benefit_amt: 10, benefit_ctgr_cd: 'perks',
+    qual_yn: false, amt_source: 'stated', badge_cd, edit_origin: origin,
+  });
+
+  function badgesFor(benefit) {
+    mountDirectory({ REF: { companies: [comp(1, '가나다상사', [benefit])] } });
+    document.querySelector('.dir-count').dispatchEvent(new window.Event('click', { bubbles: true }));
+    document.querySelector('.dir-comp-toggle, .dir-comp button')
+      ?.dispatchEvent(new window.Event('click', { bubbles: true }));
+    return [...document.querySelectorAll('.badge')].map((e) => [e.className, e.textContent]);
+  }
+
+  test('edit_origin 이 badge_cd 를 이긴다', () => {
+    for (const [origin, badge_cd, cls, label] of [
+      ['seed', 'official', 'badge badge-official', '공식'],
+      ['edited', 'official', 'badge badge-edited', '공식·수정'],
+      ['member', 'official', 'badge badge-member', '재직자 등록'],
+      ['seed', 'est', 'badge badge-est', '추정'],
+    ]) {
+      loadDom();
+      const got = badgesFor(ben(origin, badge_cd));
+      assert.ok(got.length, `${origin}/${badge_cd}: 배지가 렌더되지 않았다 — 어서션이 공회전한다`);
+      assert.deepEqual(got[0], [cls, label], `${origin}/${badge_cd}`);
+    }
+  });
+});

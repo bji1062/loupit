@@ -364,16 +364,21 @@ export function renderBenefitMatrix(rows, mountEl, ctx = {}) {
 }
 
 // ── T-06.11.4 renderBands — 항목 배지·밴드 표시(FR-41). 출처 링크는 내지 않는다 ──
-function badgeLabel(item, now) {
-  const expired = item.expires_dtm != null && Date.parse(item.expires_dtm) < now;
-  if (expired) return '만료'; // RP-2 만료 경고색
-  return item.badge_cd === 'official' ? '공식' : '추정';
+// 배지 우선순위 — generator/format.py `badge_state` 와 **같은 순서**여야 한다.
+// (만료 → 재직자 등록 → 공식·재직자 수정 → 공식 → 추정)
+// 두 곳이 갈라지면 같은 복지가 정적 페이지와 비교 리포트에서 다른 배지를 단다.
+function badgeKind(item, now) {
+  if (item.expires_dtm != null && Date.parse(item.expires_dtm) < now) return 'expired';
+  if (item.edit_origin === 'member') return 'member';
+  if (item.edit_origin === 'edited') return 'edited';
+  return item.badge_cd === 'official' ? 'official' : 'est';
 }
-function badgeClass(item, now) {
-  const expired = item.expires_dtm != null && Date.parse(item.expires_dtm) < now;
-  if (expired) return 'badge badge--expired';
-  return item.badge_cd === 'official' ? 'badge badge--official' : 'badge badge--est';
-}
+// 비교 리포트는 표가 좁아 짧은 라벨을 쓴다(정적 페이지는 전체 문구).
+const BADGE_TEXT = {
+  expired: '만료', member: '재직자 등록', edited: '공식·수정', official: '공식', est: '추정',
+};
+function badgeLabel(item, now) { return BADGE_TEXT[badgeKind(item, now)]; }
+function badgeClass(item, now) { return 'badge badge--' + badgeKind(item, now); }
 
 export function renderBands(slotResult, benItems, mountEl, now = Date.now()) {
   mountEl.replaceChildren();

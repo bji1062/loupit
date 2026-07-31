@@ -36,7 +36,11 @@ export function companyHref(compEngNm) {
 }
 
 function badgeFor(b) {
-  // 기존 배지 체계(SP-DS .badge-official/.badge-est) 재사용 — 출처 신뢰도 정직 표기(FR-05)
+  // 배지 체계(SP-DS) 재사용 — 출처 계보 정직 표기(FR-05).
+  // ⚠ 만료(stale)는 여기서 다루지 않는다: 이 패널은 요약이고 만료·확인일은 회사 상세가
+  //   소유한다(아래 '이 패널에 없는 정보' 안내와 같은 취지).
+  if (b.edit_origin === 'member') return el('span', { class: 'badge badge-member', text: '재직자 등록' });
+  if (b.edit_origin === 'edited') return el('span', { class: 'badge badge-edited', text: '공식·수정' });
   if (b.badge_cd === 'official') return el('span', { class: 'badge badge-official', text: '공식' });
   return el('span', { class: 'badge badge-est', text: '추정' });
 }

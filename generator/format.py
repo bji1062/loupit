@@ -37,17 +37,34 @@ def _to_dt(v) -> datetime:
 
 
 def badge_state(benefit: dict, now: datetime) -> dict:
-    """공식/추정/만료 3파생 배지 (FR-54·FR-05).
+    """배지 파생 (FR-54·FR-05). **밴드 계수(DEC-2)는 산출하지 않는다**(SP-CALC 소유, INV-5).
 
-    `expires_dtm < now` → stale(최우선), `badge_cd=="official"` → official,
-    그 외 → est. **밴드 계수(DEC-2)는 산출하지 않는다**(SP-CALC 소유, INV-5).
+    두 축을 **선형 우선순위**로 합친다. 격자(2×3)로 만들면 읽는 사람이 조합을 해석해야 하고,
+    배지는 한 눈에 읽히지 않으면 없느니만 못하다.
+
+      1. 만료   — `expires_dtm < now`. **신선도가 최우선**이다. 누가 넣었든 오래된 값은
+                  오래된 값이고, 그게 사용자에게 가장 급한 정보다.
+      2. 재직자 등록 — 편집 이력에 `create`. 원래 데이터에 없던 항목을 재직자가 더한 것.
+      3. 공식·재직자 수정 — 편집 이력에 `update`. 공식 값을 재직자가 고친 것.
+      4. 공식   — 편집 이력 없음 = 시드 원본(회사 공식 페이지 기준).
+      5. 추정   — 그 외.
+
+    ⚠ 2·3 의 '재직자'는 수사가 아니다 — 복지 편집은 `require_employment` 게이트 뒤라
+      **그 회사 재직 인증을 통과한 사람만** 쓸 수 있다(2026-07-31 문구 결정).
+    ⓘ `edit_origin` 은 `services/reference.py` 가 편집 이력에서 파생한다(별도 컬럼 없음 —
+      원장이 유일한 근거여야 어긋날 수가 없다).
     `now`는 인자로 주입해 결정성을 보장한다.
     """
     exp = benefit.get("expires_dtm")
     if exp and _to_dt(exp) < now:
         return {"code": "stale", "label": "만료·재확인 필요"}
+    origin = benefit.get("edit_origin")
+    if origin == "member":
+        return {"code": "member", "label": "재직자 등록"}
+    if origin == "edited":
+        return {"code": "edited", "label": "공식·재직자 수정"}
     if benefit.get("badge_cd") == "official":
-        return {"code": "official", "label": "공식 확인"}
+        return {"code": "official", "label": "공식"}
     return {"code": "est", "label": "추정"}
 
 

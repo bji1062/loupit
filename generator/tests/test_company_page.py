@@ -109,7 +109,7 @@ def test_gc12_work_style_section_omitted_when_no_true_keys():
 
 def test_gc13_official_badge_label_present(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
-    assert "공식 확인" in p.html
+    assert "공식" in p.html
 
 
 def test_gc13_estimated_badge_label_present(fake_bundle, fake_now):
@@ -125,7 +125,7 @@ def test_gc13_stale_badge_label_present_for_expired_benefit(fake_bundle, fake_no
 
 def test_gc13_badge_is_text_label_not_only_color(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
-    assert re.search(r'class="badge badge-(official|est|stale)"[^>]*>(공식 확인|추정|만료·재확인 필요)', p.html)
+    assert re.search(r'class="badge badge-(official|est|stale|edited|member)"[^>]*>(공식|추정|만료·재확인 필요|공식·재직자 수정|재직자 등록)', p.html)
 
 
 # ── GC-14: 출처 아웃링크 미노출 (2026-07-30 개정) ──────────────────────────

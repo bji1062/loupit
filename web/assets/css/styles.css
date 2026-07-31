@@ -47,6 +47,10 @@
   /* ── 3) 배지·밴드·광고 라벨 색(--bg-1 위 대비 AA) ── */
   --badge-official-fg:#046a4e; --badge-official-bg:#e6f6ee;
   --badge-est-fg:#9a5108;      --badge-est-bg:#fbefdb;
+  /* 출처 계보 배지(2026-07-31) — 공식(초록)에서 파랑·보라로 갈라 "사람이 손댔다"를 구분한다.
+     밝은 배경 + 짙은 전경(기존 배지와 같은 규약)이라 대비가 확보된다. */
+  --badge-edited-fg:#1a5490;   --badge-edited-bg:#e4f0fb;
+  --badge-member-fg:#5b3a9e;   --badge-member-bg:#efe9fb;
   --badge-expired-fg:#b23a0b;  --badge-expired-bg:#fceadd;
   --badge-qual-fg:var(--t2);   --badge-qual-bg:#eef0f2;
   --band-label-fg:var(--t3);   --band-expired-fg:var(--amber);
@@ -226,6 +230,11 @@ main p { margin-top:var(--sp-3); }
 }
 .badge-official { background:var(--badge-official-bg); color:var(--badge-official-fg); }
 .badge-est { background:var(--badge-est-bg); color:var(--badge-est-fg); }
+.badge-edited { background:var(--badge-edited-bg); color:var(--badge-edited-fg); }
+.badge-member { background:var(--badge-member-bg); color:var(--badge-member-fg); }
+/* 만료 배지는 코드가 `stale` 인데 CSS 는 `.badge-expired` 만 있어 **스타일이 안 먹고 있었다**
+   (2026-07-31 발견, 선재 결함). 같은 자리라 함께 고친다. */
+.badge-stale { background:var(--badge-expired-bg); color:var(--badge-expired-fg); }
 .badge-expired, .benefit-expires { color:var(--badge-expired-fg); font-weight:var(--fw-medium); }
 .chip {
   display:inline-flex; align-items:center; gap:var(--sp-2);
@@ -385,6 +394,8 @@ main p { margin-top:var(--sp-3); }
 /* report.js badgeClass의 이중대시 변형(badge--official 등) 정합 — 단일대시와 동일 팔레트 */
 .badge--official { background:var(--badge-official-bg); color:var(--badge-official-fg); }
 .badge--est { background:var(--badge-est-bg); color:var(--badge-est-fg); }
+.badge--edited { background:var(--badge-edited-bg); color:var(--badge-edited-fg); }
+.badge--member { background:var(--badge-member-bg); color:var(--badge-member-fg); }
 .badge--expired { background:var(--badge-expired-bg); color:var(--badge-expired-fg); }
 /* 버터플라이(back-to-back) 카테고리 차트 — 예전 loupit 디자인 이식. A는 중앙축서 왼쪽, B는 오른쪽. */
 .rp-catbfly { margin:var(--sp-3) 0 var(--sp-5); }
