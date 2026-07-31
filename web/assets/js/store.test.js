@@ -18,7 +18,7 @@ class FakeLocalStorage {
 
 globalThis.localStorage = new FakeLocalStorage();
 
-const { store, recent } = await import('./store.js');
+const { store, recent, inputDraft, hasAnyInput, DRAFT_TTL_MS } = await import('./store.js');
 
 beforeEach(() => {
   globalThis.localStorage.clear();
@@ -170,5 +170,69 @@ describe('T-06.12.3 recent.list 손상 폐기 (UT-STORE-3)', () => {
     recent.clear();
     assert.equal(globalThis.localStorage.getItem('loupit.recentComparisons'), null);
     assert.deepEqual(recent.list(), []);
+  });
+});
+
+// ── 입력 초안(2026-07-31) — 페이지 이동·새로고침에서 "작성 중"을 지킨다 ──────
+// 계기: 회사 복지를 보러 가면 전체 페이지 이동이라 입력하던 연봉·상승률이 날아갔다.
+describe('inputDraft — 저장·만료·손상 폐기', () => {
+  const DRAFT = {
+    slots: { a: { comp_id: 1, checked: ['meal'] }, b: { comp_id: 2, checked: [] } },
+    salS: { a: { low: 4000, high: 6000 } }, selectedRate: 10,
+    cmtS: { a: null, b: null }, wsState: { a: {}, b: {} }, curPri: '워라밸', curSacrifice: null,
+  };
+
+  test('저장 → 로드 왕복', () => {
+    assert.equal(inputDraft.save(DRAFT, 1000), true);
+    assert.deepEqual(inputDraft.load(1000), DRAFT);
+  });
+
+  test('TTL 경과 → null + 폐기(오래된 입력이 말없이 되살아나면 안 된다)', () => {
+    inputDraft.save(DRAFT, 1000);
+    assert.equal(inputDraft.load(1000 + DRAFT_TTL_MS + 1), null);
+    assert.equal(globalThis.localStorage.getItem('loupit.inputDraft'), null, '만료분은 지워진다');
+  });
+
+  test('TTL 경계 직전은 살아 있다', () => {
+    inputDraft.save(DRAFT, 1000);
+    assert.ok(inputDraft.load(1000 + DRAFT_TTL_MS));
+  });
+
+  test('빈 초안은 저장하지 않고 기존 것을 지운다("새 비교" 뒤 잔존 방지)', () => {
+    inputDraft.save(DRAFT, 1000);
+    assert.equal(inputDraft.save({ slots: { a: {}, b: {} }, salS: { a: {} }, selectedRate: null, cmtS: {} }, 2000), false);
+    assert.equal(inputDraft.load(2000), null);
+  });
+
+  test('손상·버전불일치 봉투 → null + 폐기', () => {
+    globalThis.localStorage.setItem('loupit.inputDraft', '{not json');
+    assert.equal(inputDraft.load(1000), null);
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({ v: 99, savedAt: 1000, draft: DRAFT }));
+    assert.equal(inputDraft.load(1000), null);
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({ v: 1, draft: DRAFT })); // savedAt 없음
+    assert.equal(inputDraft.load(1000), null);
+  });
+
+  test('localStorage 불가 → 저장 생략·무크래시(FR-44)', () => {
+    globalThis.localStorage._throwOnSet = true;
+    assert.equal(inputDraft.save(DRAFT, 1000), false);
+    assert.doesNotThrow(() => inputDraft.load(1000));
+  });
+
+  test('clear', () => {
+    inputDraft.save(DRAFT, 1000);
+    inputDraft.clear();
+    assert.equal(inputDraft.load(1000), null);
+  });
+
+  test('hasAnyInput — 되살릴 것이 하나라도 있는가', () => {
+    assert.equal(hasAnyInput(null), false);
+    assert.equal(hasAnyInput({}), false);
+    assert.equal(hasAnyInput({ slots: { a: {}, b: {} } }), false);
+    assert.equal(hasAnyInput({ slots: { a: { comp_id: 1 } } }), true);
+    assert.equal(hasAnyInput({ slots: { b: { comp_tp_cd: 'large' } } }), true, '직접 입력 유형도 입력이다');
+    assert.equal(hasAnyInput({ salS: { a: { low: 4000 } } }), true);
+    assert.equal(hasAnyInput({ selectedRate: 10 }), true);
+    assert.equal(hasAnyInput({ cmtS: { a: 30 } }), true);
   });
 });

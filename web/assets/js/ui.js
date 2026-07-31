@@ -354,6 +354,11 @@ export function mountUI(state, deps = {}) {
   bindReportNav(state, deps);
   bindBootRetry(state, deps);
   bindHeaderSearch(state, deps);
-  // 프리필로 이미 양 슬롯이 채워졌다면 입력 뷰 컨트롤을 렌더한다.
-  if (state.matched && (state.matched.a || state.matched.b)) renderInputView(state, deps);
+  // 프리필·초안으로 이미 슬롯이 채워졌다면 입력 뷰 컨트롤을 렌더한다.
+  // chosenType 도 보는 이유(2026-07-31): 직접 입력 모드는 matched 가 null 이라 회사 조건만
+  // 보면 초안 복원 후 입력 뷰가 비어 보인다(hasSlotState 는 이미 chosenType 을 센다 — 두 판정이
+  // 어긋나면 "상태는 있는데 화면은 빈" 상태가 된다).
+  const hasSlot = state.matched && (state.matched.a || state.matched.b);
+  const hasType = state.chosenType && (state.chosenType.a || state.chosenType.b);
+  if (hasSlot || hasType) renderInputView(state, deps);
 }

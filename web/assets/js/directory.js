@@ -1,11 +1,19 @@
 // web/assets/js/directory.js — 등록 회사 디렉토리(검색 카드 우측 상단 카운트 → 전체 목록).
 //
 // "등록된 회사 수: N" 버튼을 검색 카드에 렌더하고, 클릭 시 REF.companies를 가나다순으로
-// 펼쳐 보여준다. 목록에서 회사를 클릭하면 그 회사의 복지가 아코디언으로 펼쳐진다(한 번에
-// 하나만). 데이터는 부팅 참조 번들(REF) 재사용 — 추가 네트워크 0(SP-FE-5 소비만).
+// 펼쳐 보여준다. 목록의 회사를 누르면 **정적 상세 페이지로 이동**한다.
+// 데이터는 부팅 참조 번들(REF) 재사용 — 추가 네트워크 0(SP-FE-5 소비만).
 // 위젯 실패·host 부재는 비교 툴에 무해해야 한다(throw 없음).
+//
+// ── 아코디언을 걷어낸 이유(2026-07-31) ──────────────────────────────────────
+// 같은 회사의 복지를 그리는 화면이 셋이었다: 이 아코디언(요약) · GNB 검색의 SPA 상세 ·
+// 정적 `/company/<slug>`. 그런데 **가장 많이 보여주고 광고가 붙은 것은 정적 페이지**인데
+// (확인일·만료·근무형태·관련 회사 링크·광고 2슬롯) 유입은 거기로 가지 않았다. 2026-07-19 에
+// 고아 페이지를 고치려고 넣은 `상세 보기 →` 링크는 아코디언을 두 번 펼쳐야 나오는 자리라
+// 사실상 묻혀 있었다. 디렉터리는 이제 **찾기만** 하고, 읽기는 상세가 맡는다.
+// ⚠ 행 클릭 = 전체 페이지 이동이라 비교 입력이 날아갈 수 있다 → app.js 입력 초안(inputDraft)이
+//   그 손실을 막는다. 초안 배선을 걷어내면 이 목록이 사용자 입력을 지우게 된다.
 import { el } from './dom.js';
-import { badgeKind, badgeClass, BADGE_LABEL_SHORT } from './badge.js';
 
 // ── 순수: 한국어 가나다순 정렬(사본 — 원본 REF 불변) ────────────────────────
 export function sortCompanies(companies) {
@@ -36,50 +44,25 @@ export function companyHref(compEngNm) {
   return s ? '/company/' + s : null;
 }
 
-function badgeFor(b) {
-  // 판정은 badge.js 가 소유한다(정본 = generator/format.py badge_state) — 여기서 복사하지 마라.
-  // ⚠ 만료(stale)는 여기서 다루지 않는다: 이 패널은 요약이고 만료·확인일은 회사 상세가
-  //   소유한다(아래 '이 패널에 없는 정보' 안내와 같은 취지). 그 결정을 침묵이 아니라
-  //   withExpiry:false 로 드러낸다.
-  const kind = badgeKind(b, { withExpiry: false });
-  return el('span', { class: badgeClass(kind), text: BADGE_LABEL_SHORT[kind] });
+// ── 순수: 행 보조 정보("반도체 · 복지 12개") — 찾을 때 실제로 쓸모 있는 값만 ──
+// 복지 수는 세어서 나오는 사실이라 과장이 없다(금액 합계 같은 추정치를 여기 넣지 마라).
+export function rowMeta(company) {
+  const n = Array.isArray(company && company.benefits) ? company.benefits.length : 0;
+  return [company && company.industry_nm, n > 0 ? '복지 ' + n + '개' : '']
+    .filter(Boolean).join(' · ');
 }
 
-function benefitsPanel(company) {
-  const box = el('div', { class: 'dir-benefits' });
-  box.hidden = true;
-  const items = Array.isArray(company.benefits) ? company.benefits : [];
-  if (!items.length) {
-    box.append(el('p', { class: 'dir-ben-empty', text: '등록된 복지 정보가 없습니다.' }));
-  } else {
-    const ul = el('ul', { class: 'dir-ben-list' });
-    for (const b of items) {
-      const li = el('li', { class: 'dir-ben-row' });
-      li.append(el('span', { class: 'dir-ben-nm', text: benefitLine(b) }));
-      li.append(badgeFor(b));
-      ul.append(li);
-    }
-    box.append(ul);
-  }
-  // 정적 상세 페이지 진입점(2026-07-19 고아 페이지 해소): 회사 95·조합 3 페이지로
-  // 가는 내부 링크가 사이트 전체에 0건이라 sitemap 외 도달 경로가 없었다. 상세에는
-  // 출처·확인일·만료 배지 등 이 패널에 없는 정보가 있다.
-  const href = companyHref(company.comp_eng_nm);
-  if (href) {
-    box.append(el('a', { class: 'dir-detail-link', href, text: company.comp_nm + ' 상세 보기 →' }));
-  }
-  return box;
-}
-
-function companyRow(company, onToggle) {
+function companyRow(company) {
   const li = el('li', { class: 'dir-row' });
-  const btn = el('button', { type: 'button', class: 'dir-comp', 'aria-expanded': 'false' });
-  btn.append(el('span', { class: 'dir-comp-nm', text: company.comp_nm }));
-  const meta = [company.industry_nm].filter(Boolean).join(' · ');
-  if (meta) btn.append(el('span', { class: 'dir-comp-meta', text: meta }));
-  const ben = benefitsPanel(company);
-  btn.addEventListener('click', () => onToggle(btn, ben));
-  li.append(btn, ben);
+  const href = companyHref(company.comp_eng_nm);
+  // slug 를 만들 수 없는 회사(영문 식별자 부재)는 **링크를 만들지 않는다** — 404 로 가는
+  // 링크는 링크 없는 것보다 나쁘다(출처 아웃링크를 내린 것과 같은 판단).
+  const node = href ? el('a', { class: 'dir-comp', href })
+    : el('span', { class: 'dir-comp dir-comp-plain' });
+  node.append(el('span', { class: 'dir-comp-nm', text: company.comp_nm }));
+  const meta = rowMeta(company);
+  if (meta) node.append(el('span', { class: 'dir-comp-meta', text: meta }));
+  li.append(node);
   return li;
 }
 
@@ -99,36 +82,18 @@ export function mountDirectory(state) {
 
   const panel = el('div', { class: 'dir-panel' });
   panel.hidden = true;
-  panel.append(el('p', { class: 'dir-hint', text: '가나다순 전체 목록 — 회사를 누르면 복지가 펼쳐집니다.' }));
+  panel.append(el('p', {
+    class: 'dir-hint',
+    text: '가나다순 전체 목록 — 회사를 누르면 복지 상세 페이지로 이동합니다.',
+  }));
   const list = el('ol', { class: 'dir-list' });
-
-  let openBen = null; // 아코디언: 한 번에 한 회사만 펼침
-  let openBtn = null;
-  function toggle(btn, ben) {
-    const willOpen = ben.hidden;
-    if (openBen && openBen !== ben) {
-      openBen.hidden = true;
-      if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
-    }
-    ben.hidden = !willOpen;
-    btn.setAttribute('aria-expanded', String(willOpen));
-    openBen = willOpen ? ben : null;
-    openBtn = willOpen ? btn : null;
-  }
-  for (const c of companies) list.append(companyRow(c, toggle));
+  for (const c of companies) list.append(companyRow(c));
   panel.append(list);
   host.append(panel);
 
-  function resetAccordion() { // 재클릭 = 새로고침: 펼쳐진 복지 전부 접힘
-    if (openBen) openBen.hidden = true;
-    if (openBtn) openBtn.setAttribute('aria-expanded', 'false');
-    openBen = null;
-    openBtn = null;
-  }
   count.addEventListener('click', () => {
     panel.hidden = !panel.hidden;
     count.setAttribute('aria-expanded', String(!panel.hidden));
-    resetAccordion(); // 열든 닫든 목록은 항상 초기 상태로
   });
   return { count: companies.length };
 }

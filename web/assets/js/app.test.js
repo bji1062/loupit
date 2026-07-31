@@ -39,8 +39,9 @@ const {
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
   pickTrendingPair, restoreComparison,
   resolveBootScreen, hasSlotState, restoreLatestComparison, onPopState,
+  snapshotInput, restoreInputDraft, bindDraftPersist,
 } = await import('./app.js');
-const { recent } = await import('./store.js');
+const { recent, inputDraft } = await import('./store.js');
 const { COMPARE_LOG_URL } = await import('./trending.js');
 
 beforeEach(() => {
@@ -586,5 +587,130 @@ describe('#12 boot() 광고·동의 배선', () => {
     });
     assert.equal(ads, 1, 'mountAds 배선(랜딩 등 page_type)');
     assert.equal(consent, 1, 'initConsentBanner 배선');
+  });
+});
+
+// ── 입력 초안(2026-07-31) — 복지를 보러 다녀와도 입력이 살아 있어야 한다 ──────
+// 2단계(디렉터리 클릭 → 정적 페이지 이동)가 이 보호 없이는 사용자 입력을 날린다.
+describe('입력 초안 snapshotInput·restoreInputDraft', () => {
+  function refState() {
+    const st = createInitialState();
+    st.REF = {
+      company_types: [], benefit_presets: { large: [] },
+      companies: [
+        { comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large',
+          benefits: [{ benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 240, benefit_ctgr_cd: 'perks', badge_cd: 'official', amt_source: 'stated', qual_yn: false },
+                     { benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120, benefit_ctgr_cd: 'perks', badge_cd: 'est', amt_source: 'estimated', qual_yn: false }] },
+        { comp_id: 2, comp_nm: 'SK하이닉스', comp_eng_nm: 'sk_hynix', comp_tp_cd: 'large', benefits: [] },
+      ],
+    };
+    return st;
+  }
+  beforeEach(() => { globalThis.localStorage.clear(); });
+
+  test('snapshotInput 은 식별자만 담는다(복지 배열을 통째로 넣지 않는다)', () => {
+    const st = refState();
+    restoreInputDraft(st, { draft: { slots: { a: { comp_id: 1 } } }, reflect: () => {} });
+    st.salS.a = { low: 4000, high: 6000 };
+    st.selectedRate = 10;
+    const snap = snapshotInput(st);
+    assert.equal(snap.slots.a.comp_id, 1);
+    assert.deepEqual(snap.slots.a.checked, ['meal', 'bus'], '체크 상태는 cd 목록으로');
+    assert.equal(JSON.stringify(snap).includes('benefit_nm'), false, '복지 본문이 스냅샷에 새면 낡은 값이 되살아난다');
+    assert.deepEqual(snap.salS.a, { low: 4000, high: 6000 });
+    assert.equal(snap.selectedRate, 10);
+  });
+
+  test('왕복 — 회사·연봉·상승률·우선순위가 되살아난다', () => {
+    const a = refState();
+    restoreInputDraft(a, { draft: { slots: { a: { comp_id: 1 }, b: { comp_id: 2 } } }, reflect: () => {} });
+    a.salS.a = { low: 4000, high: 6000 };
+    a.selectedRate = 12;
+    a.curPri = '연봉';
+    a.cmtS = { a: 30, b: 50 };
+    inputDraft.save(snapshotInput(a), 1000);
+
+    const b = refState();
+    assert.equal(restoreInputDraft(b, { draft: inputDraft.load(1000), reflect: () => {} }), true);
+    assert.equal(b.matched.a.comp_id, 1);
+    assert.equal(b.matched.b.comp_id, 2);
+    assert.deepEqual(b.salS.a, { low: 4000, high: 6000 });
+    assert.equal(b.selectedRate, 12);
+    assert.equal(b.curPri, '연봉');
+    assert.deepEqual(b.cmtS, { a: 30, b: 50 });
+    assert.equal(b.benS.a.length, 2, '복지는 REF 최신본에서 다시 채운다');
+  });
+
+  test('체크 해제가 보존된다(기본은 전부 체크라 복원 안 하면 조용히 뒤집힌다)', () => {
+    const st = refState();
+    restoreInputDraft(st, { draft: { slots: { a: { comp_id: 1, checked: ['meal'] } } }, reflect: () => {} });
+    assert.deepEqual(st.benS.a.map((b) => [b.benefit_cd, b.checked]), [['meal', true], ['bus', false]]);
+  });
+
+  test('REF 에 없는 회사(시드에서 사라진 초안) → 조용히 건너뛴다', () => {
+    const st = refState();
+    const ok = restoreInputDraft(st, { draft: { slots: { a: { comp_id: 999 } }, selectedRate: 5 }, reflect: () => {} });
+    assert.equal(ok, false, '되살린 슬롯이 없다');
+    assert.equal(st.matched.a, null);
+    assert.equal(st.selectedRate, 5, '스칼라는 그래도 복원된다');
+  });
+
+  test('직접 입력 유형도 복원된다(프리셋 경로)', () => {
+    const st = refState();
+    restoreInputDraft(st, { draft: { slots: { b: { comp_tp_cd: 'large' } } }, reflect: () => {} });
+    assert.equal(st.chosenType.b, 'large');
+    assert.equal(st.inputMode.b, 'direct');
+  });
+
+  test('초안 없음 → no-op(false)', () => {
+    const st = refState();
+    assert.equal(restoreInputDraft(st, { draft: null }), false);
+  });
+
+  test('bindDraftPersist — 저장이 throw 해도 삼킨다(비교 흐름 무손상)', () => {
+    const persist = bindDraftPersist({ save: () => { throw new Error('quota'); }, state: refState() });
+    assert.doesNotThrow(persist);
+  });
+});
+
+// ── 초안이 화면을 가로채지 않는다(2026-07-31) ────────────────────────────────
+// 부팅 폴백이 "슬롯 있으면 input" 이라, 초안 복원이 대문을 입력 화면으로 바꿔 버렸다.
+// 신규 방문자가 히어로·등록 회사 목록·광고가 있는 랜딩 대신 남의 입력을 본다.
+describe('boot — 초안은 상태만 되살리고 화면은 URL 이 정한다', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [{ comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] }],
+  };
+  function seedDraft() {
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: 1 } }, salS: { a: { low: 4000, high: 5000 } } },
+    }));
+  }
+
+  test('초안만 있고 URL 이 조용하면 → 대문은 search 유지', async () => {
+    seedDraft();
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.ui.screen, 'search', '대문이 입력 화면으로 바뀌면 랜딩이 사라진다');
+    assert.equal(App.state.matched.a.comp_id, 1, '상태는 되살아나 있어야 한다');
+    assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 });
+  });
+
+  test('URL 프리필이 있으면 → input(기존 계약 유지)', async () => {
+    seedDraft();
+    globalThis.location.search = '?a=samsung_elec';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.ui.screen, 'input');
+  });
+
+  test('#input 새로고침이면 → input(사용자가 그 화면에 있었다)', async () => {
+    seedDraft();
+    globalThis.location.hash = '#input';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.ui.screen, 'input');
+  });
+
+  test('초안이 없으면 종전과 동일(하위호환)', async () => {
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.ui.screen, 'search');
   });
 });

@@ -10,7 +10,7 @@ import { mountAds, initConsentBanner } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
 import { findCompanies, renderCompanyView } from './company.js';
-import { recent } from './store.js'; // 부팅 시 #report 딥링크 자동 복원(SP-FE-10.3 L-8) — 소비만 한다
+import { recent, inputDraft } from './store.js'; // 부팅 시 #report 딥링크 자동 복원(SP-FE-10.3 L-8) + 입력 초안
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
 export function createInitialState() {
@@ -147,7 +147,11 @@ export async function boot(hooks = {}) {
     bindBootRetry(App.state, { reboot: () => boot(hooks) }); // 실패 경로에서도 재시도 버튼 배선(#10)
     return err;
   }
-  restoreFromPrefill(); // SP-FE-11 URL 파라미터 → 슬롯 프리필(있으면)
+  // 초안 → 프리필 순서다. URL 이 지정한 슬롯만 아래에서 덮이므로, 정적 회사 페이지의
+  // "이 회사로 비교하기"(`/compare/?a=<eng>`)로 돌아오면 **회사는 URL, 연봉·상승률은 초안**이
+  // 된다 — 복지를 보러 다녀오는 동안 입력이 사라지지 않는다.
+  const draftRestored = restoreInputDraft();
+  const prefilled = restoreFromPrefill(); // SP-FE-11 URL 파라미터 → 슬롯 프리필(있으면)
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
     const appEl = document.getElementById('app');
     if (appEl) appEl.hidden = false;
@@ -188,15 +192,41 @@ export async function boot(hooks = {}) {
   try { mountDirectory(App.state); } catch { /* 디렉토리 실패는 비교 툴 무손상 */ }
   // 부팅 뷰 결정(SP-FE-3.3 규칙 3·5): 해시가 요구한 뷰에 보여줄 상태가 없으면 강등한다.
   // 이 시점에는 restoreFromPrefill(위)이 이미 슬롯을 채웠으므로 hasSlotState가 프리필을 포함한다.
+  // 🚨 초안은 **상태를 되살릴 뿐 화면을 가로채지 않는다**(2026-07-31). 부팅 화면 폴백이
+  // "슬롯이 있으면 input" 이라, 초안이 슬롯을 채우면 대문(`/`)이 대문이 아니게 된다 —
+  // 신규 방문자가 히어로·등록 회사 목록·광고가 있는 랜딩 대신 남이 쓰다 만 입력 화면을 본다.
+  // 화면을 정할 자격은 **URL 이 시킨 것**(프리필 `?a=` · 해시 `#input` 새로고침)뿐이다.
+  // 초안이 없던 시절과 동작이 같아야 하므로 `!draftRestored` 를 함께 본다(하위호환).
+  const want = parseHash();
+  const urlAsked = prefilled || want != null;
   const decision = resolveBootScreen({
-    want: parseHash(),
-    hasSlotState: hasSlotState(),
+    want,
+    hasSlotState: hasSlotState() && (urlAsked || !draftRestored),
     hasReport: hasRenderedReport(),
     recentCount: recent.list().length,
   });
   let screen = decision.screen;
   if (decision.restore && restoreLatestComparison({ recentCtx })) screen = 'report';
   go(screen, { push: false }); // 부팅 경로의 유일한 go — 정확히 1회, push 금지
+  bindDraftPersist();
+}
+
+// 페이지를 떠나는 순간 초안을 저장한다(이동·새로고침·탭 닫기 공통).
+// `beforeunload` 가 아니라 `pagehide` 인 이유: bfcache 를 깨지 않고, 모바일에서 더 자주 발화한다.
+// `visibilitychange`(hidden)를 함께 거는 이유: iOS 사파리는 앱 전환 시 pagehide 없이 죽을 수 있다 —
+// 저장이 멱등이라 둘 다 발화해도 무해하다(같은 값을 덮어쓸 뿐).
+export function bindDraftPersist(hooks = {}) {
+  const { save = (s) => inputDraft.save(snapshotInput(s)), state = App.state } = hooks;
+  const persist = () => { try { save(state); } catch { /* 저장 실패는 비교 흐름에 무해 */ } };
+  if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+    window.addEventListener('pagehide', persist);
+  }
+  if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') persist();
+    });
+  }
+  return persist;
 }
 if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
   document.addEventListener('DOMContentLoaded', () => boot());
@@ -217,6 +247,10 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
   const { reflectSlotLabel, goFn = go } = hooks;
   const search = typeof location !== 'undefined' ? (location.search || '') : '';
   const p = new URLSearchParams(search);
+  // ⚠ "상태에 슬롯이 있나"가 아니라 **"내가 채웠나"**를 센다(2026-07-31). 초안 복원이 먼저
+  // 돌므로 상태를 기준으로 재면 초안이 채운 것을 프리필의 공으로 세고, 그 결과 대문이
+  // 입력 화면으로 바뀐다(초안은 화면을 가로채면 안 된다 — boot 주석 참조).
+  let filled = false;
   for (const slot of ['a', 'b']) {
     const token = p.get(slot);
     if (!token) continue;
@@ -226,6 +260,7 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
       fillBenefits(state, slot);
       initWsState(state, slot);
       if (typeof reflectSlotLabel === 'function') reflectSlotLabel(slot, comp.comp_nm);
+      filled = true;
     }
     // 해석 실패 시 슬롯 미선택 유지(정상 검색 진입으로 폴백, P-3)
   }
@@ -233,7 +268,85 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
   // 결과가 아니라 URL이 시킨 것이고, /compare/?a=…&b=… 는 JS를 실행하는 크롤러가 그대로
   // 밟는 경로다(실측: GoogleOther가 /compare/?a=<slug> 를 계속 긁는다). 여기에 로그를 걸면
   // 집계가 봇의 크롤 빈도를 재게 된다. 기록 시점은 사람이 슬롯을 채운 maybeAdvance 다.
-  if (state.matched.a || state.matched.b) goFn('input', { push: false }); // 프리필 있으면 입력 뷰
+  if (filled) goFn('input', { push: false }); // 프리필 있으면 입력 뷰
+  return filled; // 부팅 화면 결정에 쓴다 — "URL 이 시킨 것"과 "초안이 되살린 것"을 가른다
+}
+
+// ── 입력 초안(2026-07-31) — 페이지를 떠나도 작성 중이던 값을 지킨다 ──────────
+// 계기: 회사 복지를 보러 가면(헤더 검색·디렉터리) 전체 페이지 이동이라 입력하던 연봉·
+// 상승률이 통째로 날아간다. '최근 비교'는 **완료된** 리포트만 담아 이걸 못 지킨다.
+// 저장은 comp_id·유형·체크 목록 같은 **식별자만** 담는다 — 복지 항목 자체는 REF 최신본에서
+// 다시 채운다(스냅샷에 복지를 통째로 넣으면 시드가 갱신돼도 낡은 값이 되살아난다).
+export function snapshotInput(state = App.state) {
+  const slots = {};
+  for (const slot of ['a', 'b']) {
+    const m = state.matched && state.matched[slot];
+    const entry = {};
+    if (m && Number.isInteger(m.comp_id)) entry.comp_id = m.comp_id;
+    const tp = state.chosenType && state.chosenType[slot];
+    if (typeof tp === 'string' && tp) entry.comp_tp_cd = tp;
+    // 체크 해제는 사용자의 명시적 선택이다(기본은 전부 체크) — 되살리지 않으면 조용히 뒤집힌다.
+    const items = (state.benS && state.benS[slot]) || [];
+    entry.checked = items.filter((b) => b.checked).map((b) => b.benefit_cd).filter(Boolean);
+    slots[slot] = entry;
+  }
+  const ws = state.wsState || {};
+  return {
+    slots,
+    inputMode: { ...(state.inputMode || {}) },
+    salS: { a: { ...((state.salS && state.salS.a) || {}) } },
+    selectedRate: state.selectedRate ?? null,
+    cmtS: { ...(state.cmtS || {}) },
+    wsState: { a: { ...(ws.a || {}) }, b: { ...(ws.b || {}) } },
+    curPri: state.curPri,
+    curSacrifice: state.curSacrifice ?? null,
+  };
+}
+
+// 초안 → 상태. 슬롯은 REF 로 다시 해석하므로 초안이 낡아도(회사 삭제 등) 조용히 건너뛴다.
+export function restoreInputDraft(state = App.state, hooks = {}) {
+  const { draft = inputDraft.load(), reflect = reflectSlotLabel } = hooks;
+  if (!draft) return false;
+  let touched = false;
+
+  for (const slot of ['a', 'b']) {
+    const s = (draft.slots && draft.slots[slot]) || {};
+    if (Number.isInteger(s.comp_id)) {
+      const comp = resolveCompanyToken(String(s.comp_id), state);
+      if (comp) {
+        state.matched[slot] = normalizeCompany(comp); // 프리필과 동일 정규화 경로(P-2)
+        fillBenefits(state, slot);
+        initWsState(state, slot);
+        if (typeof reflect === 'function') reflect(slot, comp.comp_nm);
+        touched = true;
+      }
+    } else if (typeof s.comp_tp_cd === 'string' && s.comp_tp_cd) {
+      state.chosenType[slot] = s.comp_tp_cd; // 직접 입력 모드(프리셋 복사)
+      state.inputMode[slot] = 'direct';
+      fillBenefits(state, slot);
+      touched = true;
+    }
+    // 체크 상태는 목록을 다시 채운 **뒤에** 덮는다(cd 기준 — 항목이 늘거나 줄어도 안전).
+    const items = state.benS[slot] || [];
+    if (Array.isArray(s.checked) && items.length) {
+      const on = new Set(s.checked);
+      for (const b of items) b.checked = on.has(b.benefit_cd);
+    }
+  }
+
+  // 스칼라 입력. wsState 는 initWsState(회사 기반 제안) **뒤에** 덮어야 사용자의 답이 이긴다.
+  if (draft.salS && draft.salS.a) state.salS.a = { low: null, high: null, ...draft.salS.a };
+  if (draft.selectedRate != null) state.selectedRate = draft.selectedRate;
+  if (draft.cmtS) state.cmtS = { a: null, b: null, ...draft.cmtS };
+  if (draft.wsState) {
+    for (const slot of ['a', 'b']) {
+      if (draft.wsState[slot]) state.wsState[slot] = { ...state.wsState[slot], ...draft.wsState[slot] };
+    }
+  }
+  if (typeof draft.curPri === 'string' && draft.curPri) state.curPri = draft.curPri;
+  if (draft.curSacrifice !== undefined) state.curSacrifice = draft.curSacrifice;
+
+  return touched;
 }
 
 // ── 실시간 비교 TOP 10 위젯 클릭 → 양 슬롯 프리필(프리필과 동일 정규화 경로) ──

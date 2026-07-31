@@ -453,22 +453,20 @@ main p { margin-top:var(--sp-3); }
 .dir-list { list-style:none; margin:var(--sp-2) 0 0; padding:0; }
 .dir-row { border-bottom:var(--bw) solid var(--border); }
 .dir-row:last-child { border-bottom:0; }
+/* 행 = 정적 상세 페이지 링크(2026-07-31, 아코디언 폐지). button 이던 시절의
+   background/border 초기화는 남겨 둔다 — 링크 여부와 무관한 레이아웃 기반이다. */
 .dir-comp {
   display:flex; align-items:baseline; gap:var(--sp-2); width:100%; min-height:var(--tap-min);
   padding:var(--sp-2) var(--sp-1); background:none; border:0; cursor:pointer; text-align:left;
-  font-size:var(--fs-sm); color:var(--t1); border-radius:var(--r-sm);
+  font-size:var(--fs-sm); color:var(--t1); border-radius:var(--r-sm); text-decoration:none;
   transition:background var(--dur-fast) var(--ease-out);
 }
 .dir-comp:hover { background:var(--brand-tint); }
+/* slug 를 만들 수 없어 링크가 아닌 행 — 누를 수 있다는 신호를 주지 않는다 */
+.dir-comp-plain { cursor:default; color:var(--t3); }
+.dir-comp-plain:hover { background:none; }
 .dir-comp-nm { font-weight:var(--fw-medium); }
 .dir-comp-meta { font-size:var(--fs-xs); color:var(--t4); }
-.dir-benefits { padding:0 var(--sp-2) var(--sp-3); }
-.dir-ben-list { list-style:none; margin:0; padding:0; }
-.dir-ben-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2); padding:var(--sp-1) 0; font-size:var(--fs-sm); }
-.dir-ben-nm { color:var(--t2); }
-.dir-ben-empty { margin-top:0; font-size:var(--fs-sm); color:var(--t4); }
-/* 정적 상세 페이지 진입점(고아 페이지 해소, 2026-07-19) */
-.dir-detail-link { display:inline-block; margin-top:var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 
 /* ══════════════════════════════ TRENDING(실시간 비교 TOP 10 우측 레일) ══ */
 /* 모바일(<768px): .main-cols 블록 흐름 — 레일이 본문 아래 스택. 데스크톱은 하단 @media. */

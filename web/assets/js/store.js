@@ -63,6 +63,55 @@ export const recent = {
   clear() { store.remove(RECENT_KEY); },                      // 전체 삭제
 };
 
+// ── 입력 초안(2026-07-31) — "작성 중"을 페이지 이동·새로고침에서 지킨다 ──────
+// 계기: 회사 복지를 보러 가면(헤더 검색·디렉터리) **전체 페이지 이동**이라 입력하던
+// 연봉·상승률이 통째로 날아간다. '최근 비교'(위)는 **완료된** 리포트만 담으므로
+// 작성 중 상태를 지켜 주지 못한다.
+// 저장 범위는 처리방침 P2 가 이미 선언한 그대로다 — "비교 입력값(연봉·통근시간·복지
+// 선택 등)은 브라우저 localStorage 에만 저장되며 서버로 전송되지 않는다".
+// 서버 전송 경로가 없으므로 문안 변경이 필요 없다(수집 시점을 바꾼 익명 쌍 로그와 다르다).
+//
+// TTL 을 두는 이유: 초안은 "방금 하던 것"을 잇기 위한 것이지 보관물이 아니다. 2주 전
+// 입력이 말없이 되살아나면 사용자는 그것이 자기 값인지조차 판단할 수 없다.
+const DRAFT_KEY = 'loupit.inputDraft';
+const DRAFT_V = 1;
+export const DRAFT_TTL_MS = 24 * 60 * 60 * 1000; // 24시간
+
+export const inputDraft = {
+  // snapshot 은 순수 데이터(app.js snapshotInput 이 만든다 — 이 모듈은 배관만 소유).
+  // 빈 초안은 저장하지 않고 **지운다**: "새 비교" 로 상태를 비운 뒤 페이지를 떠나면
+  // 낡은 초안이 남아 다음 방문에 되살아난다.
+  save(snapshot, now = Date.now()) {
+    if (!store.available()) return false;
+    if (!snapshot || !hasAnyInput(snapshot)) { store.remove(DRAFT_KEY); return false; }
+    return store.set(DRAFT_KEY, { v: DRAFT_V, savedAt: now, draft: snapshot });
+  },
+  load(now = Date.now()) {
+    const env = store.get(DRAFT_KEY);
+    if (!env || env.v !== DRAFT_V || !env.draft || typeof env.savedAt !== 'number') {
+      store.remove(DRAFT_KEY); return null;                  // 손상·버전불일치 → 폐기
+    }
+    if (now - env.savedAt > DRAFT_TTL_MS) { store.remove(DRAFT_KEY); return null; } // 만료
+    return hasAnyInput(env.draft) ? env.draft : null;
+  },
+  clear() { store.remove(DRAFT_KEY); },
+};
+
+// 되살릴 가치가 있는 내용이 하나라도 있는가(전부 비면 초안이 아니다).
+export function hasAnyInput(d) {
+  if (!d || typeof d !== 'object') return false;
+  const slots = d.slots || {};
+  for (const s of ['a', 'b']) {
+    const v = slots[s];
+    if (v && (Number.isInteger(v.comp_id) || typeof v.comp_tp_cd === 'string')) return true;
+  }
+  const sal = (d.salS && d.salS.a) || {};
+  if (sal.low != null || sal.high != null) return true;
+  if (d.selectedRate != null) return true;
+  const cmt = d.cmtS || {};
+  return cmt.a != null || cmt.b != null;
+}
+
 function isValidEnvelope(env) {
   return env && env.v === RECENT_V && Array.isArray(env.items);   // R4: v 불일치 → 무효
 }
