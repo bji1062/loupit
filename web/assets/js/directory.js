@@ -5,6 +5,7 @@
 // 하나만). 데이터는 부팅 참조 번들(REF) 재사용 — 추가 네트워크 0(SP-FE-5 소비만).
 // 위젯 실패·host 부재는 비교 툴에 무해해야 한다(throw 없음).
 import { el } from './dom.js';
+import { badgeKind, badgeClass, BADGE_LABEL_SHORT } from './badge.js';
 
 // ── 순수: 한국어 가나다순 정렬(사본 — 원본 REF 불변) ────────────────────────
 export function sortCompanies(companies) {
@@ -36,13 +37,12 @@ export function companyHref(compEngNm) {
 }
 
 function badgeFor(b) {
-  // 배지 체계(SP-DS) 재사용 — 출처 계보 정직 표기(FR-05).
+  // 판정은 badge.js 가 소유한다(정본 = generator/format.py badge_state) — 여기서 복사하지 마라.
   // ⚠ 만료(stale)는 여기서 다루지 않는다: 이 패널은 요약이고 만료·확인일은 회사 상세가
-  //   소유한다(아래 '이 패널에 없는 정보' 안내와 같은 취지).
-  if (b.edit_origin === 'member') return el('span', { class: 'badge badge-member', text: '재직자 등록' });
-  if (b.edit_origin === 'edited') return el('span', { class: 'badge badge-edited', text: '공식·수정' });
-  if (b.badge_cd === 'official') return el('span', { class: 'badge badge-official', text: '공식' });
-  return el('span', { class: 'badge badge-est', text: '추정' });
+  //   소유한다(아래 '이 패널에 없는 정보' 안내와 같은 취지). 그 결정을 침묵이 아니라
+  //   withExpiry:false 로 드러낸다.
+  const kind = badgeKind(b, { withExpiry: false });
+  return el('span', { class: badgeClass(kind), text: BADGE_LABEL_SHORT[kind] });
 }
 
 function benefitsPanel(company) {

@@ -5,6 +5,8 @@
 import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { compare } from './calc.js';
+// 실경로 회귀용 — 정규화 단계를 건너뛰지 않는 테스트가 하나는 있어야 한다(아래 주석 참조).
+import { normalizeCompany, fillBenefits, blankWs } from './inputs.js';
 
 // ── 최소 in-memory document 스텁(search.test.js와 동일 패턴) ───────────────
 class FakeElement {
@@ -211,6 +213,35 @@ describe('T-06.11.4 renderBands', () => {
     // 클래스도 갈라져야 색이 구분된다(라벨만 바뀌면 색맹 사용자에겐 같은 배지다).
     assert.equal(list.children[1].children[1].className, 'badge badge--edited');
     assert.equal(list.children[2].children[1].className, 'badge badge--member');
+  });
+
+  // 🚨 위 두 테스트는 renderBands 에 항목을 **직접 주입**해 정규화 단계를 건너뛴다.
+  // 그래서 전부 초록이면서도 실제 화면에서는 계보가 죽어 있었다: REF → normalizeCompany →
+  // fillBenefits → benS 경로에서 `edit_origin` 이 화이트리스트에 없어 사라졌기 때문이다
+  // (함정 (54) — 테스트가 결함을 고정한다). 아래는 **실제 데이터 경로 전체**를 통과시킨다.
+  test('실경로 회귀 — REF → normalizeCompany → fillBenefits → renderBands 로 계보가 살아온다', () => {
+    const state = {
+      REF: { company_types: [], benefit_presets: {}, companies: [] },
+      matched: { a: null, b: null }, benS: { a: [], b: [] },
+      wsState: { a: blankWs(), b: blankWs() }, chosenType: { a: null, b: null },
+      inputMode: { a: 'company', b: 'company' },
+    };
+    // REF 번들이 실제로 주는 모양(server/models/reference.py Benefit)
+    state.matched.a = normalizeCompany({
+      comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large',
+      benefits: [
+        { benefit_cd: 'a', benefit_nm: '카페', benefit_amt: 10, benefit_ctgr_cd: 'perks', badge_cd: 'official', amt_source: 'stated', qual_yn: false, expires_dtm: null, edit_origin: 'member' },
+        { benefit_cd: 'b', benefit_nm: '식대', benefit_amt: 20, benefit_ctgr_cd: 'perks', badge_cd: 'official', amt_source: 'stated', qual_yn: false, expires_dtm: null, edit_origin: 'seed' },
+      ],
+    });
+    fillBenefits(state, 'a');
+
+    const mount = new FakeElement('div');
+    renderBands({ totalRange: [0, 0] }, state.benS.a, mount, Date.now());
+    const list = mount.children[0];
+    assert.equal(list.children[0].children[1].textContent, '재직자 등록',
+      'edit_origin 이 정규화에서 사라지면 여기서 "공식" 이 나온다 — 실제로 그랬다');
+    assert.equal(list.children[1].children[1].textContent, '공식');
   });
 
   test('만료가 출처 계보를 이긴다 — 신선도가 최우선', () => {

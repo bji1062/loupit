@@ -48,6 +48,13 @@ export function normalizeBenefit(b) {
     expires_dtm: b.expires_dtm || null,
     badge_src_cd: b.badge_src_cd || null,
     badge_src_url_ctnt: b.badge_src_url_ctnt || null,
+    // 🚨 출처 계보(2026-07-31). 이 한 줄이 없어서 **비교 리포트의 배지 계보가 죽어 있었다**:
+    // report.js 는 edit_origin 을 제대로 읽는데, 여기 화이트리스트에 없어 REF → matched →
+    // benS 로 내려가는 길에 필드가 사라졌다(항상 '공식'/'추정'). 서버에서 겪은 함정 (55)
+    // (Pydantic 이 모르는 필드를 조용히 떨군다)와 **같은 실패가 클라이언트에서 반복**됐다.
+    // 테스트는 renderBands 에 값을 직접 주입해 이 구간을 건너뛰어 전부 초록이었다(함정 (54)).
+    // → inputs.test.js 가 "REF 가 주는 필드는 정규화를 통과한다"를 모델 파일에서 읽어 강제한다.
+    edit_origin: b.edit_origin || 'seed',
     // 런타임 전용(FR-D8.1) — fill 단계에서 부여
     checked: undefined,
     value_source: undefined, // 프로버넌스: real|preset|user

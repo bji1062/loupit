@@ -2,6 +2,7 @@
 // 구 SP-RPT 대역 흡수. 엔진 calc.js는 import하지 않는다(값은 이미 계산됨) — dom.js·store.js만 사용.
 import { el } from './dom.js';
 import { recent } from './store.js';
+import { badgeKind, badgeClassBem, BADGE_LABEL_SHORT } from './badge.js';
 
 // 9카테고리 표시 라벨(SP-GEN CATEGORY_LABEL과 동일 어휘 사용 — 화면 간 용어 일관성).
 const CATEGORY_LABEL = {
@@ -364,21 +365,11 @@ export function renderBenefitMatrix(rows, mountEl, ctx = {}) {
 }
 
 // ── T-06.11.4 renderBands — 항목 배지·밴드 표시(FR-41). 출처 링크는 내지 않는다 ──
-// 배지 우선순위 — generator/format.py `badge_state` 와 **같은 순서**여야 한다.
-// (만료 → 재직자 등록 → 공식·재직자 수정 → 공식 → 추정)
-// 두 곳이 갈라지면 같은 복지가 정적 페이지와 비교 리포트에서 다른 배지를 단다.
-function badgeKind(item, now) {
-  if (item.expires_dtm != null && Date.parse(item.expires_dtm) < now) return 'expired';
-  if (item.edit_origin === 'member') return 'member';
-  if (item.edit_origin === 'edited') return 'edited';
-  return item.badge_cd === 'official' ? 'official' : 'est';
-}
-// 비교 리포트는 표가 좁아 짧은 라벨을 쓴다(정적 페이지는 전체 문구).
-const BADGE_TEXT = {
-  expired: '만료', member: '재직자 등록', edited: '공식·수정', official: '공식', est: '추정',
-};
-function badgeLabel(item, now) { return BADGE_TEXT[badgeKind(item, now)]; }
-function badgeClass(item, now) { return 'badge badge--' + badgeKind(item, now); }
+// 판정은 badge.js 가 소유한다(정본 = generator/format.py badge_state). 복사하지 마라 —
+// 갈라지면 같은 복지가 정적 페이지와 비교 리포트에서 다른 배지를 단다.
+// 비교 리포트는 표가 좁아 짧은 라벨을 쓴다(정적 페이지·회사 페이지는 전체 문구).
+function badgeLabel(item, now) { return BADGE_LABEL_SHORT[badgeKind(item, { now })]; }
+function badgeClass(item, now) { return badgeClassBem(badgeKind(item, { now })); }
 
 export function renderBands(slotResult, benItems, mountEl, now = Date.now()) {
   mountEl.replaceChildren();

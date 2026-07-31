@@ -134,3 +134,46 @@ describe('renderCompanyView — 상세/후보목록/무결과', () => {
     assert.match(mount().textContent, /등록된 복지 정보가 없습니다/);
   });
 });
+
+// ── 배지 계보(2026-07-31) — 이 화면이 계보 도입 때 빠져 있었다 ────────────────
+// 렌더러를 셋으로 세다 넷째(이 화면)를 놓쳐, 재직자 편집이 시작되면 같은 복지가
+// 정적 페이지·디렉터리와 **다른 배지**를 달게 돼 있었다. 여기서 계약을 고정한다.
+describe('renderCompanyView — 배지 계보 4종(정적 페이지와 같은 판정)', () => {
+  beforeEach(() => loadDom());
+  const mount = () => document.getElementById('company-page');
+  const NOW = Date.parse('2026-07-31T00:00:00Z');
+
+  function withBenefits(benefits) {
+    return { ...SAMSUNG, benefits };
+  }
+
+  test('재직자 등록 / 공식·재직자 수정 / 공식 을 각각 구분해 표시', () => {
+    renderCompanyView({ term: 'x', matches: [withBenefits([
+      ben('a', '카페', 10, 'perks', { edit_origin: 'member' }),
+      ben('b', '기숙사', 20, 'perks', { edit_origin: 'edited' }),
+      ben('c', '식대', 30, 'perks', { edit_origin: 'seed' }),
+    ])] }, mount(), {}, NOW);
+    const text = mount().textContent;
+    assert.ok(mount().querySelector('.badge-member'), '재직자 등록 배지');
+    assert.ok(mount().querySelector('.badge-edited'), '공식·재직자 수정 배지');
+    assert.ok(mount().querySelector('.badge-official'), '공식 배지');
+    assert.match(text, /재직자 등록/);
+    assert.match(text, /공식·재직자 수정/, '상세 화면은 정적 페이지와 같은 전체 문구를 쓴다');
+  });
+
+  test('edit_origin 이 badge_cd 를 이긴다(추정이어도 재직자 등록이면 계보 우선)', () => {
+    renderCompanyView({ term: 'x', matches: [withBenefits([
+      ben('a', '카페', 10, 'perks', { badge_cd: 'est', edit_origin: 'member' }),
+    ])] }, mount(), {}, NOW);
+    assert.ok(mount().querySelector('.badge-member'));
+    assert.equal(mount().querySelector('.badge-est'), null);
+  });
+
+  test('만료가 최우선 — 상세 화면이므로 만료를 표시한다(요약인 디렉터리와 다른 점)', () => {
+    renderCompanyView({ term: 'x', matches: [withBenefits([
+      ben('a', '카페', 10, 'perks', { edit_origin: 'member', expires_dtm: '2026-01-01T00:00:00Z' }),
+    ])] }, mount(), {}, NOW);
+    assert.ok(mount().querySelector('.badge-stale'), '만료 배지(정적 템플릿과 같은 stale 클래스)');
+    assert.match(mount().textContent, /만료·재확인 필요/);
+  });
+});

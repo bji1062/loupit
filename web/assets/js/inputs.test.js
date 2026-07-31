@@ -2,6 +2,7 @@
 // 근거: SPEC/06-프론트엔드-구조.md §SP-FE-8, TASK/06-프론트엔드.md T-06.8.1~8.5.
 import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 
 import {
   normalizeCompany, normalizeBenefit, fillBenefits, initWsState,
@@ -19,6 +20,63 @@ function freshState(overrides = {}) {
     ...overrides,
   };
 }
+
+// ── 일반 계약: REF 가 주는 복지 필드는 정규화를 통과한다(2026-07-31) ─────────
+// 배경 — `edit_origin` 을 서버 모델에는 넣고 여기 화이트리스트에는 안 넣어서, 비교
+// 리포트의 배지 계보가 **조용히 죽어 있었다**(report.js 는 읽는데 값이 도달하지 못함).
+// 특정 필드가 아니라 **"모델이 선언한 필드는 전부 살아남는다"**를 계약으로 건다 —
+// 서버에서 같은 사고를 겪고 세운 `test_response_model_keeps_every_builder_field` 의
+// 클라이언트 판이다. 정본은 `server/models/reference.py` 의 Benefit 이고, 그 파일을
+// 직접 읽으므로 필드가 늘면 **여기서 먼저 빨개진다**(slugOf↔slug.py 대조와 같은 관례).
+describe('REF 복지 필드 계약 — normalizeBenefit 이 필드를 떨구지 않는다', () => {
+  // 정규화가 **의도적으로** 버리는 필드. 새 필드를 여기 넣으려면 이유를 함께 적어라.
+  const INTENTIONAL_DROPS = new Map([
+    ['sort_order_no', '정렬은 서버가 끝내서 번들 순서가 곧 표시 순서다 — 클라이언트가 다시 쓰지 않는다'],
+  ]);
+
+  function benefitModelFields() {
+    const src = readFileSync(new URL('../../../server/models/reference.py', import.meta.url), 'utf8');
+    const start = src.indexOf('class Benefit(BaseModel):');
+    assert.ok(start >= 0, 'server/models/reference.py 에서 class Benefit 을 찾지 못했다');
+    const rest = src.slice(start + 'class Benefit(BaseModel):'.length);
+    const end = rest.search(/\nclass /);
+    const body = end >= 0 ? rest.slice(0, end) : rest;
+    const fields = [];
+    for (const line of body.split('\n')) {
+      const m = line.match(/^ {4}([a-z_][a-z0-9_]*)\s*:/); // 들여쓰기 4칸 = 클래스 직속 필드
+      if (m) fields.push(m[1]);
+    }
+    return fields;
+  }
+
+  test('모델 필드를 실제로 읽어 온다(파서가 조용히 0개를 반환하면 이 계약은 무증거다)', () => {
+    const fields = benefitModelFields();
+    assert.ok(fields.length >= 12, `Benefit 필드 ${fields.length}개(≥12 기대) — 파서 확인 필요`);
+    assert.ok(fields.includes('edit_origin'), 'edit_origin 이 모델에 있어야 한다');
+    assert.ok(fields.includes('badge_cd'));
+  });
+
+  test('선언된 필드는 전부 정규화 결과에 남는다(의도적 제외만 예외)', () => {
+    const out = normalizeBenefit({
+      benefit_cd: 'X', benefit_nm: '식대', benefit_amt: 240, benefit_ctgr_cd: 'perks',
+      badge_cd: 'official', amt_source: 'stated', qual_yn: false,
+      qual_desc_ctnt: null, note_ctnt: null, verified_dtm: '2026-01-01T00:00:00Z',
+      expires_dtm: '2027-01-01T00:00:00Z', badge_src_cd: 'manual',
+      badge_src_url_ctnt: null, sort_order_no: 1, edit_origin: 'member',
+    });
+    const missing = benefitModelFields()
+      .filter((f) => !(f in out) && !INTENTIONAL_DROPS.has(f));
+    assert.deepEqual(missing, [],
+      `정규화가 필드를 떨궜다: ${missing.join(', ')} — 화이트리스트(normalizeBenefit)에 추가하거나 `
+      + 'INTENTIONAL_DROPS 에 이유와 함께 등록하라');
+  });
+
+  test('edit_origin 은 값이 보존되고, 없으면 seed 로 떨어진다', () => {
+    assert.equal(normalizeBenefit({ edit_origin: 'member' }).edit_origin, 'member');
+    assert.equal(normalizeBenefit({ edit_origin: 'edited' }).edit_origin, 'edited');
+    assert.equal(normalizeBenefit({}).edit_origin, 'seed');
+  });
+});
 
 // ── T-06.8.1: normalizeCompany·normalizeBenefit (UT-NORM-1·2) ──────────────
 describe('T-06.8.1 normalizeCompany·normalizeBenefit (UT-NORM-1·2)', () => {

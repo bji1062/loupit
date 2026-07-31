@@ -6,6 +6,7 @@
 // 나무위키 "검색 → 문서 직행" UX 대응(2026-07-16). 실패·host 부재 무해(throw 없음).
 import { el } from './dom.js';
 import { benefitLine } from './directory.js';
+import { badgeKind, badgeClass, BADGE_LABEL_FULL } from './badge.js';
 
 // 9카테고리 표시 라벨 — report.js CATEGORY_LABEL과 동일 어휘(화면 간 용어 일관성).
 const CATEGORY_LABEL = {
@@ -49,9 +50,15 @@ export function groupBenefitsByCategory(benefits) {
   return { groups, total };
 }
 
-function badgeFor(b) { // directory.js 배지 관례와 동일(공식/추정)
-  if (b.badge_cd === 'official') return el('span', { class: 'badge badge-official', text: '공식' });
-  return el('span', { class: 'badge badge-est', text: '추정' });
+// 🚨 이 화면은 배지 계보 도입(2026-07-31) 때 **렌더러 수를 셋으로 세다가 빠졌다** —
+// 정적 페이지·비교 리포트·디렉터리만 갱신되고 여기만 '공식/추정' 2종에 남아, 재직자가
+// 편집을 시작하면 같은 복지가 화면마다 다른 출처를 달게 돼 있었다(편집 이력 0행이라
+// 아직 눈에 안 보였을 뿐이다). 판정은 badge.js 가 소유한다.
+// 라벨은 **상세 화면 어휘(FULL)** — 정적 회사 페이지와 같은 내용을 보여주는 자리다.
+// 만료도 여기서는 표시한다(요약인 디렉터리와 달리 이 화면이 상세다).
+function badgeFor(b, now) {
+  const kind = badgeKind(b, { now });
+  return el('span', { class: badgeClass(kind), text: BADGE_LABEL_FULL[kind] });
 }
 
 function metaChips(company) {
@@ -62,8 +69,8 @@ function metaChips(company) {
   return wrap;
 }
 
-// 회사 상세(카테고리별 복지)
-function renderDetail(company, mountEl, deps) {
+// 회사 상세(카테고리별 복지). now 는 만료 판정용 — 주입해 결정성을 보장한다.
+function renderDetail(company, mountEl, deps, now = Date.now()) {
   mountEl.replaceChildren();
   const page = el('div', { class: 'cp-page' });
 
@@ -86,7 +93,7 @@ function renderDetail(company, mountEl, deps) {
       for (const b of g.items) {
         const li = el('li', { class: 'cp-ben-row' });
         li.append(el('span', { class: 'cp-ben-nm', text: benefitLine(b) })); // "이름 — 연 N만원"/정성은 이름만
-        li.append(badgeFor(b));
+        li.append(badgeFor(b, now));
         ul.append(li);
       }
       sec.append(ul);
@@ -111,11 +118,11 @@ function renderDetail(company, mountEl, deps) {
 }
 
 // ── 렌더: 3상태(상세 / 후보 목록 / 무결과) ──────────────────────────────────
-export function renderCompanyView(result, mountEl, deps = {}) {
+export function renderCompanyView(result, mountEl, deps = {}, now = Date.now()) {
   if (!mountEl) return null;
   const { term = '', matches = [] } = result || {};
 
-  if (matches.length === 1) return renderDetail(matches[0], mountEl, deps);
+  if (matches.length === 1) return renderDetail(matches[0], mountEl, deps, now);
 
   mountEl.replaceChildren();
   if (!matches.length) {
@@ -136,7 +143,7 @@ export function renderCompanyView(result, mountEl, deps = {}) {
     const btn = el('button', { type: 'button', class: 'cp-cand' });
     btn.append(el('span', { class: 'cp-cand-nm', text: c.comp_nm }));
     if (c.industry_nm) btn.append(el('span', { class: 'cp-cand-meta', text: c.industry_nm }));
-    btn.addEventListener('click', () => renderDetail(c, mountEl, deps));
+    btn.addEventListener('click', () => renderDetail(c, mountEl, deps, now));
     li.append(btn);
     ul.append(li);
   }
