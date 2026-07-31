@@ -423,3 +423,23 @@ def test_gc26_related_selection_is_deterministic(fake_bundle, fake_now):
     first = [company._related_companies(c, ctx) for c in ctx.companies]
     second = [company._related_companies(c, ctx) for c in ctx.companies]
     assert first == second
+
+
+# ── GC-16: 파비콘 선언 (2026-07-31) ────────────────────────────────────────
+
+
+def test_gc16_every_page_declares_favicon(fake_bundle, fake_now):
+    """모든 생성 페이지가 아이콘을 선언한다.
+
+    선언이 없으면 브라우저가 자동으로 `/favicon.ico` 를 찾는다 — **페이지 로드마다 404 하나**.
+    2026-07-30 링크 전수 감사가 그걸 잡았고(선언이 어디에도 없었다), 이 테스트가 재발을 막는다.
+    SVG 가 주(모든 현대 브라우저), `.ico` 는 선언을 안 읽는 클라이언트·봇의 루트 프로브용이라
+    **둘 다** 있어야 의미가 있다.
+    """
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    pages = list(company.render_all(env, ctx))
+    assert pages, "표본이 비었다 — 이 테스트가 공회전한다"
+    for p in pages:
+        assert 'rel="icon"' in p.html and "favicon.svg" in p.html, f"{p.path}: SVG 아이콘 선언 없음"
+        assert "/favicon.ico" in p.html, f"{p.path}: .ico 폴백 선언 없음"

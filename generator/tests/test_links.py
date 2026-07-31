@@ -6,6 +6,7 @@
 """
 from __future__ import annotations
 
+import pathlib
 import re
 
 from generator.config import CFG
@@ -14,6 +15,12 @@ from generator.pages import combo, company, company_index, policy
 from generator.render import make_env
 
 _ALLOWED_STATIC_ROUTES = {"/", "/compare", "/privacy", "/terms", "/disclaimer", "/ads"}
+
+# 문서 루트의 **실파일**(페이지가 아니라 자산). 허용목록에 문자열로 넣고 끝내지 않고
+# **파일 존재를 확인**한다 — 선언만 있고 파일이 없으면 브라우저는 404 를 받는다.
+# 파비콘이 정확히 그 상태였다(2026-07-30 링크 감사: 선언 0건 + /favicon.ico 404).
+_WEB_ROOT = pathlib.Path(__file__).resolve().parents[2] / "web"
+_ROOT_FILES = {"/favicon.ico"}
 # /companies(회사 인덱스)는 생성 페이지이므로 허용 라우트가 아니라 `_build_all_pages`가
 # 실제로 만들어 내는 페이지로 검증한다(존재하지 않으면 GC-20이 죽은 링크로 잡아야 한다).
 _INTERNAL_HREF_RE = re.compile(r'href="(/[^"#][^"]*)"')
@@ -81,7 +88,14 @@ def test_gc20_all_internal_hrefs_resolve_to_generated_pages_or_allowed_routes(
                 continue
             if path_only in generated_route_paths:
                 continue
-            if path_only.startswith("/assets/"):  # 정적 자산(css/font) 참조
+            if path_only in _ROOT_FILES:
+                assert (_WEB_ROOT / path_only.lstrip("/")).is_file(), (
+                    f"{path_only} 를 선언했는데 문서 루트에 파일이 없다 — 브라우저는 404 를 받는다"
+                )
+                continue
+            if path_only.startswith("/assets/"):  # 정적 자산(css/font/아이콘) 참조
+                # ⚠ `/assets/` 는 존재 확인 없이 통과한다(선재 규약). 아이콘처럼 **없으면
+                #   눈에 띄는** 자산은 위 _ROOT_FILES 처럼 실존을 확인하는 편이 낫다.
                 continue
             if _in_hidden_authnav_slot(p.html, m.start()):
                 continue
