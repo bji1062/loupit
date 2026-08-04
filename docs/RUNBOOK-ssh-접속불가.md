@@ -212,3 +212,67 @@ ssh -vvv ubuntu@158.180.79.39
   실제로 ssh 를 실행하는 쪽에서 하라.
 - 키 권한 오류(`UNPROTECTED PRIVATE KEY FILE`)는 Windows OpenSSH 에서 흔하지만 **타임아웃이
   아니라 즉시 거부**로 나타난다 — §3 소관이다. 타임아웃 진단에서 이걸 쫓지 마라.
+
+## 6. 사례 기록 — 2026-08-04, B-2(로컬 22 아웃바운드 차단)
+
+첫 발생. **원인은 서버가 아니라 운영자 PC 쪽 네트워크였다.**
+
+| 대상 | `TcpTestSucceeded` | 의미 |
+|---|---|---|
+| `github.com:22` | **False** | 22 가 아예 나가지 못한다 — 서버와 무관 |
+| `158.180.79.39:443` | **True** | 서버·경로·nginx 정상 |
+| `158.180.79.39:22` | **False** | 위와 같은 원인 |
+
+당시 공인 IP `121.66.176.141`. 증상은 `ssh` 타임아웃, 사이트는 정상 서빙.
+
+### 이 사례가 남긴 것
+
+**제3의 호스트 테스트(§2-B)를 먼저 하지 않았다면 OCI Security List 를 헤집었을 것이다.**
+증상(사이트 정상 + 22 만 타임아웃)이 B-1 과 **완전히 동일**해서, 서버 쪽 원인으로 보이는 게
+자연스러웠다. `github.com:22` 한 줄이 방향을 갈랐다.
+
+그리고 그 오진의 대가는 크다 — 원인이 로컬인데 CIDR 을 넓히면 **증상은 그대로인 채 보안만
+잃는다.** 하드닝 없는 sshd(§0) 를 인터넷에 여는 것이기 때문이다. "안 되니까 일단 열어보자"가
+정확히 이 함정이다.
+
+> **일반화**: 내 쪽에서 관측한 실패는 상대 쪽 고장의 증거가 아니다. 통제 실험(같은 포트로
+> 제3의 호스트)을 거치기 전엔 원인을 서버에 귀속시키지 마라.
+
+### 후속 판별(네트워크인가 PC 인가)
+
+휴대폰 테더링으로 회선을 바꾼 뒤 `Test-NetConnection github.com -Port 22` 재실행:
+
+- 테더링에서 `True` → **네트워크**(공유기·회사망·ISP)가 원인. PC 는 정상.
+- 테더링에서도 `False` → **PC** 가 원인. Windows 방화벽 아웃바운드 규칙 또는 백신·사내 보안 SW.
+
+```powershell
+# 22 만 막는 건지 (443·80 대조)
+Test-NetConnection github.com -Port 443 | Select-Object TcpTestSucceeded
+Test-NetConnection github.com -Port 80  | Select-Object TcpTestSucceeded
+
+# Windows 방화벽 아웃바운드 22 차단 규칙
+Get-NetFirewallRule -Direction Outbound -Enabled True -Action Block |
+  Where-Object { ($_ | Get-NetFirewallPortFilter).RemotePort -eq 22 } |
+  Select-Object DisplayName, Profile
+
+# 프록시·VPN 개입
+netsh winhttp show proxy
+```
+
+전에는 됐다면 **최근에 바뀐 것**을 찾아라 — 접속 장소 변경, 공유기 펌웨어 업데이트,
+백신·사내 보안 프로그램 설치, 그룹 정책 배포.
+
+### 차단이 상시라면 — sshd 를 22 외 포트에도 연다
+
+**원인이 네트워크로 확정된 뒤에만** 한다. 차단 정책은 22 번을 콕 집는 경우가 대부분이라
+2222 같은 포트는 대개 통과한다.
+
+1. **Serial Console 로 진입**(§B-1) — 22 가 막힌 상태에서 유일한 입구다.
+2. `/etc/ssh/sshd_config.d/loupit.conf` 에 `Port 22` 와 `Port 2222` 를 **함께** 둔다.
+   22 를 지우지 마라 — 다른 회선에서의 정상 접속 경로를 잃는다.
+3. `sudo sshd -t && sudo systemctl restart ssh` (포트 추가는 reload 로 반영되지 않는다).
+4. OCI Security List Ingress 에 `2222/tcp` 를 **관리 CIDR 한정**으로 추가한다. `0.0.0.0/0` 금지 — §0 대로 하드닝이 없다.
+5. §4-1(하드닝 적용)을 이때 같이 끝내라. 어차피 sshd 설정을 건드리는 김이다.
+
+> ⚠ 2222 도 막는 네트워크라면 포트 변경으로 풀리지 않는다. 그때는 Serial Console 을 상시
+> 운영 경로로 받아들이거나, 접속 회선 자체를 바꾸는 게 답이다.
