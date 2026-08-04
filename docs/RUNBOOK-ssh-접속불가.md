@@ -43,10 +43,15 @@ curl -4 ifconfig.me                       # 내 현재 공인 IP
 | | 원인 | 사이트 | 근거 |
 |---|---|---|---|
 | **A** | **인스턴스 중지 / Always Free 유휴 회수** | ❌ 같이 죽음 | §2-A |
-| **B** | **OCI Security List 22/tcp 소스 CIDR ↔ 내 공인 IP 불일치** | ✅ 정상 | §2-B |
+| **B** | **22 만 어딘가에서 DROP** — 서버 쪽(Security List) 또는 내 쪽(ISP·사내망) | ✅ 정상 | §2-B |
 
-사이트가 살아있는데 SSH 만 타임아웃이면 **B 가 거의 확정**이다 — 80/443 은 `0.0.0.0/0`,
-22 만 관리 CIDR 한정이라 **정확히 22 만 죽는 비대칭**이 나온다(SP-INFRA-8.1).
+사이트가 살아있는데 SSH 만 타임아웃이면 **B 확정**이다 — 80/443 은 `0.0.0.0/0`, 22 만 관리
+CIDR 한정이라 **정확히 22 만 죽는 비대칭**이 나온다(SP-INFRA-8.1). 이때 B 는 다시 둘로 갈린다(§2-B).
+
+**타임아웃은 "누군가 패킷을 조용히 버렸다(DROP)"는 뜻이다.** 포트에 아무도 안 듣고 있으면
+커널이 RST 를 보내 `Connection refused` 가 즉시 뜬다. 죽은 채로 멈춘다면 sshd 가 죽은 게
+아니라 **경로 어딘가에서 버려지고 있는 것**이다. `fail2ban` 은 이 호스트에 없다
+(`provision.sh:12`~`19` 설치 목록에 부재 — SP-INFRA-8.2 에서 "선택"이었고 채택되지 않았다).
 
 ### 2-A. 인스턴스 중지 / Always Free 유휴 회수
 
@@ -70,7 +75,28 @@ Always Free 는 7일간 CPU·네트워크·메모리 사용률이 **모두 20% �
 유지하려면 사용률을 인위적으로 올리는 방법뿐인데, **이건 자원 낭비이자 AS1 의 취지에 반한다** —
 회수를 감수하고 복구 절차를 갖추는 쪽이 이 프로젝트에 맞다.
 
-### 2-B. OCI Security List 22/tcp 소스 CIDR 불일치
+### 2-B. 22 만 DROP — 서버 쪽인가 내 쪽인가
+
+DROP 지점은 둘이고, **서버를 건드리기 전에 먼저 갈라야 한다**. 순서를 뒤집으면 멀쩡한
+Security List 를 헤집다가 22 를 전면 개방하는 최악으로 간다.
+
+| | 지점 | |
+|---|---|---|
+| **B-1** | **OCI Security List 22/tcp 소스 CIDR ↔ 내 공인 IP 불일치** | 서버 쪽에서 버린다 |
+| **B-2** | **내 네트워크·ISP 가 아웃바운드 22 를 차단** | 나가지도 못한다 |
+
+판별 — **제3의 호스트로 22 가 나가는지** 본다:
+
+```bash
+ssh -T git@github.com     # 또는: nc -vz github.com 22
+```
+
+- **이것도 타임아웃** → **B-2 확정.** 서버는 멀쩡하다. 회사망·학교망·일부 공유기·모바일
+  테더링이 아웃바운드 22 를 막는 건 흔하다. **접속 장소나 네트워크가 바뀌었는지부터 확인**하고,
+  다른 회선(테더링 등)에서 재시도한다. 서버 설정은 손대지 마라.
+- **인증 성공 또는 `Permission denied` 가 즉시** → 아웃바운드 22 는 정상. **B-1 확정**, 아래로.
+
+### B-1. OCI Security List 22/tcp 소스 CIDR 불일치
 
 **가장 흔한 원인이고, 우리 문서가 이미 경고한 실패 모드다**:
 
@@ -105,7 +131,7 @@ Always Free 는 7일간 CPU·네트워크·메모리 사용률이 **모두 20% �
 
 | 증상 | 확인 | 조치 |
 |---|---|---|
-| `Permission denied (publickey)` | 사용자명이 **`ubuntu`** 인가(OCI Ubuntu 이미지 기준). `opc`·`root` 아니다. 키 경로(`-i`)와 권한(`600`) | 올바른 키로 재시도. 키 분실 시 §2-B 의 Serial Console 로 들어가 `~/.ssh/authorized_keys` 복구 |
+| `Permission denied (publickey)` | 사용자명이 **`ubuntu`** 인가(OCI Ubuntu 이미지 기준). `opc`·`root` 아니다. 키 경로(`-i`)와 권한(`600`) | 올바른 키로 재시도. 키 분실 시 §B-1 의 Serial Console 로 들어가 `~/.ssh/authorized_keys` 복구 |
 | `Connection refused` | 사이트도 죽었나. 살아있다면 sshd 만 죽은 것 | Serial Console 로 진입 → `df -h`(디스크 풀 확인, 루트가 100% 면 sshd 가 fork 실패한다) → `systemctl status ssh` → `systemctl restart ssh` |
 | `HOST IDENTIFICATION HAS CHANGED` | 인스턴스를 재생성했나 | 재생성이 사실이면 `ssh-keygen -R 158.180.79.39`. **재생성한 적이 없다면 조사부터 하라** |
 
