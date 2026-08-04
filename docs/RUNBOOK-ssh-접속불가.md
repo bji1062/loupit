@@ -40,6 +40,8 @@ curl -sI https://jobcho.wiki | head -1   # 사이트 살아있나
 curl -4 ifconfig.me                       # 내 현재 공인 IP
 ```
 
+**운영자 로컬은 Windows 다** — PowerShell 등가물은 §5 에 모아뒀다.
+
 | | 원인 | 사이트 | 근거 |
 |---|---|---|---|
 | **A** | **인스턴스 중지 / Always Free 유휴 회수** | ❌ 같이 죽음 | §2-A |
@@ -90,6 +92,8 @@ Security List 를 헤집다가 22 를 전면 개방하는 최악으로 간다.
 ```bash
 ssh -T git@github.com     # 또는: nc -vz github.com 22
 ```
+
+Windows(PowerShell): `Test-NetConnection github.com -Port 22 | Select-Object TcpTestSucceeded` — §5.
 
 - **이것도 타임아웃** → **B-2 확정.** 서버는 멀쩡하다. 회사망·학교망·일부 공유기·모바일
   테더링이 아웃바운드 22 를 막는 건 흔하다. **접속 장소나 네트워크가 바뀌었는지부터 확인**하고,
@@ -165,3 +169,46 @@ ssh -T git@github.com     # 또는: nc -vz github.com 22
    `provision.sh:49` 의 mysql cnf 복사는 이 호스트(tarball 설치, `/etc/my.cnf` 사용)에서 반드시
    실패하고, `set -euo pipefail` 이 그 뒤 전부를 삼킨다. 보안 단계가 mysql 튜닝 실패에
    종속되지 않도록 분리해야 재발하지 않는다.
+
+## 5. Windows(PowerShell) 명령 대응표
+
+운영자 로컬은 Windows 다. 위 절들의 `curl`·`nc` 는 아래로 바꿔 실행한다.
+
+```powershell
+# ① 아웃바운드 22 가 나가는가 — §2-B 판별의 핵심
+Test-NetConnection github.com -Port 22 | Select-Object TcpTestSucceeded
+
+# ② 같은 서버의 443 vs 22 대조 (비대칭이 곧 지문이다)
+Test-NetConnection 158.180.79.39 -Port 443 | Select-Object TcpTestSucceeded
+Test-NetConnection 158.180.79.39 -Port 22  | Select-Object TcpTestSucceeded
+
+# ③ 내 현재 공인 IP — OCI Security List CIDR 과 대조
+curl.exe -4 ifconfig.me
+
+# ④ 사이트 생존 (§2 의 A/B 판별)
+curl.exe -sI https://jobcho.wiki | Select-Object -First 1
+
+# ⑤ 상세 로그로 어디서 멈추는지
+ssh -vvv ubuntu@158.180.79.39
+```
+
+읽는 법 — **`TcpTestSucceeded` 값만 본다.** `Ping to ... failed` 경고는 무시한다(ICMP 는 TCP 와
+별개이고, OCI 기본 Security List 는 ICMP 를 막는 경우가 흔하다).
+
+| ① github:22 | ② 서버 443 / 22 | 결론 |
+|---|---|---|
+| `False` | `True` / `False` | **B-2** — 내 네트워크가 아웃바운드 22 차단. **서버는 정상, 손대지 마라** |
+| `True` | `True` / `False` | **B-1** — OCI Security List 가 내 IP 를 막는다 |
+| `True` | `False` / `False` | 인스턴스·nginx 문제 — §2-A 로 |
+
+### 함정
+
+- **`curl` 이 아니라 `curl.exe`** 로 써라. PowerShell 에서 `curl` 은 `Invoke-WebRequest` 의
+  별칭이라 `-sI`·`-4` 가 통하지 않는다. `curl.exe` 는 Windows 10 1803 이상 기본 내장이다.
+- **B-2 의 흔한 정체**는 회사망·학교망 정책, 공유기 방화벽, 국내 백신·사내 DLP 의 SSH
+  아웃바운드 차단이다. Windows Defender 는 기본적으로 아웃바운드를 막지 않지만 그룹 정책이
+  걸려 있으면 막는다. **접속 장소·네트워크가 바뀌었는지부터 의심하라.**
+- **WSL 과 PowerShell 은 결과가 다를 수 있다**(네트워크 스택·프록시 설정이 별개). 진단은
+  실제로 ssh 를 실행하는 쪽에서 하라.
+- 키 권한 오류(`UNPROTECTED PRIVATE KEY FILE`)는 Windows OpenSSH 에서 흔하지만 **타임아웃이
+  아니라 즉시 거부**로 나타난다 — §3 소관이다. 타임아웃 진단에서 이걸 쫓지 마라.
