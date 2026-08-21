@@ -1,5 +1,7 @@
 {
+  "outputStyle": "fluent-korean",
   "enabledPlugins": {
-    "frontend-design@claude-plugins-official": true
+    "frontend-design@claude-plugins-official": true,
+    "fluent-korean@fluent-korean": true
   }
 }
