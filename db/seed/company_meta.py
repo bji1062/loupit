@@ -52,6 +52,22 @@ CJ_AFFILIATE_ALIASES: dict[str, list[str]] = {
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
+# ── 사명 변경 2건(2026-08-21) ────────────────────────────────────────────────
+# LIG넥스원 → LIG디펜스앤에어로스페이스(2026-03-31 주총, DART 개황 2026-04-15 갱신 —
+# 정식명 `엘아이지디펜스앤에어로스페이스(주)`), 엔씨소프트 → (주)엔씨(DART 2026-05-04).
+# 표시명은 병기형으로 바꿨다(`LIG디펜스앤에어로스페이스(구 LIG넥스원)` · `엔씨소프트(NC)`).
+#
+# 🚨 **override 가 없으면 표시명 변경이 별칭을 지운다.** build_company_meta 는 200-seed 를
+# `by_name.get(comp_nm)` 으로 조인해 별칭을 승계하는데, COMP_NM 을 바꾸는 순간 그 조인이
+# 미매칭으로 떨어져 `aliases = [comp_nm]` fallback 이 된다 — 옛 이름 검색이 통째로 죽는다.
+# 엔씨소프트는 NCSOFT_ALIASES 가 이미 막고 있었고, LIG 는 막는 것이 없어 여기 추가한다.
+# 옛 이름을 남기는 이유: 사람들은 여전히 옛 이름으로 검색하고, 별칭은 사이트 내 검색과
+# JSON-LD `alternateName`(검색엔진이 동일 대상임을 아는 근거) 양쪽으로 나간다.
+LIG_ALIASES = [
+    "LIG디펜스앤에어로스페이스", "LIG디펜스", "LIG D&A", "LIG DnA",
+    "LIG넥스원", "LIG Nex1", "LIG",   # ← 옛 이름. 유입 자산이라 절대 빼지 않는다
+]
+
 _HEADER_INSERT_RE = re.compile(
     r"VALUES\s*\(\s*'([^']+)',\s*'([^']+)',\s*"
     r"\(SELECT\s+COMP_TP_ID\s+FROM\s+TCOMPANY_TYPE\s+WHERE\s+COMP_TP_CD\s*=\s*'([^']+)'\)",
@@ -173,6 +189,10 @@ def build_company_meta() -> dict:
     if "ncsoft" in meta:
         meta["ncsoft"]["aliases"] = _dedup(NCSOFT_ALIASES)
         meta["ncsoft"]["industry_override"] = NCSOFT_INDUSTRY
+    if "lig_nex1" in meta:
+        # 사명 변경(2026-08-21). eng_nm 은 `lig_nex1` 그대로 둔다 — URL slug 이라
+        # 바꾸면 /company/lig-nex1 색인과 외부 링크가 통째로 깨진다.
+        meta["lig_nex1"]["aliases"] = _dedup(LIG_ALIASES)
     if "hyundai_mobis" in meta:
         meta["hyundai_mobis"]["aliases"] = _dedup(meta["hyundai_mobis"]["aliases"] + ["모비스"])
     for eng, extra_aliases in CJ_AFFILIATE_ALIASES.items():

@@ -7,7 +7,7 @@
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
-VALUES ('ncsoft', '엔씨소프트',
+VALUES ('ncsoft', '엔씨소프트(NC)',
         (SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD = 'large'),
         '게임', 'N', NULL);
 

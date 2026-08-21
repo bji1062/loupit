@@ -217,3 +217,58 @@ def test_SI_M4_no_stated_anchor_across_companies(seeded_db):
         """,
     )
     assert anchors == (), f"stated로 남은 앵커(3개사+ 동일값): {anchors}"
+
+
+# ── SI-R1: 사명 변경 2건(2026-08-21) — 표시명은 새 이름, **옛 이름은 별칭에 보존** ──
+# DART 개황 API 가 정본: LIG넥스원 → 엘아이지디펜스앤에어로스페이스(주)(2026-04-15 갱신),
+# 엔씨소프트 → (주)엔씨(2026-05-04 갱신). 표시는 병기형으로 간다.
+#
+# 🚨 이 테스트의 요점은 새 이름이 아니라 **옛 이름의 생존**이다. 별칭은 사이트 내 검색과
+# JSON-LD `alternateName`(검색엔진이 동일 대상임을 아는 근거) 양쪽에 쓰이는데,
+# `company_meta.build_company_meta()` 는 200-seed 를 **COMP_NM 으로 조인**해 별칭을 승계한다
+# (`by_name.get(comp_nm)`). 즉 표시명을 바꾸는 순간 그 조인이 깨져 fallback 으로 떨어지고
+# **옛 별칭이 통째로 사라진다** — 유입이 최대 병목인 지금 그건 조용한 손실이다.
+# 엔씨소프트는 NCSOFT_ALIASES override 가 막아주지만 LIG 는 override 가 없었다.
+RENAMED = {
+    "ncsoft": {
+        "display": "엔씨소프트(NC)",
+        "must_keep": ["엔씨소프트", "NC"],       # 압도적 다수가 옛 이름으로 검색한다
+    },
+    "lig_nex1": {
+        "display": "LIG디펜스앤에어로스페이스(구 LIG넥스원)",
+        "must_keep": ["LIG넥스원", "LIG디펜스앤에어로스페이스"],
+    },
+}
+
+
+def test_SI_R1_renamed_companies_show_new_name(seeded_db):
+    """표시명(COMP_NM)이 새 병기형이다 — title·h1·meta·JSON-LD name 에 그대로 나간다."""
+    for eng, spec in RENAMED.items():
+        nm = _scalar(seeded_db, "SELECT COMP_NM FROM TCOMPANY WHERE COMP_ENG_NM=%s", (eng,))
+        assert nm == spec["display"], f"{eng} 표시명이 {nm!r} (기대 {spec['display']!r})"
+
+
+def test_SI_R1_renamed_companies_keep_old_aliases(seeded_db):
+    """🚨 옛 이름이 별칭에 살아 있다 — 사명 변경으로 검색 자산을 잃지 않는다."""
+    for eng, spec in RENAMED.items():
+        aliases = {
+            r[0] for r in _rows(
+                seeded_db,
+                "SELECT a.ALIAS_NM FROM TCOMPANY_ALIAS a "
+                "JOIN TCOMPANY c ON c.COMP_ID=a.COMP_ID WHERE c.COMP_ENG_NM=%s",
+                (eng,),
+            )
+        }
+        missing = [x for x in spec["must_keep"] if x not in aliases]
+        assert not missing, (
+            f"{eng} 별칭에서 사라진 이름: {missing} — 현재 {sorted(aliases)}. "
+            "COMP_NM 을 바꾸면 200-seed 조인(by_name.get)이 깨져 별칭이 fallback 으로 "
+            "떨어진다. company_meta.py 에 override 를 추가하라(ncsoft 패턴)"
+        )
+
+
+def test_SI_R1_url_slug_unchanged(seeded_db):
+    """URL slug 은 그대로다 — 색인된 주소와 외부 링크 자산은 표시명과 무관하게 보존된다."""
+    for eng in RENAMED:
+        assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_ENG_NM=%s", (eng,)) == 1, \
+            f"slug {eng} 이 사라졌다 — /company/{eng} 색인이 통째로 깨진다"

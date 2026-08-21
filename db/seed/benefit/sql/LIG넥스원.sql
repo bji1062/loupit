@@ -7,7 +7,7 @@
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
-VALUES ('lig_nex1', 'LIG넥스원',
+VALUES ('lig_nex1', 'LIG디펜스앤에어로스페이스(구 LIG넥스원)',
         (SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD = 'large'),
         '방산', 'L', NULL);
 
