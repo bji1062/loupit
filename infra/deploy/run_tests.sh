@@ -71,7 +71,18 @@ _cmp_reinject_done=0
 #   여기서 빠지면 **릴리스가 곧 백오프 우회 수단**이 된다 — 게이트가 테이블을 DROP/CREATE 하는
 #   순간 모든 수신함의 누적이 0으로 되감기기 때문이다. 시드가 아니라 런타임에만 쌓이는 값이라
 #   백업/재주입 말고는 살아남을 길이 없다(TMAIL_SUPPRESSION 과 같은 성격).
-PART_TABLES="TMEMBER TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TCOMPANY_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION TMAIL_SEND_RATE"
+# 2026-08-21(회사 재무): `TCORP` `TCOMPANY_CORP` `TCORP_FINANCE` 추가.
+#   재무 수치 자체는 DART 에서 재수집이 가능하지만 **재수집은 자동 복구가 아니다** — 게이트가
+#   테이블을 비우고 나면 회사 페이지의 실적 섹션이 통째로 사라지고, 그 소멸은 500 도 콘솔
+#   에러도 남기지 않는다(함정 (57): "데이터가 없으면 숨는 UI 는 사라져도 신호가 없다").
+#   더 중요한 것은 `TCOMPANY_CORP` 다 — 102개 매칭 중 6개는 **사람이 판정한 결과**이고
+#   (동명 법인 중 modify_date 로 고른 삼성물산, 사명이 바뀐 2건 등) MATCH_NOTE_CTNT 에 그
+#   근거가 들어 있다. 시드가 아니므로 백업/재주입 말고는 살아남을 길이 없다.
+#   ⚠ 이 셋을 나중에 `db/seed/` 로 옮기면 **여기서 빼야 한다** — 재시드가 넣은 행 위에 백업분을
+#     또 넣어 `Duplicate entry` 로 실패하고, 그 뒤 테이블이 통째로 복원되지 않는다
+#     (TCOMPANY_EMAIL_DOMAIN 이 실제로 그 경로로 릴리스를 깨뜨렸다 — 바로 위 주석).
+#   FK 부모→자식 순서로 나열한다(TCORP → TCOMPANY_CORP → TCORP_FINANCE).
+PART_TABLES="TMEMBER TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TCOMPANY_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION TMAIL_SEND_RATE TCORP TCOMPANY_CORP TCORP_FINANCE"
 PART_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_participation.XXXXXX.sql")"
 _part_dump_ok=0
 _part_reinject_done=0

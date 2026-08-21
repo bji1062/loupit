@@ -23,6 +23,7 @@ RUN_TESTS = os.path.join(ROOT, "infra", "deploy", "run_tests.sh")
 # DROP/CREATE 하는데 백업 목록엔 없는 상태 = 프로덕션 억제 목록 소실을, 가드가 못 본 것이다.
 # 이제 conftest(단일 출처)에서 파생시켜 **새 테이블이 추가되면 자동으로 빨개진다**.
 from server.tests.conftest import (  # noqa: E402  (ROOT 계산 뒤 임포트 — 무 DB 상수만 읽는다)
+    CORP_FINANCE_CREATE_ORDER,
     MAIL_OPS_CREATE_ORDER,
     PARTICIPATION_CREATE_ORDER,
     TABLE_CREATE_ORDER,
@@ -38,8 +39,15 @@ from server.tests.conftest import (  # noqa: E402  (ROOT 계산 뒤 임포트 �
 #   더 나빴던 건 2차 피해다: 덤프에서 이 테이블이 앞쪽이라 **뒤따르던 메일 2테이블이 통째로
 #   복원되지 않았다**(mysql 클라이언트가 첫 오류에서 중단). 아래 SEED_RESTORABLE 파생 검사가
 #   이 조합을 원천 차단한다.
-BACKUP_EXPECTED_ORDER = [t for t in PARTICIPATION_CREATE_ORDER if t != "TCOMPANY_EMAIL_DOMAIN"] + list(
-    MAIL_OPS_CREATE_ORDER
+# 2026-08-21: 회사 재무 3테이블(CORP_FINANCE_CREATE_ORDER)을 파생 소스에 편입한다. 시드가 아니라
+#   런타임 수집으로만 채워지므로 백업/재주입이 유일한 생존 수단이다 — 특히 `TCOMPANY_CORP` 에는
+#   102개 매칭 중 사람이 판정한 6건의 근거(MATCH_NOTE_CTNT)가 들어 있다.
+#   ⚠ 이 셋을 `db/seed/` 로 옮기는 순간 `_seed_sql_tables()` 가 SEED_RESTORABLE 로 잡아
+#     아래 파생 검사가 "백업 목록에서 빼라"고 요구한다 — TCOMPANY_EMAIL_DOMAIN 과 같은 처리다.
+BACKUP_EXPECTED_ORDER = (
+    [t for t in PARTICIPATION_CREATE_ORDER if t != "TCOMPANY_EMAIL_DOMAIN"]
+    + list(MAIL_OPS_CREATE_ORDER)
+    + list(CORP_FINANCE_CREATE_ORDER)
 )
 
 

@@ -363,3 +363,85 @@ CREATE TABLE IF NOT EXISTS TMAIL_SEND_RATE (
   UNIQUE KEY uq_mail_rate_target (TARGET_HASH_VAL),
   INDEX idx_mail_rate_last_sent (LAST_SENT_DTM)  -- 보존 퍼지용(오래된 주소 정리)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='배달주소별 발송 백오프 상태 (주소당 1행 집계 — 발송 원장 아님, 원문 무저장)';
+
+-- ============================================================================
+-- 회사 재무(DART) 3테이블 — docs/PLAN-회사정보-확장-2026-08-21.md
+-- ============================================================================
+-- 회사 페이지가 얇아서(102개 본문 중앙 1,402자, 1,000자 미만 20개) 애드센스가 거절되고
+-- 구글 크롤도 안 붙는다. 복지 데이터는 **이미 100% 렌더 중**이라 새 축이 필요하고, 그 축이
+-- 공시 재무다. 소스는 OpenDART — `docs/RESEARCH/benefit-scraping.md` §2 가 **1군(보강)** 으로
+-- 티어링해 둔 공식 오픈 API 다(크롤링 아님, 출처표시 조건 재배포 허용).
+--
+-- **왜 테이블이 셋인가 — 회사와 법인은 같은 것이 아니다.**
+-- `CJ ENM 엔터테인먼트부문` 과 `CJ ENM 커머스부문` 은 우리 서비스에서 두 페이지지만 DART 에는
+-- **한 법인**(corp_code 00265324)이다(2026-08-21 매칭 실측). 회사→법인은 1, 법인→회사는 N 이다.
+-- 재무를 회사에 매달면 같은 수치가 두 벌이 되고, 한쪽만 갱신되는 순간 두 페이지가 다른 실적을
+-- 보여준다 — 그래서 **재무는 법인(TCORP)에 매단다**.
+--
+-- ⚠ **표현 규약(DEC-B)**: 이 데이터로 등급·전망을 만들지 않는다. 수치·증감·추이만 제시하고
+-- 해석은 사용자에게 맡긴다. "성장성 우수" 류는 투자자문 오인 위험이며, 2026-07-20 에 폐기한
+-- 가짜 지표(유형별 상수를 회사 지표인 양 표시)와 같은 범주로 읽힌다.
+-- ============================================================================
+
+-- ─────────────────────────────────────────────────────────────────────
+-- TCORP — DART 법인 마스터
+-- 재무의 소유자. 우리 회사 목록과 독립적으로 존재한다(한 법인이 여러 페이지를 뒷받침).
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS TCORP (
+  CORP_CODE    CHAR(8)      PRIMARY KEY COMMENT 'DART 고유번호 8자리 (corpCode.xml 의 corp_code)',
+  CORP_NM      VARCHAR(200) NOT NULL COMMENT 'DART 정식 법인명. 우리 표시명(TCOMPANY.COMP_NM)과 다를 수 있다 — 사명 변경 시 여기가 먼저 바뀐다',
+  STOCK_CD     CHAR(6)      DEFAULT NULL COMMENT '종목코드 6자리. NULL = 비상장(CJ올리브네트웍스 등) — 사업보고서가 없을 수 있다',
+  ACCT_SET_CD  VARCHAR(20)  NOT NULL DEFAULT 'general'
+               COMMENT '지표 세트 — general: 매출·영업이익·순이익 / financial: 금융업. 금융은 ifrs-full_Revenue·dart_OperatingIncomeLoss 가 아예 없다(삼성생명 실측)',
+  FS_DIV_CD    VARCHAR(3)   NOT NULL DEFAULT 'CFS'
+               COMMENT '이 법인을 표시할 기본 기준 (CFS 연결 / OFS 별도). 지주사는 차이가 극단적이라(LG 9,122억 vs 5,971억) 화면에 반드시 명시한다',
+  INS_ID  INT COMMENT '입력자 ID',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  INDEX idx_corp_stock (STOCK_CD)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='DART 법인 마스터 (재무의 소유자 — 회사가 아니라 법인 단위)';
+
+-- ─────────────────────────────────────────────────────────────────────
+-- TCOMPANY_CORP — 회사 → 법인 매핑
+-- PK 가 COMP_ID 라 **회사당 법인은 하나**. CORP_CODE 에는 UNIQUE 를 걸지 않는다 —
+-- 그게 걸리면 CJ ENM 두 부문 중 하나가 재무를 못 받는다(1:N 이 이 테이블의 존재 이유).
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS TCOMPANY_CORP (
+  COMP_ID    INT         PRIMARY KEY COMMENT '회사 FK (TCOMPANY.COMP_ID). PK = 회사당 법인 1개 — 둘이면 어느 실적인지 정해지지 않는다',
+  CORP_CODE  CHAR(8)     NOT NULL COMMENT '법인 FK (TCORP.CORP_CODE). ⚠ UNIQUE 아님 — 한 법인을 여러 페이지가 가리킨다',
+  MATCH_CD   VARCHAR(20) NOT NULL DEFAULT 'auto'
+             COMMENT '매칭 근거 (auto: 상장사 정확일치 1건, manual: 사람 검수). 계열사 오매핑 전력(bokziri 148/770)이 있어 근거를 남긴다',
+  MATCH_NOTE_CTNT VARCHAR(300) DEFAULT NULL COMMENT '검수 메모 (동명 법인 중 선택 근거 등 — 삼성물산 modify_date 판별 같은 것)',
+  INS_ID  INT COMMENT '입력자 ID',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  FOREIGN KEY (COMP_ID) REFERENCES TCOMPANY(COMP_ID) ON DELETE CASCADE,
+  FOREIGN KEY (CORP_CODE) REFERENCES TCORP(CORP_CODE),
+  INDEX idx_company_corp_code (CORP_CODE)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='회사↔DART법인 매핑 (회사당 1법인, 법인당 N회사 — CJ ENM 2부문이 1법인)';
+
+-- ─────────────────────────────────────────────────────────────────────
+-- TCORP_FINANCE — 법인별·연도별 재무 수치
+-- ⚠ **COMP_ID 컬럼이 없다.** 있으면 CJ ENM 2페이지가 같은 수치를 두 벌 갖게 되고,
+--    한쪽만 갱신되는 순간 조용히 갈라진다. 조회는 TCOMPANY_CORP 를 경유한다.
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS TCORP_FINANCE (
+  FIN_ID      INT AUTO_INCREMENT PRIMARY KEY COMMENT '재무 수치 PK',
+  CORP_CODE   CHAR(8)       NOT NULL COMMENT '법인 FK (TCORP.CORP_CODE) — 회사가 아니라 법인에 매단다',
+  BSNS_YEAR   SMALLINT      NOT NULL COMMENT '사업연도 (bsns_year)',
+  FS_DIV_CD   VARCHAR(3)    NOT NULL COMMENT '연결(CFS)/별도(OFS). NOT NULL 이다 — 기준 없는 수치는 부정확한 주장이 된다',
+  ACCT_ID     VARCHAR(120)  NOT NULL
+              COMMENT '표준계정 ID (ifrs-full_Revenue, dart_OperatingIncomeLoss, ifrs-full_ProfitLoss). ⚠ account_nm 이 아니다 — 이름은 회사마다 다르고, sj_div 로 거르면 SK하이닉스처럼 CIS 에 싣는 회사가 에러 없이 빈다',
+  ACCT_NM     VARCHAR(200)  DEFAULT NULL COMMENT '회사 표기 계정명 (참고용 — 판정 근거로 쓰지 않는다)',
+  AMT_VAL     DECIMAL(24,0) DEFAULT NULL COMMENT '금액(원). 조 단위를 담아야 해 DECIMAL(24,0). NULL = 해당 회사에 그 계정이 없음(금융업 등) — 0 이 아니다',
+  RCEPT_NO    VARCHAR(20)   DEFAULT NULL COMMENT '공시 접수번호 (출처 추적·재검증 근거)',
+  INS_ID  INT COMMENT '입력자 ID',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  FOREIGN KEY (CORP_CODE) REFERENCES TCORP(CORP_CODE) ON DELETE CASCADE,
+  UNIQUE KEY uq_corp_fin (CORP_CODE, BSNS_YEAR, FS_DIV_CD, ACCT_ID),
+  INDEX idx_corp_fin_lookup (CORP_CODE, BSNS_YEAR)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인별 연도별 재무 (DART 공시 — 법인 단위 1벌, 연결/별도 공존)';

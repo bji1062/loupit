@@ -198,9 +198,25 @@ PARTICIPATION_CREATE_ORDER = [
 # 되감겨 **릴리스가 곧 우회 수단**이 된다(퍼지 보존기간을 창보다 길게 잡은 것과 같은 이유).
 MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION", "TMAIL_SEND_RATE"]
 
-# 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 2. 참여가 뒤에 오는 것이 FK 부모→자식 순서를
-# 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).
-TABLE_CREATE_ORDER = _REFERENCE_CREATE_ORDER + PARTICIPATION_CREATE_ORDER + MAIL_OPS_CREATE_ORDER
+# ── 회사 재무 3테이블(DART, 2026-08-21) ─────────────────────────────────────────
+# docs/PLAN-회사정보-확장-2026-08-21.md. FK 위상: TCORP(무의존) → TCOMPANY_CORP(TCOMPANY·TCORP)
+# → TCORP_FINANCE(TCORP). TCOMPANY 는 _REFERENCE_CREATE_ORDER 에 있어 이 그룹보다 앞이므로
+# 그룹을 통째로 뒤에 붙이면 SI-4(부모→자식)를 만족한다.
+#
+# ⚠ 여기 넣는 것만으로는 부족하다 — 게이트가 서빙 스키마를 DROP/CREATE 하므로
+# `infra/deploy/run_tests.sh` 의 백업/재주입 목록에도 함께 넣어야 한다. 재무는 재수집이
+# 가능한 파생 데이터지만, 수집에 API 호출 비용과 시간이 들고 무엇보다 **비면 회사 페이지의
+# 실적 섹션이 통째로 사라진다** — 그리고 그 소멸은 에러를 남기지 않는다(함정 (57)).
+CORP_FINANCE_CREATE_ORDER = ["TCORP", "TCOMPANY_CORP", "TCORP_FINANCE"]
+
+# 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 3 + 재무 3. 참여가 뒤에 오는 것이 FK 부모→자식
+# 순서를 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).
+TABLE_CREATE_ORDER = (
+    _REFERENCE_CREATE_ORDER
+    + PARTICIPATION_CREATE_ORDER
+    + MAIL_OPS_CREATE_ORDER
+    + CORP_FINANCE_CREATE_ORDER
+)
 TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
 
