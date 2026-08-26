@@ -10,16 +10,17 @@
 | 구분 | 상태 | 갱신일 |
 |---|---|---|
 | 서비스 | `jobcho.wiki` 프로덕션 라이브 + `beta.jobcho.wiki` | 2026-07-31 |
-| 브랜치 규약 | **main 직접 푸시 금지** — `lane/<분야>-<슬러그>` → PR → CI 3 job green → Squash merge | 2026-08-26 |
-| CI | `.github/workflows/ci.yml` — frontend 697 · generator 230(+롤업 `--check`) · backend 540(`loupit_ci`) | 2026-08-26 |
+| 브랜치 규약 | **main 직접 푸시 금지 — 잠금 적용·실증 완료**(직접 push 시 `GH013` 거부). `lane/<분야>-<슬러그>` → PR → CI 3 job green → Squash merge. 예외자 없음(bypass 목록 비어 있음) | 2026-08-26 |
+| CI | `.github/workflows/ci.yml` — frontend 697 · generator 230(+롤업 `--check`) · backend 540(`loupit_ci`). **3종 모두 머지 필수 검사**, 전체 약 1분. `up-to-date` 요구 켜짐 → 머지는 직렬(auto-merge 권장) | 2026-08-26 |
 | 데이터 | 회사 102 · 복지 1,465행 · 도메인 100/102 · 업종 102/102 | 2026-07-31 |
 | M9(로그인) | prod ON · beta ON | 2026-07-29 |
 | 테스트 | 백엔드 540 · sc14 3 · 생성기 230 · 프론트 697 | 2026-08-26 |
 | TASK 진행 | [`TASK.md` §4 AUTOGEN 표](TASK.md) — 스크립트 집계(손집계 금지) | 2026-08-26 |
 | 함정 로그 | 74건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-26 |
 | 회사 재무(신규 축) | DART 연동 3테이블(TCORP·TCOMPANY_CORP·TCORP_FINANCE)·corp_code 102 매칭 — [계획](PLAN-회사정보-확장-2026-08-21.md)·수집 미완 | 2026-08-21 |
+| 릴리스 게이트 | **서빙 무접촉 전환 완료** — `run_tests.sh` 는 `loupit_test` 만 사용. 서버 실측으로 게이트 전후 `TCOMPANY` 행수 불변 확인(2026-08-26). 백업/재주입·10초 다운타임 창 제거 | 2026-08-26 |
 | 실트래픽 | ⚠ 실브라우저 세션 하루 고유 IP 2~10 — 병목은 제품이 아니라 유입 | 2026-07-31 |
-| 운영 미결 | **별칭 승계 소스 동봉(서버에서 `db/seed/legacy200/export_from_db.py` 1회 실행·커밋 — job_change 불요, CI backend 블로커)** · 서버 밖 백업 자동화 · DMARC 승급 · 도메인 2사 · 404 noindex · ufw · 터치 롤링 오조준 | 2026-07-31 |
+| 운영 미결 | 서버 밖 백업 자동화 · DMARC 승급 · 도메인 2사 · 404 noindex · ufw · 터치 롤링 오조준 | 2026-08-26 |
 
 > 상세 이력: [HANDOFF-2026-08-21](HANDOFF-2026-08-21.md) (마지막 릴레이 정본) ← 그 이전은 각 문서
 > 상단 배너를 따라가라. 함정 ①~(73) 원문도 그 체인에 있다(인덱스: `PITFALLS/INDEX.md`).
