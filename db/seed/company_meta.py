@@ -20,11 +20,37 @@ log = logging.getLogger(__name__)
 SEED_DIR = Path(__file__).resolve().parent
 BENEFIT_SQL_DIR = SEED_DIR / "benefit" / "sql"
 
-LEGACY_SEED_DIR = Path("/home/ubuntu/job_change/server/seed")
 SEED200_FILES = [
     "companies_kospi_1.py", "companies_kospi_2.py",
     "companies_kosdaq_1.py", "companies_kosdaq_2.py",
 ]
+
+
+def _resolve_seed200_dir() -> Path:
+    """200-seed 디렉터리 해석 — 리포 동봉본 우선, 레거시 절대경로는 폴백.
+
+    구 판본은 `/home/ubuntu/job_change/server/seed` 하드코딩뿐이었다 — 시드
+    파이프라인의 **입력 데이터가 배포 호스트에만 존재**해, fresh clone·CI 에서
+    seeded_db 픽스처가 FileNotFoundError 로 전멸했다(함정 74 와 같은 '서버 유령'
+    부류: sitemap 템플릿에 이어 두 번째 실증, 2026-08-26 CI 첫 실행에서 검출).
+
+    해석 순서:
+      1. env `LOUPIT_SEED200_DIR` (명시 지정)
+      2. 리포 동봉 `db/seed/legacy200/` (4파일이 모두 있을 때 — 정본이 되어야 할 곳)
+      3. 레거시 `/home/ubuntu/job_change/server/seed` (배포 호스트 폴백, 현행 유지)
+    """
+    import os
+
+    env = os.environ.get("LOUPIT_SEED200_DIR")
+    if env:
+        return Path(env)
+    vendored = SEED_DIR / "legacy200"
+    if all((vendored / f).is_file() for f in SEED200_FILES):
+        return vendored
+    return Path("/home/ubuntu/job_change/server/seed")
+
+
+LEGACY_SEED_DIR = _resolve_seed200_dir()
 SEED200_VARS = {
     "companies_kospi_1.py": "KOSPI_1", "companies_kospi_2.py": "KOSPI_2",
     "companies_kosdaq_1.py": "KOSDAQ_1", "companies_kosdaq_2.py": "KOSDAQ_2",
