@@ -3,7 +3,7 @@
 ## 한 일 (커밋 순)
 - 세션 런타임 락(`.claude/scheduled_tasks.lock`) git 추적 해제 — 병렬 세션 더티/충돌 원인.
 - **sitemap 템플릿 복원** — `.gitignore` 의 생성물 패턴이 소스 템플릿까지 먹어
-  한 번도 커밋된 적이 없었다(함정 67). fresh clone 에서 생성기 13개 실패 → 230 green.
+  한 번도 커밋된 적이 없었다(함정 74). fresh clone 에서 생성기 13개 실패 → 230 green.
 - **CI 신설**(`.github/workflows/ci.yml`) — frontend 697 / generator 230+롤업체크 /
   backend 540(mysql 서비스, `loupit_ci`). `pydantic-settings` 를 requirements 에 등재(잠복 실의존).
 - **TASK 롤업 자동화**(`docs/tools/task_progress.py` + TASK.md AUTOGEN 표) —

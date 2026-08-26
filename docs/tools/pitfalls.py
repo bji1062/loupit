@@ -36,6 +36,7 @@ LEGACY = [
     ("HANDOFF-2026-07-29-B.md", "§4", 28, 43),
     ("HANDOFF-2026-07-30.md", "§4", 44, 56),
     ("HANDOFF-2026-07-31.md", "§4", 57, 66),
+    ("HANDOFF-2026-08-21.md", "§4", 67, 73),
 ]
 
 def _circled_to_int(ch: str) -> int | None:

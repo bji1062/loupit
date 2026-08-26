@@ -16,12 +16,13 @@
 | M9(로그인) | prod ON · beta ON | 2026-07-29 |
 | 테스트 | 백엔드 540 · sc14 3 · 생성기 230 · 프론트 697 | 2026-08-26 |
 | TASK 진행 | [`TASK.md` §4 AUTOGEN 표](TASK.md) — 스크립트 집계(손집계 금지) | 2026-08-26 |
-| 함정 로그 | 67건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-26 |
+| 함정 로그 | 74건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-26 |
+| 회사 재무(신규 축) | DART 연동 3테이블(TCORP·TCOMPANY_CORP·TCORP_FINANCE)·corp_code 102 매칭 — [계획](PLAN-회사정보-확장-2026-08-21.md)·수집 미완 | 2026-08-21 |
 | 실트래픽 | ⚠ 실브라우저 세션 하루 고유 IP 2~10 — 병목은 제품이 아니라 유입 | 2026-07-31 |
 | 운영 미결 | 서버 밖 백업 자동화 · DMARC 승급 · 도메인 2사 · 404 noindex · ufw · 터치 롤링 오조준 | 2026-07-31 |
 
-> 상세 이력: [HANDOFF-2026-07-31](HANDOFF-2026-07-31.md) (마지막 릴레이 정본) ← 그 이전은 각 문서
-> 상단 배너를 따라가라. 함정 ①~(66) 원문도 그 체인에 있다(인덱스: `PITFALLS/INDEX.md`).
+> 상세 이력: [HANDOFF-2026-08-21](HANDOFF-2026-08-21.md) (마지막 릴레이 정본) ← 그 이전은 각 문서
+> 상단 배너를 따라가라. 함정 ①~(73) 원문도 그 체인에 있다(인덱스: `PITFALLS/INDEX.md`).
 
 ## 병렬 작업 규칙 (2026-08-26 도입)
 
