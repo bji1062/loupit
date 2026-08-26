@@ -40,6 +40,8 @@ jobs:
           cache: pip
       - run: pip install -r generator/requirements.txt -r server/requirements.txt
       - run: python -m pytest generator/tests -q
+      # 문서 정합 가드 — TASK 롤업이 리프 마커 실측과 일치하는지 (드리프트 즉시 검출)
+      - run: python docs/tools/task_progress.py --check
 
   # 백엔드 540 — 일회용 mysql:8.0 서비스 컨테이너. DB_NAME=loupit_ci 는 서빙 이름
   # (LOUPIT/loupit)이 아니므로 schema_guard 가 플래그 없이 허용한다. flock
