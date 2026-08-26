@@ -57,6 +57,8 @@ yarn-error.log*
 dist-static/
 public/generated/
 sitemap.xml
+# ⚠ 위 패턴은 생성물용인데 소스 템플릿까지 잡는다 — 템플릿은 예외로 살린다(없으면 fresh clone 에서 빌드·테스트 불능)
+!generator/templates/sitemap.xml
 robots.txt.generated
 
 # ── 광고/제휴 비공개 키 (있다면) ──
@@ -86,3 +88,6 @@ Thumbs.db
 *.tmp
 web/dist.prev/
 .gstack/
+
+# Claude 세션 런타임 락 — 세션마다 내용이 바뀌는 머신 로컬 파일(추적 금지, 병렬 세션 충돌 원인)
+.claude/scheduled_tasks.lock

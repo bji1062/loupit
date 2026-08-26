@@ -20,11 +20,41 @@ log = logging.getLogger(__name__)
 SEED_DIR = Path(__file__).resolve().parent
 BENEFIT_SQL_DIR = SEED_DIR / "benefit" / "sql"
 
-LEGACY_SEED_DIR = Path("/home/ubuntu/job_change/server/seed")
 SEED200_FILES = [
     "companies_kospi_1.py", "companies_kospi_2.py",
     "companies_kosdaq_1.py", "companies_kosdaq_2.py",
 ]
+
+
+def _resolve_seed200_dir() -> Path:
+    """200-seed 디렉터리 해석 — 리포 동봉본 우선, 레거시 절대경로는 폴백.
+
+    구 판본은 `/home/ubuntu/job_change/server/seed` 하드코딩뿐이었다 — 시드
+    파이프라인의 **입력 데이터가 배포 호스트에만 존재**해, fresh clone·CI 에서
+    seeded_db 픽스처가 FileNotFoundError 로 전멸했다(함정 74 와 같은 '서버 유령'
+    부류: sitemap 템플릿에 이어 두 번째 실증, 2026-08-26 CI 첫 실행에서 검출).
+
+    해석 순서:
+      1. env `LOUPIT_SEED200_DIR` (명시 지정)
+      2. 리포 동봉 `db/seed/legacy200/` — `seed200.py` 단일본(서빙 DB 도출,
+         legacy200/export_from_db.py 생성) **또는** 원본 4파일이 모두 있을 때
+      3. 레거시 `/home/ubuntu/job_change/server/seed` (은퇴한 리포 폴백 —
+         동봉본이 커밋되면 도달하지 않는 경로다)
+    """
+    import os
+
+    env = os.environ.get("LOUPIT_SEED200_DIR")
+    if env:
+        return Path(env)
+    vendored = SEED_DIR / "legacy200"
+    if (vendored / "seed200.py").is_file() or all(
+        (vendored / f).is_file() for f in SEED200_FILES
+    ):
+        return vendored
+    return Path("/home/ubuntu/job_change/server/seed")
+
+
+LEGACY_SEED_DIR = _resolve_seed200_dir()
 SEED200_VARS = {
     "companies_kospi_1.py": "KOSPI_1", "companies_kospi_2.py": "KOSPI_2",
     "companies_kosdaq_1.py": "KOSDAQ_1", "companies_kosdaq_2.py": "KOSDAQ_2",
@@ -91,7 +121,14 @@ def _load_module(path: Path):
 
 
 def _load_seed200() -> list[dict]:
-    """200-seed(KOSPI/KOSDAQ ×2) 로드 — 별칭 승계 소스(D2.3, 회사 등록 소스 아님)."""
+    """200-seed 로드 — 별칭 승계 소스(D2.3, 회사 등록 소스 아님).
+
+    `seed200.py` 단일본(SEED200 변수 — 서빙 DB 도출 동봉본)이 있으면 그것을,
+    없으면 원본 4파일(KOSPI/KOSDAQ ×2)을 읽는다. 파이프라인이 소비하는 필드는
+    두 형식 모두 name·aliases 뿐이다(build_company_meta)."""
+    single = LEGACY_SEED_DIR / "seed200.py"
+    if single.is_file():
+        return list(getattr(_load_module(single), "SEED200"))
     records: list[dict] = []
     for fname in SEED200_FILES:
         path = LEGACY_SEED_DIR / fname

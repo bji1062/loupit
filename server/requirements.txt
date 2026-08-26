@@ -17,3 +17,7 @@ pymysql>=1.1,<1.2       # SP-DB/SP-SEED 테스트(동기 DB 접속)
 
 # --- DG-4 확정(2026-07-11): MySQL caching_sha2_password 인증 → cryptography 포함 ---
 cryptography>=42.0.0
+
+# --- CI 도입(2026-08-26): server/config.py 가 임포트하는 실의존인데 목록에 빠져 있었다 ---
+# (기존 호스트엔 우연히 설치돼 있어 잠복. 새 환경/CI 는 이 줄이 없으면 임포트 즉시 실패)
+pydantic-settings==2.7.0
