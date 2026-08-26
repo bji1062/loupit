@@ -1,6 +1,22 @@
 #!/usr/bin/env bash
-# infra/deploy/run_tests.sh — 전 계층 테스트 집계(로컬 전용, CI 없음). 실패 시 배포 차단.
+# infra/deploy/run_tests.sh — 전 계층 테스트 집계. 실패 시 배포 차단.
 # 근거: SP-TEST-4.2, TASK/12 T-12.1.1(MT-1). 릴리스 게이트(SP-ARCH-9 4단계)와 개발 사전검증이 동일 스크립트 호출.
+#
+# ── 2026-08-26 격리 전환: 게이트는 이제 **서빙 스키마(LOUPIT)를 절대 만지지 않는다** ──
+# 구 판본(~2026-08-26)은 서빙 스키마를 테스트에 재사용해, 매 실행마다
+#   TCOMPARE_LOG·참여 10테이블 mysqldump 백업 → DROP/CREATE → 재시드 → 재주입
+# 의 곡예를 추었고 약 10초의 백엔드 다운타임 창과 실데이터 소실 전례(함정 ㉖ 계열,
+# TCOMPANY_EMAIL_DOMAIN 이중 복원 사고 2026-07-29)를 남겼다.
+#
+# 이제 백엔드 테스트는 격리 스키마 `loupit_test` 만 쓴다(원 설계 SPEC/03·04·TASK/12 복귀):
+#   - `infra/mysql/provision_test_db.sql` 로 프로비저닝돼 있다(관리자 1회 실행 완료, 2026-07-22).
+#   - conftest 의 schema_db/seeded_db 픽스처가 DROP/CREATE·시드를 자체 수행한다 —
+#     서빙이 아니므로 백업·재주입·복원 trap 이 **전부 불필요**하다.
+#   - 주간 복원 훈련(restore-drill)도 같은 loupit_test 를 쓰지만, conftest 의
+#     flock(/run/loupit/testdb.lock)이 둘을 상호 배제한다(2026-07-30 장치 그대로).
+#   - 서빙 무접촉 계약은 server/tests/test_runner_backup.py 가 스크립트 텍스트로 강제한다.
+# CI(.github/workflows/ci.yml)는 같은 커맨드를 loupit_ci 스키마로 돌린다 — 이 스크립트는
+# 배포 호스트의 릴리스 게이트 겸 로컬 일괄 실행용이다.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"; cd "$ROOT"
 
@@ -10,233 +26,18 @@ if [ -x "$ROOT/server/venv/bin/python" ]; then PY="$ROOT/server/venv/bin/python"
 elif command -v python3 >/dev/null; then PY="python3"
 else PY="python"; fi
 
-# ── C-1 안전장치(2026-07-12): 이 서버는 서빙 스키마 LOUPIT 를 테스트에도 재사용한다.
-# 백엔드 테스트는 5개 참조 테이블을 DROP/CREATE 하므로, 종료 시 서빙 데이터를 재시드해
-# beta/프로덕션 API 가 500/빈응답으로 남지 않게 한다. trap 으로 실패·중단(set -e) 시에도
-# 재시드를 '시도'한다.
-#
-# ⚠ 비원자성(L-7, 2026-07-13): load.py --fresh 는 DROP TABLE(DDL) 을 쓰는데 MySQL 에서
-# DDL 은 암묵 커밋이라 load.py 의 autocommit=False·try/rollback 이 이 구간엔 무력하다.
-# 즉 DROP~재시드 완료 사이에 프로세스가 죽으면 서빙이 빈 채로 남을 수 있다 — 원자 '보장'
-# 이 아니라 '시도'다. 그래서 재시드 후 COUNT 로 서빙 적재를 검증하고, 실패하면 조용히
-# 넘기지 않고 크게 경고 + 수동 복구 명령을 출력한다. (진짜 원자 스왑이 필요하면 임시테이블
-# +RENAME TABLE 로 load.py 를 전환해야 하며, 95개 시드 SQL·백필의 테이블명 하드코딩 때문에
-# 범위가 커 별도 작업으로 남긴다.)
-# LOUPIT_ALLOW_SERVING_SCHEMA=1 이 conftest 가드에 "복원 책임을 지는 래퍼"임을 신호한다
-# (맨 pytest 직접 실행은 이 신호가 없어 차단됨).
-export LOUPIT_ALLOW_SERVING_SCHEMA=1
-# LOUPIT_ALLOW_FRESH=1 은 load.py --fresh 파괴 가드(#14)를 통과시킨다 — run_tests.sh 는
-# 재시드 + TCOMPARE_LOG 재주입으로 복원 책임을 지는 래퍼이므로 명시적으로 허용한다.
+# 격리 대상 고정. 이미 export 된 DB_NAME(예: CI 의 loupit_ci)은 존중한다 — 단 서빙 이름이면
+# conftest 의 C-1 가드가 LOUPIT_ALLOW_SERVING_SCHEMA 부재로 차단한다(이 스크립트는 이제
+# 그 신호를 보내지 않는다: 복원 책임을 지는 래퍼가 아니게 됐기 때문이다).
+export DB_NAME="${DB_NAME:-loupit_test}"
+# seeded_db 픽스처의 load.main(fresh=True) 파괴 가드(#14) 통과 — 대상은 위 격리 스키마뿐이다.
 export LOUPIT_ALLOW_FRESH=1
 
-# ── #1 안전장치(2026-07-18): TCOMPARE_LOG(트렌딩 원천, 시드로 재현 불가한 유일한 운영 데이터)는
-# conftest 가 테스트 격리를 위해 DROP/CREATE 하므로 게이트 실행마다 비워진다. 참조 5테이블과 달리
-# load.py --fresh 재시드로는 복원되지 않는다(오히려 --fresh 는 이 로그를 TRUNCATE 해 #15 오귀속을
-# 막는다). 그래서 백엔드 pytest 이전에 원본 행을 mysqldump 로 임시 백업하고, 재시드(restore_serving)
-# 이후 그 덤프를 재주입해 서빙 로그를 원상복구한다. creds 는 server/.env 파싱 — 이 계정 그랜트가
-# 127.0.0.1 한정·PROCESS 권한 없음이라 mysqldump 를 --protocol=TCP -h 127.0.0.1 --no-tablespaces
-# --single-transaction 로 고정한다.
-command -v mysqldump >/dev/null 2>&1 && command -v mysql >/dev/null 2>&1 || export PATH="/data/mysql/bin:$PATH"  # 백업 mysqldump·존재검사/재주입 mysql 둘 다 필요(배포 호스트 비표준 경로)
-_env_get() { grep -E "^$1=" "$ROOT/server/.env" | cut -d= -f2- || true; }  # .env KEY=value (키 고유)
-DB_USER_V="$(_env_get DB_USER)"; DB_PASS_V="$(_env_get DB_PASSWORD)"
-DB_NAME_V="$(_env_get DB_NAME)"; DB_PORT_V="$(_env_get DB_PORT)"; DB_PORT_V="${DB_PORT_V:-3306}"
-CMP_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_tcompare_log.XXXXXX.sql")"
-_restore_done=0       # set -u 하에서 restore_serving 첫 호출 전 초기화 필수
-_cmp_dump_ok=0
-_cmp_reinject_done=0
-
-# ── T-13.2.1(SC14 참여): 참여 7테이블 백업/재주입 확장 ──────────────────────────────
-# ③ 후 conftest.TABLE_CREATE_ORDER 에 참여 테이블이 들어가면 게이트가 그것도 DROP/CREATE 하므로,
-# 회원·세션·인증·재직·편집이력 등 시드로 재현 불가한 데이터가 게이트 실행마다 소실된다(TCOMPARE_LOG
-# 와 동일 위험). 그래서 TCOMPARE_LOG 와 똑같이 pytest 이전 mysqldump 백업 → 재시드 이후 재주입한다.
-# FK 부모→자식 순(SP-DB-17 생성순서)으로 나열해 재주입도 그 순서다.
-#   ⚠ M9 의존(이 파일만으로 미완결): 실제 보존이 작동하려면 (a) db/schema.sql 에 참여 7테이블 DDL,
-#     (b) load.py --fresh 가 그 DDL 을 CREATE(현재 참조 5테이블만), (c) conftest 가 참여 테이블을
-#     TABLE_CREATE_ORDER 에 편입(③) 이 필요하다. 그 전(현 익명 배포)엔 테이블이 없어 존재검사로
-#     걸러져 전 과정 no-op 다 — 즉 본 확장은 '안전 선행 장치'이고 데이터가 생기기 전에 자리를 잡는다.
-# 2026-07-29(SP-AUTH-16): 메일 배달 결과 2테이블을 **함께** 보호한다. 억제 목록
-# (TMAIL_SUPPRESSION)은 웹훅으로만 쌓이는 비시드 데이터라 여기서 빠지면 릴리스마다 사라지고,
-# 그 순간 하드 바운스 주소로 재발송이 재개돼 도메인 평판이 깎인다. FK 가 없어 재주입 순서
-# 제약도 없으므로 참여 7테이블 뒤에 붙인다.
-#   ⚠ 이 목록은 `server/tests/conftest.py` 의 PARTICIPATION_CREATE_ORDER + MAIL_OPS_CREATE_ORDER
-#     에서 **파생**돼야 한다 — test_runner_backup.py 가 두 파일의 일치와 "격리 사이클의 비시드
-#     테이블은 전부 여기 있어야 한다"를 강제한다(사본 드리프트로 데이터를 잃은 전례가 있다).
-# ⚠ `TCOMPANY_EMAIL_DOMAIN` 은 **제외**한다(2026-07-29, 실제 릴리스가 여기서 깨졌다).
-#   FK 위상으로는 참여 테이블이지만 내용은 **시드**다(`db/seed/company_email_domain.sql`).
-#   백업 목록에 두면 재시드가 넣은 31행 위에 백업분을 또 넣어 `Duplicate entry '1'` 로 실패하고,
-#   더 나쁘게는 **덤프에서 뒤따르는 테이블(메일 2종)이 통째로 복원되지 않는다** — mysql 클라이언트가
-#   첫 오류에서 멈추기 때문이다. 실제로 그 경로로 웹훅 이벤트 3행·억제 1행을 잃었다(덤프에서 수동 복구).
-#   test_runner_backup.py::test_no_double_restore_collision 이 이 조합을 배포 전에 금지한다.
-# 2026-07-30(SP-AUTH-18, P1-3): `TMAIL_SEND_RATE` 추가. 배달주소별 발송 백오프 상태이며
-#   여기서 빠지면 **릴리스가 곧 백오프 우회 수단**이 된다 — 게이트가 테이블을 DROP/CREATE 하는
-#   순간 모든 수신함의 누적이 0으로 되감기기 때문이다. 시드가 아니라 런타임에만 쌓이는 값이라
-#   백업/재주입 말고는 살아남을 길이 없다(TMAIL_SUPPRESSION 과 같은 성격).
-PART_TABLES="TMEMBER TSESSION TAUTH_CODE TEMPLOY_VERIFICATION TEMPLOY_VRF_REQUEST TCOMPANY_REQUEST TBENEFIT_EDIT_LOG TMAIL_EVENT TMAIL_SUPPRESSION TMAIL_SEND_RATE"
-PART_DUMP="$(mktemp "${TMPDIR:-/tmp}/loupit_participation.XXXXXX.sql")"
-_part_dump_ok=0
-_part_reinject_done=0
-
-backup_compare_log() {
-  # 트랩 무장 전에 먼저 실행 — 실패하면 아직 아무것도 파괴하지 않은 상태에서 게이트를 멈춘다
-  # (데이터 보호가 게이트보다 우선). --single-transaction 일관 스냅샷, 데이터만(--no-create-info).
-  echo "  [backup] TCOMPARE_LOG 덤프 → $CMP_DUMP"
-  # --skip-add-locks·--skip-disable-keys: 덤프를 순수 데이터 INSERT 로 축소해 재주입이 INSERT
-  # 권한만 요구하게 한다(LOCK TABLES·ALTER 불요). #6 그랜트 정합(SELECT-only 주장 vs 실제 ALL)이
-  # 서버 필수 쓰기 최소권한으로 축소되더라도 재주입이 깨지지 않도록 방어.
-  if ! MYSQL_PWD="$DB_PASS_V" mysqldump --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
-        -u "$DB_USER_V" --no-tablespaces --single-transaction --no-create-info \
-        --skip-add-drop-table --skip-add-locks --skip-disable-keys --complete-insert \
-        "$DB_NAME_V" TCOMPARE_LOG \
-        > "$CMP_DUMP" 2>"$CMP_DUMP.err"; then
-    echo "  ⚠⚠⚠ [backup] TCOMPARE_LOG 백업 실패 — 데이터 보호를 위해 게이트를 중단한다(재시드 미실행)." >&2
-    sed 's/^/        /' "$CMP_DUMP.err" >&2 || true
-    rm -f "$CMP_DUMP" "$CMP_DUMP.err"
-    exit 4
-  fi
-  rm -f "$CMP_DUMP.err"
-  _cmp_dump_ok=1
-  if grep -q 'INSERT INTO' "$CMP_DUMP"; then
-    echo "  [backup] OK — 원본 행 백업 완료(재시드 후 재주입 예정)"
-  else
-    echo "  [backup] OK — TCOMPARE_LOG 비어 있음(재주입 불필요)"
-  fi
-}
-
-_restore_fail_msg() {
-  echo "  ⚠⚠⚠ [restore] 서빙(LOUPIT) 복원 실패 — 비었거나 깨진 상태일 수 있다. 즉시 수동 복구:" >&2
-  echo "        LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh && sudo systemctl restart loupit-api loupit-beta-api" >&2
-}
-restore_serving() {
-  [ "$_restore_done" = 1 ] && return 0
-  echo "  [restore] 서빙 스키마(LOUPIT) 재시드 시도(비원자) — load.py --fresh"
-  if ! "$PY" "$ROOT/db/seed/load.py" --fresh; then _restore_fail_msg; return 1; fi
-  # 비원자 재시드라 정상 종료여도 서빙 적재를 한 번 더 검증(회사 하한 90; 정상은 95).
-  if ! LOUPIT_ROOT="$ROOT" "$PY" -c "import os,sys; sys.path.insert(0, os.path.join(os.environ['LOUPIT_ROOT'],'db','seed')); import load; c=load.connect(); cur=c.cursor(); cur.execute('SELECT COUNT(*) FROM TCOMPANY'); n=cur.fetchone()[0]; print('  [restore] 검증: TCOMPANY=%d'%n); sys.exit(0 if n>=90 else 2)"; then
-    _restore_fail_msg; return 1
-  fi
-  _restore_done=1
-  echo "  [restore] OK — 서빙 검증 통과"
-}
-
-reinject_compare_log() {
-  # restore_serving(=load.py --fresh, TCOMPARE_LOG 를 TRUNCATE) 이후 원본 행을 되돌린다. 덤프는
-  # 데이터만(빈 테이블에 INSERT)이라 중복 없이 정확히 복원된다. 게이트 경로는 로스터가 불변이라
-  # COMP_ID 가 일치하므로 FK 검증을 켠 채 재주입한다(오귀속 행을 일부러 막는다 — 불일치 시 전량
-  # 거부 후 덤프 보존).
-  [ "$_cmp_reinject_done" = 1 ] && return 0
-  [ "$_cmp_dump_ok" = 1 ] || { echo "  [reinject] 백업 없음 — 재주입 생략(백업 단계 미실행)"; return 0; }
-  if ! grep -q 'INSERT INTO' "$CMP_DUMP"; then
-    echo "  [reinject] 백업에 데이터 행 없음(빈 TCOMPARE_LOG) — 재주입 불필요"
-    _cmp_reinject_done=1; rm -f "$CMP_DUMP"; return 0
-  fi
-  echo "  [reinject] TCOMPARE_LOG 원본 행 재주입 ← $CMP_DUMP"
-  if ! MYSQL_PWD="$DB_PASS_V" mysql --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
-        -u "$DB_USER_V" "$DB_NAME_V" < "$CMP_DUMP" 2>"$CMP_DUMP.rerr"; then
-    echo "  ⚠⚠⚠ [reinject] TCOMPARE_LOG 재주입 실패 — 트렌딩 로그가 비었거나 일부만 복원됐을 수 있다." >&2
-    sed 's/^/        /' "$CMP_DUMP.rerr" >&2 || true
-    echo "        백업 원본 보존됨: $CMP_DUMP" >&2
-    echo "        수동 복구: MYSQL_PWD=... mysql --protocol=TCP -h 127.0.0.1 -u $DB_USER_V $DB_NAME_V < $CMP_DUMP" >&2
-    echo "        복원 확인 후: sudo systemctl restart loupit-api loupit-beta-api" >&2
-    rm -f "$CMP_DUMP.rerr"
-    return 1
-  fi
-  rm -f "$CMP_DUMP.rerr"
-  _cmp_reinject_done=1
-  echo "  [reinject] OK — TCOMPARE_LOG 원본 복원 완료"
-  rm -f "$CMP_DUMP"
-}
-
-backup_participation() {
-  # 존재하는 참여 테이블만 골라 데이터만 덤프(FK 부모→자식 순, PART_TABLES). 하나도 없으면 no-op.
-  # ⚠ 존재 조회 자체가 실패하면 '무엇을 보호해야 할지 모른다'는 뜻이라, 데이터 보호를 위해 게이트를
-  #   멈춘다(exit 5) — backup_compare_log 의 exit 4 와 동일한 '파괴 전 정지' 원칙.
-  local in_list="" t ordered=""
-  for t in $PART_TABLES; do in_list="$in_list,'$t'"; done
-  in_list="${in_list#,}"
-  local existing
-  if ! existing="$(MYSQL_PWD="$DB_PASS_V" mysql --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
-        -u "$DB_USER_V" -N -B "$DB_NAME_V" 2>"$PART_DUMP.qerr" \
-        -e "SELECT TABLE_NAME FROM information_schema.TABLES WHERE TABLE_SCHEMA='$DB_NAME_V' AND TABLE_NAME IN ($in_list)")"; then
-    echo "  ⚠⚠⚠ [backup] 참여 테이블 존재 조회 실패 — 데이터 보호를 위해 게이트 중단(재시드 미실행)." >&2
-    sed 's/^/        /' "$PART_DUMP.qerr" >&2 || true
-    rm -f "$PART_DUMP" "$PART_DUMP.qerr"
-    exit 5
-  fi
-  rm -f "$PART_DUMP.qerr"
-  for t in $PART_TABLES; do                       # FK 부모→자식 순으로 존재하는 것만 선별
-    if printf '%s\n' "$existing" | grep -qx "$t"; then ordered="$ordered $t"; fi
-  done
-  if [ -z "$ordered" ]; then
-    echo "  [backup] 참여 테이블 없음(현 익명 배포·M9 이전) — 백업 생략(no-op)"
-    rm -f "$PART_DUMP"   # 무장 전 mktemp 한 빈 파일 정리(no-op 경로 누수 방지, TCOMPARE_LOG 경로와 대칭)
-    return 0
-  fi
-  echo "  [backup] 참여 테이블 덤프 → $PART_DUMP :$ordered"
-  # shellcheck disable=SC2086  # $ordered 는 의도적 단어분할(테이블 인자 목록)
-  if ! MYSQL_PWD="$DB_PASS_V" mysqldump --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
-        -u "$DB_USER_V" --no-tablespaces --single-transaction --no-create-info \
-        --skip-add-drop-table --skip-add-locks --skip-disable-keys --complete-insert \
-        "$DB_NAME_V" $ordered \
-        > "$PART_DUMP" 2>"$PART_DUMP.err"; then
-    echo "  ⚠⚠⚠ [backup] 참여 테이블 백업 실패 — 데이터 보호를 위해 게이트 중단(재시드 미실행)." >&2
-    sed 's/^/        /' "$PART_DUMP.err" >&2 || true
-    rm -f "$PART_DUMP" "$PART_DUMP.err"
-    exit 5
-  fi
-  rm -f "$PART_DUMP.err"
-  _part_dump_ok=1
-  if grep -q 'INSERT INTO' "$PART_DUMP"; then
-    echo "  [backup] OK — 참여 테이블 원본 백업 완료(재시드 후 재주입 예정)"
-  else
-    echo "  [backup] OK — 참여 테이블 비어 있음(재주입 불필요)"
-  fi
-}
-
-reinject_participation() {
-  # restore_serving(참여 테이블은 M9 의 load.py --fresh 가 schema.sql 로 재생성) 이후 원본 행을 되돌린다.
-  # 데이터만 덤프라 빈 테이블에 INSERT. 덤프는 FK 부모→자식 순(TMEMBER 선두, --complete-insert 로 원본
-  # ID 보존)이고 참조 부모(TCOMPANY·TCOMPANY_BENEFIT 등)는 재시드로 존재하므로 **FK 검사를 켠 채**
-  # 재주입한다 — reinject_compare_log 과 동일 fail-safe: 게이트 로스터가 불변이라 정상 일치, 로스터
-  # 드리프트로 FK 불일치 시 전량 거부 후 덤프 보존(오귀속/고아행 방지). 스키마는 무변경(데이터만).
-  [ "$_part_reinject_done" = 1 ] && return 0
-  [ "$_part_dump_ok" = 1 ] || { echo "  [reinject] 참여 백업 없음 — 재주입 생략"; return 0; }
-  if ! grep -q 'INSERT INTO' "$PART_DUMP"; then
-    echo "  [reinject] 참여 테이블 데이터 행 없음 — 재주입 불필요"
-    _part_reinject_done=1; rm -f "$PART_DUMP"; return 0
-  fi
-  echo "  [reinject] 참여 테이블 원본 행 재주입 ← $PART_DUMP"
-  if ! MYSQL_PWD="$DB_PASS_V" mysql --protocol=TCP -h 127.0.0.1 -P "$DB_PORT_V" \
-        -u "$DB_USER_V" "$DB_NAME_V" < "$PART_DUMP" 2>"$PART_DUMP.rerr"; then
-    echo "  ⚠⚠⚠ [reinject] 참여 테이블 재주입 실패 — 회원·세션·이력이 비었거나 일부만 복원됐을 수 있다." >&2
-    sed 's/^/        /' "$PART_DUMP.rerr" >&2 || true
-    echo "        백업 원본 보존됨: $PART_DUMP (FK 불일치면 로스터 드리프트 — 수동 확인)" >&2
-    echo "        수동 복구: MYSQL_PWD=... mysql --protocol=TCP -h 127.0.0.1 -u $DB_USER_V $DB_NAME_V < $PART_DUMP" >&2
-    rm -f "$PART_DUMP.rerr"
-    return 1
-  fi
-  rm -f "$PART_DUMP.rerr"
-  _part_reinject_done=1
-  echo "  [reinject] OK — 참여 테이블 원본 복원 완료"
-  rm -f "$PART_DUMP"
-}
-
-# 트랩: 실패·중단(set -e) 시에도 (1) 참조 5테이블 재시드 → (2) TCOMPARE_LOG 원본 재주입 →
-# (3) 참여 테이블 원본 재주입 순서로 서빙을 원상복구 '시도'한다(기존 trap 의미 유지). 세 단계 모두
-# 자체 done-가드로 멱등하다.
-_on_exit() { restore_serving || true; reinject_compare_log || true; reinject_participation || true; }
-
-backup_compare_log      # 반드시 트랩 무장 전에(백업 실패 시 파괴 경로 진입 금지 — exit 4)
-backup_participation    # 참여 테이블도 트랩 무장 전 백업(T-13.2.1, 존재 시만; 실패 시 exit 5)
-trap _on_exit EXIT
-
-echo "[1/5] 백엔드(API·스키마·시드) — pytest (LOUPIT, 종료 후 자동 재시드 + 로그 재주입; SC14 RED 제외)"
+echo "[1/5] 백엔드(API·스키마·시드) — pytest (DB_NAME=$DB_NAME, 서빙 무접촉; SC14 RED 제외)"
 # ③ RED 스테이징: 미구현 SC14 스펙(@pytest.mark.sc14)은 `-m "not sc14"` 로 제외해 베이스 배포
 # 게이트를 그린으로 유지한다(M9 구현 후 마커 해제 또는 `-m sc14` 로 별도 실행). 마커 등록:
 # server/tests/conftest.py pytest_configure. 가드: server/tests/test_runner_backup.py.
 "$PY" -m pytest server/tests/ -q -m "not sc14"
-restore_serving       # 백엔드 테스트 직후 즉시 복원 → 서빙 다운타임 최소화(이후 단계는 DB 무접촉)
-reinject_compare_log  # 재시드로 비워진 TCOMPARE_LOG 에 원본 행 재주입(#1)
-reinject_participation # 참여 테이블 원본 재주입(T-13.2.1, 백업 존재 시만)
 
 echo "[2/5] 정적 생성물·정책 — pytest (fake 번들)"
 "$PY" -m pytest generator/tests/ -q
@@ -250,7 +51,7 @@ if [ -f "$ROOT/package.json" ] && [ ! -d "$ROOT/node_modules/jsdom" ]; then
 fi
 
 echo "[3/5] 프론트 순수모듈·계산엔진·광고·디자인토큰·메타·DOM통합 — node:test"
-# node ≥21 glob(디렉토리 인자 대신) — node v24는 `node --test web/`를 모듈 로드로 오해. node ≥20 권장.
+# node ≥21 glob(디렉토리 인자 대신) — node v24는 `node --test web/`를 모듈 로드로 오해. node ≥22 권장.
 node --test 'web/**/*.test.js'
 
 echo "[4/5] 테스트 하네스 자체 검증(메타) — 이미 [3]에 포함(web/test/harness.test.js)"
