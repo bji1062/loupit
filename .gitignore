@@ -57,6 +57,8 @@ yarn-error.log*
 dist-static/
 public/generated/
 sitemap.xml
+# ⚠ 위 패턴은 생성물용인데 소스 템플릿까지 잡는다 — 템플릿은 예외로 살린다(없으면 fresh clone 에서 빌드·테스트 불능)
+!generator/templates/sitemap.xml
 robots.txt.generated
 
 # ── 광고/제휴 비공개 키 (있다면) ──
