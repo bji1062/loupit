@@ -86,3 +86,6 @@ Thumbs.db
 *.tmp
 web/dist.prev/
 .gstack/
+
+# Claude 세션 런타임 락 — 세션마다 내용이 바뀌는 머신 로컬 파일(추적 금지, 병렬 세션 충돌 원인)
+.claude/scheduled_tasks.lock
