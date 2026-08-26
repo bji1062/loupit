@@ -36,8 +36,10 @@ def _resolve_seed200_dir() -> Path:
 
     해석 순서:
       1. env `LOUPIT_SEED200_DIR` (명시 지정)
-      2. 리포 동봉 `db/seed/legacy200/` (4파일이 모두 있을 때 — 정본이 되어야 할 곳)
-      3. 레거시 `/home/ubuntu/job_change/server/seed` (배포 호스트 폴백, 현행 유지)
+      2. 리포 동봉 `db/seed/legacy200/` — `seed200.py` 단일본(서빙 DB 도출,
+         legacy200/export_from_db.py 생성) **또는** 원본 4파일이 모두 있을 때
+      3. 레거시 `/home/ubuntu/job_change/server/seed` (은퇴한 리포 폴백 —
+         동봉본이 커밋되면 도달하지 않는 경로다)
     """
     import os
 
@@ -45,7 +47,9 @@ def _resolve_seed200_dir() -> Path:
     if env:
         return Path(env)
     vendored = SEED_DIR / "legacy200"
-    if all((vendored / f).is_file() for f in SEED200_FILES):
+    if (vendored / "seed200.py").is_file() or all(
+        (vendored / f).is_file() for f in SEED200_FILES
+    ):
         return vendored
     return Path("/home/ubuntu/job_change/server/seed")
 
@@ -117,7 +121,14 @@ def _load_module(path: Path):
 
 
 def _load_seed200() -> list[dict]:
-    """200-seed(KOSPI/KOSDAQ ×2) 로드 — 별칭 승계 소스(D2.3, 회사 등록 소스 아님)."""
+    """200-seed 로드 — 별칭 승계 소스(D2.3, 회사 등록 소스 아님).
+
+    `seed200.py` 단일본(SEED200 변수 — 서빙 DB 도출 동봉본)이 있으면 그것을,
+    없으면 원본 4파일(KOSPI/KOSDAQ ×2)을 읽는다. 파이프라인이 소비하는 필드는
+    두 형식 모두 name·aliases 뿐이다(build_company_meta)."""
+    single = LEGACY_SEED_DIR / "seed200.py"
+    if single.is_file():
+        return list(getattr(_load_module(single), "SEED200"))
     records: list[dict] = []
     for fname in SEED200_FILES:
         path = LEGACY_SEED_DIR / fname
