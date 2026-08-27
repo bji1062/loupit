@@ -35,6 +35,8 @@ _DOMAIN_RE = re.compile(r"^(?=.{4,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[
 
 # `SELECT COMP_ID, '<도메인>', TRUE FROM TCOMPANY` 에서 도메인을 집는다.
 _DOMAIN_IN_SELECT = re.compile(r"SELECT\s+COMP_ID\s*,\s*'([^']+)'", re.I)
+# 보류 주석의 기계가독 표식: `-- @rejected: <도메인> — <사유>`
+_REJECTED = re.compile(r"^\s*--\s*@rejected:\s*(\S+)\s*—\s*(\S.*?)\s*$", re.M)
 # 단일 회사 매핑: `WHERE COMP_ENG_NM = 'slug'`
 _SLUG_EQ = re.compile(r"COMP_ENG_NM\s*=\s*'([^']+)'", re.I)
 # 그룹 공용 매핑: `WHERE COMP_ENG_NM IN ('a','b',...)`
@@ -47,6 +49,11 @@ def _statements() -> list[str]:
     # 줄 주석(`-- …`)에 도메인 예시가 들어 있어도 파싱에 섞이지 않게 먼저 제거한다.
     text = "\n".join(re.sub(r"--.*$", "", line) for line in text.splitlines())
     return [s.strip() for s in text.split(";") if "TCOMPANY_EMAIL_DOMAIN" in s.upper()]
+
+
+def _rejected() -> list[tuple[str, str]]:
+    """보류로 기록해 둔 (도메인, 사유) 목록. 주석에서 읽으므로 원본과 떨어지지 않는다."""
+    return _REJECTED.findall(SEED_SQL.read_text(encoding="utf-8"))
 
 
 def _parse() -> list[tuple[str, str, str]]:
@@ -148,6 +155,39 @@ def test_SED5_single_company_domain_is_not_reused():
     )
 
 
+# ── SED-7: 보류로 기록해 둔 도메인은 등록돼 있으면 안 된다 ─────────────────
+def test_SED7_rejected_domains_are_not_registered():
+    """`-- @rejected:` 로 적어 둔 도메인이 실제 INSERT 에 나타나면 안 된다.
+
+    이 파일은 "채택하지 않은 것들"을 **다시 조사하지 않기 위해** 주석으로 남긴다.
+    그런데 그 주석은 다음 사람에게 도메인 후보 목록처럼도 읽힌다 — 근거를 다시 대지
+    않고 옮겨 적으면 그대로 오매핑이 된다.
+
+    실제로 위험한 건 오타가 아니라 **형제 도메인**이다. 보류본과 채택본이 한 글자
+    차이인 쌍이 다섯이나 있다(techwing.com/​.co.kr · leeno.com/​.co.kr ·
+    classys.co.kr/​.com · enchem.net/​.kr · jseng.com/jusung.com). 한쪽을 다른 쪽으로
+    바꿔 쓰면 SED-1~5 는 전부 초록이다 — 형식도 맞고 회사도 실재하며 중복도 아니다.
+    그 조용한 교체를 잡는 가드는 이것뿐이다.
+
+    보류를 뒤집으려면 근거와 함께 해당 `@rejected:` 줄을 **지우고** 넣어라.
+    그 삭제가 곧 "다시 조사했다"는 기록이다.
+    """
+    rejected = {d.lower() for d, _ in _rejected()}
+    assert rejected, "보류 목록(@rejected)을 하나도 읽지 못했다 — 주석 표식이 바뀌었나"
+    registered = {d.lower() for _, d, _ in _parse()}
+    violations = sorted(rejected & registered)
+    assert not violations, (
+        "보류로 기록해 둔 도메인이 등록됐다. 근거를 다시 확인하고, 뒤집는 것이 "
+        f"맞다면 해당 `-- @rejected:` 줄을 먼저 지워라: {violations}"
+    )
+
+
+def test_SED7_rejected_entries_carry_a_reason():
+    """사유 없는 보류는 다음 사람이 판단을 이어받을 수 없다 — 표식만 남는 걸 막는다."""
+    bare = sorted(d for d, reason in _rejected() if len(reason) < 5)
+    assert not bare, f"사유가 비었거나 너무 짧은 @rejected 항목: {bare}"
+
+
 # ═══════════════════════════════════════════════════════════════════════
 # SED-6 — 가드 자기검증(뮤테이션)
 #
@@ -202,6 +242,28 @@ def test_SED6_reused_domain_mutation_is_caught(monkeypatch, tmp_path):
     monkeypatch.setattr(mod, "SEED_SQL", _mutated_seed(tmp_path, "'koreanair.com'", "'kia.com'"))
     with pytest.raises(AssertionError, match="여러 회사에 매핑"):
         mod.test_SED5_single_company_domain_is_not_reused()
+
+
+def test_SED6_rejected_domain_mutation_is_caught(monkeypatch, tmp_path):
+    """채택본을 형제 보류본으로 바꾸면 — 리노공업 leeno.co.kr → leeno.com.
+
+    이게 SED-7 이 실제로 노리는 사고다. SED-1~5 는 이 변경에 전부 초록이므로
+    (형식 정상·회사 실재·중복 없음) 여기서 빨개지지 않으면 가드가 헛것이다.
+    """
+    import server.tests.test_seed_email_domain as mod
+
+    monkeypatch.setattr(
+        mod, "SEED_SQL", _mutated_seed(tmp_path, "'leeno.co.kr'", "'leeno.com'")
+    )
+    with pytest.raises(AssertionError, match="보류로 기록해 둔 도메인이 등록됐다"):
+        mod.test_SED7_rejected_domains_are_not_registered()
+
+
+def test_SED6_rejected_list_is_actually_read():
+    """보류 목록이 비면 SED-7 은 언제나 초록이다 — 빈 파싱으로 인한 거짓 초록 차단."""
+    domains = [d for d, _ in _rejected()]
+    assert len(domains) >= 10, f"보류 목록이 예상보다 적게 읽혔다: {domains}"
+    assert len(domains) == len(set(domains)), f"보류 목록에 중복이 있다: {domains}"
 
 
 def test_SED6_parser_reads_both_statement_shapes():
