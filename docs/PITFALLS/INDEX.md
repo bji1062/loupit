@@ -82,5 +82,6 @@
 | 76 | 🚨 jsdom 에는 matchMedia 가 없다 — 기기 분기는 "테스트가 있어도 없는 것"이 된다 | PITFALLS/0076-jsdom-matchmedia-absent-device-branch-untested.md |
 | 77 | 🚨 "게시된 이메일 0건"은 회사 사이트만 봤다는 뜻일 수 있다 — 그리고 찾아낸 도메인이 곧 등록 근거는 아니다 | PITFALLS/0077-mail-domain-not-on-company-site-and-may-be-group-wide.md |
 | 78 | _head_meta.html 에 SEO 태그를 "한 페이지만" 추가하는 방법은 없다 | PITFALLS/0078-shared-head-meta-partial-is-site-wide.md |
+| 79 | 임포트 시점에 굳는 env 기본값 — 그 위에 세운 단정은 CI 에서만 초록이다 | PITFALLS/0079-import-time-env-default-makes-tests-ci-only-green.md |
 
 **번호 대기(_incoming): 0건**

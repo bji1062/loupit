@@ -11,12 +11,12 @@
 |---|---|---|
 | 서비스 | `jobcho.wiki` 프로덕션 라이브 + `beta.jobcho.wiki` | 2026-07-31 |
 | 브랜치 규약 | **main 직접 푸시 금지 — 잠금 적용·실증 완료**(직접 push 시 `GH013` 거부). `lane/<분야>-<슬러그>` → PR → CI 3 job green → Squash merge. 예외자 없음(bypass 목록 비어 있음) | 2026-08-26 |
-| CI | `.github/workflows/ci.yml` — frontend 697 · generator 230(+롤업 `--check`) · backend 540(`loupit_ci`). **3종 모두 머지 필수 검사**, 전체 약 1분. `up-to-date` 요구 켜짐 → 머지는 직렬(auto-merge 권장) | 2026-08-26 |
+| CI | `.github/workflows/ci.yml` — frontend 705 · generator 236 ×2(빈 env + **운영 env 주입**, +롤업 `--check`) · backend 560(`loupit_ci`). **3종 모두 머지 필수 검사**, 전체 약 1분. `up-to-date` 요구 켜짐 → 머지는 직렬(auto-merge 권장). ⚠ 생성기를 두 번 도는 이유: 러너의 빈 env 하나만 재현하면 CI 초록이 배포 초록을 뜻하지 않는다(함정 0079 실증) | 2026-08-27 |
 | 데이터 | 회사 102 · 복지 1,465행 · 도메인 100/102 · 업종 102/102 | 2026-07-31 |
 | M9(로그인) | prod ON · beta ON | 2026-07-29 |
 | 테스트 | 백엔드 560 · sc14 3 · 생성기 236 · 프론트 705 — **전부 실측**(`--collect-only -m "not sc14"` · `node --test`). 이전 표의 540 은 낡은 값이었다 | 2026-08-27 |
 | TASK 진행 | [`TASK.md` §4 AUTOGEN 표](TASK.md) — 스크립트 집계(손집계 금지) | 2026-08-26 |
-| 함정 로그 | 78건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-27 |
+| 함정 로그 | 79건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-27 |
 | 회사 재무(신규 축) | DART 연동 3테이블(TCORP·TCOMPANY_CORP·TCORP_FINANCE)·corp_code 102 매칭 — [계획](PLAN-회사정보-확장-2026-08-21.md)·수집 미완 | 2026-08-21 |
 | 릴리스 게이트 | **서빙 무접촉 — 호출자까지 실증 완료.** `run_tests.sh` 는 `loupit_test` 만 쓰고, `release.sh` 는 `env -u DB_NAME` 으로 서빙 이름을 지워 넘긴다(가드: `test_release_does_not_leak_serving_db_name_into_gate`). ⚠ **시드 변경은 릴리스로 서빙에 반영되지 않는다** — 구 판본의 재시드 부작용이 사라졌다. 별도 `LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh` 필요 | 2026-08-27 |
 | 실트래픽 | ⚠ 실브라우저 세션 하루 고유 IP 2~10 — 병목은 제품이 아니라 유입 | 2026-07-31 |
@@ -66,6 +66,11 @@ A·B·C 를 동시에 돌려 PR #3·#4·#5 를 전부 머지했다. **충돌 0�
 - **격리 계약은 호출자까지 검증하라.** `run_tests.sh` 만 격리했더니 `release.sh` 가
   `DB_NAME=LOUPIT` 을 물려줘 계약이 무효였다(함정 0075). 파일 하나에 새긴 계약은
   그 파일을 부르는 모든 곳도 같은 가드에 넣어야 성립한다.
+- **CI 초록 ≠ 배포 초록.** 위 3레인 PR 은 전부 CI 초록이었는데 첫 릴리스는 두 단계에서
+  연달아 막혔다(0075 `[1/5]`, 0079 `[2/5]`). 둘 다 **CI 러너와 배포 호스트의 env 가
+  달라서** 생긴 일이다 — 리포가 초록이어도 배포는 처음 돌려봐야 안다. 병렬 배치를
+  머지한 날은 **반드시 릴리스까지 돌려서** 닫아라. 지금은 생성기 스위트를 env 주입으로
+  한 번 더 돌려 이 축을 CI 안으로 끌어왔다.
 
 ### 세션 브리프 템플릿
 
