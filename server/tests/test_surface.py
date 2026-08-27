@@ -84,6 +84,17 @@ def test_TS1_participation_surface_exact(app_instance):
         ("/api/v1/console/verifications/{req_id}/reject", "POST"),
         ("/api/v1/console/company-requests/{req_id}/decide", "POST"),
         ("/api/v1/console/suppressions/{target_hash}/release", "POST"),
+        # SC15 커뮤니티(FR-120, 2026-08-27): 세션 쓰기 7 + 신고 1 + 콘솔 결정 1 = 9. 전부 M9 게이트 안
+        # (FK 가 TMEMBER), `require_csrf` → `require_member` 순서. 열람 GET 3종은 아래 expected_get_paths.
+        # 하드 삭제·운영자 임의 삭제 라우트는 **없다** — 본인 소프트 삭제(DELETE)와 콘솔 hide 뿐(FR-126·131).
+        ("/api/v1/posts", "POST"),                                    # FR-124 글 작성(공지=운영자)
+        ("/api/v1/posts/{post_id}", "PUT"),                           # FR-125 글 수정(본인)
+        ("/api/v1/posts/{post_id}", "DELETE"),                        # FR-126 글 소프트 삭제(본인)
+        ("/api/v1/posts/{post_id}/comments", "POST"),                 # FR-127 댓글 작성
+        ("/api/v1/posts/{post_id}/comments/{comment_id}", "DELETE"),  # FR-128 댓글 소프트 삭제(본인)
+        ("/api/v1/posts/{post_id}/like", "PUT"),                      # FR-129 좋아요 토글(멱등)
+        ("/api/v1/reports", "POST"),                                  # FR-130 신고 접수(202)
+        ("/api/v1/console/reports/{report_id}/decide", "POST"),       # FR-131 신고 처리(hide/dismiss, 터널)
     }, f"참여 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {
@@ -96,7 +107,12 @@ def test_TS1_participation_surface_exact(app_instance):
         "/api/v1/companies/{comp_id}/edits",     # FR-110 편집 이력 공개 열람
         "/api/v1/companies/{comp_id}/benefits",  # FR-109 편집용 조회(재직 게이트·base_dtm 부트스트랩)
         "/api/v1/console",                       # SP-AUTH-19 콘솔 화면(터널 전용·noindex)
-        "/api/v1/console/queues",                # SP-AUTH-19 큐 3종(운영자 세션 필수)
+        "/api/v1/console/queues",                # SP-AUTH-19 큐 3종 + SC15 신고 큐(운영자 세션 필수)
+        # SC15 커뮤니티 열람 3종(FR-121~123) — 익명·no-store. 상세·댓글은 `optional_member` 로 세션을
+        # 선택적으로 읽되 401 을 내지 않는다(AU-2: dependant 트리에 require_member 부재, test_community_api CM-7.4).
+        "/api/v1/posts",
+        "/api/v1/posts/{post_id}",
+        "/api/v1/posts/{post_id}/comments",
     }
     get_paths = {path for (path, method) in seen_paths_methods if method == "GET"}
     assert get_paths == expected_get_paths

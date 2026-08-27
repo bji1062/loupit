@@ -28,7 +28,9 @@ from server.routers import (
     health,
     mail_webhook,
     member,
+    post,
     reference,
+    report,
     trending,
 )
 from server.services import session as session_service
@@ -197,6 +199,10 @@ def create_app() -> FastAPI:
         app.include_router(member.router, prefix=p)
         app.include_router(employment.router, prefix=p)
         app.include_router(benefit_edit.router, prefix=p)
+        # SC15 커뮤니티(SP-COMM-1, 2026-08-27) — 같은 게이트 안. 4테이블(SP-DB-18)의 FK 가 TMEMBER 라
+        # OFF 스키마엔 테이블도 없다: 표면과 스키마가 설정 하나로 함께 움직인다(test_m9_gate CM-8).
+        app.include_router(post.router, prefix=p)
+        app.include_router(report.router, prefix=p)
 
     # 메일 배달 웹훅(SP-AUTH-16) — **M9 게이트 밖**이고 시크릿이 있을 때만 등록한다.
     #
