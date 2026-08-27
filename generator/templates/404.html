@@ -1,4 +1,6 @@
-{# 404.html — 오류 안내(SCR-09). in_sitemap=False(Page 생성 시 지정). #}
+{# 404.html — 오류 안내(SCR-09). **색인 대상 아님**: robots=noindex,follow · 자기
+   canonical 미방출 · in_sitemap=False — 셋 다 `pages/policy.py::_render_404` 가
+   지정하고 `partials/_head_meta.html` 이 조건부로 받는다(그 주석에 이유). #}
 {% extends "base.html" %}
 {% block main %}
 <article class="not-found">

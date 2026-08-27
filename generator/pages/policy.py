@@ -75,6 +75,20 @@ def _render_policy_doc(tpl, doc, cfg) -> Page:
 
 
 def _render_404(tpl404, cfg) -> Page:
+    """오류 페이지 — **색인 대상이 아니다**(2026-08-26).
+
+    셋이 한 묶음으로 움직인다. 하나만 하면 나머지가 그 신호를 되돌린다.
+      1. `robots=noindex, follow` — 색인 금지. `follow` 는 남겨 홈·비교 링크로
+         크롤러가 빠져나가게 한다(오류 페이지 관례).
+      2. **자기 canonical 제거** — `/404` 는 서빙 라우트가 아니라 nginx error_page
+         본문이라 그 URL 자체는 404 를 반환한다. 404 를 가리키는 canonical 은 죽은
+         링크이자(2026-07-30 링크 감사가 잡은 내부 404 1건) noindex 와 충돌하는
+         신호다. `_head_meta.html` 이 canonical 미전달 → 미방출로 받는다.
+      3. `in_sitemap=False` — sitemap 이 색인을 다시 권유하면 1이 무의미해진다.
+
+    `og.url` 은 남긴다 — 색인 지시가 아니라 공유 카드용 메타이고, 링크 감사도
+    href/src/action 만 수집해 이 값은 대상이 아니다.
+    """
     url = f"{cfg.site_origin}/404"
     title = f"페이지를 찾을 수 없습니다 | {cfg.site_name}"
     desc = "요청하신 페이지를 찾을 수 없습니다. 다른 회사나 조합을 검색해 보세요."
@@ -88,7 +102,8 @@ def _render_404(tpl404, cfg) -> Page:
     html = tpl404.render(
         meta_title=title,
         meta_desc=desc,
-        canonical=url,
+        robots="noindex, follow",
+        canonical=None,
         og=og,
         cfg=cfg,
         footer_links=POLICY_FOOTER_LINKS,
