@@ -23,10 +23,12 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from fastapi.responses import HTMLResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from server.deps import require_csrf, require_loopback, require_operator
+from server.models.post import DECIDE_ACTIONS
 from server.services import operator
+from server.services import report as report_svc
 
 # 라우터 레벨 의존성 = 경로 의존성보다 먼저 평가된다. 노출 범위 판정이 **항상 첫 관문**이어야
 # 하므로 여기에 둔다(각 라우트에 붙이면 하나를 빠뜨리는 날 그 라우트만 공개된다).
@@ -46,9 +48,22 @@ class CompanyDecisionIn(DecisionIn):
     approve: bool
 
 
+class ReportDecisionIn(DecisionIn):
+    """신고 처리 입력(FR-131) — `action ∈ {hide, dismiss}`. 결정자 필드는 부모와 같이 **없다**."""
+
+    action: str = Field(..., max_length=8)
+
+    @field_validator("action")
+    @classmethod
+    def _valid_action(cls, v: str) -> str:
+        if v not in DECIDE_ACTIONS:
+            raise ValueError("action 은 hide 또는 dismiss 여야 합니다.")
+        return v
+
+
 @router.get("/queues")
 async def queues(op: dict = Depends(require_operator)) -> dict:
-    """대기 큐 3종을 **구조화된 JSON** 으로 돌려준다.
+    """대기 큐 4종(재직 승인·회사 등록·발송 억제 + SC15 게시물 신고)을 **구조화된 JSON** 으로 돌려준다.
 
     ⚠ 여기 담기는 `EVIDENCE_CTNT`·`REQ_COMP_NM`·`REF_URL_CTNT`·`NICKNAME_NM` 은 전부
     **사용자 입력 원문**이다. 서버는 값을 그대로 싣고, 그리는 쪽(`console.html`)이 노드
@@ -59,8 +74,10 @@ async def queues(op: dict = Depends(require_operator)) -> dict:
     pending = await operator.list_pending_verifications()
     companies = await operator.list_pending_company_requests()
     suppressed = await operator.list_suppressed()
+    reports = await report_svc.list_pending_reports()  # SC15 신고 큐(FR-131) — 발췌·상세도 사용자 입력 원문
     return {
         "operator": op["LOGIN_EMAIL_NM"],
+        "reports": reports,
         "verifications": [
             {
                 "id": r["VRF_REQUEST_ID"], "member_id": r["MBR_ID"], "nickname": r["NICKNAME_NM"],
@@ -138,6 +155,21 @@ async def release_suppression(
     if not await operator.release_suppression(target_hash.lower(), op["MBR_ID"]):
         raise HTTPException(status_code=409, detail="not_suppressed")
     return {"result": "released"}
+
+
+@router.post("/reports/{report_id}/decide", status_code=200)
+async def decide_report(
+    report_id: int, body: ReportDecisionIn,
+    _csrf: None = Depends(require_csrf), op: dict = Depends(require_operator),
+) -> dict:
+    """게시물 신고 처리(FR-131) — `hide`(대상 hidden + 같은 대상 pending 일괄 actioned) / `dismiss`.
+
+    되돌릴 수 있는 것만: hidden 은 상태 한 줄이고 하드 삭제는 없다(SP-AUTH-19.4). `DECIDED_BY_ID` 는
+    `op["MBR_ID"]`(세션)에서 온다 — 본문에 그 필드가 없다(CO-12 가 지킨다)."""
+    result = await report_svc.decide_report(report_id, body.action, op["MBR_ID"], body.note)
+    if result == "not_pending":
+        raise HTTPException(status_code=409, detail="not_pending")
+    return {"result": result}
 
 
 @router.get("", response_class=HTMLResponse, include_in_schema=False)
@@ -375,6 +407,28 @@ async function load() {
       { method: 'POST', body: JSON.stringify({ approve: true, note: note.value || null }) })));
     btns.appendChild(actionButton('거부', () => api('/company-requests/' + c.id + '/decide',
       { method: 'POST', body: JSON.stringify({ approve: false, note: note.value || null }) })));
+    el.appendChild(btns);
+    return el;
+  });
+
+  // SC15 게시물 신고(FR-131). 발췌·상세·닉네임은 전부 사용자 입력 원문 → rawBlock(텍스트 노드)만.
+  // '숨김' 은 되돌릴 수 있는 상태 변경(hidden)이고 하드 삭제가 아니다 — 같은 대상의 다른 신고도 함께 처리된다.
+  section('게시물 신고', data.reports || [], (r) => {
+    const el = $('div', 'item');
+    const h = $('div', 'head');
+    h.appendChild($('span', 'id', '#' + r.report_id));
+    h.appendChild($('span', null, (r.target_type === 'post' ? '글' : '댓글') + ' #' + r.target_id + ' · ' + r.reason));
+    h.appendChild($('span', 'meta', r.reporter_nickname + ' · ' + r.created_at));
+    el.appendChild(h);
+    el.appendChild(rawBlock('대상 발췌(사용자 입력 원문, 80자)', r.excerpt));
+    el.appendChild(rawBlock('신고 상세(사용자 입력 원문)', r.detail));
+    const btns = $('div', 'rowbtns');
+    const note = $('input'); note.type = 'text'; note.placeholder = '메모(선택)';
+    btns.appendChild(note);
+    btns.appendChild(actionButton('숨김(같은 대상 신고 일괄 처리)', () => api('/reports/' + r.report_id + '/decide',
+      { method: 'POST', body: JSON.stringify({ action: 'hide', note: note.value || null }) })));
+    btns.appendChild(actionButton('기각', () => api('/reports/' + r.report_id + '/decide',
+      { method: 'POST', body: JSON.stringify({ action: 'dismiss', note: note.value || null }) })));
     el.appendChild(btns);
     return el;
   });

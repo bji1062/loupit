@@ -138,6 +138,14 @@ class Settings(BaseSettings):
     # 지금 실발송은 beta 지만 발신 도메인·무료 티어를 공유하므로 억제 목록은 prod 에 모은다.
     resend_webhook_secret: str = ""
 
+    # ── SC15 커뮤니티 (SP-COMM-2, 2026-08-27) ───────────────────────────────────────────
+    # 계정별 일일 상한 3종 — 계산은 `INS_DTM >= UTC_DATE()`(UTC 자정 기준 카운트, services/post.py).
+    # 복지 편집(daily_edit_limit)과 같은 관례. 라우터는 초과 시 429 를 낸다(FR-132).
+    daily_post_limit: int = 10     # 글(FR-124)
+    daily_comment_limit: int = 50  # 댓글(FR-127)
+    daily_report_limit: int = 20   # 신고(FR-130)
+    post_list_max_limit: int = 50  # `GET /posts?limit=` 상한 — 초과 422(FR-121). 기본 페이지는 20
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]

@@ -105,7 +105,8 @@ def test_M9G2_off_surface_equals_anonymous_contract(app_with_m9):
 
     # 참여 경로 접두사가 어떤 메서드로도 등록되지 않았는지 직접 확인(위 정확일치의 이중 가드)
     all_paths = {r.path for r in app.routes if isinstance(r, APIRoute)}
-    for marker in ("/members", "/employment", "/edits", "/benefits"):
+    # SC15 커뮤니티(2026-08-27)도 같은 스위치다 — OFF 스키마엔 TPOST 4테이블이 없다(SP-DB-18).
+    for marker in ("/members", "/employment", "/edits", "/benefits", "/posts", "/reports"):
         assert not any(marker in p for p in all_paths), f"OFF 인데 {marker} 경로 잔존: {all_paths}"
 
 
@@ -119,6 +120,9 @@ def test_M9G3_on_registers_participation_routes(app_with_m9):
     assert ("/api/v1/companies/{comp_id}/benefits", "POST") in writes
     assert "/api/v1/members/me" in gets
     assert "/api/v1/companies/{comp_id}/edits" in gets
+    # SC15 커뮤니티(CM-8): ON 이면 열람·쓰기가 함께 켜진다(정확 집합은 TS-1).
+    assert "/api/v1/posts" in gets and "/api/v1/posts/{post_id}/comments" in gets
+    assert ("/api/v1/posts", "POST") in writes and ("/api/v1/reports", "POST") in writes
 
 
 def test_M9G4_off_keeps_middleware_contract(app_with_m9):

@@ -35,6 +35,18 @@ async def require_member(loupit_sid: str | None = Cookie(default=None)) -> dict:
     return member
 
 
+async def optional_member(loupit_sid: str | None = Cookie(default=None)) -> dict | None:
+    """세션 쿠키가 **있으면** 회원 dict, 없거나 무효면 None — **어떤 경우에도 401 을 내지 않는다**(SP-COMM-4).
+
+    익명 열람 경로(커뮤니티 상세·댓글, FR-122·123)가 `is_mine`·`liked` 를 계산할 때만 쓴다.
+    `require_member` 와 **별개 심볼**이다 — AU-2 계약("익명 GET 의 dependant 트리에 require_member
+    부재")은 그 이름의 부재로 재므로, 이 함수가 그것을 감싸거나 이름을 재사용하면 안 된다.
+    DB 장애는 삼키지 않는다 — 장애를 '익명'으로 위장하면 상세 자체도 곧 실패하므로 정직하게 올린다."""
+    if not loupit_sid:
+        return None
+    return await session.resolve_session(loupit_sid)
+
+
 # ── SP-AUTH-19 운영 콘솔 관문 ─────────────────────────────────────────────────────
 #
 # 두 겹이고, **바깥 겹이 본체**다.
