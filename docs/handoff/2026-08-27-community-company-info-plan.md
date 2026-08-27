@@ -34,3 +34,17 @@
 - **DART 키** 수령 → `server/.env` `DART_API_KEY`(chown ubuntu 유지) → T-15.1/15.3.
 - **워크트리 정리**: `/home/ubuntu/loupit-wt/{docs,gnb}` — 머지 후 `git worktree remove`.
 - 머지 후 관제 정리: PR-1 머지 시 T-14.0.1 `[v]` + 롤업 · STATE 행 갱신 · 프로덕션 `git pull` + 재생성.
+
+## 추가 — 레인 실행·통합·서빙 적재 (같은 날 후반)
+
+- 에이전트 3레인(fin·comm·front)을 각자 worktree 에서 병렬로 돌렸다. 도중 **월 사용 한도**로 셋 다 중단됐다가
+  충전 후 같은 이름으로 재개(transcript 이어짐) — 미커밋 상태였던 fin 도 그대로 이어서 끝냈다.
+- worktree 에는 `.gitignore` 대상인 `server/.env` 가 딸려오지 않아 conftest 가 `KeyError: DB_HOST` 를 낸다 —
+  **테스트 전용 최소 env**(DB 4키 + `DB_NAME=loupit_test` + CI 플래그, pepper·SMTP 없음)를 관제가 놓았다.
+- 공개 PR(`lane/comm-launch`)은 관제가 직접: 탭·정책 P10/T6·`git mv`·nginx 블록·sitemap(`extra_sitemap_paths`).
+- **통합 브랜치 `lane/integration-2026-08-27`** = 6레인 머지(충돌 1건 `server/config.py` — 두 레인이 같은 자리에
+  필드 추가, 둘 다 유지) + TASK 마커·롤업·STATE. 백엔드 671 · 생성기 280 · 프론트 780.
+- **서빙 DB 적재**: `load_corp`(법인 100·매핑 101) → `dart_finance --base-year 2025 --years 5`(1,000회 호출,
+  2,829행, 결측 14) → 결측 hint 대로 4사 `FS_DIV_CD='OFS'` 후 부분 재수집(51행, rc 0). 남은 결측 2건은 정당.
+  scratch 렌더로 삼성전자 실적 5개년·증감률 확인, 두께 중앙값 1,402 → 1,610자(목표 1,900 에는 못 미침 —
+  표는 글자 수가 적다. 뉴스(5단계)나 설명문이 있어야 더 는다).

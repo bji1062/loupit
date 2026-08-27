@@ -14,11 +14,11 @@
 | CI | `.github/workflows/ci.yml` — frontend 705 · generator 236 ×2(빈 env + **운영 env 주입**, +롤업 `--check`) · backend 560(`loupit_ci`). **3종 모두 머지 필수 검사**, 전체 약 1분. `up-to-date` 요구 켜짐 → 머지는 직렬(auto-merge 권장). ⚠ 생성기를 두 번 도는 이유: 러너의 빈 env 하나만 재현하면 CI 초록이 배포 초록을 뜻하지 않는다(함정 0079 실증) | 2026-08-27 |
 | 데이터 | 회사 102 · 복지 1,465행 · 도메인 100/102 · 업종 102/102 | 2026-07-31 |
 | M9(로그인) | prod ON · beta ON | 2026-07-29 |
-| 테스트 | 백엔드 560 · sc14 3 · 생성기 236 · 프론트 705 — **전부 실측**(`--collect-only -m "not sc14"` · `node --test`). 이전 표의 540 은 낡은 값이었다 | 2026-08-27 |
+| 테스트 | 백엔드 **671** · sc14 3 · 생성기 **280** · 프론트 **780** — 통합 브랜치 `lane/integration-2026-08-27` 실측(커뮤니티 +74·재무 +37·탭/정책 +38·프론트 +75) | 2026-08-27 |
 | TASK 진행 | [`TASK.md` §4 AUTOGEN 표](TASK.md) — 스크립트 집계(손집계 금지). 14·15 도메인 추가로 계 324→**364** | 2026-08-27 |
 | 함정 로그 | 79건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-27 |
-| 회사 재무(신규 축) | DART 연동 3테이블(TCORP·TCOMPANY_CORP·TCORP_FINANCE)·corp_code 102 매칭 — [계획](PLAN-회사정보-확장-2026-08-21.md)·수집 미완. **리프는 [TASK/15](TASK/15-회사정보.md)(10)** · SPEC [SP-FIN](SPEC/15-회사정보-재무.md) · ⚠ `DART_API_KEY` 미보유(사용자 전달 대기) | 2026-08-27 |
-| **커뮤니티·상단 탭(SC15 신설)** | 2026-08-27 결정 4건 확정 — [계획](PLAN-커뮤니티-회사정보탭-2026-08-27.md) §1. PRD SC15(소셜피드≠게시판)·INV-1 개정·USECASE 10·FRD 14·SPEC 14([SP-COMM](SPEC/14-커뮤니티.md))·TASK 14(30 리프). **PR-1 회사정보 탭** = `lane/gnb-company-info-tab`(생성기 242·프론트 705 green, **PR 생성 대기** — 호스트에 `gh` 없음). 다음: PR-2 재무(키 대기)·PR-3 스키마(단독)·PR-4 서버·PR-5 프론트+공개(staging→git mv+nginx) | 2026-08-27 |
+| 회사 재무(신규 축) | **서빙 DB 적재 완료(2026-08-27)** — 법인 100·매핑 101(CJ ENM 2부문=1법인)·`TCORP_FINANCE` 2,880행(2021~2025·CFS/OFS). `DART_API_KEY` 는 `server/.env`. 결측 2건은 정당한 없음(씨제이올리브네트웍스 비상장·올릭스 매출 계정 상이), 4사(HPSP·리노공업·티씨케이·카카오뱅크)는 연결 재무제표 부재로 `FS_DIV_CD='OFS'`. TASK/15 9/10(남은 1 = 재생성·릴리스). scratch 실측 두께 중앙값 1,402 → **1,610자** | 2026-08-27 |
+| **커뮤니티·상단 탭(SC15 신설)** | **구현 완료·배포 대기(2026-08-27)** — [계획](PLAN-커뮤니티-회사정보탭-2026-08-27.md). 레인 6개(docs·gnb·fin·comm-frontend·comm-backend·comm-launch)를 `lane/integration-2026-08-27` 로 통합, CI 3종 green. TASK/14 28/30(남은 2 = 배포). **배포 순서**: `20260827_add_community.sql` prod·beta 적용 → `git pull` → nginx `/community/` 블록 수동 배치·reload → `generator.build` → API 재시작 → 스모크(handoff `2026-08-27-lane-comm-launch.md`) | 2026-08-27 |
 | 릴리스 게이트 | **서빙 무접촉 — 호출자까지 실증 완료.** `run_tests.sh` 는 `loupit_test` 만 쓰고, `release.sh` 는 `env -u DB_NAME` 으로 서빙 이름을 지워 넘긴다(가드: `test_release_does_not_leak_serving_db_name_into_gate`). ⚠ **시드 변경은 릴리스로 서빙에 반영되지 않는다** — 구 판본의 재시드 부작용이 사라졌다. 별도 `LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh` 필요 | 2026-08-27 |
 | 실트래픽 | ⚠ 실브라우저 세션 하루 고유 IP 2~10 — 병목은 제품이 아니라 유입 | 2026-07-31 |
 | 운영 미결 | 서버 밖 백업 자동화 · DMARC 승급 · ufw · 덕산 그룹공용 도메인 판단(보류 유지, 2026-08-27 결정) | 2026-08-27 |

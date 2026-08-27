@@ -83,5 +83,10 @@
 | 77 | 🚨 "게시된 이메일 0건"은 회사 사이트만 봤다는 뜻일 수 있다 — 그리고 찾아낸 도메인이 곧 등록 근거는 아니다 | PITFALLS/0077-mail-domain-not-on-company-site-and-may-be-group-wide.md |
 | 78 | _head_meta.html 에 SEO 태그를 "한 페이지만" 추가하는 방법은 없다 | PITFALLS/0078-shared-head-meta-partial-is-site-wide.md |
 | 79 | 임포트 시점에 굳는 env 기본값 — 그 위에 세운 단정은 CI 에서만 초록이다 | PITFALLS/0079-import-time-env-default-makes-tests-ci-only-green.md |
+| 80 | 매핑 CSV 의 comp_id 는 fresh 재시드 DB 에서 101행 중 100행이 어긋난다 — 이름이 키다 | PITFALLS/0080-csv-comp-id-drifts-on-fresh-seed.md |
+| 81 | 에이전트 편집 도구가 \u0000 같은 이스케이프를 실제 바이트로 써 넣는다 — 파일이 조용히 바이너리가 된다 | PITFALLS/0081-editor-tool-turns-unicode-escapes-into-raw-bytes.md |
+| 82 | 스펙이 요구한 고지문이 스펙이 금지한 어휘를 담고 있다 — 가드는 문장 단위 예외로만 뚫어라 | PITFALLS/0082-mandated-notice-contains-forbidden-word.md |
+| 83 | "익명 GET" 이라도 응답에 회원 필드가 있으면 credentials:'omit' 으로 부르면 안 된다 | PITFALLS/0083-optional-session-get-needs-credentials-include.md |
+| 84 | 부분 실행에서 파일 순서를 바꾸면 남의 세션 픽스처 잔존행이 내 변경 탓으로 보인다 | PITFALLS/0084-partial-test-order-hides-cross-file-seed-coupling.md |
 
 **번호 대기(_incoming): 0건**
