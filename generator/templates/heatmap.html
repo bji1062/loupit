@@ -1,11 +1,11 @@
-{# heatmap.html — 복지·실적 히트맵(SP-HEAT-4). 배치는 빌드 시점 %-좌표라 JS 없이 그려진다.
-   heatmap.js 는 탭 전환만(없으면 두 모드가 세로로 나란히 보인다). page_type 미선언 = 광고 0. #}
+{# heatmap.html — 복지·실적·카테고리 히트맵(SP-HEAT-4). 배치는 빌드 시점 %-좌표라 JS 없이 그려진다.
+   heatmap.js 는 모드 탭·카테고리 칩 전환만(없으면 모드·카테고리가 세로로 나란히 보인다). page_type 미선언 = 광고 0. #}
 {% extends "base.html" %}
 {% block css_extra %}<link rel="stylesheet" href="/assets/v2/css/heatmap.css">{% endblock %}
 {% block main %}
 <article class="heatmap-page">
   <h1>복지 히트맵 — 등록 회사 {{ total }}곳 한눈에</h1>
-  <p class="index-lead">KRX 업종({{ view.sector_count }}개)으로 묶었습니다. 칸의 크기와 색으로 회사를 비교하고, 칸을 누르면 회사 페이지로 갑니다.</p>
+  <p class="index-lead">KRX 업종({{ view.sector_count }}개)으로 묶었습니다. 칸의 크기와 색으로 회사를 비교하고, 칸을 누르면 회사 페이지로 갑니다. 카테고리 모드는 항목 묶음 안에서 같은 복지를 회사끼리 비교합니다.</p>
   <div class="hm-tabs" role="tablist" aria-label="히트맵 모드">
   {% for m in view.modes %}
     <button type="button" role="tab" id="hm-tab-{{ m.key }}" aria-controls="hm-{{ m.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}" data-mode="{{ m.key }}">{{ m.label }} <small>{{ m.hint }}</small></button>
@@ -14,17 +14,35 @@
   {% for m in view.modes %}
   <section class="hm-mode" id="hm-{{ m.key }}" role="tabpanel" aria-labelledby="hm-tab-{{ m.key }}" data-mode="{{ m.key }}">
     <h2 class="sr-only">{{ m.label }} 히트맵 — {{ m.count }}곳</h2>
-    {% for orient, lay in m.layouts.items() %}
-    <div class="hm-map hm-{{ orient }}" aria-hidden="{{ 'false' if orient == 'landscape' else 'true' }}">
-      {% for g in lay.groups %}
-      <div class="hm-grp{% if g.narrow %} narrow{% endif %}{% if g.unlisted %} unlisted{% endif %}" style="left:{{ g.x }}%;top:{{ g.y }}%;width:{{ g.w }}%;height:{{ g.h }}%" title="{{ g.name }} {{ g.count }}곳"><span>{{ g.name }} <em>{{ g.count }}</em></span></div>
-      {% endfor %}
-      {% for t in lay.tiles %}
-      <a class="hm-t {{ t.cls }} {{ t.size }}" href="{{ t.href }}" style="left:{{ t.x }}%;top:{{ t.y }}%;width:{{ t.w }}%;height:{{ t.h }}%" title="{{ t.nm }} — {{ t.industry }} · {{ t.sector }} — {{ t.tip }}"><b>{{ t.nm }}</b><i>{{ t.sub }}</i></a>
+    {% if m.panels | length > 1 %}
+    <div class="hm-chips" role="tablist" aria-label="복지 카테고리">
+    {% for p in m.panels %}
+      <button type="button" role="tab" data-panel="{{ p.key }}" aria-selected="{{ 'true' if loop.first else 'false' }}">{{ p.label }} <small>{{ p.count }}</small></button>
+    {% endfor %}
+    </div>
+    {% endif %}
+    {% for p in m.panels %}
+    <div class="hm-panel" data-panel="{{ p.key }}">
+      {% if m.panels | length > 1 %}
+      <h3 class="hm-panel-title">{{ p.label }} — 회사 {{ p.count }}곳 · 항목 {{ p.groups }}개 · 공식 {{ p.stated }} · 추정 {{ p.est }} · 정성 {{ p.qual }}</h3>
+      {% endif %}
+      {% for orient, lay in p.layouts.items() %}
+      <div class="hm-map hm-{{ orient }}" aria-hidden="{{ 'false' if orient == 'landscape' else 'true' }}">
+        {% for g in lay.groups %}
+        <div class="hm-grp{% if g.narrow %} narrow{% endif %}{% if g.unlisted %} unlisted{% endif %}" style="left:{{ g.x }}%;top:{{ g.y }}%;width:{{ g.w }}%;height:{{ g.h }}%" title="{{ g.name }} {{ g.count }}곳"><span>{{ g.name }} <em>{{ g.count }}</em></span></div>
+        {% endfor %}
+        {% for t in lay.tiles %}
+        <a class="hm-t {{ t.cls }} {{ t.size }}" href="{{ t.href }}" style="left:{{ t.x }}%;top:{{ t.y }}%;width:{{ t.w }}%;height:{{ t.h }}%" title="{{ t.nm }} — {{ t.industry }} · {{ t.sector }} — {{ t.tip }}"><b>{{ t.nm }}</b><i>{{ t.sub }}</i></a>
+        {% endfor %}
+      </div>
       {% endfor %}
     </div>
     {% endfor %}
+    {% if m.legend_kind == 'source' %}
+    <p class="hm-legend"><span>{{ m.legend }}</span><span><i class="hm-key s-stated"></i>회사 공식 수치</span><span><i class="hm-key s-est"></i>추정치(프리셋 기준)</span><span><i class="hm-key s-qual"></i>정성(금액 없음, 최소 칸)</span><span class="hm-note">{{ m.note }}</span></p>
+    {% else %}
     <p class="hm-legend"><span>{{ m.legend }}</span><span>{{ m.lo }}</span><span class="hm-sw">{% for s in m.steps %}<i class="{{ s }}"></i>{% endfor %}</span><span>{{ m.hi }}</span><span class="hm-note">{{ m.note }}</span></p>
+    {% endif %}
   </section>
   {% endfor %}
   <section class="hm-method">
@@ -32,8 +50,9 @@
     <ul>
       <li><strong>그룹</strong>은 한국거래소(KRX) 업종 분류입니다. 회사 페이지의 세부 업종은 칸에 마우스를 올리면 함께 보입니다. 비상장 회사는 "비상장" 그룹입니다.</li>
       <li><strong>복지 모드</strong> — 칸 크기는 등록된 복지 항목 수, 색은 금액이 있는 항목의 합계(만원)를 7분위로 나눈 것입니다. 정성 복지(금액 없음)는 크기에만 들어갑니다.</li>
-      {% if view.modes | length > 1 %}<li><strong>실적 모드</strong> — 칸 크기는 최신 사업연도 매출, 색은 영업이익의 전년 대비 증감률(±3 · ±10 · ±30% 경계)입니다. 출처는 금융감독원 전자공시(DART) 사업보고서이며, 금융업은 계정 체계가 달라 제외합니다.</li>{% endif %}
-      <li>색과 크기는 수치 구간을 그대로 옮긴 것이고 회사에 대한 평가가 아닙니다. 복지 금액에는 추정치가 섞여 있습니다 — 상세는 각 회사 페이지의 배지를 확인하세요.</li>
+      {% for m in view.modes if m.key == 'f' %}<li><strong>실적 모드</strong> — 칸 크기는 최신 사업연도 매출, 색은 영업이익의 전년 대비 증감률(±3 · ±10 · ±30% 경계)입니다. 출처는 금융감독원 전자공시(DART) 사업보고서이며, 금융업은 계정 체계가 달라 제외합니다.</li>{% endfor %}
+      <li><strong>카테고리 모드</strong> — 9개 복지 카테고리 중 하나를 고르면 그 안의 항목(식대·복지포인트·건강검진…)별 묶음 안에 회사가 놓입니다. 칸 크기는 금액, 색은 그 금액의 출처입니다: 회사가 밝힌 공식 수치만 진한 초록이고, 추정치는 빗금, 금액이 없는 정성 항목은 회색 최소 칸입니다. 추정·정성 칸의 실제 금액을 아신다면 재직 인증 후 회사 페이지에서 수정할 수 있습니다.</li>
+      <li>색과 크기는 수치 구간·출처를 그대로 옮긴 것이고 회사에 대한 평가가 아닙니다. 복지 금액에는 추정치가 섞여 있습니다 — 상세는 각 회사 페이지의 배지를 확인하세요.</li>
     </ul>
   </section>
   <p class="cta"><a href="/companies">회사정보 표로 보기</a></p>

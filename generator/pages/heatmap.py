@@ -6,6 +6,12 @@ prober.kr 주식 히트맵의 문법(업종 그룹 → 칸 크기 → 색 7단�
 |---|---|---|---|
 | 복지 | 복지 항목 수 | 금액 합계 7분위(연두→진녹, 정성 복지는 크기에만) | 등록 회사 전부 |
 | 실적 | 최신 사업연도 매출 | 영업이익 전년 대비(±3·±10·±30%, 빨강/회색/초록) | 재무·증감률이 있는 회사 |
+| 카테고리 | 복지 금액(정성은 최소 칸) | **출처** — 회사 공식 / 추정 / 정성 | 9 카테고리 × 안의 **항목** 묶음 × 회사 |
+
+카테고리 모드(2026-08-27 후반, 사용자 결정)는 그룹이 업종이 아니라 **항목**이다 — "같은 식대인데 더 주는 곳"은
+식대 묶음 안에서 봐야 한다. 색을 금액이 아니라 **출처**로 두는 이유: 정량 복지 645건 중 회사 공식 수치는
+73건(11%)뿐이라 금액 색은 추정 상수를 줄 세우는 그림이 된다. 출처 색은 "무엇을 알고 무엇을 모르는지"를
+그대로 보여주고, 추정·정성 칸은 재직자 편집(SC14)의 유입구가 된다.
 
 그룹은 **KRX 업종 분류**(`generator/sector.py`). 배치는 빌드 시점 squarify(`generator/treemap.py`)라
 페이지는 JS 없이 완성된다 — JS(`heatmap.js`)는 두 모드를 탭으로 오가는 enhancement 뿐이다.
@@ -20,7 +26,10 @@ from __future__ import annotations
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
+from collections import Counter
+
 from generator.format import krw_eok
+from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
 from generator.sector import UNLISTED, load_sectors, sector_of
 from generator.treemap import nested_layout
 
@@ -28,6 +37,18 @@ from generator.treemap import nested_layout
 ORIENTATIONS = {"landscape": (100.0, 62.5), "portrait": (100.0, 133.333)}
 YOY_CUTS = (-30.0, -10.0, -3.0, 3.0, 10.0, 30.0)  # 7단계 경계(%). 회색 = ±3% 이내
 SEQ_STEPS = 7
+
+# 항목 코드 → 짧은 묶음 이름. 없는 코드는 그 코드의 가장 흔한 `benefit_nm` 으로(빌드 시 집계).
+ITEM_LABEL = {
+    "meal": "식대·식사", "welfare_point": "복지포인트", "snack_bar": "간식", "commute_subsidy": "통근",
+    "transport": "교통비", "telecom": "통신비", "housing_loan": "주택자금", "discount": "임직원 할인",
+    "pension_support": "연금 지원", "health_check": "건강검진", "medical": "의료비", "insurance": "단체보험",
+    "event": "경조사", "child_edu": "자녀 학자금", "parenting": "육아", "resort": "휴양시설", "club": "동호회",
+    "books": "도서", "self_development": "자기계발", "incentive": "인센티브", "holiday_gift": "명절 선물",
+    "excellence_award": "포상",
+}
+SOURCE_LABEL = {"stated": "회사 공식 수치", "est": "추정치", "qual": "정성(금액 없음)"}
+EDIT_HINT = "실제 금액을 아시나요? 재직 인증 후 회사 페이지에서 수정할 수 있어요"
 
 
 def _quantile_cuts(values: list[int], n: int = SEQ_STEPS) -> list[int]:
@@ -98,6 +119,62 @@ def _finance_items(ctx, sectors):
     return items
 
 
+def _source_of(b: dict) -> str:
+    if b.get("qual_yn"):
+        return "qual"
+    return "stated" if b.get("amt_source") == "stated" else "est"
+
+
+def _item_labels(ctx) -> dict[str, str]:
+    """코드별 묶음 이름 — ITEM_LABEL 우선, 없으면 그 코드의 최빈 benefit_nm(짧게)."""
+    names: dict[str, Counter] = {}
+    for c in ctx.companies:
+        for b in c["benefits"]:
+            code = b.get("benefit_cd") or b["benefit_nm"]
+            names.setdefault(code, Counter())[b["benefit_nm"]] += 1
+    out = {}
+    for code, cnt in names.items():
+        nm = ITEM_LABEL.get(code) or cnt.most_common(1)[0][0]
+        out[code] = nm if len(nm) <= 12 else nm[:11] + "…"
+    return out
+
+
+def _category_items(ctx, ctgr: str, labels: dict[str, str]) -> list[dict]:
+    """한 카테고리의 복지 행 전부 → 타일 아이템. 정성(금액 없음)은 최소 칸(그 카테고리 최소 금액의 60%)."""
+    rows = [(c, b) for c in ctx.companies for b in c["benefits"] if b["benefit_ctgr_cd"] == ctgr]
+    amts = [int(b["benefit_amt"]) for _, b in rows if not b.get("qual_yn") and b.get("benefit_amt")]
+    floor = max(1.0, (min(amts) if amts else 10) * 0.6)
+    items = []
+    for c, b in rows:
+        src = _source_of(b)
+        has_amt = not b.get("qual_yn") and b.get("benefit_amt")
+        amt_text = f"{int(b['benefit_amt']):,}만원" if has_amt else "금액 없음"
+        note = (b.get("note_ctnt") or "").replace("(추정)", "").strip()
+        tip = f"{b['benefit_nm']} · {amt_text} · {SOURCE_LABEL[src]}"
+        if note:
+            tip += f" · {note}"
+        if src != "stated":
+            tip += f" · {EDIT_HINT}"
+        items.append({"c": c, "sector": labels.get(b.get("benefit_cd") or b["benefit_nm"], b["benefit_nm"]),
+                      "weight": int(b["benefit_amt"]) if has_amt else floor, "src": src, "cls": f"s-{src}",
+                      "sub": amt_text, "tip": tip})
+    return items
+
+
+def _category_panels(ctx) -> list[dict]:
+    labels = _item_labels(ctx)
+    panels = []
+    for ctgr in CATEGORY_ORDER:
+        items = _category_items(ctx, ctgr, labels)
+        if not items:
+            continue
+        counts = Counter(i["src"] for i in items)
+        panels.append({"key": ctgr, "label": CATEGORY_LABEL[ctgr], "count": len({i["c"]["comp_id"] for i in items}),
+                       "groups": len({i["sector"] for i in items}), "stated": counts["stated"], "est": counts["est"],
+                       "qual": counts["qual"], "layouts": {o: _layout(items, ctx, o) for o in ORIENTATIONS}})
+    return panels
+
+
 def _size_class(area: float) -> str:
     return "xs" if area < 9 else "sm" if area < 20 else "md" if area < 45 else "lg"
 
@@ -123,23 +200,35 @@ def _layout(items, ctx, orientation):
 
 
 def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
-    """페이지 뷰모델(순수 — 테스트가 직접 검사). `modes` 는 실적 미적재면 복지 하나뿐."""
+    """페이지 뷰모델(순수 — 테스트가 직접 검사). 모드마다 `panels`(복지·실적은 1개, 카테고리는 9개).
+    실적은 미적재면 빠진다."""
     sectors = load_sectors() if sectors is None else sectors
-    modes = [{"key": "w", "label": "복지", "hint": "크기 항목 수 · 색 금액 합계",
+    wi = _welfare_items(ctx, sectors)
+    modes = [{"key": "w", "label": "복지", "hint": "크기 항목 수 · 색 금액 합계", "legend_kind": "steps",
               "legend": "금액 합계(만원, 7분위)", "lo": "적음", "hi": "많음",
               "note": "정성 복지(금액 없음)는 크기에만 반영", "steps": [f"c{i}" for i in range(7)],
-              "layouts": {o: _layout(_welfare_items(ctx, sectors), ctx, o) for o in ORIENTATIONS},
+              "panels": [{"key": "all", "label": "복지", "count": len(wi),
+                          "layouts": {o: _layout(wi, ctx, o) for o in ORIENTATIONS}}],
               "count": len(ctx.companies)}]
     if ctx.finance_loaded:
         fi = _finance_items(ctx, sectors)
         if fi:
             year = max(i["year"] for i in fi)
-            modes.append({"key": "f", "label": "실적", "hint": "크기 매출 · 색 영업이익 전년 대비",
+            modes.append({"key": "f", "label": "실적", "hint": "크기 매출 · 색 영업이익 전년 대비", "legend_kind": "steps",
                           "legend": f"{year} 영업이익 전년 대비", "lo": "−30%↓", "hi": "+30%↑",
                           "note": f"회색 = ±3% 이내 · 금융업·공시 없는 {len(ctx.companies) - len(fi)}곳 제외",
                           "steps": [f"d{i}" for i in range(7)],
-                          "layouts": {o: _layout(fi, ctx, o) for o in ORIENTATIONS}, "count": len(fi)})
-    sector_count = len({m for mode in modes for m in (g["name"] for g in mode["layouts"]["landscape"]["groups"])})
+                          "panels": [{"key": "all", "label": "실적", "count": len(fi),
+                                      "layouts": {o: _layout(fi, ctx, o) for o in ORIENTATIONS}}],
+                          "count": len(fi)})
+    cp = _category_panels(ctx)
+    if cp:
+        modes.append({"key": "c", "label": "카테고리", "hint": "항목 묶음 안에서 회사 비교 · 색 출처", "legend_kind": "source",
+                      "legend": "칸 크기 = 금액 · 색 = 출처", "lo": "", "hi": "",
+                      "note": "추정·정성 칸은 재직 인증 후 회사 페이지에서 수정할 수 있어요",
+                      "steps": ["s-stated", "s-est", "s-qual"], "panels": cp,
+                      "count": sum(p["count"] for p in cp)})
+    sector_count = len({g["name"] for g in modes[0]["panels"][0]["layouts"]["landscape"]["groups"]})
     return {"modes": modes, "sector_count": sector_count}
 
 

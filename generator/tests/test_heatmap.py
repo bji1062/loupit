@@ -69,7 +69,7 @@ def test_view_welfare_mode_places_every_company_in_both_orientations():
     view = heatmap.build_view(_ctx(), SECTORS)
     w = next(m for m in view["modes"] if m["key"] == "w")
     names = {c["comp_nm"] for c in FAKE_BUNDLE["companies"]}
-    for orient, lay in w["layouts"].items():
+    for orient, lay in w["panels"][0]["layouts"].items():
         assert {t["nm"] for t in lay["tiles"]} == names, orient
         rects = [(t["x"], t["y"], t["w"], t["h"]) for t in lay["tiles"]]
         _no_overlap(rects)
@@ -81,7 +81,7 @@ def test_view_welfare_mode_places_every_company_in_both_orientations():
 def test_view_groups_by_krx_sector_and_unlisted_fallback():
     view = heatmap.build_view(_ctx(), SECTORS)
     w = next(m for m in view["modes"] if m["key"] == "w")
-    groups = {g["name"] for g in w["layouts"]["landscape"]["groups"]}
+    groups = {g["name"] for g in w["panels"][0]["layouts"]["landscape"]["groups"]}
     assert "전기·전자" in groups and "IT 서비스" in groups
     assert UNLISTED in groups  # 재무 매핑이 없는 회사(comp_id 2)는 비상장 그룹
     assert sector_of(None, SECTORS) == UNLISTED
@@ -92,17 +92,17 @@ def test_view_groups_by_krx_sector_and_unlisted_fallback():
 def test_view_finance_mode_excludes_financial_and_unmapped_and_needs_two_years():
     view = heatmap.build_view(_ctx(), SECTORS)
     f = next(m for m in view["modes"] if m["key"] == "f")
-    names = {t["nm"] for t in f["layouts"]["landscape"]["tiles"]}
+    names = {t["nm"] for t in f["panels"][0]["layouts"]["landscape"]["tiles"]}
     assert "삼성전자" in names
     assert "네이버" not in names  # 금융 세트(FAKE_FINANCE 3 = financial)
     assert f["count"] == len(names)
-    tile = next(t for t in f["layouts"]["landscape"]["tiles"] if t["nm"] == "삼성전자")
+    tile = next(t for t in f["panels"][0]["layouts"]["landscape"]["tiles"] if t["nm"] == "삼성전자")
     assert tile["cls"].startswith("d") and "%" in tile["sub"]
 
 
 def test_view_without_finance_has_only_welfare_mode():
     view = heatmap.build_view(_ctx(with_finance=False), SECTORS)
-    assert [m["key"] for m in view["modes"]] == ["w"]
+    assert [m["key"] for m in view["modes"]] == ["w", "c"]  # 실적만 빠지고 카테고리는 남는다
 
 
 def test_color_steps_cover_seven_bins():
@@ -151,3 +151,48 @@ def test_sector_csv_loads_and_has_only_krx_sectors():
     assert len(sectors) >= 90, "krx_sector.csv 가 비었거나 크게 줄었다"
     assert all(re.fullmatch(r"\d{6}", k) for k in sectors)
     assert "005930" in sectors  # 삼성전자
+
+
+# ── 카테고리 모드(항목 묶음 × 회사, 색 = 출처) ─────────────────────────────
+
+
+def _cat_mode():
+    return next(m for m in heatmap.build_view(_ctx(), SECTORS)["modes"] if m["key"] == "c")
+
+
+def test_category_mode_has_one_panel_per_nonempty_category_in_canonical_order():
+    from generator.pages.company import CATEGORY_ORDER
+    keys = [p["key"] for p in _cat_mode()["panels"]]
+    assert keys and keys == [k for k in CATEGORY_ORDER if k in keys]
+    present = {b["benefit_ctgr_cd"] for c in FAKE_BUNDLE["companies"] for b in c["benefits"]}
+    assert set(keys) == present
+
+
+def test_category_panel_places_every_benefit_row_grouped_by_item_with_source_class():
+    for p in _cat_mode()["panels"]:
+        rows = [(c["comp_nm"], b) for c in FAKE_BUNDLE["companies"] for b in c["benefits"] if b["benefit_ctgr_cd"] == p["key"]]
+        lay = p["layouts"]["landscape"]
+        assert len(lay["tiles"]) == len(rows), p["key"]
+        assert {t["cls"] for t in lay["tiles"]} <= {"s-stated", "s-est", "s-qual"}
+        assert all(t["w"] > 0 and t["h"] > 0 for t in lay["tiles"])  # 정성도 최소 칸을 받는다
+        _no_overlap([(t["x"], t["y"], t["w"], t["h"]) for t in lay["tiles"]])
+        assert p["stated"] + p["est"] + p["qual"] == len(rows)
+        assert p["groups"] == len({g["name"] for g in lay["groups"]})
+
+
+def test_category_tile_source_and_hint():
+    """공식 수치는 s-stated 이고 수정 안내가 없다; 추정·정성은 안내가 붙는다(참여 유입구)."""
+    tiles = [t for p in _cat_mode()["panels"] for t in p["layouts"]["landscape"]["tiles"]]
+    stated = [t for t in tiles if t["cls"] == "s-stated"]
+    others = [t for t in tiles if t["cls"] != "s-stated"]
+    assert stated and others
+    assert all(heatmap.EDIT_HINT not in t["tip"] for t in stated)
+    assert all(heatmap.EDIT_HINT in t["tip"] for t in others)
+    assert all("만원" in t["sub"] or t["sub"] == "금액 없음" for t in tiles)
+
+
+def test_page_renders_category_chips_and_source_legend():
+    p = _page()
+    assert 'class="hm-chips"' in p.html and 'data-panel="perks"' in p.html
+    assert "hm-key s-stated" in p.html and "회사 공식 수치" in p.html
+    assert "카테고리 모드" in p.html
