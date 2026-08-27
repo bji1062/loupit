@@ -214,3 +214,87 @@ FAKE_COMBINATIONS_RAW = {
         {"a": "naver", "b": "kakao", "note": "미등록 회사 포함(GC-23 스킵 소비)"},
     ]
 }
+
+
+# ── 재무(DART) 픽스처 — SP-FIN-4 로더 출력 형태(`generator/finance.py::assemble`)와 1:1 ──
+# 회사 3곳 중 1곳 일반 5개년(삼성전자, 연결) · 1곳 금융(네이버 — 픽스처상 금융 세트, 별도 기준,
+# 순이익만) · 1곳 없음(SK하이닉스 — 키 자체가 없다 = "공시 데이터 없음" 경로).
+# 금액은 원 단위 정수. None 은 "그 계정이 없다"(금융업)이지 0 이 아니다.
+FAKE_FINANCE = {
+    1: {
+        "corp_nm": "삼성전자",
+        "stock_cd": "005930",
+        "acct_set": "general",
+        "fs_div": "CFS",
+        "years": [
+            {"year": 2021, "revenue": 279_600_000_000_000, "op_income": 51_630_000_000_000, "net_income": 39_900_000_000_000, "rcept_no": "20220308000001"},
+            {"year": 2022, "revenue": 302_230_000_000_000, "op_income": 43_380_000_000_000, "net_income": 55_650_000_000_000, "rcept_no": "20230307000001"},
+            {"year": 2023, "revenue": 258_940_000_000_000, "op_income": 6_570_000_000_000, "net_income": 15_490_000_000_000, "rcept_no": "20240312000001"},
+            {"year": 2024, "revenue": 300_000_000_000_000, "op_income": 32_000_000_000_000, "net_income": 34_000_000_000_000, "rcept_no": "20250311000002"},
+            {"year": 2025, "revenue": 330_000_000_000_000, "op_income": 40_000_000_000_000, "net_income": 35_000_000_000_000, "rcept_no": "20260318000001"},
+        ],
+        "siblings": [],
+    },
+    3: {
+        "corp_nm": "네이버",
+        "stock_cd": "035420",
+        "acct_set": "financial",
+        "fs_div": "OFS",
+        "years": [
+            {"year": 2024, "revenue": None, "op_income": None, "net_income": 2_200_000_000_000, "rcept_no": "20250325000004"},
+            {"year": 2025, "revenue": None, "op_income": None, "net_income": 2_451_500_000_000, "rcept_no": "20260325000004"},
+        ],
+        "siblings": [],
+    },
+}
+
+
+def _mk_cj_enm(comp_id: int, eng: str, nm: str) -> dict:
+    return {
+        "comp_id": comp_id,
+        "comp_eng_nm": eng,
+        "comp_nm": nm,
+        "comp_tp_cd": "large",
+        "industry_nm": "미디어",
+        "logo_nm": "C",
+        "work_style_val": {},
+        "aliases": [nm],
+        "benefits": [
+            {
+                "benefit_nm": "식대 지원",
+                "benefit_amt": 200,
+                "benefit_ctgr_cd": "perks",
+                "badge_cd": "official",
+                "amt_source": "stated",
+                "qual_yn": False,
+                "qual_desc_ctnt": None,
+                "note_ctnt": None,
+                "verified_dtm": "2026-01-01",
+                "expires_dtm": _FAR_FUTURE,
+                "badge_src_cd": None,
+                "badge_src_url_ctnt": None,
+                "sort_order_no": 0,
+            }
+        ],
+    }
+
+
+def make_sibling_fixture() -> tuple[dict, dict]:
+    """형제 페이지 변형 — CJ ENM 두 부문이 **한 법인**(00265324)을 가리키는 실측 구조(함정 (69)).
+
+    `FAKE_BUNDLE` 에 회사 2곳(98·99)을 더하고, 재무는 같은 연도 목록 + 서로를 `siblings` 로.
+    원본은 깊은 복사로 보호한다. 순이익 음수(-500억)도 여기서 한 번 거친다.
+    """
+    bundle = copy.deepcopy(FAKE_BUNDLE)
+    bundle["companies"] += [
+        _mk_cj_enm(98, "cj_enm_ent", "CJ ENM 엔터테인먼트부문"),
+        _mk_cj_enm(99, "cj_enm_com", "CJ ENM 커머스부문"),
+    ]
+    years = [
+        {"year": 2024, "revenue": 4_500_000_000_000, "op_income": 100_000_000_000, "net_income": 30_000_000_000, "rcept_no": "20250320000008"},
+        {"year": 2025, "revenue": 4_795_000_000_000, "op_income": 120_000_000_000, "net_income": -50_000_000_000, "rcept_no": "20260319000009"},
+    ]
+    finance = copy.deepcopy(FAKE_FINANCE)
+    finance[98] = {"corp_nm": "씨제이이엔엠", "stock_cd": "035760", "acct_set": "general", "fs_div": "CFS", "years": copy.deepcopy(years), "siblings": [99]}
+    finance[99] = {"corp_nm": "씨제이이엔엠", "stock_cd": "035760", "acct_set": "general", "fs_div": "CFS", "years": copy.deepcopy(years), "siblings": [98]}
+    return bundle, finance

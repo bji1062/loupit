@@ -1,0 +1,168 @@
+"""회사 상세 '실적' 섹션 렌더 — FN-5 (SP-FIN-5, T-15.2.2).
+
+근거: `docs/SPEC/15-회사정보-재무.md` SP-FIN-5 · DEC-B(사실만).
+
+계약:
+  - 섹션은 복지표 **뒤**, CTA **앞**(복지가 이 사이트의 본체다).
+  - 기준(연결/별도)·출처(접수번호 아웃링크)·고지 한 줄은 수치가 있을 때 **항상** 함께 나온다 —
+    기준을 안 적으면 그 자체가 부정확한 주장이다(LG 연결 9,122억 vs 별도 5,971억).
+  - 금융 세트는 열이 다르다(순이익만). 없는 회사는 "공시 데이터 없음"을 **말한다**.
+  - 재무가 아예 주입되지 않은 빌드(`finance=None`)는 기존 페이지와 100% 같다 — 수집 전 릴리스가
+    102개사 전부에 "미제출"이라는 거짓말을 찍지 않게 하는 경계다.
+"""
+from __future__ import annotations
+
+import copy
+import json
+import re
+
+from generator import build as build_module
+from generator.context import build_context
+from generator.pages import company
+from generator.render import make_env
+from generator.tests.fixtures import FAKE_BUNDLE, FAKE_FINANCE, make_sibling_fixture
+
+NOTICE = "공시 수치이며 평가나 전망이 아닙니다"
+NONE_TEXT = "공시 데이터 없음(비상장 또는 미제출)"
+FINANCIAL_TEXT = "금융업은 계정 체계가 달라 순이익만 표시"
+
+
+def _pages(bundle, finance, now):
+    env = make_env()
+    ctx = build_context(bundle, now=now, finance=finance)
+    return {p.path: p.html for p in company.render_all(env, ctx)}
+
+
+def _section(html: str) -> str:
+    start = html.index('<section class="finance"')
+    return html[start: html.index("</section>", start)]
+
+
+def _rows(section: str) -> list[list[str]]:
+    """tbody 의 행 → 셀 텍스트 목록(th/td 순서 그대로)."""
+    body = section[section.index("<tbody>"): section.index("</tbody>")]
+    return [re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", tr, re.S) for tr in re.findall(r"<tr>(.*?)</tr>", body, re.S)]
+
+
+# ── 위치·존재 ─────────────────────────────────────────────────────────────────
+
+def test_FN5_every_company_page_has_finance_section_when_finance_loaded(fake_bundle, fake_finance, fake_now):
+    for path, html in _pages(fake_bundle, fake_finance, fake_now).items():
+        assert '<section class="finance"' in html, path
+        assert "<h2>실적</h2>" in _section(html), path
+
+
+def test_FN5_section_sits_after_benefit_table_and_before_cta(fake_bundle, fake_finance, fake_now):
+    html = _pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"]
+    assert html.index('class="benefit-table"') < html.index('<section class="finance"') < html.index('class="cta"')
+
+
+# ── 일반 세트: 표·기준·출처·고지 ─────────────────────────────────────────────
+
+def test_FN5_general_table_newest_first_with_eok_amounts_and_deltas(fake_bundle, fake_finance, fake_now):
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
+    assert "<caption>" in sec
+    for th in ("연도", "매출", "영업이익", "순이익", "전년 대비"):
+        assert f'<th scope="col">{th}</th>' in sec, th
+    rows = _rows(sec)
+    assert [r[0] for r in rows] == ["2025", "2024", "2023", "2022", "2021"], "최신 연도가 먼저"
+    assert rows[0] == ["2025", "3,300,000", "+10.0%", "400,000", "+25.0%", "350,000", "+2.9%"]
+    assert rows[-1][2] == "—", "첫 해는 전년이 없다 — 빈칸이 아니라 '—'"
+    assert '<th scope="row">2025</th>' in sec
+
+
+def test_FN5_basis_badge_reads_cfs_or_ofs(fake_bundle, fake_finance, fake_now):
+    pages = _pages(fake_bundle, fake_finance, fake_now)
+    assert '<span class="badge finance-basis">연결 기준</span>' in _section(pages["company/samsung-elec.html"])
+    assert '<span class="badge finance-basis">별도 기준</span>' in _section(pages["company/naver.html"])
+
+
+def test_FN5_source_line_links_latest_receipt_on_dart(fake_bundle, fake_finance, fake_now):
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
+    assert (
+        '출처: 금융감독원 전자공시(DART) 사업보고서 · 접수번호 '
+        '<a href="https://dart.fss.or.kr/dsaf001/main.do?rcpNo=20260318000001" rel="noopener">20260318000001</a>'
+    ) in sec
+
+
+def test_FN5_notice_is_one_line_of_fact(fake_bundle, fake_finance, fake_now):
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
+    assert f'<p class="finance-notice">{NOTICE}</p>' in sec
+
+
+# ── 금융 세트·없음·형제 ──────────────────────────────────────────────────────
+
+def test_FN5_financial_set_shows_net_income_only(fake_bundle, fake_finance, fake_now):
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/naver.html"])
+    assert '<th scope="col">순이익</th>' in sec
+    assert '<th scope="col">매출</th>' not in sec and '<th scope="col">영업이익</th>' not in sec
+    assert FINANCIAL_TEXT in sec
+    assert _rows(sec)[0] == ["2025", "24,515", "+11.4%"]
+    assert NONE_TEXT not in sec
+
+
+def test_FN5_company_without_data_says_so_and_keeps_section(fake_bundle, fake_finance, fake_now):
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/sk-hynix.html"])
+    assert f'<p class="finance-none">{NONE_TEXT}</p>' in sec
+    assert "<table" not in sec and "접수번호" not in sec and NOTICE not in sec
+
+
+def test_FN5_siblings_get_same_figures_and_a_corporation_note(fake_now):
+    bundle, finance = make_sibling_fixture()
+    pages = _pages(bundle, finance, fake_now)
+    ent, com = _section(pages["company/cj-enm-ent.html"]), _section(pages["company/cj-enm-com.html"])
+    assert "법인 기준 공시 — CJ ENM 커머스부문과 같은 법인" in ent
+    assert "법인 기준 공시 — CJ ENM 엔터테인먼트부문과 같은 법인" in com
+    assert _rows(ent) == _rows(com)
+    assert _rows(ent)[0][5] == "-500", "적자는 음수 그대로"
+    assert "법인 기준 공시" not in _section(pages["company/samsung-elec.html"])
+
+
+def test_FN5_receipt_number_is_validated_before_becoming_a_link(fake_bundle, fake_finance, fake_now):
+    """접수번호가 숫자가 아니면 링크를 만들지 않는다(URL 주입 경로 차단) — 이스케이프된 텍스트로만."""
+    fin = copy.deepcopy(fake_finance)
+    fin[1]["years"][-1]["rcept_no"] = '"><script>alert(1)</script>'
+    sec = _section(_pages(fake_bundle, fin, fake_now)["company/samsung-elec.html"])
+    assert "dart.fss.or.kr" not in sec
+    assert "<script>" not in sec
+
+
+# ── 무주입 = 무회귀 ──────────────────────────────────────────────────────────
+
+def test_FN5_no_finance_means_no_section_at_all(fake_bundle, fake_now):
+    """`finance=None` 과 `{}` 둘 다 — 섹션 자체가 없다. 기존 스위트가 이 경로를 그대로 재사용한다."""
+    for fin in (None, {}):
+        for path, html in _pages(copy.deepcopy(fake_bundle), fin, fake_now).items():
+            assert 'class="finance"' not in html, (path, fin)
+            assert NONE_TEXT not in html, (path, fin)
+
+
+def test_FN5_dataset_without_any_figures_counts_as_not_loaded(fake_bundle, fake_finance, fake_now):
+    """매핑은 있는데 수치가 0건(수집 전)이면 '없음' 문구도 내지 않는다 — 102개사 전부 '미제출' 은 거짓이다."""
+    fin = {k: {**v, "years": []} for k, v in fake_finance.items()}
+    for path, html in _pages(fake_bundle, fin, fake_now).items():
+        assert 'class="finance"' not in html, path
+
+
+# ── CLI: --finance-json ──────────────────────────────────────────────────────
+
+def test_FN5_build_cli_renders_finance_from_json_dump(tmp_path, fake_combinations_path):
+    b, f = tmp_path / "b.json", tmp_path / "f.json"
+    b.write_text(json.dumps(FAKE_BUNDLE, ensure_ascii=False), encoding="utf-8")
+    f.write_text(json.dumps(FAKE_FINANCE, ensure_ascii=False), encoding="utf-8")  # 키가 문자열로 떨어진다
+    out = tmp_path / "dist"
+    rc = build_module.main(["--bundle-json", str(b), "--finance-json", str(f), "--out", str(out), "--no-gzip"])
+    assert rc == 0
+    html = (out / "company" / "samsung-elec.html").read_text(encoding="utf-8")
+    assert '<section class="finance"' in html and "3,300,000" in html
+    assert NONE_TEXT in (out / "company" / "sk-hynix.html").read_text(encoding="utf-8")
+
+
+def test_FN5_build_cli_without_finance_json_says_so_and_renders_legacy(tmp_path, fake_combinations_path, capsys):
+    b = tmp_path / "b.json"
+    b.write_text(json.dumps(FAKE_BUNDLE, ensure_ascii=False), encoding="utf-8")
+    out = tmp_path / "dist"
+    rc = build_module.main(["--bundle-json", str(b), "--out", str(out), "--no-gzip"])
+    assert rc == 0
+    assert 'class="finance"' not in (out / "company" / "samsung-elec.html").read_text(encoding="utf-8")
+    assert "finance" in capsys.readouterr().err.lower(), "재무 미주입을 조용히 넘기면 안 된다"

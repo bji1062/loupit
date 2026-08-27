@@ -1,0 +1,35 @@
+{# _finance_table.html — 회사 상세 '실적' 섹션 (SP-FIN-5). 뷰모델은
+   generator/finance.py::company_view. 표현은 **사실만**(DEC-B): 수치·전년 대비·기준·출처.
+   등급·전망·평가 어휘는 test_finance_guard(FN-6) 가 생성물 전체에서 막는다.
+
+   - 기준(연결/별도)은 수치가 있으면 항상 같이 나온다 — 기준 없는 수치는 부정확한 주장이다
+     (LG 연결 9,122억 vs 별도 5,971억).
+   - 금융 세트는 순이익 열만 — 매출·영업이익 계정이 아예 없다(삼성생명 실측). 빈칸을 0 으로
+     그리지 않는다.
+   - 데이터 없음도 섹션은 남긴다 — 없다는 사실도 정보다.
+   - 표 스타일은 복지표의 `.benefit-table` 을 재사용한다(web/assets 는 라이브 문서루트라 이 PR 에서
+     CSS 를 건드리지 않는다). #}
+{% macro finance_section(fin) -%}
+<section class="finance" aria-label="실적">
+  <h2>실적</h2>
+{% if fin.present %}
+  <p class="finance-basis-line"><span class="badge finance-basis">{{ fin.basis }}</span>{% if fin.financial %} 금융업은 계정 체계가 달라 순이익만 표시합니다.{% endif %}</p>
+  {% if fin.sibling_note %}<p class="finance-corp-note">{{ fin.sibling_note }}</p>{% endif %}
+  <table class="benefit-table finance-table">
+    <caption>{{ fin.caption }}</caption>
+    <thead>
+      <tr><th scope="col">연도</th>{% if not fin.financial %}<th scope="col">매출</th><th scope="col">전년 대비</th><th scope="col">영업이익</th><th scope="col">전년 대비</th>{% endif %}<th scope="col">순이익</th><th scope="col">전년 대비</th></tr>
+    </thead>
+    <tbody>
+    {% for r in fin.rows %}
+      <tr><th scope="row">{{ r.year }}</th>{% if not fin.financial %}<td class="finance-amt">{{ r.revenue }}</td><td class="finance-delta">{{ r.revenue_delta }}</td><td class="finance-amt">{{ r.op_income }}</td><td class="finance-delta">{{ r.op_income_delta }}</td>{% endif %}<td class="finance-amt">{{ r.net_income }}</td><td class="finance-delta">{{ r.net_income_delta }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <p class="finance-source">출처: 금융감독원 전자공시(DART) 사업보고서 · 접수번호 {% if fin.rcept_url %}<a href="{{ fin.rcept_url }}" rel="noopener">{{ fin.rcept_no }}</a>{% else %}{{ fin.rcept_no }}{% endif %}</p>
+  <p class="finance-notice">공시 수치이며 평가나 전망이 아닙니다</p>
+{% else %}
+  <p class="finance-none">{{ fin.none_text }}</p>
+{% endif %}
+</section>
+{%- endmacro %}

@@ -5,6 +5,27 @@
 <article class="company-index">
   <h1>회사정보 — 등록 회사 {{ total }}곳</h1>
   <p class="index-lead">복지 데이터가 확인된 회사만 등록합니다. 회사를 고르면 복지 항목·확인일을 볼 수 있습니다.</p>
+  {#- 재무(SP-FIN-5, 2026-08-27): 실렸으면 일반/금융 두 섹션 표(지표 세트가 달라 같은 표에 넣으면
+      빈칸 또는 다른 뜻의 숫자가 된다). 섹션 안은 가나다순(GC-27). 안 실렸으면 아래 목록 그대로. #}
+  {% if finance_sections %}
+  {% for sec in finance_sections %}
+  <section class="company-index-section" data-acct-set="{{ sec.key }}">
+    <h2>{{ sec.label }}</h2>
+    {% if sec.financial %}<p class="index-lead">금융업은 계정 체계가 달라 순이익만 표시합니다.</p>{% endif %}
+    <table class="benefit-table company-index-table">
+      <caption>{{ sec.label }} 회사 {{ sec.rows | length }}곳 — 최신 사업연도 실적(억원)</caption>
+      <thead>
+        <tr><th scope="col">회사</th><th scope="col">업종</th><th scope="col">연도</th>{% if not sec.financial %}<th scope="col">매출(억원)</th><th scope="col">영업이익(억원)</th>{% endif %}<th scope="col">순이익(억원)</th><th scope="col">기준</th></tr>
+      </thead>
+      <tbody>
+      {% for r in sec.rows %}
+        <tr><th scope="row"><a href="{{ r.href }}">{{ r.comp_nm }}</a></th><td class="index-industry">{{ r.industry_nm or '' }}</td><td>{{ r.year }}</td>{% if not sec.financial %}<td class="finance-amt">{{ r.revenue }}</td><td class="finance-amt">{{ r.op_income }}</td>{% endif %}<td class="finance-amt">{{ r.net_income }}</td><td>{{ r.basis }}</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </section>
+  {% endfor %}
+  {% else %}
   <ul class="company-index-list">
   {% for it in items %}
     <li>
@@ -13,6 +34,7 @@
     </li>
   {% endfor %}
   </ul>
+  {% endif %}
   <p class="cta"><a href="{{ cfg.compare_path }}">두 회사 비교하기</a></p>
 </article>
 {% endblock %}

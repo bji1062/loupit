@@ -13,6 +13,27 @@ from __future__ import annotations
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
+from generator.finance import index_row
+
+# 섹션 순서·라벨(SP-FIN-5). 금융은 지표 세트가 달라(매출·영업이익 계정 부재) 표를 가른다.
+_SECTIONS = (("general", "일반"), ("financial", "금융"))
+
+
+def _finance_sections(items: list[dict], ctx) -> list[dict]:
+    """재무가 실린 빌드에서만 — 회사를 `acct_set` 으로 일반/금융에 나눠 최신연도 수치를 붙인다.
+    매핑이 없는 회사(CJ올리브영)는 일반 섹션에 '—' 로. 빈 섹션은 내지 않는다(금융 0곳이면 생략)."""
+    if not ctx.finance_loaded:
+        return []
+    groups: dict[str, list[dict]] = {key: [] for key, _ in _SECTIONS}
+    for it in items:  # items 는 이미 가나다순 — 섹션 안 순서가 그대로 GC-27 이다
+        fin = ctx.finance.get(it["comp_id"])
+        key = fin["acct_set"] if fin and fin.get("acct_set") in groups else "general"
+        groups[key].append({**it, **index_row(fin)})
+    return [
+        {"key": key, "label": label, "financial": key == "financial", "rows": groups[key]}
+        for key, label in _SECTIONS
+        if groups[key]
+    ]
 
 
 def render(env, ctx, cfg=CFG) -> Page:
@@ -20,6 +41,7 @@ def render(env, ctx, cfg=CFG) -> Page:
     companies = sorted(ctx.companies, key=lambda c: (c["comp_nm"], c["comp_eng_nm"]))
     items = [
         {
+            "comp_id": c["comp_id"],
             "comp_nm": c["comp_nm"],
             "industry_nm": c.get("industry_nm"),
             "href": f"/company/{ctx.slugs[c['comp_eng_nm']]}",
@@ -35,6 +57,7 @@ def render(env, ctx, cfg=CFG) -> Page:
     html = env.get_template("companies.html").render(
         items=items,
         total=len(items),
+        finance_sections=_finance_sections(items, ctx),
         meta_title=title,
         meta_desc=desc,
         canonical=url,

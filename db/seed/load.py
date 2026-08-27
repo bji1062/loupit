@@ -1,7 +1,9 @@
 """SP-SEED-9 — 시드 오케스트레이터 (단일 엔트리포인트).
 
 실행 순서(SP-SEED-3, 멱등): schema → company_types+benefit_presets →
-95개 복지 SQL(회사 자기등록 포함) → company_meta 적용(별칭·근무형태) → DEC-2 백필.
+95개 복지 SQL(회사 자기등록 포함) → company_meta 적용(별칭·근무형태) → DEC-2 백필 →
+DART 법인 매핑(load_corp, SP-FIN-2 — **마지막**이어야 한다: --fresh 가 TCOMPANY 를 재생성해
+COMP_ID 를 다시 배정한 뒤에 이름으로 다시 잇는다).
 
 CLI: `python3 db/seed/load.py [--fresh]`
   --fresh : DROP(FK 역순)+CREATE 후 전체 재시드(테스트/클린 재빌드)
@@ -195,6 +197,7 @@ def main(fresh: bool = False) -> dict:
     from backfill_dec2 import backfill
     from companies import apply_company_meta
     from company_meta import build_company_meta
+    from load_corp import apply as apply_corp_map, read_map as read_corp_map
 
     conn = connect()
     try:
@@ -213,6 +216,12 @@ def main(fresh: bool = False) -> dict:
             apply_company_meta(cur, meta)  # 4: 별칭·근무형태 보강
             run_sql_file(cur, COMPANY_EMAIL_DOMAIN_SQL)  # 4b: 회사↔이메일 도메인 화이트리스트(재직 인증, DG-5)
             stats = backfill(cur)  # 5: DEC-2 백필(official 승격·amt_source·출처·만료)
+            # 6: DART 법인 매핑(SP-FIN-2). 참조 5테이블 재생성 뒤 COMP_ID 가 바뀌므로 **여기(마지막)**서
+            #    이름으로 다시 잇는다 — 안 하면 재시드 한 번에 실적 섹션이 에러 없이 사라진다(함정 (57)).
+            #    TCORP·TCOMPANY_CORP 는 --fresh 의 DROP 대상이 아니라 upsert + CSV 밖 잔존 행 제거로 맞춘다.
+            corp_stats = apply_corp_map(cur, read_corp_map())
+            stats["corp_mapped"] = corp_stats["mapped"]
+            stats["corp_unmatched"] = corp_stats["unmatched"]
             counts = _gather_counts(cur)  # 하한 스모크용 실카운트(커밋 직전, 동일 트랜잭션)
         conn.commit()
     except Exception:
