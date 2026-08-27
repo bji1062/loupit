@@ -26,13 +26,16 @@
       {% if m.panels | length > 1 %}
       <h3 class="hm-panel-title">{{ p.label }} — 회사 {{ p.count }}곳 · 항목 {{ p.groups }}개 · 공식 {{ p.stated }} · 추정 {{ p.est }} · 정성 {{ p.qual }}</h3>
       {% endif %}
+      {#- 판독줄: 작은 칸은 글자가 들어가지 않으므로 마우스·포커스가 닿은 칸의 내용을 여기 띄운다.
+          JS 가 채우며(정적 상태에서는 안내 문구), aria-live 로 스크린리더에도 읽힌다. -#}
+      <p class="hm-readout" data-readout aria-live="polite">칸에 마우스를 올리면 그 회사와 같은 묶음이 함께 강조됩니다.</p>
       {% for orient, lay in p.layouts.items() %}
       <div class="hm-map hm-{{ orient }}" aria-hidden="{{ 'false' if orient == 'landscape' else 'true' }}">
         {% for g in lay.groups %}
-        <div class="hm-grp{% if g.narrow %} narrow{% endif %}{% if g.unlisted %} unlisted{% endif %}" style="left:{{ g.x }}%;top:{{ g.y }}%;width:{{ g.w }}%;height:{{ g.h }}%" title="{{ g.name }} {{ g.count }}곳"><span>{{ g.name }} <em>{{ g.count }}</em></span></div>
+        <div class="hm-grp{% if g.narrow %} narrow{% endif %}{% if g.unlisted %} unlisted{% endif %}" data-g="{{ g.gkey }}" data-nm="{{ g.name }}" style="left:{{ g.x }}%;top:{{ g.y }}%;width:{{ g.w }}%;height:{{ g.h }}%" title="{{ g.name }} {{ g.count }}곳"><span>{{ g.name }} <em>{{ g.count }}</em></span></div>
         {% endfor %}
         {% for t in lay.tiles %}
-        <a class="hm-t {{ t.cls }} {{ t.size }}" href="{{ t.href }}" style="left:{{ t.x }}%;top:{{ t.y }}%;width:{{ t.w }}%;height:{{ t.h }}%" title="{{ t.nm }} — {{ t.industry }} · {{ t.sector }} — {{ t.tip }}"><b>{{ t.nm }}</b><i>{{ t.sub }}</i></a>
+        <a class="hm-t {{ t.cls }} {{ t.size }}" href="{{ t.href }}" data-g="{{ t.gkey }}" data-c="{{ t.ckey }}" style="left:{{ t.x }}%;top:{{ t.y }}%;width:{{ t.w }}%;height:{{ t.h }}%" title="{{ t.nm }} — {{ t.industry }} · {{ t.sector }} — {{ t.tip }}"><b>{{ t.nm }}</b><i>{{ t.sub }}</i></a>
         {% endfor %}
       </div>
       {% endfor %}
