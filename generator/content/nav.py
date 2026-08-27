@@ -19,6 +19,7 @@ GNB_TABS: tuple[tuple[str, str], ...] = (
     ("홈", "/"),
     ("커뮤니티", "/community/"),  # SC15(2026-08-27) — 셸 web/community/index.html, nginx ^~ /community/
     ("회사정보", "/companies"),
+    ("히트맵", "/heatmap"),  # SP-HEAT(2026-08-27) — 생성 페이지 heatmap.html, nginx = /heatmap
 )
 
 GNB_TAB_HREFS: frozenset[str] = frozenset(h for _, h in GNB_TABS)
