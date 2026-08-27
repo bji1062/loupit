@@ -171,7 +171,7 @@ def _category_panels(ctx) -> list[dict]:
         counts = Counter(i["src"] for i in items)
         panels.append({"key": ctgr, "label": CATEGORY_LABEL[ctgr], "count": len({i["c"]["comp_id"] for i in items}),
                        "groups": len({i["sector"] for i in items}), "stated": counts["stated"], "est": counts["est"],
-                       "qual": counts["qual"], "layouts": {o: _layout(items, ctx, o) for o in ORIENTATIONS}})
+                       "qual": counts["qual"], "layouts": _panel_layouts(items, ctx)})
     return panels
 
 
@@ -179,24 +179,44 @@ def _size_class(area: float) -> str:
     return "xs" if area < 9 else "sm" if area < 20 else "md" if area < 45 else "lg"
 
 
-def _layout(items, ctx, orientation):
-    """뷰모델: 그룹 헤더 + 타일(% 좌표). 세로 배치는 y 를 캔버스 높이 대비 % 로 정규화한다."""
+def _group_keys(items) -> dict[str, str]:
+    """그룹 이름 → 안정 키(`g0`, `g1`…). 이름을 그대로 속성에 쓰지 않는 이유는 한글·중점(·)·
+    공백이 섞여 있어서다. **패널마다 한 번 만들어 가로·세로 배치가 같은 키를 쓰게 한다** —
+    squarify 는 배치마다 그룹 순서가 달라지므로 배치 안에서 번호를 매기면 두 배치의 키가 어긋난다."""
+    return {name: f"g{i}" for i, name in enumerate(sorted({it["sector"] for it in items}))}
+
+
+def _layout(items, ctx, orientation, gkeys=None):
+    """뷰모델: 그룹 헤더 + 타일(% 좌표). 세로 배치는 y 를 캔버스 높이 대비 % 로 정규화한다.
+
+    타일에 `gkey`(소속 그룹)·`ckey`(회사)를 심어 둔다 — 마우스를 올렸을 때 그 그룹과 같은 회사의
+    다른 칸을 함께 강조하기 위해서다(SP-HEAT-7). 강조는 JS enhancement 지만 **연결 정보는 정적
+    HTML 에 있다** — 그래야 JS 없이도 문서가 완결이고, 스크립트는 class 만 토글하면 된다.
+    """
     w, h = ORIENTATIONS[orientation]
+    gkeys = _group_keys(items) if gkeys is None else gkeys
     groups: dict[str, list] = {}
     for it in items:
         groups.setdefault(it["sector"], []).append((it["weight"], it))
     heads, tiles = nested_layout(groups, w, h)
     sy = 100.0 / h  # y·height 를 캔버스 높이 100% 기준으로
     return {
-        "groups": [{"name": g.name, "count": g.count, "unlisted": g.name == UNLISTED,
+        "groups": [{"name": g.name, "gkey": gkeys[g.name], "count": g.count, "unlisted": g.name == UNLISTED,
                     "x": round(g.x, 3), "y": round(g.y * sy, 3), "w": round(g.w, 3), "h": round(g.h * sy, 3),
                     "narrow": g.w < 7 or g.h < 6} for g in heads],
         "tiles": [{"nm": t.obj["c"]["comp_nm"], "href": f"/company/{ctx.slugs[t.obj['c']['comp_eng_nm']]}",
                    "industry": t.obj["c"].get("industry_nm") or "", "sector": t.obj["sector"],
+                   "gkey": gkeys[t.obj["sector"]], "ckey": ctx.slugs[t.obj["c"]["comp_eng_nm"]],
                    "cls": t.obj["cls"], "size": _size_class(t.w * t.h), "sub": t.obj["sub"], "tip": t.obj["tip"],
                    "x": round(t.x, 3), "y": round(t.y * sy, 3), "w": round(t.w, 3), "h": round(t.h * sy, 3)}
                   for t in tiles],
     }
+
+
+def _panel_layouts(items, ctx) -> dict:
+    """한 패널의 두 배치 — 그룹 키를 공유한다(위 `_group_keys` 주석)."""
+    gkeys = _group_keys(items)
+    return {o: _layout(items, ctx, o, gkeys) for o in ORIENTATIONS}
 
 
 def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
@@ -208,7 +228,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
               "legend": "금액 합계(만원, 7분위)", "lo": "적음", "hi": "많음",
               "note": "정성 복지(금액 없음)는 크기에만 반영", "steps": [f"c{i}" for i in range(7)],
               "panels": [{"key": "all", "label": "복지", "count": len(wi),
-                          "layouts": {o: _layout(wi, ctx, o) for o in ORIENTATIONS}}],
+                          "layouts": _panel_layouts(wi, ctx)}],
               "count": len(ctx.companies)}]
     if ctx.finance_loaded:
         fi = _finance_items(ctx, sectors)
@@ -219,7 +239,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
                           "note": f"회색 = ±3% 이내 · 금융업·공시 없는 {len(ctx.companies) - len(fi)}곳 제외",
                           "steps": [f"d{i}" for i in range(7)],
                           "panels": [{"key": "all", "label": "실적", "count": len(fi),
-                                      "layouts": {o: _layout(fi, ctx, o) for o in ORIENTATIONS}}],
+                                      "layouts": _panel_layouts(fi, ctx)}],
                           "count": len(fi)})
     cp = _category_panels(ctx)
     if cp:

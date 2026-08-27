@@ -196,3 +196,35 @@ def test_page_renders_category_chips_and_source_legend():
     assert 'class="hm-chips"' in p.html and 'data-panel="perks"' in p.html
     assert "hm-key s-stated" in p.html and "회사 공식 수치" in p.html
     assert "카테고리 모드" in p.html
+
+
+# ── 강조 연결 정보(SP-HEAT-7) ────────────────────────────────────────────────
+
+
+def test_tiles_and_groups_share_group_keys_within_a_panel():
+    """칸의 `gkey` 는 같은 패널의 그룹 사각형과 맞물려야 한다 — 어긋나면 강조가 빈 그룹을 칠한다."""
+    for m in heatmap.build_view(_ctx(), SECTORS)["modes"]:
+        for p in m["panels"]:
+            keys_by_orient = {}
+            for orient, lay in p["layouts"].items():
+                gkeys = {g["gkey"] for g in lay["groups"]}
+                assert len(gkeys) == len(lay["groups"]), "그룹 키 중복"
+                assert {t["gkey"] for t in lay["tiles"]} <= gkeys, f"{m['key']}/{p['key']}/{orient}: 고아 칸"
+                keys_by_orient[orient] = {g["gkey"]: g["name"] for g in lay["groups"]}
+            # 가로·세로가 **같은 키**를 써야 한다(배치마다 번호를 다시 매기면 어긋난다)
+            assert len(set(map(lambda d: tuple(sorted(d.items())), keys_by_orient.values()))) == 1
+
+
+def test_tiles_carry_company_key_for_peer_highlight():
+    """같은 회사의 다른 칸을 찾으려면 `ckey`(회사 slug)가 필요하다 — href 와 같은 값."""
+    for m in heatmap.build_view(_ctx(), SECTORS)["modes"]:
+        for p in m["panels"]:
+            for t in p["layouts"]["landscape"]["tiles"]:
+                assert t["ckey"] and t["href"] == f"/company/{t['ckey']}"
+
+
+def test_page_emits_highlight_attributes_and_readout():
+    p = _page()
+    assert 'data-g="g0"' in p.html and "data-c=" in p.html and "data-nm=" in p.html
+    assert "data-group-nm" not in p.html  # 묶음 이름은 그룹 요소에만(칸 중복 출력 금지)
+    assert 'data-readout' in p.html and 'aria-live="polite"' in p.html

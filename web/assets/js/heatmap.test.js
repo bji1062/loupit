@@ -47,3 +47,77 @@ test('activatePanel — 모르는 키는 첫 카테고리, 칩 없는 모드는 
   const single = new JSDOM('<section class="hm-mode" data-mode="w"><div class="hm-panel" data-panel="all"></div></section>').window.document;
   assert.equal(activatePanel(single.querySelector('.hm-mode'), 'all'), 0);
 });
+
+import { bindMap, clearHighlight, highlight, readoutText } from './heatmap.js';
+
+// 지도 하나: 그룹 2개(g0 반도체·g1 게임), 삼성전자가 두 묶음에 걸쳐 있다(카테고리 모드 형태)
+const MAP = `<div class="hm-panel">
+<p class="hm-readout" data-readout>기본 안내</p>
+<div class="hm-map hm-landscape">
+  <div class="hm-grp" data-g="g0" data-nm="반도체"><span>반도체 <em>2</em></span></div>
+  <div class="hm-grp" data-g="g1" data-nm="게임"><span>게임 <em>1</em></span></div>
+  <a class="hm-t" data-g="g0" data-c="samsung-elec" title="삼성전자 — 식대 · 240만원" href="/company/samsung-elec"><b>삼성전자</b></a>
+  <a class="hm-t" data-g="g0" data-c="sk-hynix" title="SK하이닉스 — 식대 · 300만원" href="/company/sk-hynix"><b>SK하이닉스</b></a>
+  <a class="hm-t" data-g="g1" data-c="samsung-elec" title="삼성전자 — 동호회 · 금액 없음" href="/company/samsung-elec"><b>삼성전자</b></a>
+</div></div>`;
+
+const mapDoc = () => new JSDOM(MAP).window.document;
+
+test('highlight 는 칸·소속 그룹·같은 회사의 다른 칸을 표시한다', () => {
+  const doc = mapDoc();
+  const map = doc.querySelector('.hm-map');
+  const tile = doc.querySelector('.hm-t[data-c="samsung-elec"][data-g="g0"]');
+  const res = highlight(map, tile);
+  assert.equal(res.group, 1); assert.equal(res.peers, 1);
+  assert.equal(res.groupEl?.dataset.nm, '반도체');
+  assert.ok(tile.classList.contains('is-hot'));
+  assert.ok(doc.querySelector('.hm-grp[data-g="g0"]').classList.contains('is-hot'));
+  assert.equal(doc.querySelector('.hm-grp[data-g="g1"]').classList.contains('is-hot'), false);
+  // 같은 회사의 다른 묶음 칸은 점선, 다른 회사는 무표시
+  assert.ok(doc.querySelector('.hm-t[data-g="g1"]').classList.contains('is-peer'));
+  assert.equal(doc.querySelector('.hm-t[data-c="sk-hynix"]').className, 'hm-t');
+});
+
+test('highlight 는 이전 강조를 먼저 걷어낸다(강조는 항상 한 벌)', () => {
+  const doc = mapDoc();
+  const map = doc.querySelector('.hm-map');
+  highlight(map, doc.querySelector('.hm-t[data-c="samsung-elec"]'));
+  highlight(map, doc.querySelector('.hm-t[data-c="sk-hynix"]'));
+  assert.equal(map.querySelectorAll('.is-hot').length, 2);   // 칸 1 + 그룹 1
+  assert.equal(map.querySelectorAll('.is-peer').length, 0);  // 하이닉스는 칸이 하나뿐
+  assert.equal(clearHighlight(map), 2);
+  assert.equal(map.querySelectorAll('.is-hot, .is-peer').length, 0);
+});
+
+test('readoutText 는 묶음 이름과 툴팁을 잇는다', () => {
+  const doc = mapDoc();
+  const tile = doc.querySelector('.hm-t');
+  const grp = doc.querySelector('.hm-grp[data-g="g0"]');
+  assert.equal(readoutText(tile, grp), '반도체 · 삼성전자 — 식대 · 240만원');
+  assert.equal(readoutText(tile, null), '삼성전자 — 식대 · 240만원');  // 그룹을 못 찾아도 내용은 나온다
+  assert.equal(readoutText(null, grp), '');
+});
+
+test('bindMap — 마우스가 닿으면 강조·판독줄, 떠나면 원복', () => {
+  const doc = mapDoc();
+  const map = doc.querySelector('.hm-map');
+  const readout = doc.querySelector('[data-readout]');
+  assert.equal(bindMap(map), true);
+  const tile = doc.querySelector('.hm-t');
+  tile.dispatchEvent(new doc.defaultView.MouseEvent('mouseover', { bubbles: true }));
+  assert.ok(tile.classList.contains('is-hot'));
+  assert.equal(readout.textContent, '반도체 · 삼성전자 — 식대 · 240만원');
+  map.dispatchEvent(new doc.defaultView.MouseEvent('mouseleave'));
+  assert.equal(map.querySelectorAll('.is-hot, .is-peer').length, 0);
+  assert.equal(readout.textContent, '기본 안내');
+});
+
+test('bindMap — 키보드 포커스도 같은 강조를 준다(마우스 없는 사용자)', () => {
+  const doc = mapDoc();
+  const map = doc.querySelector('.hm-map');
+  bindMap(map);
+  const tile = doc.querySelector('.hm-t[data-c="sk-hynix"]');
+  tile.dispatchEvent(new doc.defaultView.FocusEvent('focusin', { bubbles: true }));
+  assert.ok(tile.classList.contains('is-hot'));
+  assert.equal(doc.querySelector('[data-readout]').textContent, '반도체 · SK하이닉스 — 식대 · 300만원');
+});
