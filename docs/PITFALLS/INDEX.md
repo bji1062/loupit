@@ -78,5 +78,9 @@
 | 72 | 회사명의 정본은 복지 SQL 의 자기등록 INSERT 다 — db/seed/benefit/sql/*.sql 의 | HANDOFF-2026-08-21.md §4 |
 | 73 | 메모리·문서의 "도구 기보유"가 이 레포에 있다는 뜻은 아니다. | HANDOFF-2026-08-21.md §4 |
 | 74 | 🚨 생성물 무시 패턴이 소스까지 먹으면, 그 파일은 서버에만 존재하는 유령이 된다 | PITFALLS/0074-gitignore-generated-pattern-ate-source-template.md |
+| 75 | 격리한 것은 피호출자뿐 — 호출자가 env 로 계약을 무효화한다 | PITFALLS/0075-isolated-callee-defeated-by-caller-env.md |
+| 76 | 🚨 jsdom 에는 matchMedia 가 없다 — 기기 분기는 "테스트가 있어도 없는 것"이 된다 | PITFALLS/0076-jsdom-matchmedia-absent-device-branch-untested.md |
+| 77 | 🚨 "게시된 이메일 0건"은 회사 사이트만 봤다는 뜻일 수 있다 — 그리고 찾아낸 도메인이 곧 등록 근거는 아니다 | PITFALLS/0077-mail-domain-not-on-company-site-and-may-be-group-wide.md |
+| 78 | _head_meta.html 에 SEO 태그를 "한 페이지만" 추가하는 방법은 없다 | PITFALLS/0078-shared-head-meta-partial-is-site-wide.md |
 
 **번호 대기(_incoming): 0건**
