@@ -30,6 +30,7 @@ SHELLS = {
     "verify.html": WEB / "verify.html",
     "edit.html": WEB / "edit.html",
     "edits.html": WEB / "edits.html",
+    "community/index.html": WEB / "community" / "index.html",  # SC15(2026-08-27)
 }
 
 _HEADER_RE = re.compile(r"<header[^>]*>(.*?)</header>", re.S | re.I)
@@ -131,5 +132,6 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
 def test_landing_shell_marks_home_as_current():
     html = SHELLS["index.html"].read_text(encoding="utf-8")
     assert _current_hrefs(html) == ["/"]
+    assert _current_hrefs(SHELLS["community/index.html"].read_text(encoding="utf-8")) == ["/community/"]
     for name in ("compare/index.html", "login.html", "mypage.html", "verify.html", "edit.html", "edits.html"):
         assert _current_hrefs(SHELLS[name].read_text(encoding="utf-8")) == [], f"{name}: 잘못된 현재 탭"

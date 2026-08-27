@@ -14,7 +14,8 @@ from generator.context import build_context
 from generator.pages import combo, company, company_index, policy
 from generator.render import make_env
 
-_ALLOWED_STATIC_ROUTES = {"/", "/compare", "/privacy", "/terms", "/disclaimer", "/ads"}
+# /community/ 는 수기 셸(web/community/index.html) + nginx ^~ 블록이 서빙하는 정적 라우트다(SC15, 2026-08-27).
+_ALLOWED_STATIC_ROUTES = {"/", "/compare", "/community/", "/privacy", "/terms", "/disclaimer", "/ads"}
 
 # 문서 루트의 **실파일**(페이지가 아니라 자산). 허용목록에 문자열로 넣고 끝내지 않고
 # **파일 존재를 확인**한다 — 선언만 있고 파일이 없으면 브라우저는 404 를 받는다.

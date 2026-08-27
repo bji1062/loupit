@@ -10,13 +10,14 @@
 안 고치면 그 테스트가 빨개진다(드리프트를 조용히 두지 않는다).
 
 탭 순서는 prober.kr 벤치마크(홈 바로 옆에 주요 구획)를 따른다 — `docs/PLAN-커뮤니티-회사정보탭-2026-08-27.md` §3-1.
-`커뮤니티` 탭은 **커뮤니티가 실제로 열리는 PR 에서** 추가한다(죽은 탭 금지).
+`커뮤니티` 탭은 커뮤니티가 실제로 열리는 PR(lane/comm-launch, 2026-08-27)에서 추가했다 — 죽은 탭 금지 규약 그대로.
 """
 from __future__ import annotations
 
 # (라벨, href). href 가 탭의 식별자다 — `nav_active` 는 이 href 로 현재 탭을 가리킨다.
 GNB_TABS: tuple[tuple[str, str], ...] = (
     ("홈", "/"),
+    ("커뮤니티", "/community/"),  # SC15(2026-08-27) — 셸 web/community/index.html, nginx ^~ /community/
     ("회사정보", "/companies"),
 )
 
