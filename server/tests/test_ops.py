@@ -199,8 +199,14 @@ def test_AO3_no_user_facing_benefit_delete_route():
     from server.main import create_app
 
     app = create_app()
-    deletes = [(r.path, m) for r in app.routes if isinstance(r, APIRoute) for m in r.methods if m == "DELETE"]
-    assert deletes == [("/api/v1/members/me", "DELETE")]
+    deletes = {(r.path, m) for r in app.routes if isinstance(r, APIRoute) for m in r.methods if m == "DELETE"}
+    # SC15(2026-08-27): 커뮤니티 글·댓글 DELETE 는 **본인 소프트 삭제**(STATUS_CD=deleted, 마스킹)이며
+    # 하드 삭제가 아니다(FR-126·128). 복지 DELETE 는 여전히 없다 — 아래 어서션이 그 계약을 지킨다.
+    assert deletes == {
+        ("/api/v1/members/me", "DELETE"),
+        ("/api/v1/posts/{post_id}", "DELETE"),
+        ("/api/v1/posts/{post_id}/comments/{comment_id}", "DELETE"),
+    }
     assert not any("benefit" in p.lower() for p, _ in deletes)
 
 

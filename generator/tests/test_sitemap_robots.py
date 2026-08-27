@@ -34,7 +34,11 @@ def test_gc18_sitemap_includes_all_company_combo_policy_and_landing(
     locs = set(re.findall(r"<loc>([^<]+)</loc>", sitemap_page.html))
 
     expected = {p.url for p in all_pages if p.in_sitemap}
-    expected.add(f"{CFG.site_origin}/")  # 리터럴 금지 — 함정 0079
+    # 비-생성 정적 URL 은 CFG.extra_sitemap_paths 가 정본(리터럴 금지 — 함정 0079).
+    # 2026-08-27 부터 랜딩 + 커뮤니티 허브(/community/, SC15) 두 개다.
+    for path in CFG.extra_sitemap_paths:
+        expected.add(f"{CFG.site_origin}{path}")
+    assert "/" in CFG.extra_sitemap_paths and "/community/" in CFG.extra_sitemap_paths
     assert locs == expected
 
 

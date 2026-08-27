@@ -274,6 +274,9 @@ _DIGEST_QUERIES = (
      "SELECT COMP_REQUEST_ID AS id FROM TCOMPANY_REQUEST WHERE STATUS_CD='pending' ORDER BY INS_DTM"),
     ("suppressed", "메일 발송 억제", "list-suppressed",
      "SELECT MAIL_SUPP_ID AS id FROM TMAIL_SUPPRESSION WHERE RELEASED_DTM IS NULL ORDER BY INS_DTM DESC"),
+    # SC15 게시물 신고(2026-08-27). 처리는 콘솔(hide/dismiss)이고 CLI 는 조회만 — 판단 ① 그대로 ID 만.
+    ("reports", "게시물 신고", "list-reports",
+     "SELECT REPORT_ID AS id FROM TPOST_REPORT WHERE STATUS_CD='pending' ORDER BY REPORT_ID"),
 )
 
 
@@ -377,6 +380,31 @@ def digest_body(digest: dict[str, list[int]], drill: dict | None = None) -> str:
     if drill is not None:
         lines.append("  journalctl -u loupit-restore-drill -n 30   # 복원 훈련 로그")
     return "\n".join(lines)
+
+
+def cmd_list_reports(conn, args) -> int:
+    """게시물 신고 큐 조회(SC15). **처리는 콘솔에서**(`/api/v1/console`, hide/dismiss) — 여기엔 결정
+    명령을 두지 않는다. `DECIDED_BY_ID` 를 `--by` 로 손으로 넣는 자율신고 감사를 늘리지 않기 위해서다
+    (SP-AUTH-19 의 존재 이유). 대상 내용(제목·본문)은 출력하지 않는다 — 콘솔이 발췌를 준다."""
+    with conn.cursor(pymysql.cursors.DictCursor) as cur:
+        cur.execute(
+            "SELECT r.REPORT_ID, r.TARGET_TYPE_CD, r.TARGET_ID, r.REASON_CD, r.STATUS_CD, r.INS_DTM, "
+            "       m.NICKNAME_NM "
+            "  FROM TPOST_REPORT r LEFT JOIN TMEMBER m ON m.MBR_ID = r.MBR_ID "
+            + ("" if args.all else "WHERE r.STATUS_CD='pending' ")
+            + "ORDER BY r.REPORT_ID LIMIT %s",
+            (args.limit,),
+        )
+        rows = cur.fetchall()
+    if not rows:
+        print("게시물 신고 없음.")
+        return 0
+    print(f"게시물 신고 {len(rows)}건 (처리는 운영 콘솔 — ssh -L 8000:127.0.0.1:8000 → /api/v1/console):")
+    for r in rows:
+        who = r["NICKNAME_NM"] or "(탈퇴 회원)"
+        print(f"  #{r['REPORT_ID']}  [{r['STATUS_CD']}]  {r['TARGET_TYPE_CD']} #{r['TARGET_ID']}  "
+              f"{r['REASON_CD']}  — {who}  {r['INS_DTM']}")
+    return 0
 
 
 def cmd_digest(conn, args) -> int:
@@ -493,7 +521,12 @@ def build_parser() -> argparse.ArgumentParser:
     rs.add_argument("--by", type=int, default=None, help="결정 운영자 ID(감사)")
     rs.set_defaults(func=cmd_release_suppression)
 
-    dg = sub.add_parser("digest", help="큐 3종 요약 출력(기본) / --send 로 운영자에게 발송")
+    lr = sub.add_parser("list-reports", help="게시물 신고 큐(SC15) — 처리는 운영 콘솔에서")
+    lr.add_argument("--all", action="store_true", help="처리분까지 포함")
+    lr.add_argument("--limit", type=int, default=50)
+    lr.set_defaults(func=cmd_list_reports)
+
+    dg = sub.add_parser("digest", help="큐 4종 요약 출력(기본) / --send 로 운영자에게 발송")
     dg.add_argument("--send", action="store_true", help="메일 발송(없으면 화면 출력만)")
     dg.add_argument("--to", default="", help="수신 주소(생략 시 OPS_DIGEST_TO)")
     dg.add_argument("--only-if-pending", action="store_true",

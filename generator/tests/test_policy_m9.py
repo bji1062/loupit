@@ -55,6 +55,9 @@ def test_PM1_off_has_no_member_sections():
     """OFF: P7·T5 미노출 — 존재하지 않는 회원 제도를 고지하지 않는다."""
     assert "P7" not in _ids(_doc(PRE_M9, "privacy"))
     assert "T5" not in _ids(_doc(PRE_M9, "terms"))
+    # SC15 커뮤니티(2026-08-27)도 M9 게이트 안이다 — OFF 배포가 없는 게시판을 고지하면 안 된다.
+    assert "P10" not in _ids(_doc(PRE_M9, "privacy"))
+    assert "T6" not in _ids(_doc(PRE_M9, "terms"))
 
 
 def test_PM2_off_states_no_login():
@@ -128,8 +131,9 @@ def test_PM7_on_p1_distinguishes_anonymous_from_contribution():
         (PRE_M9, "terms", {"T1", "T2", "T3", "T4"}),
         # P8·P9 는 2026-07-29 신설 — 회원 제도와 **함께** 발생하는 고지 의무다(위탁·국외이전 /
         # 보유기간·권리·보호책임자). 이 정확일치 계약이 "새 항목을 조용히 추가"를 막는다.
-        (POST_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9"}),
-        (POST_M9, "terms", {"T1", "T2", "T3", "T4", "T5"}),
+        # P10·T6 은 2026-08-27 SC15 커뮤니티 — 게시물 정보·게시물 책임/임시조치. 같은 스위치(SP-COMM-10).
+        (POST_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10"}),
+        (POST_M9, "terms", {"T1", "T2", "T3", "T4", "T5", "T6"}),
     ],
 )
 def test_PM8_required_items_track_mode(cfg, key, expected):
@@ -284,3 +288,33 @@ def test_PM17_contact_is_config_driven_not_hardcoded():
     싣는 것은 권리 행사 경로를 막는 것이라 없는 것보다 나쁘다."""
     custom = GenConfig(m9_enabled=True, policy_contact="privacy@example.test")
     assert "privacy@example.test" in _text(_doc(custom, "privacy"))
+
+
+# ── SC15 커뮤니티 게시물 고지 (2026-08-27, SP-COMM-10 · FR-133) ──────────────────────
+# 게시판을 열면서 문안을 안 바꾸면 처리방침이 즉시 허위가 된다(함정 (61) 계열): 글·댓글·신고 사유는
+# 새로 처리하는 항목이고, 임시조치는 정보통신망법 §44-2 의 운영자 의무다.
+
+
+def test_PM16_on_p10_discloses_post_processing_and_deletion():
+    """ON: P10 이 게시물 항목·공개 범위·조회수 미수집·삭제·탈퇴 후 존치(+요청 삭제)·신고 보관을 말한다."""
+    p10 = next(s for s in _doc(POST_M9, "privacy").sections if s.req_id == "P10")
+    body = " ".join(p10.paragraphs)
+    for must in ("글·댓글", "닉네임", "신고 사유", "조회수", "삭제", "탈퇴", "숨김"):
+        assert must in body, f"P10 에 '{must}' 고지가 없다"
+    assert p10.cross_route == "/terms"
+
+
+def test_PM17_on_t6_states_liability_and_takedown():
+    """ON: T6 이 작성자 책임·금지행위·공지=운영자·신고·임시조치(§44-2)·이용허락을 말하고 /privacy 로 위임."""
+    t6 = next(s for s in _doc(POST_M9, "terms").sections if s.req_id == "T6")
+    body = " ".join(t6.paragraphs)
+    for must in ("책임", "명예", "개인정보", "공지", "신고", "44조의2", "임시조치", "허락"):
+        assert must in body, f"T6 에 '{must}' 가 없다"
+    assert t6.cross_route == "/privacy"
+
+
+def test_PM18_on_t2_mentions_community_login_but_still_no_feed():
+    """ON: T2 가 커뮤니티 쓰기=로그인을 말하되 소셜 피드(팔로우·타임라인) 부재는 유지한다(SC10 정의 확정)."""
+    t2 = next(s for s in _doc(POST_M9, "terms").sections if s.req_id == "T2")
+    body = " ".join(t2.paragraphs)
+    assert "커뮤니티" in body and "소셜 피드" in body

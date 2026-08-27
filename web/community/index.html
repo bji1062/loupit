@@ -1,0 +1,80 @@
+<!doctype html>
+<!-- staging/community/index.html — SC15 커뮤니티 셸(SP-COMM-8). 공개 시 `git mv staging/community web/community`
+     (T-14.7.3, nginx `location ^~ /community/ { try_files $uri /community/index.html; }` 와 함께).
+     셸은 **하나**다: community.js 가 location.pathname 으로 목록·상세·작성·수정 4화면을 가른다
+     (web/index.html + app.js 와 같은 SPA 셸 패턴). h1·lede 는 정적이라 JS 없이도 읽힌다.
+     본문은 JS 렌더라 1차는 색인을 기대하지 않는다 — robots 는 허용하되 noindex 도 붙이지 않는다(PLAN §3-2).
+     `data-page-type` 미선언 = 광고 0(SP-ADS: 유형이 없으면 ads.js 가 슬롯을 마운트하지 않는다). -->
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>커뮤니티 — jobcho.wiki 잡초</title>
+  <meta name="description" content="이직 고민, 회사 이야기, 건의사항 — 로그인 없이 읽고, 로그인하면 글과 댓글을 남길 수 있어요.">
+  <link rel="canonical" href="https://jobcho.wiki/community/">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="jobcho.wiki">
+  <meta property="og:title" content="커뮤니티 — jobcho.wiki 잡초">
+  <meta property="og:description" content="이직 고민, 회사 이야기, 건의사항을 나누는 잡초 커뮤니티.">
+  <meta property="og:url" content="https://jobcho.wiki/community/">
+  <meta property="og:image" content="https://jobcho.wiki/assets/v2/og-default.png">
+  <meta property="og:locale" content="ko_KR">
+  <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
+  <link rel="icon" href="/assets/v2/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="/favicon.ico" sizes="32x32">
+  <link rel="apple-touch-icon" href="/assets/v2/img/apple-touch-icon.png">
+  <link rel="stylesheet" href="/assets/v2/css/styles.css">
+  <link rel="stylesheet" href="/assets/v2/css/community.css">
+</head>
+<body>
+<header data-global class="gnb"> <!-- web/index.html 의 초록 gnb 와 같은 마크업. 로그인 진입점은 authnav.js 가 채운다 -->
+  <a class="skip-link" href="#main-heading">본문 바로가기</a>
+  <nav aria-label="주요 링크">
+    <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <!-- 상단 탭: 공개 시 generator/content/nav.py::GNB_TABS 와 test_gnb_tabs 로 동기화(커뮤니티 탭은 그 PR 에서 정본에 추가).
+         순서·라벨을 임의로 바꾸지 마라. '비교 조합'은 랜딩의 레일 앵커라 여기서는 절대 경로(/#trending)로 건다 -->
+    <a href="/" class="gnb-link">홈</a>
+    <a href="/community/" class="gnb-link" aria-current="page">커뮤니티</a>
+    <a href="/companies" class="gnb-link">회사정보</a>
+    <a href="/#trending" class="gnb-link">비교 조합</a>
+    <!-- 헤더 검색 폼은 두지 않는다(2026-08-27 결정): 랜딩의 `.gnb-search` 는 ui.js bindHeaderSearch 가
+         REF(전체 회사 참조)를 가진 SPA 안에서만 동작하고, 홈은 `?q=` 를 읽지 않는다(app.js 는 `?a=`·`?b=` 만).
+         입력을 받고 버리는 폼은 죽은 UI 다 — 로그인 계열 셸·생성 헤더와 같이 탭 + 로그인 진입점만 둔다. -->
+    <!-- 로그인 진입점 슬롯(SC14). 기본 hidden — authnav.js 가 /members/me 프로브로 채운다.
+         ⚠ 이 마크업은 web/index.html · generator/templates/partials/_authnav.html 과 **바이트 동일**이어야 한다. -->
+    <a class="authnav" data-authnav hidden href="/login">
+      <svg class="authnav-ico" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2.5c-4.4 0-8 2.2-8 4.9V22h16v-2.6c0-2.7-3.6-4.9-8-4.9Z"/></svg>
+      <span data-authnav-label>로그인</span>
+    </a>
+  </nav>
+</header>
+
+<main id="community">
+  <!-- 정적 제목·소개: JS 없이도 읽힌다(NFR12·24). 화면 본체는 아래 #community-view 에 community.js 가 렌더 -->
+  <h1 id="main-heading">커뮤니티</h1>
+  <p class="lede">이직 고민, 회사 이야기, 건의사항을 나누는 곳이에요. 읽기는 로그인 없이, 글과 댓글은 로그인 후에.</p>
+  <div id="community-view"></div>
+  <noscript>
+    <p>커뮤니티 글 목록과 글쓰기는 자바스크립트가 필요합니다. 자바스크립트를 켜면 이 자리에 글이 표시됩니다.</p>
+  </noscript>
+</main>
+
+<footer data-global>
+  <!-- 회사 인덱스 진입문(2026-07-19 고아 페이지 해소): 랜딩·비교툴에서 회사 상세로
+       가는 정적 링크가 0건이라 크롤러 진입 경로가 sitemap 뿐이었다. -->
+  <nav aria-label="사이트 탐색">
+    <a href="/companies">등록 회사 목록</a>
+  </nav>
+  <nav aria-label="정책 링크">
+    <a href="/privacy">개인정보처리방침</a>
+    <a href="/terms">이용약관</a>
+    <a href="/disclaimer">데이터 정확성 면책조항</a>
+    <a href="/ads">광고·제휴 고지</a>
+  </nav>
+  <p class="disclaimer">본 서비스의 복지·연봉 정보는 참고용이며 실제와 다를 수 있습니다. 추정 금액은 별도 표기합니다.</p>
+</footer>
+
+<script type="module" src="/assets/v2/js/community.js" defer></script>
+<script type="module" src="/assets/v2/js/authnav.js" defer></script>
+</body>
+</html>

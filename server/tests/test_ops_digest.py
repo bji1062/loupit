@@ -67,6 +67,8 @@ class _FakeCursor:
             key = "company"
         elif "TMAIL_SUPPRESSION" in s:
             key = "suppressed"
+        elif "TPOST_REPORT" in s:  # SC15 게시물 신고(2026-08-27)
+            key = "reports"
         else:
             raise AssertionError(f"예상 못 한 질의: {s}")
         self._rows = [{"id": i} for i in self._counts[key]]
@@ -99,12 +101,12 @@ class _FakeMailer:
 
 @pytest.fixture
 def empty_conn():
-    return _FakeConn({"pending": [], "company": [], "suppressed": []})
+    return _FakeConn({"pending": [], "company": [], "suppressed": [], "reports": []})
 
 
 @pytest.fixture
 def busy_conn():
-    return _FakeConn({"pending": [3, 7], "company": [1], "suppressed": []})
+    return _FakeConn({"pending": [3, 7], "company": [1], "suppressed": [], "reports": []})
 
 
 # ── OD-1: 건수 수집 ────────────────────────────────────────────────────────

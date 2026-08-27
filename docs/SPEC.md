@@ -22,6 +22,8 @@ loupit SPEC은 FRD가 정의한 각 기능요구(FR-*)를 **개발자가 추측 
 | [SPEC/10-디자인-토큰.md](SPEC/10-디자인-토큰.md) | **SP-DS**(≡SP-DSN) | `styles.css` `:root` 디자인 토큰(다크 기본)·색 팔레트·타입 스케일(Pretendard)·간격·반경·모션·배지/밴드/광고 라벨 색·대비 AA 계약(옵션1: 토큰만) |
 | [SPEC/11-인프라-배포.md](SPEC/11-인프라-배포.md) | SP-INFRA | OCI Ampere A1 단일 인스턴스·Nginx(정적+`/api/v1` 프록시·TLS·gzip_static·HSTS)·systemd 유닛·MySQL 튜닝(loopback·최소권한)·방화벽·`release.sh` 파이프라인·백업·스모크 |
 | [SPEC/12-테스트-전략.md](SPEC/12-테스트-전략.md) | SP-TEST(횡단) | 전역 TDD 원칙·TASK 완료 기준(DoD)·계층/러너 매트릭스·디렉토리·집계 러너(`run_tests.sh`)·스위트 종합 매핑·커버리지 목표(Tier 0/1/2)·로컬 릴리스 게이트·FR/INV 역추적 |
+| [SPEC/14-커뮤니티.md](SPEC/14-커뮤니티.md) | **SP-COMM** | 커뮤니티 게시판(SC15, 2026-08-27): 4테이블 컬럼 계약(DDL 은 SP-DB-18)·공개 GET 3종·세션 게이트 쓰기(글·댓글·좋아요·신고)·공지=운영자·소프트 삭제·조회수 없음·키셋 페이징·입력 신뢰 경계·일일 리밋·신고 콘솔 큐·셸 1개+pathname 라우터·nginx 1블록·정책 P10·T6 |
+| [SPEC/15-회사정보-재무.md](SPEC/15-회사정보-재무.md) | **SP-FIN** | 회사정보 탭(DART 재무): corp_code 적재·`account_id` 수집기(결측 검사)·생성기 전용 로더(번들 무접촉)·회사 '실적' 섹션·`/companies` 인덱스 확장·표현 규약(사실만, 등급·전망·'성장성' 금지)·기준(연결/별도)·출처 접수번호 |
 | [SPEC/13-참여-로그인.md](SPEC/13-참여-로그인.md) | **SP-AUTH** | 무비밀번호 이메일 코드 로그인·세션(불투명 토큰·SHA-256·라우트 의존성)·회사 도메인 재직 인증(HMAC·원문 파기·수동 폴백)·복지 등록/수정(배지 강제·낙관적 동시성 `base_dtm`·원자 트랜잭션)·편집 이력 공개·CSRF(`X-Loupit-Client`)·메일러(Console/SMTP)·발송/시도 리밋·운영자 CLI(SC14, 참여 7테이블 DDL은 SP-DB 소유) |
 
 > 대역 별칭·계획 매핑(SP-ARCH-8·SP-TEST-6.2 정합): **SP-CALC ≡ SP-ENGINE**(`calc.js`), **SP-DSN ≡ SP-DS**(디자인 토큰), 구 **SP-RPT는 별도 파일 없이 SP-ENGINE(값)+SP-FE(렌더·저장)로 흡수**. 상호 인용은 파일 번호가 아니라 **안정 ID 대역**으로 해석한다.

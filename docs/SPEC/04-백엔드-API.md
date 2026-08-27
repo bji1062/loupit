@@ -12,7 +12,7 @@
 
 **범위 경계**: 본 문서는 **런타임 읽기 전용 HTTP 서버**만 소유한다. DB DDL·제약은 SP-DB, 96개 시드 재이식은 SP-SEED, 정적 생성기(빌드타임 `build_reference_bundle` 소비)는 SP-GEN, 클라이언트 계산·`value_source` 프로버넌스·밴드 산정은 SP-CALC/SP-FE가 소유한다. **번들 빌더 함수(`services/reference.py::build_reference_bundle`)는 런타임 API와 빌드타임 generator가 공유하는 단일 소스**(SP-ARCH-4)이며 본 문서가 그 원시 SQL·조립 계약을 확정한다. 프로파일러(가치관 진단 설문)와 서버측 사용자 쓰기는 영구 제외다. 로그인·회원·계정은 복지 등록·수정 기여(SC14, 문서 09/13·SP-AUTH) 한정 In-scope이며, C3 server가 SC14 기여 쓰기 라우트(`member`·`employment`·`benefit_edit` 라우터, ML-B 예정; SPEC/01:56)를 호스팅한다 — 단 본 문서가 소유하는 익명 읽기 흐름/모듈엔 비등장한다(§2-1·§2-3·§2-4, NFR16·NFR20).
 
-**전역 불변식(SP-ARCH-10 상속)**: INV-1(익명 API 표면 = GET 5종 + 익명 비교 로그 POST 1종, SC14 기여 쓰기 라우트는 별도 열거, 인증/세션 미들웨어 0) · INV-2(`reference/all` 최상위 3키·프로파일러 키 부재·`Cache-Control: public, max-age=3600`) · INV-5(밴드는 `amt_source` 기준, 서버는 근거 필드만 전달).
+**전역 불변식(SP-ARCH-10 상속)**: INV-1(익명 API 표면 = GET 5종 + 익명 비교 로그 POST 1종 + 커뮤니티 공개 GET 3종(SC15, SP-COMM 소유), SC14 기여·SC15 커뮤니티 쓰기 라우트는 별도 열거, 인증/세션 미들웨어 0) · INV-2(`reference/all` 최상위 3키·프로파일러 키 부재·`Cache-Control: public, max-age=3600`) · INV-5(밴드는 `amt_source` 기준, 서버는 근거 필드만 전달).
 
 ---
 

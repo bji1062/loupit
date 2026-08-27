@@ -87,7 +87,7 @@ class GenConfig:
     lang: str = "ko"
     desc_max: int = 155  # meta description 절단 상한
     # sitemap에 포함되는 비-생성 정적 URL(랜딩 등). /compare(툴 셸)는 색인 대상 제외.
-    extra_sitemap_paths: tuple = ("/",)
+    extra_sitemap_paths: tuple = ("/", "/community/")  # 커뮤니티 허브(정적 h1·lede, SC15 2026-08-27)
     # 정책 페이지 4종 (문안 소유 = SP-POL, 렌더·SEO = 본 생성기)
     policy_pages: tuple = field(
         default=(

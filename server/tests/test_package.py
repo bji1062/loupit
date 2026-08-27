@@ -46,13 +46,17 @@ def test_T04_1_1_routers_package_file_allowlist():
     2026-07-30(SP-AUTH-19): `console.py` 추가 — SSH 터널 전용 운영 콘솔. **`admin.py` 가
     아니다**: 그 이름은 레거시 델타로 영구 금지이며 아래 어서션이 계속 지킨다. 웹훅과 같은
     조건부 라우터로, `M9_ENABLED` + `OPERATOR_EMAILS` 가 **둘 다** 있어야 등록된다.
-    노출 범위는 등록 조건이 아니라 `deps.require_loopback` 가 지킨다(test_console_gate CO-7)."""
+    노출 범위는 등록 조건이 아니라 `deps.require_loopback` 가 지킨다(test_console_gate CO-7).
+
+    2026-08-27(SP-COMM-1): `post.py`·`report.py` 추가 — SC15 커뮤니티. 참여 3종과 같이 **M9 게이트
+    안**에서만 등록된다(FK 가 TMEMBER). 레거시 `comparisons`(사용자 저장 비교)와 이름이 겹치지 않는다."""
     py_files = {f for f in os.listdir(ROUTERS_DIR) if f.endswith(".py")}
     expected = {
         "__init__.py", "health.py", "reference.py", "companies.py", "trending.py",
         "member.py", "employment.py", "benefit_edit.py",
         "mail_webhook.py",
         "console.py",
+        "post.py", "report.py",
     }
     assert py_files == expected, f"라우터 허용목록 불일치(대칭차): {py_files ^ expected}"
     assert "auth" in FORBIDDEN_MODULE_NAMES, "라우터명 'auth' 금지 유지(→ member.py, T10)"
