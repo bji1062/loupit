@@ -69,6 +69,27 @@ export function doneSubText(isNew) {
     : '다시 오신 걸 환영해요.';
 }
 
+// ── 순수: `?next=` 되돌아갈 곳(T-14.6.6, SC15) — same-origin **절대 경로**만 ──
+// 커뮤니티가 "로그인하고 돌아오기"(`/login?next=/community/write`)를 쓴다. 이 값이 열린
+// 리다이렉트가 되는 순간 로그인 화면이 피싱 도구가 된다(`/login?next=https://evil` 로 코드
+// 입력을 유도한 뒤 가짜 사이트로 보내는 식). 그래서 **허용 규칙만** 적고 나머지는 전부 버린다:
+// `/` 로 시작 · `//` 로 시작하지 않음(프로토콜 상대 URL) · `http`·`javascript:`·`\` 를 어디에도
+// 포함하지 않음(브라우저가 `\` 를 `/` 로 정규화한다) · 공백·제어문자 없음. 거부 시 null = 기존 동작.
+export function safeNext(raw) {
+  if (typeof raw !== 'string' || !raw) return null;
+  if (!raw.startsWith('/') || raw.startsWith('//')) return null;
+  if (/http|javascript:|\\/i.test(raw)) return null;
+  if (/[\s\u0000-\u001f\u007f]/.test(raw)) return null;
+  return raw;
+}
+export function nextFromSearch(search) {
+  try { return safeNext(new URLSearchParams(search || '').get('next')); } catch { return null; }
+}
+// 완료 화면의 큰 버튼: next 가 있으면 "돌아가기"(그리로), 없으면 기존 마이페이지.
+export function doneLinkFor(next) {
+  return next ? { href: next, label: '돌아가기' } : { href: '/mypage', label: '마이페이지로 가기' };
+}
+
 // ── 이하 DOM 배선(브라우저 전용) ──
 export function initLoginPage() {
   const $ = (id) => document.getElementById(id);
@@ -76,6 +97,11 @@ export function initLoginPage() {
   const stepCode = $('step-code');
   const stepDone = $('step-done');
   const errBox = $('auth-error');
+  // `?next=` 는 진입 시 한 번만 읽어 검증한다. 완료 화면 링크는 마크업(login.html 의 a.auth-btn)
+  // 을 그대로 두고 여기서 href·라벨만 바꾼다 — 셸을 안 건드리는 편이 공개 절차와 분리된다.
+  const next = nextFromSearch(typeof location !== 'undefined' ? location.search : '');
+  const doneLink = stepDone && stepDone.querySelector('a.auth-btn');
+  if (doneLink) { const t = doneLinkFor(next); doneLink.setAttribute('href', t.href); doneLink.textContent = t.label; }
 
   let currentEmail = '';
   let timerId = null;

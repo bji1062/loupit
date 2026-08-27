@@ -8,6 +8,8 @@ import {
   apiFetch, ApiError, getReference, searchCompanies, getCompany, API_BASE,
   getBenefitsForEdit, createBenefit, updateBenefit, getEdits,
   requestLoginCode, requestEmployCode, login,
+  listPosts, getPost, getComments, createPost, updatePost, deletePost,
+  createComment, deleteComment, toggleLike, submitReport,
 } from './api.js';
 
 // ── fetch 스파이(호출 인자 기록) ────────────────────────────────────────────
@@ -311,5 +313,130 @@ describe('메일 발송 호출의 타임아웃(⑤)', () => {
     const delays = await captureDelays(() => login('a@b.co', '123456'));
     assert.ok(delays.includes(8000), `기대 8000, 관측 ${JSON.stringify(delays)}`);
     assert.equal(delays.includes(25000), false);
+  });
+});
+
+// ── SC15 커뮤니티 헬퍼(T-14.6.1, FRD/14) — 목록은 익명 apiFetch, 상세·댓글·쓰기는 credentialed apiSend ──
+describe('SC15 커뮤니티 헬퍼', () => {
+  let seen;
+  // 목록은 apiFetch(res.json), 나머지는 apiSend(res.text) — 둘 다 지원하는 목.
+  function mock(status, json) {
+    seen = [];
+    globalThis.fetch = async (url, opts) => {
+      seen.push({ url, opts });
+      const txt = json === undefined ? '' : JSON.stringify(json);
+      return { ok: status >= 200 && status < 300, status, json: async () => json, text: async () => txt };
+    };
+  }
+  const q = (i = 0) => new URL('http://x' + seen[i].url).searchParams;
+
+  test('listPosts() 기본 → GET /posts?sort=latest&limit=20, 익명(credentials:omit)', async () => {
+    mock(200, { items: [], next_before: null });
+    const out = await listPosts();
+    assert.deepEqual(out, { items: [], next_before: null });
+    assert.equal(seen[0].opts.method, 'GET');
+    assert.equal(seen[0].opts.credentials, 'omit');
+    assert.equal(seen[0].opts.headers['X-Loupit-Client'], 'web');
+    assert.ok(seen[0].url.startsWith(API_BASE + '/posts?'));
+    assert.equal(q().get('sort'), 'latest');
+    assert.equal(q().get('limit'), '20');
+    assert.equal(q().get('category'), null, '전체(빈 카테고리)는 파라미터를 붙이지 않는다');
+    assert.equal(q().get('before'), null);
+  });
+
+  test('listPosts({category, sort, before}) → 세 파라미터 모두 부착·인코딩', async () => {
+    mock(200, { items: [], next_before: null });
+    await listPosts({ category: 'career', sort: 'likes', before: 77, limit: 50 });
+    assert.equal(q().get('category'), 'career');
+    assert.equal(q().get('sort'), 'likes');
+    assert.equal(q().get('before'), '77');
+    assert.equal(q().get('limit'), '50');
+  });
+
+  test('getPost → GET /posts/{id} credentialed(is_mine·liked 는 쿠키가 있어야 참) + 본문만 반환', async () => {
+    mock(200, { post_id: 3, title: 't', is_mine: true, liked: false });
+    const post = await getPost(3);
+    assert.equal(seen[0].url, API_BASE + '/posts/3');
+    assert.equal(seen[0].opts.method, 'GET');
+    assert.equal(seen[0].opts.credentials, 'include');
+    assert.equal(seen[0].opts.headers['X-Loupit-Client'], 'web');
+    assert.equal(post.is_mine, true);
+    assert.equal(post.title, 't');
+  });
+
+  test('getPost 404 → ApiError(404)', async () => {
+    mock(404, { detail: 'not found' });
+    await assert.rejects(() => getPost(9), (err) => err instanceof ApiError && err.status === 404);
+  });
+
+  test('getComments(id) → GET /posts/{id}/comments?limit=50 credentialed · after 는 있을 때만', async () => {
+    mock(200, { items: [], next_after: null });
+    await getComments(3);
+    assert.ok(seen[0].url.startsWith(API_BASE + '/posts/3/comments?'));
+    assert.equal(q().get('limit'), '50');
+    assert.equal(q().get('after'), null);
+    assert.equal(seen[0].opts.credentials, 'include');
+    mock(200, { items: [], next_after: null });
+    await getComments(3, 12, 20);
+    assert.equal(q().get('after'), '12');
+    assert.equal(q().get('limit'), '20');
+  });
+
+  test('createPost → POST /posts JSON 본문·credentials:include·CSRF 헤더', async () => {
+    mock(201, { post_id: 5 });
+    const { status, data } = await createPost({ category: 'free', title: 't', body: 'b', comp_id: null });
+    assert.equal(status, 201);
+    assert.equal(data.post_id, 5);
+    assert.equal(seen[0].url, API_BASE + '/posts');
+    assert.equal(seen[0].opts.method, 'POST');
+    assert.equal(seen[0].opts.credentials, 'include');
+    assert.equal(seen[0].opts.headers['X-Loupit-Client'], 'web');
+    assert.equal(seen[0].opts.headers['Content-Type'], 'application/json');
+    assert.deepEqual(JSON.parse(seen[0].opts.body), { category: 'free', title: 't', body: 'b', comp_id: null });
+  });
+
+  test('updatePost → PUT /posts/{id} (category 없이) · deletePost → DELETE /posts/{id}', async () => {
+    mock(200, { post_id: 5, updated_at: 'x' });
+    await updatePost(5, { title: 't2', body: 'b2', comp_id: 1 });
+    assert.equal(seen[0].opts.method, 'PUT');
+    assert.equal(seen[0].url, API_BASE + '/posts/5');
+    assert.equal(JSON.parse(seen[0].opts.body).category, undefined);
+    mock(204);
+    const r = await deletePost(5);
+    assert.equal(seen[0].opts.method, 'DELETE');
+    assert.equal(seen[0].url, API_BASE + '/posts/5');
+    assert.equal(r.status, 204);
+  });
+
+  test('createComment → POST /posts/{id}/comments {body} · deleteComment → DELETE …/comments/{cid}', async () => {
+    mock(201, { comment_id: 9 });
+    await createComment(5, '댓글');
+    assert.equal(seen[0].opts.method, 'POST');
+    assert.equal(seen[0].url, API_BASE + '/posts/5/comments');
+    assert.deepEqual(JSON.parse(seen[0].opts.body), { body: '댓글' });
+    mock(204);
+    await deleteComment(5, 9);
+    assert.equal(seen[0].opts.method, 'DELETE');
+    assert.equal(seen[0].url, API_BASE + '/posts/5/comments/9');
+  });
+
+  test('toggleLike → PUT /posts/{id}/like 무본문 · 응답 {liked, like_cnt}', async () => {
+    mock(200, { liked: true, like_cnt: 4 });
+    const { data } = await toggleLike(5);
+    assert.equal(seen[0].opts.method, 'PUT');
+    assert.equal(seen[0].url, API_BASE + '/posts/5/like');
+    assert.equal(seen[0].opts.body, undefined);
+    assert.deepEqual(data, { liked: true, like_cnt: 4 });
+  });
+
+  test('submitReport → POST /reports 4필드 · 409 중복은 ApiError 로 구분', async () => {
+    mock(202, { report_id: 1 });
+    const { status } = await submitReport({ target_type: 'post', target_id: 5, reason: 'spam', detail: '' });
+    assert.equal(status, 202);
+    assert.equal(seen[0].url, API_BASE + '/reports');
+    assert.deepEqual(JSON.parse(seen[0].opts.body), { target_type: 'post', target_id: 5, reason: 'spam', detail: '' });
+    mock(409, { detail: 'duplicate' });
+    await assert.rejects(() => submitReport({ target_type: 'post', target_id: 5, reason: 'spam', detail: '' }),
+      (err) => err instanceof ApiError && err.status === 409);
   });
 });

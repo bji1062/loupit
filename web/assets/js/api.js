@@ -146,3 +146,34 @@ export const updateBenefit = (comp_id, benefit_id, body) =>
 export const getEdits = (comp_id, limit = 50, before = null, opt) =>
   apiFetch('/companies/' + encodeURIComponent(comp_id) + '/edits?limit=' + encodeURIComponent(limit)
     + (before ? '&before=' + encodeURIComponent(before) : ''), opt);
+
+// ── 커뮤니티(SC15, FRD/14 FR-121~130) — T-14.6.1 ─────────────────────────────
+// 목록은 익명 apiFetch(무쿠키). **상세·댓글 목록은 credentialed GET**(apiSend 'GET', 편집용 조회
+// `getBenefitsForEdit` 전례)이다 — 응답의 `is_mine`·`liked` 는 세션 쿠키가 동봉될 때만 참일 수
+// 있고(FR-122 선택적 세션), `credentials:'omit'` 으로 부르면 본인 글에도 수정 버튼이 영영 안 뜬다.
+// 세션이 없어도 서버는 401 을 내지 않으므로 익명 열람은 그대로다. 호출부 편의로 본문(data)만 돌려준다.
+const postsQuery = (params) => {
+  const p = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v != null && v !== '') p.set(k, String(v));
+  return p.toString();
+};
+export const listPosts = ({ category = '', sort = 'latest', limit = 20, before = null } = {}, opt) =>
+  apiFetch('/posts?' + postsQuery({ category, sort, limit, before }), opt); // 200 {items, next_before} / 422
+export const getPost = (post_id) =>
+  apiSend('GET', '/posts/' + encodeURIComponent(post_id)).then((r) => r.data); // 200 / 404 삭제·숨김
+export const getComments = (post_id, after = null, limit = 50) => // 오래된 순, `after` 커서(아래로 자란다)
+  apiSend('GET', '/posts/' + encodeURIComponent(post_id) + '/comments?' + postsQuery({ limit, after }))
+    .then((r) => r.data);
+// 쓰기 8종 — 세션 쿠키 + CSRF 헤더(apiSend). 401 무세션 / 403 공지 비운영자·타인 글 / 422 경계 / 429 일일 상한.
+export const createPost = (body) => apiSend('POST', '/posts', body); // {category,title,body,comp_id|null} → 201 {post_id}
+export const updatePost = (post_id, body) => // category 는 받지 않는다(FR-125) → 200 {post_id, updated_at}
+  apiSend('PUT', '/posts/' + encodeURIComponent(post_id), body);
+export const deletePost = (post_id) => apiSend('DELETE', '/posts/' + encodeURIComponent(post_id)); // 204 소프트
+export const createComment = (post_id, body) => // {body ≤1000} → 201 {comment_id}
+  apiSend('POST', '/posts/' + encodeURIComponent(post_id) + '/comments', { body });
+export const deleteComment = (post_id, comment_id) => // 본인만 → 204
+  apiSend('DELETE', '/posts/' + encodeURIComponent(post_id) + '/comments/' + encodeURIComponent(comment_id));
+export const toggleLike = (post_id) => // 멱등 토글 → 200 {liked, like_cnt}
+  apiSend('PUT', '/posts/' + encodeURIComponent(post_id) + '/like');
+export const submitReport = (body) => // {target_type, target_id, reason, detail ≤300} → 202 / 409 중복 / 404 대상 부재
+  apiSend('POST', '/reports', body);

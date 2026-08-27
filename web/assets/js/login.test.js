@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { ApiError } from './api.js';
 import {
   CODE_TTL_SEC, isValidEmail, isValidCode, countdownText, messageFor, doneSubText,
-  throttleMessage,
+  throttleMessage, safeNext, nextFromSearch, doneLinkFor,
 } from './login.js';
 
 describe('isValidEmail', () => {
@@ -125,4 +125,39 @@ describe('throttleMessage(③ 대기 초 안내)', () => {
 describe('doneSubText', () => {
   test('신규 계정 안내', () => { assert.match(doneSubText(true), /새 계정/); });
   test('재방문 안내', () => { assert.match(doneSubText(false), /다시 오신/); });
+});
+
+// ── SC15 커뮤니티 진입(T-14.6.6): `?next=` 는 same-origin 절대 경로만 ──
+// 열린 리다이렉트가 되는 순간 로그인 화면이 피싱 도구가 된다. 허용 규칙은 **화이트리스트**다:
+// `/` 로 시작 · `//` 로 시작하지 않음 · `http`·`javascript:`·`\` 를 포함하지 않음.
+describe('safeNext — next 허용/거부 매트릭스', () => {
+  test('same-origin 절대 경로 → 그대로', () => {
+    assert.equal(safeNext('/community/write'), '/community/write');
+    assert.equal(safeNext('/community/12'), '/community/12');
+    assert.equal(safeNext('/community/?category=free&sort=likes'), '/community/?category=free&sort=likes');
+  });
+  test('프로토콜 상대(//evil)·절대 URL·javascript:·백슬래시 → null', () => {
+    for (const v of ['//evil', '//evil.com/x', 'https://evil', 'http://evil', '/x?u=https://evil',
+      'javascript:alert(1)', '/a\\b', '\\\\evil', '/javascript:alert(1)']) {
+      assert.equal(safeNext(v), null, `v=${v}`);
+    }
+  });
+  test('상대 경로·빈값·비문자열·제어문자·공백 → null', () => {
+    for (const v of ['community/write', '', null, undefined, 12, '/a\nb', '/a b', '/a ']) {
+      assert.equal(safeNext(v), null, `v=${String(v)}`);
+    }
+  });
+});
+
+describe('nextFromSearch / doneLinkFor', () => {
+  test('?next= 를 읽어 검증한다(디코딩 포함)', () => {
+    assert.equal(nextFromSearch('?next=%2Fcommunity%2Fwrite'), '/community/write');
+    assert.equal(nextFromSearch('?next=//evil'), null);
+    assert.equal(nextFromSearch(''), null);
+    assert.equal(nextFromSearch(undefined), null);
+  });
+  test('next 있으면 "돌아가기"(next 로), 없으면 기존 마이페이지 링크', () => {
+    assert.deepEqual(doneLinkFor('/community/write'), { href: '/community/write', label: '돌아가기' });
+    assert.deepEqual(doneLinkFor(null), { href: '/mypage', label: '마이페이지로 가기' });
+  });
 });
