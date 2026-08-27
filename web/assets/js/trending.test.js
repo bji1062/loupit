@@ -1,8 +1,9 @@
 // web/assets/js/trending.test.js — "많이 찾아본 조합" 위젯 테스트.
 // 순수(parseTrending·fallbackPairs·nextIndex·pairLabel·compareLogPayload) + jsdom DOM
-// (롤링·호버 펼침·클릭 onPick·실패 무해·콜드스타트 폴백). 근거: INV-1 개정 2026-07-14
-// (GET /comparisons/trending + 익명 POST /comparisons/log), 콜드스타트 폴백·세션 중복
-// 제거 2026-07-31, ui.test.js와 동일한 jsdom 부트스트랩 관례.
+// (롤링·호버 펼침·클릭 onPick·실패 무해·콜드스타트 폴백·터치 오조준). 근거: INV-1 개정
+// 2026-07-14 (GET /comparisons/trending + 익명 POST /comparisons/log), 콜드스타트 폴백·
+// 세션 중복 제거 2026-07-31, 터치 오조준 2026-08-27(HANDOFF-2026-07-31 §3-7),
+// ui.test.js와 동일한 jsdom 부트스트랩 관례.
 
 // ── dom.js가 document를 참조하므로 최소 전역 세팅(jsdom이 뒤에서 교체) ──
 globalThis.window = { addEventListener() {}, removeEventListener() {} };
@@ -196,7 +197,17 @@ function loadDom() {
   );
   globalThis.document = dom.window.document;
   globalThis.window = dom.window;
+  delete globalThis.matchMedia; // 기기 흉내(setPrimaryInput)가 다음 describe로 새지 않게
   return dom;
+}
+
+// trending.js는 전역 matchMedia를 본다(prefersReducedMotion과 같은 관례). 주 입력이
+// 마우스면 (hover: none)이 거짓, 터치면 참 — 브라우저가 실제로 답하는 그대로다.
+function setPrimaryInput(kind) { // 'touch' | 'mouse'
+  globalThis.matchMedia = (q) => ({
+    media: q,
+    matches: kind === 'touch' && /\(\s*hover\s*:\s*none\s*\)/.test(q),
+  });
 }
 
 function okFetch(items = TEN) {
@@ -342,5 +353,120 @@ describe('mountTrending — 집계 0건이면 같은 업종 제안으로 대체'
     assert.equal(picked.length, 1);
     assert.equal(picked[0].a_comp_id, 11);
     assert.equal(picked[0].b_comp_id, 12);
+  });
+});
+
+// ── 터치 기기 오조준(2026-08-27, HANDOFF-2026-07-31 §3-7) ────────────────────
+// 접힘 행은 ROTATE_MS마다 노드를 통째로 교체한다. 데스크톱은 mouseenter가 롤링을
+// 멈춰 주므로 사실상 안전하지만, **터치 기기에는 호버가 없다** — 멈출 방법이 없다.
+// 그래서 두 가지가 동시에 깨진다:
+//   ㉠ 사용자가 행을 읽고 손가락을 내리는 사이에 내용이 바뀐다 → 다른 조합이 열린다
+//   ㉡ pointerdown~pointerup 사이에 노드가 교체되면 click 자체가 발생하지 않는다
+//      (이번 결함은 Playwright 클릭이 같은 이유로 타임아웃 나면서 드러났다)
+// 게다가 터치에는 펼칠 수단이 없어 10개 중 1개만 도달 가능했다.
+describe('mountTrending — 터치 기기에서는 과녁이 움직이지 않는다', () => {
+  beforeEach(() => { loadDom(); setPrimaryInput('touch'); });
+
+  test('㉠ 재현: 읽은 행이 반응 시간 사이에 다른 조합으로 바뀌면 안 된다', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    await mountTrending({ fetchFn: okFetch() });
+    const host = document.getElementById('trending');
+    const seen = host.querySelector('.trend-current').textContent; // 사용자가 읽은 조합
+    t.mock.timers.tick(ROTATE_MS * 2); // 손가락이 내려가기까지 — 호버가 없어 롤링이 안 멈춘다
+    assert.equal(host.querySelector('.trend-current').textContent, seen,
+      '읽은 조합과 탭이 도달하는 조합이 달라진다');
+  });
+
+  test('㉡ 재현: 누르고 있던 노드가 교체되면 그 탭의 click이 통째로 사라진다', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    const picked = [];
+    await mountTrending({ fetchFn: okFetch(), onPick: (it) => picked.push(it) });
+    const host = document.getElementById('trending');
+    const target = host.querySelector('.trend-current .trend-item'); // 손가락이 닿은 노드
+    t.mock.timers.tick(ROTATE_MS); // pointerdown 과 pointerup 사이
+    assert.ok(host.contains(target), '문서에서 사라진 노드에는 click이 발생하지 않는다');
+    target.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(picked.length, 1);
+    assert.equal(pairLabel(picked[0]), 'A1사 vs B1사', '읽은 조합 그대로 열려야 한다');
+  });
+
+  test('터치: 처음부터 펼친 목록 — 10개 모두 탭할 수 있다(지금까지는 1개뿐)', async () => {
+    const res = await mountTrending({ fetchFn: okFetch() });
+    const host = document.getElementById('trending');
+    assert.equal(host.hidden, false);
+    assert.ok(host.classList.contains('trend-expanded'), '펼칠 호버가 없으니 처음부터 펼쳐 둔다');
+    assert.equal(host.querySelectorAll('.trend-list .trend-item').length, 10);
+    assert.equal(res.rolling, false, '터치에서는 롤링 타이머를 아예 걸지 않는다');
+    assert.equal(res.mode, 'trending', '입력 기기는 집계/폴백 모드와 무관하다');
+  });
+
+  test('터치: 합성 mouseleave가 와도 다시 접히거나 롤링이 재개되지 않는다', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    await mountTrending({ fetchFn: okFetch() });
+    const host = document.getElementById('trending');
+    host.dispatchEvent(new window.Event('mouseleave')); // 모바일 브라우저가 합성해 보내기도 한다
+    assert.ok(host.classList.contains('trend-expanded'));
+    const seen = host.querySelector('.trend-current').textContent;
+    t.mock.timers.tick(ROTATE_MS * 3);
+    assert.equal(host.querySelector('.trend-current').textContent, seen);
+  });
+
+  test('터치: 폴백(제안) 모드에서도 똑같이 고정된다', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    const res = await mountTrending({ fetchFn: okFetch([]), companies: COMPANIES });
+    const host = document.getElementById('trending');
+    assert.equal(res.mode, 'suggest');
+    assert.ok(host.classList.contains('trend-expanded'));
+    const seen = host.querySelector('.trend-current').textContent;
+    t.mock.timers.tick(ROTATE_MS * 2);
+    assert.equal(host.querySelector('.trend-current').textContent, seen);
+  });
+});
+
+// 하이브리드(터치 되는 노트북)는 주 입력이 마우스라 (hover: none)에 걸리지 않는다.
+// 실제 터치가 들어온 그 순간에 잠근다 — pointerdown은 click보다 먼저 오므로
+// 최소한 그 탭부터는 노드가 교체되지 않는다.
+describe('mountTrending — 하이브리드: 실제 터치가 오면 그때 잠근다', () => {
+  beforeEach(() => { loadDom(); setPrimaryInput('mouse'); });
+
+  function pointerdown(host, pointerType) {
+    const ev = new window.Event('pointerdown', { bubbles: true });
+    ev.pointerType = pointerType;
+    host.dispatchEvent(ev);
+  }
+
+  test('마우스 기기 기본 동작은 그대로다(접힘 + 롤링)', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    const res = await mountTrending({ fetchFn: okFetch() });
+    const host = document.getElementById('trending');
+    assert.ok(!host.classList.contains('trend-expanded'));
+    assert.equal(res.rolling, true);
+    t.mock.timers.tick(ROTATE_MS);
+    assert.match(host.querySelector('.trend-current .trend-rank').textContent, /^2$/);
+  });
+
+  test('touch pointerdown → 펼침 고정·롤링 정지, mouseleave로도 안 풀린다', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    await mountTrending({ fetchFn: okFetch() });
+    const host = document.getElementById('trending');
+    pointerdown(host, 'touch');
+    assert.ok(host.classList.contains('trend-expanded'));
+    const seen = host.querySelector('.trend-current').textContent;
+    t.mock.timers.tick(ROTATE_MS * 3);
+    assert.equal(host.querySelector('.trend-current').textContent, seen, '잠긴 뒤에는 교체되지 않는다');
+    host.dispatchEvent(new window.Event('mouseleave'));
+    assert.ok(host.classList.contains('trend-expanded'), 'mouseleave가 잠금을 풀면 안 된다');
+    t.mock.timers.tick(ROTATE_MS * 2);
+    assert.equal(host.querySelector('.trend-current').textContent, seen);
+  });
+
+  test('mouse pointerdown은 아무것도 바꾸지 않는다(데스크톱 회귀 방지)', async (t) => {
+    t.mock.timers.enable({ apis: ['setInterval'] });
+    await mountTrending({ fetchFn: okFetch() });
+    const host = document.getElementById('trending');
+    pointerdown(host, 'mouse');
+    assert.ok(!host.classList.contains('trend-expanded'));
+    t.mock.timers.tick(ROTATE_MS);
+    assert.match(host.querySelector('.trend-current .trend-rank').textContent, /^2$/);
   });
 });
