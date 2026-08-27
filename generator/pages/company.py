@@ -258,6 +258,7 @@ def render_all(env, ctx, combo_pairs=None) -> list[Page]:
             related_combos=_related_combos(eng, ctx, combo_pairs),
             cfg=CFG,
             footer_links=POLICY_FOOTER_LINKS,
+            nav_active="/companies",  # 회사정보 탭 소속(test_gnb_tabs)
         )
         pages.append(
             Page(

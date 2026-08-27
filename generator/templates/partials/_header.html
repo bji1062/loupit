@@ -6,9 +6,14 @@
    ※ 구 주석의 "로그인·계정 UI 없음(INV-1)" 은 SC14 이전 서술이다 — 현행 INV-1 은
      **익명 API 표면**(GET 5종 + 비교 로그 POST 1종, SC14 쓰기는 별도 열거)에 대한 불변식이고
      UI 를 규정하지 않는다(SPEC/04 §전역 불변식). 여기서 새 라우트를 만들지도 않는다. #}
+{#- 상단 탭(2026-08-27): 정본은 generator/content/nav.py::GNB_TABS(env 전역 `gnb_tabs`). 수기 셸
+    7개와 test_gnb_tabs.py 가 동기화를 강제한다. `nav_active` 는 페이지가 자기 탭 href 로 override —
+    회사·회사인덱스만 '회사정보'. aria-current 는 CSS(활성 표시)와 스크린리더 양쪽의 정본이다. -#}
 <a href="/" class="site-logo">{{ cfg.site_name }}</a>
 <nav aria-label="주 메뉴">
-  <a href="/">홈</a>
+{% for label, href in gnb_tabs %}
+  <a href="{{ href }}"{% if nav_active == href %} aria-current="page"{% endif %}>{{ label }}</a>
+{% endfor %}
   <a href="{{ cfg.compare_path }}">비교하기</a>
   {% include "partials/_authnav.html" %}
 </nav>

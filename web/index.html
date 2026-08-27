@@ -31,6 +31,9 @@
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
     <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
+    <!-- 상단 탭: generator/content/nav.py::GNB_TABS 와 동기화(test_gnb_tabs.py). 순서·라벨을 임의로 바꾸지 마라 -->
+    <a href="/" class="gnb-link" aria-current="page">홈</a>
+    <a href="/companies" class="gnb-link">회사정보</a>
     <a href="#trending" class="gnb-link">비교 조합</a><!-- 위젯이 두 모드를 오가므로 중립 문구(2026-07-31) -->
     <form class="gnb-search" role="search" aria-label="회사 검색"> <!-- 제출 → A 슬롯 주입(ui.js bindHeaderSearch) -->
       <input type="search" placeholder="회사명으로 복지 찾기" aria-label="회사명으로 복지 찾기" autocomplete="off">

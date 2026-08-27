@@ -27,7 +27,7 @@ def render(env, ctx, cfg=CFG) -> Page:
         for c in companies
     ]
     url = f"{cfg.site_origin}/companies"
-    title = f"등록 회사 {len(items)}곳 복지·연봉 목록 | {cfg.site_name}"
+    title = f"회사정보 — 등록 회사 {len(items)}곳 복지·연봉·근무조건 | {cfg.site_name}"
     desc = (
         f"jobcho.wiki에 등록된 회사 {len(items)}곳의 복지·연봉·근무조건 페이지 목록입니다. "
         f"회사를 골라 복지 항목을 확인하고 다른 회사와 비교해 보세요."
@@ -47,5 +47,6 @@ def render(env, ctx, cfg=CFG) -> Page:
         },
         cfg=cfg,
         footer_links=POLICY_FOOTER_LINKS,
+        nav_active="/companies",  # 회사정보 탭의 착지 페이지
     )
     return Page(path="companies.html", url=url, html=html, title=title, description=desc)

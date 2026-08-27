@@ -148,6 +148,13 @@ header:not([data-global]) nav { display:flex; align-items:center; gap:var(--sp-4
 .brand-dot { color:var(--grass); }
 header nav a:not(.brand):not(.site-logo) { color:var(--on-brand-soft); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 header nav a:not(.brand):hover { color:var(--on-brand); text-decoration:none; }
+/* 현재 탭(2026-08-27, GNB_TABS) — 두 헤더 공통. aria-current 가 정본이라 클래스 대신 속성으로 건다.
+   밑줄을 풀색으로 얇게 — 초록 바 위에서 흰 글자만으로는 활성/비활성이 구분되지 않는다(실측). */
+header nav a[aria-current="page"] {
+  color:var(--on-brand); text-decoration:underline; text-decoration-color:var(--grass);
+  text-decoration-thickness:2px; text-underline-offset:.4em;
+}
+header nav a[aria-current="page"]:hover { text-decoration:underline; }
 /* GNB 검색(우측) — 제출 시 A 슬롯 주입(ui.js bindHeaderSearch) */
 .gnb-search { display:flex; align-items:center; margin-left:auto; background:var(--bg-1); border-radius:var(--r-sm); overflow:hidden; }
 .gnb-search input[type="search"] {
