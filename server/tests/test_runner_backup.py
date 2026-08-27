@@ -23,11 +23,24 @@ import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 RUN_TESTS = os.path.join(ROOT, "infra", "deploy", "run_tests.sh")
+RELEASE = os.path.join(ROOT, "infra", "deploy", "release.sh")
 
 
 def _script() -> str:
     with open(RUN_TESTS, encoding="utf-8") as f:
         return f.read()
+
+
+def _release_code_lines() -> list[str]:
+    with open(RELEASE, encoding="utf-8") as f:
+        raw = f.read()
+    out = []
+    for line in raw.splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        out.append(line.split("#", 1)[0])
+    return out
 
 
 def _code_lines() -> list[str]:
@@ -97,6 +110,37 @@ def test_base_gate_excludes_sc14_marker():
     assert re.search(r"""pytest\s+server/tests/[^\n]*-m\s+["']not sc14["']""", s), (
         "run_tests.sh 백엔드 게이트에 -m 'not sc14' 제외 부재 — RED SC14 스펙이 베이스 배포를 막을 수 있음"
     )
+
+
+def test_release_calls_the_gate():
+    """release.sh [1/7] 이 run_tests.sh 를 호출한다 — 아래 누출 가드의 전제."""
+    code = "\n".join(_release_code_lines())
+    assert "run_tests.sh" in code, "release.sh 가 테스트 게이트를 호출하지 않는다"
+
+
+def test_release_does_not_leak_serving_db_name_into_gate():
+    """release.sh 는 게이트에 서빙 DB_NAME 을 물려주지 않는다.
+
+    실제 사고(2026-08-27 릴리스): release.sh 가 `set -a; source server/.env` 로
+    DB_NAME=LOUPIT 을 export 한 채 `bash run_tests.sh` 를 호출했다. run_tests.sh 의
+    `export DB_NAME="${DB_NAME:-loupit_test}"` 는 CI(loupit_ci)를 위해 **이미 설정된
+    값을 존중**하므로 격리 기본값이 적용되지 않았고, 게이트가 서빙을 향해 C-1
+    안전장치에 막혔다. 즉 run_tests.sh 만 격리해서는 계약이 성립하지 않는다 —
+    **호출자가 계약을 무효화할 수 있다.** 이 가드는 그 경로를 막는다.
+
+    통과 조건: 게이트 호출 줄이 DB_NAME 을 지우거나(`env -u DB_NAME`) 비서빙
+    이름으로 덮어쓴다.
+    """
+    gate_calls = [ln for ln in _release_code_lines() if "run_tests.sh" in ln]
+    assert gate_calls, "게이트 호출 줄을 찾지 못했다"
+    for ln in gate_calls:
+        neutralized = re.search(r"env\s+(-[^\s]+\s+)*-u\s+DB_NAME", ln) or re.search(
+            r"\bDB_NAME=(?!LOUPIT\b|loupit\b|\$)[\w-]+\s+\S*run_tests\.sh", ln
+        )
+        assert neutralized, (
+            f"release.sh 가 서빙 DB_NAME 을 게이트에 물려준다: {ln.strip()!r} — "
+            "`env -u DB_NAME bash .../run_tests.sh` 로 지워 넘겨야 격리 기본값이 선다."
+        )
 
 
 if __name__ == "__main__":  # conftest/DB 없이 자체 검증용(python server/tests/test_runner_backup.py)

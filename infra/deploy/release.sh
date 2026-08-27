@@ -20,7 +20,18 @@
 #   [1] 게이트(run_tests.sh)는 격리 스키마 `loupit_test` 만 쓰고 **서빙(LOUPIT)을 만지지
 #   않는다** — 구 판본의 백업/재시드/재주입 곡예와 약 10초 다운타임 창은 격리 전환으로
 #   사라졌다(서빙 무접촉 계약: server/tests/test_runner_backup.py). 서빙 DB 는 릴리스
-#   전후로 그대로이므로 [2] 이후는 재시드 없이 검증만 한다(기존과 동일).
+#   전후로 그대로이므로 [2] 이후는 재시드 없이 검증만 한다.
+#
+#   ⚠ 그래서 이 스크립트는 게이트를 호출할 때 **DB_NAME 을 넘기지 않는다**(아래 [1] 참조).
+#   위 33행의 `set -a; source server/.env` 가 DB_NAME=LOUPIT 을 이 프로세스에 export 하는데,
+#   run_tests.sh 의 `export DB_NAME="${DB_NAME:-loupit_test}"` 는 **이미 설정된 값을 존중**하므로
+#   그대로 물려주면 격리 기본값이 적용되지 않고 게이트가 서빙을 향한다. 2026-08-27 릴리스가
+#   정확히 이 경로로 C-1 안전장치에 막혔다(막힌 것이 정상 동작 — 서빙은 무사했다).
+#
+#   ⚠ 시드 변경은 이제 릴리스로 서빙에 반영되지 않는다. 구 판본은 게이트가 서빙을 재시드하는
+#   **부작용**으로 시드 변경이 딸려 들어갔지만, 무접촉 게이트에는 그 경로가 없다. 회사·복지·
+#   도메인 시드를 바꿨다면 릴리스와 별개로 명시적으로 적재하라:
+#       LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh   # 서빙 대상, 의도적 실행
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -67,7 +78,7 @@ echo "══ 릴리스 대상(라이브 프로덕션) ══"
 echo "  서빙 DB   : ${DB_NAME:-loupit} @ ${DB_HOST:-127.0.0.1}:${DB_PORT:-3306} (user=${DB_USER:-미설정})"
 echo "  서빙 dist : ${ROOT_DIR}/web/dist (nginx 가 디스크에서 직접 서빙)"
 echo "  대상 API  : loupit-api(:8000) + loupit-beta-api(:8001, 설치돼 있으면)"
-echo "  ⚠ [1] 게이트 백엔드 테스트 구간에 약 10초 서빙 다운타임 창이 있다(위 헤더 참조)."
+echo "  ✓ [1] 게이트는 격리 스키마(loupit_test)에서 돈다 — 서빙 무접촉, 다운타임 창 없음."
 if [ "${RELEASE_CONFIRM:-}" != "1" ]; then
   if [ -t 0 ]; then
     read -r -p "위 프로덕션 대상에 릴리스한다. 계속? [y/N] " _ans
@@ -113,22 +124,26 @@ else
 fi
 
 echo "[1/7] test gate (SP-TEST-4 집계 — G1~G3) — 실패 시 즉시 중단(2~7 미실행, 서빙 정적물 유지)"
-echo "      ⚠ 백엔드 테스트가 참조 5테이블을 일시 DROP/CREATE 후 종료 시 재시드한다(~10초 창)."
 STEP="[1/7] 테스트 게이트"
-bash "${SCRIPT_DIR}/run_tests.sh"
+# `env -u DB_NAME` 이 이 호출의 핵심이다 — 위에서 server/.env 를 `set -a` 로 읽어 DB_NAME=LOUPIT
+# 이 export 돼 있고, run_tests.sh 는 이미 설정된 DB_NAME 을 존중하므로(CI 의 loupit_ci 를 위해)
+# 그대로 물려주면 격리 기본값이 죽고 게이트가 서빙을 향한다. 지워서 넘겨 callee 의 기본값
+# (loupit_test)이 서게 한다. DB_HOST/PORT/USER/PASSWORD 는 접속에 필요하므로 그대로 넘긴다.
+# 가드: server/tests/test_runner_backup.py::test_release_does_not_leak_serving_db_name_into_gate
+env -u DB_NAME bash "${SCRIPT_DIR}/run_tests.sh"
 
 echo "[2/7] schema (SP-DB) — mysql < db/schema.sql (멱등 CREATE TABLE IF NOT EXISTS)"
-echo "      게이트 복원이 이미 schema 를 적용했다 — 이 단계는 존재 보장을 위한 멱등 no-op 가드."
+echo "      격리 전환 후 게이트는 서빙에 손대지 않는다 — 서빙 스키마를 실제로 적용하는 곳은 여기뿐이다."
 STEP="[2/7] schema"
 mysql -h "${DB_HOST:-127.0.0.1}" -P "${DB_PORT:-3306}" -u "${DB_USER:?DB_USER 미설정 — server/.env 확인}" \
   ${DB_PASSWORD:+-p"${DB_PASSWORD}"} "${DB_NAME:-loupit}" < "${ROOT_DIR}/db/schema.sql"
 
-echo "[3/7] 서빙 적재 검증 — 게이트 복원이 최신 시드를 적재했음을 COUNT 로 확인(재시드 아님, 중복 쓰기 회피)"
+echo "[3/7] 서빙 적재 검증 — 서빙 DB 가 온전한지 COUNT 로 확인(재시드 아님; 시드 변경은 별도 적재)"
 STEP="[3/7] 서빙 적재 검증"
 _ncomp="$(mysql -h "${DB_HOST:-127.0.0.1}" -P "${DB_PORT:-3306}" -u "${DB_USER}" \
   ${DB_PASSWORD:+-p"${DB_PASSWORD}"} -N -B -e "SELECT COUNT(*) FROM TCOMPANY" "${DB_NAME:-loupit}")"
 if [ "${_ncomp:-0}" -lt 90 ]; then
-  echo "  ✗ 서빙 TCOMPANY=${_ncomp:-?} (<90) — 게이트 복원 실패 의심." >&2
+  echo "  ✗ 서빙 TCOMPANY=${_ncomp:-?} (<90) — 서빙 DB 가 비었거나 불완전하다(복구 안내 참조)." >&2
   false   # ERR 트랩이 복구 안내(재시드 등)를 출력하고 set -e 로 종료
 fi
 echo "  ✓ 서빙 TCOMPANY=${_ncomp}"
