@@ -15,9 +15,10 @@
 | 데이터 | 회사 102 · 복지 1,465행 · 도메인 100/102 · 업종 102/102 | 2026-07-31 |
 | M9(로그인) | prod ON · beta ON | 2026-07-29 |
 | 테스트 | 백엔드 560 · sc14 3 · 생성기 236 · 프론트 705 — **전부 실측**(`--collect-only -m "not sc14"` · `node --test`). 이전 표의 540 은 낡은 값이었다 | 2026-08-27 |
-| TASK 진행 | [`TASK.md` §4 AUTOGEN 표](TASK.md) — 스크립트 집계(손집계 금지) | 2026-08-26 |
+| TASK 진행 | [`TASK.md` §4 AUTOGEN 표](TASK.md) — 스크립트 집계(손집계 금지). 14·15 도메인 추가로 계 324→**364** | 2026-08-27 |
 | 함정 로그 | 79건 — [`PITFALLS/INDEX.md`](PITFALLS/INDEX.md). 새 함정은 `PITFALLS/_incoming/` 에 번호 없이 | 2026-08-27 |
-| 회사 재무(신규 축) | DART 연동 3테이블(TCORP·TCOMPANY_CORP·TCORP_FINANCE)·corp_code 102 매칭 — [계획](PLAN-회사정보-확장-2026-08-21.md)·수집 미완 | 2026-08-21 |
+| 회사 재무(신규 축) | DART 연동 3테이블(TCORP·TCOMPANY_CORP·TCORP_FINANCE)·corp_code 102 매칭 — [계획](PLAN-회사정보-확장-2026-08-21.md)·수집 미완. **리프는 [TASK/15](TASK/15-회사정보.md)(10)** · SPEC [SP-FIN](SPEC/15-회사정보-재무.md) · ⚠ `DART_API_KEY` 미보유(사용자 전달 대기) | 2026-08-27 |
+| **커뮤니티·상단 탭(SC15 신설)** | 2026-08-27 결정 4건 확정 — [계획](PLAN-커뮤니티-회사정보탭-2026-08-27.md) §1. PRD SC15(소셜피드≠게시판)·INV-1 개정·USECASE 10·FRD 14·SPEC 14([SP-COMM](SPEC/14-커뮤니티.md))·TASK 14(30 리프). **PR-1 회사정보 탭** = `lane/gnb-company-info-tab`(생성기 242·프론트 705 green, **PR 생성 대기** — 호스트에 `gh` 없음). 다음: PR-2 재무(키 대기)·PR-3 스키마(단독)·PR-4 서버·PR-5 프론트+공개(staging→git mv+nginx) | 2026-08-27 |
 | 릴리스 게이트 | **서빙 무접촉 — 호출자까지 실증 완료.** `run_tests.sh` 는 `loupit_test` 만 쓰고, `release.sh` 는 `env -u DB_NAME` 으로 서빙 이름을 지워 넘긴다(가드: `test_release_does_not_leak_serving_db_name_into_gate`). ⚠ **시드 변경은 릴리스로 서빙에 반영되지 않는다** — 구 판본의 재시드 부작용이 사라졌다. 별도 `LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh` 필요 | 2026-08-27 |
 | 실트래픽 | ⚠ 실브라우저 세션 하루 고유 IP 2~10 — 병목은 제품이 아니라 유입 | 2026-07-31 |
 | 운영 미결 | 서버 밖 백업 자동화 · DMARC 승급 · ufw · 덕산 그룹공용 도메인 판단(보류 유지, 2026-08-27 결정) | 2026-08-27 |
