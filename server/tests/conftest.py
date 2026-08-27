@@ -182,6 +182,13 @@ PARTICIPATION_CREATE_ORDER = [
     # 아직 존재하지 않는 회사를 요청하는 창구라서다(db/schema.sql 의 해당 절 참조).
     "TCOMPANY_REQUEST",
     "TBENEFIT_EDIT_LOG",
+    # ── SC15 커뮤니티 4테이블(SP-DB-18, 2026-08-27) — 참여 그룹 **끝**에 부모→자식 순서로 ──
+    # FK 위상: TPOST(TMEMBER·TCOMPANY) → TPOST_COMMENT(TPOST·TMEMBER) → TPOST_REACTION(TPOST·TMEMBER)
+    # → TPOST_REPORT(TMEMBER). 부모가 전부 이 목록 앞에 있으므로 SI-4 를 만족한다.
+    # 참여 그룹에 두는 이유: 라우터 등록이 `m9_enabled` 안에 있고(FR-120 전제 6) FK 가 TMEMBER 라
+    # M9 OFF 스키마에는 이 4테이블도 없다 — 표면과 스키마가 설정 하나로 함께 움직인다.
+    # `run_tests.sh` 는 격리 전환(2026-08-26) 후 백업 목록이 없으므로 동반 수정 불요.
+    "TPOST", "TPOST_COMMENT", "TPOST_REACTION", "TPOST_REPORT",
 ]
 
 # ── 메일 배달 결과 2테이블(SP-AUTH-16, P1-4 바운스 웹훅) ────────────────────────────
