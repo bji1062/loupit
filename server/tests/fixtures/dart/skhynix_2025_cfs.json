@@ -1,0 +1,10 @@
+{
+  "status": "000",
+  "message": "정상",
+  "list": [
+    {"rcept_no": "20260320000003", "reprt_code": "11011", "bsns_year": "2025", "corp_code": "00164779", "sj_div": "BS", "sj_nm": "재무상태표", "account_id": "ifrs-full_Assets", "account_nm": "자산총계", "account_detail": "-", "thstrm_nm": "제 78 기", "thstrm_amount": "150,000,000,000,000", "frmtrm_nm": "제 77 기", "frmtrm_amount": "120,000,000,000,000", "bfefrmtrm_nm": "제 76 기", "bfefrmtrm_amount": "100,000,000,000,000", "ord": "1", "currency": "KRW"},
+    {"rcept_no": "20260320000003", "reprt_code": "11011", "bsns_year": "2025", "corp_code": "00164779", "sj_div": "CIS", "sj_nm": "포괄손익계산서", "account_id": "ifrs-full_Revenue", "account_nm": "매출액", "account_detail": "-", "thstrm_nm": "제 78 기", "thstrm_amount": "97,146,700,000,000", "frmtrm_nm": "제 77 기", "frmtrm_amount": "66,193,000,000,000", "bfefrmtrm_nm": "제 76 기", "bfefrmtrm_amount": "32,765,700,000,000", "ord": "1", "currency": "KRW"},
+    {"rcept_no": "20260320000003", "reprt_code": "11011", "bsns_year": "2025", "corp_code": "00164779", "sj_div": "CIS", "sj_nm": "포괄손익계산서", "account_id": "dart_OperatingIncomeLoss", "account_nm": "영업이익(손실)", "account_detail": "-", "thstrm_nm": "제 78 기", "thstrm_amount": "47,206,300,000,000", "frmtrm_nm": "제 77 기", "frmtrm_amount": "23,467,300,000,000", "bfefrmtrm_nm": "제 76 기", "bfefrmtrm_amount": "-7,730,300,000,000", "ord": "5", "currency": "KRW"},
+    {"rcept_no": "20260320000003", "reprt_code": "11011", "bsns_year": "2025", "corp_code": "00164779", "sj_div": "CIS", "sj_nm": "포괄손익계산서", "account_id": "ifrs-full_ProfitLoss", "account_nm": "당기순이익(손실)", "account_detail": "-", "thstrm_nm": "제 78 기", "thstrm_amount": "42,947,900,000,000", "frmtrm_nm": "제 77 기", "frmtrm_amount": "19,797,000,000,000", "bfefrmtrm_nm": "제 76 기", "bfefrmtrm_amount": "-9,137,500,000,000", "ord": "10", "currency": "KRW"}
+  ]
+}

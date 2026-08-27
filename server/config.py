@@ -138,6 +138,12 @@ class Settings(BaseSettings):
     # 지금 실발송은 beta 지만 발신 도메인·무료 티어를 공유하므로 억제 목록은 prod 에 모은다.
     resend_webhook_secret: str = ""
 
+    # DART(금융감독원 전자공시) OpenAPI 인증키 (SP-FIN-3, 2026-08-27) — 로그 금지.
+    # 회사 재무 수집기(`db/seed/dart_finance.py`)만 읽는다. **비어 있으면 수집기가 즉시 실패**한다 —
+    # 조용한 0건은 "수집했는데 없더라"로 읽혀 실적 섹션이 에러 없이 통째로 빠진다(함정 (57)).
+    # 발급: opendart.fss.or.kr(무료, 일 20,000회). 런타임 API 는 이 키를 쓰지 않는다.
+    dart_api_key: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_allow_origins.split(",") if o.strip()]
