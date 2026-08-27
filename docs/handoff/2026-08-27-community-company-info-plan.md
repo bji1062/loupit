@@ -48,3 +48,12 @@
   2,829행, 결측 14) → 결측 hint 대로 4사 `FS_DIV_CD='OFS'` 후 부분 재수집(51행, rc 0). 남은 결측 2건은 정당.
   scratch 렌더로 삼성전자 실적 5개년·증감률 확인, 두께 중앙값 1,402 → 1,610자(목표 1,900 에는 못 미침 —
   표는 글자 수가 적다. 뉴스(5단계)나 설명문이 있어야 더 는다).
+
+## 배포 완료 (2026-08-27, PR #10 머지 후)
+
+순서: 백업(`loupit-backup.service`) → `git pull`(0f79e05) → `20260827_add_community.sql` prod·beta → nginx conf 2종 cp·`-t`·reload
+→ `generator.build`(102) → `loupit-api`·`loupit-beta-api` 재시작. 스모크 12/12: `/community` 301 · `/community/` 200 ·
+`/community/999999` 셸 200 · `/api/v1/posts` `{items:[],next_before:null}` · 상세 404 · 쓰기 401(무세션)/403(무헤더) ·
+삼성전자 실적 섹션·연결 기준 · gnb 탭 4(홈·커뮤니티·회사정보·비교 조합) · privacy P10 · terms T6 · sitemap `/community/` ·
+`/companies` 일반/금융 섹션. **배포 명령 5줄은 세션 권한 게이트(auto 분류기)가 막아 사용자가 `!` 로 실행했다.**
+worktree 7개·로컬 lane 브랜치 정리 완료.
