@@ -10,6 +10,7 @@ import re
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
+from generator.finance import company_view as finance_view
 from generator.format import badge_state, iso_date, krw_manwon
 from generator.slug import combo_slug
 
@@ -104,7 +105,19 @@ def _company_view(c: dict, ctx, now) -> dict:
         ],
         "benefit_groups": groups,
         "compare_href": f"{CFG.compare_path}?a={c['comp_eng_nm']}",
+        "finance": _finance_view(c, ctx),
     }
+
+
+def _finance_view(c: dict, ctx) -> dict | None:
+    """실적 섹션 뷰모델(SP-FIN-5). 재무가 빌드에 안 실렸으면 None(섹션 없음 = 기존 페이지 그대로).
+    실렸으면 이 회사 몫(없을 수도 있다)을 형제 페이지 이름과 함께 뷰로 만든다 — CJ ENM 두 부문은
+    같은 법인이라 같은 수치를 받고 그 사실을 한 줄로 말한다(함정 (69))."""
+    if not ctx.finance_loaded:
+        return None
+    fin = ctx.finance.get(c["comp_id"])
+    siblings = [ctx.by_id[s]["comp_nm"] for s in (fin or {}).get("siblings", ()) if s in ctx.by_id]
+    return finance_view(fin, c["comp_nm"], siblings)
 
 
 def _industry_tokens(industry_nm) -> set[str]:

@@ -14,6 +14,7 @@ from generator.tests.fixtures import (
     FAKE_BUNDLE,
     FAKE_BUNDLE_XSS,
     FAKE_COMBINATIONS_RAW,
+    FAKE_FINANCE,
 )
 
 # 배지 3파생(GC-13)을 결정적으로 재현하는 고정 빌드 시각. FAKE_BUNDLE의
@@ -36,6 +37,13 @@ def fake_bundle_xss() -> dict:
 @pytest.fixture
 def fake_now() -> datetime:
     return FAKE_NOW
+
+
+@pytest.fixture
+def fake_finance() -> dict:
+    """재무 픽스처(SP-FIN) 깊은 복사본 — `build_context(bundle, finance=…)` 에 주입한다.
+    기존 스위트는 이걸 쓰지 않으므로 재무 없는 렌더 경로가 그대로 남는다(무회귀 계약)."""
+    return copy.deepcopy(FAKE_FINANCE)
 
 
 @pytest.fixture

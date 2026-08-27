@@ -100,3 +100,39 @@ WS_LABELS = {
 def work_style_label(key: str) -> str:
     """근무형태 키 → 한국어 라벨. 미상 키는 원문 그대로 반환."""
     return WS_LABELS.get(key, key)
+
+
+# ── 재무 표시(SP-FIN-5, 2026-08-27) ──────────────────────────────────────────
+# DART 수치는 원 단위 정수(DECIMAL(24,0))로 저장되고 화면은 억원이다. 여기서 하는 일은 단위
+# 환산과 증감률 계산뿐이다 — 등급·전망 같은 해석은 만들지 않는다(DEC-B).
+
+
+def krw_eok(amt, none: str = "—") -> str:
+    """원 → 억원 문자열(천단위 쉼표, 사사오입). `None` → `none`(기본 '—').
+
+    None 을 0 으로 그리면 "매출 0원"이라는 거짓 수치가 된다 — 금융업은 매출 계정 자체가 없다.
+    단위(억원)는 표 머리글이 말하므로 여기서는 숫자만 돌려준다.
+    """
+    if amt is None:
+        return none
+    amt = int(amt)
+    sign = -1 if amt < 0 else 1
+    eok = (abs(amt) + 50_000_000) // 100_000_000
+    return f"{sign * eok:,}"
+
+
+def pct_delta(prev, cur) -> str | None:
+    """전년 대비 증감률 — `+10.0%` 꼴. 전년·당년 중 하나라도 없거나 전년이 0 이면 None.
+
+    분모는 `abs(prev)` 다: 적자가 커지면 음수, 적자에서 흑자로 돌아서면 양수 — 부호가 방향을
+    말한다(순수 산술 `(cur-prev)/prev` 는 적자 기준에서 부호가 뒤집혀 읽는 사람을 속인다).
+    """
+    if prev is None or cur is None:
+        return None
+    prev, cur = int(prev), int(cur)
+    if prev == 0:
+        return None
+    d = (cur - prev) / abs(prev) * 100
+    if abs(d) < 0.05:  # 소수 첫째 자리에서 0 이 되는 값은 '-0.0%' 가 아니라 '+0.0%'
+        d = 0.0
+    return f"{d:+.1f}%"

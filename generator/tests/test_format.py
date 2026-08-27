@@ -175,3 +175,48 @@ def test_jsonld_dumps_escapes_ampersand():
     s = jsonld_dumps(obj)
     assert "\\u0026" in s
     assert json.loads(s) == obj
+
+
+# ── krw_eok · pct_delta (SP-FIN-5, 2026-08-27) ──────────────────────────────
+# 재무는 원 단위 정수로 저장되고(DECIMAL(24,0)) 화면은 억원이다. 반올림은 사사오입.
+
+from generator.format import krw_eok, pct_delta  # noqa: E402
+
+
+def test_krw_eok_converts_won_to_eok_with_thousands_separator():
+    assert krw_eok(330_000_000_000_000) == "3,300,000"
+    assert krw_eok(912_200_000_000) == "9,122"
+    assert krw_eok(100_000_000) == "1"
+
+
+def test_krw_eok_rounds_half_away_from_zero_and_keeps_sign():
+    assert krw_eok(123_450_000_000) == "1,235"
+    assert krw_eok(-123_450_000_000) == "-1,235"
+    assert krw_eok(49_999_999) == "0"
+    assert krw_eok(50_000_000) == "1"
+
+
+def test_krw_eok_none_is_dash_not_zero():
+    """없는 계정(NULL)은 '—' — 0 으로 그리면 "매출 0원"이라는 거짓 수치가 된다."""
+    assert krw_eok(None) == "—"
+    assert krw_eok(None, none="") == ""
+    assert krw_eok(0) == "0"
+
+
+def test_pct_delta_signed_one_decimal():
+    assert pct_delta(300, 330) == "+10.0%"
+    assert pct_delta(34, 35) == "+2.9%"
+    assert pct_delta(100, 100) == "+0.0%"
+    assert pct_delta(100, 80) == "-20.0%"
+
+
+def test_pct_delta_uses_absolute_base_so_loss_direction_reads_naturally():
+    """적자 기준: 더 큰 적자는 음수, 흑자 전환은 양수 — 부호가 방향을 말한다."""
+    assert pct_delta(-100, -150) == "-50.0%"
+    assert pct_delta(-100, 50) == "+150.0%"
+
+
+def test_pct_delta_none_when_undefined():
+    assert pct_delta(None, 5) is None
+    assert pct_delta(5, None) is None
+    assert pct_delta(0, 5) is None
