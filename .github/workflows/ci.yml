@@ -40,6 +40,19 @@ jobs:
           cache: pip
       - run: pip install -r generator/requirements.txt -r server/requirements.txt
       - run: python -m pytest generator/tests -q
+      # ── env 독립성 가드 (2026-08-27) ──────────────────────────────────────
+      # 위 실행은 env 가 **비어 있는** 러너 상태만 검증한다. 배포 호스트는 server.env 로
+      # POLICY_CONTACT·SITE_ORIGIN 등을 주입하므로 조건이 다르다 — 그 차이 때문에
+      # test_pc12_* 가 CI 에서만 초록이고 릴리스 게이트에서 빨갰다(함정 0079).
+      # 같은 스위트를 **운영과 같은 모양의 env 를 주입해** 한 번 더 돌려, 특정 리터럴에
+      # 결합된 단정이 다시 들어오면 여기서 잡는다. 값은 실운영값일 필요가 없다 —
+      # "기본값과 다르다"는 사실만으로 결합을 드러낸다.
+      - name: generator (운영 env 주입 — 배포 호스트 조건 재현)
+        env:
+          POLICY_CONTACT: ci-injected@example.com
+          POLICY_LAST_MODIFIED: '2026-01-02'
+          SITE_ORIGIN: https://ci.example.com
+        run: python -m pytest generator/tests -q
       # 문서 정합 가드 — TASK 롤업이 리프 마커 실측과 일치하는지 (드리프트 즉시 검출)
       - run: python docs/tools/task_progress.py --check
 
