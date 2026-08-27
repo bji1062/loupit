@@ -4,7 +4,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{ meta_title }}</title>
 <meta name="description" content="{{ meta_desc }}">
-<link rel="canonical" href="{{ canonical }}">
+{#- robots(2026-08-26) — **옵트인**이다. 값을 넘긴 페이지에만 방출되고, 안 넘긴 페이지는
+    태그 자체가 안 나간다(= 색인 허용, 기본값). 지금 넘기는 곳은 404 하나뿐이다
+    (`generator/pages/policy.py::_render_404`).
+    ⚠ 이 partial 은 **전 페이지가 공유**한다 — 여기서 `robots` 를 무조건 방출하거나
+    기본값을 `noindex` 로 두면 회사·조합·정책까지 색인에서 빠져 사이트가 검색에서
+    통째로 사라진다. 검색 유입이 수익의 뼈대이므로 이 조건을 지우지 말 것.
+    `base.html` 의 `page_type` 과 같은 미선언=미방출 규약이다.
+    양방향 회귀(404 에 있음 / 콘텐츠에 없음): `generator/tests/test_seo_meta.py`. #}
+{% if robots is defined and robots %}<meta name="robots" content="{{ robots }}">
+{% endif %}
+{#- canonical 도 같은 이유로 조건부다. 404 는 자기 canonical 을 내면 안 된다 — `/404` 는
+    서빙 라우트가 아니라 nginx error_page 본문이라 그 URL 은 404 를 반환하고(2026-07-30
+    링크 감사가 잡은 내부 404 1건이 이것), noindex 와도 충돌하는 신호다.
+    ⚠ 콘텐츠 페이지는 반드시 canonical 을 가져야 한다(조합 A-B/B-A 중복 귀속이 여기 걸려
+    있다). 넘기는 쪽이 빠뜨리면 조용히 사라지므로 테스트가 자기 URL 1개를 강제한다.
+    `is defined` 를 굳이 안 붙인다 — StrictUndefined 라 아예 안 넘기면 렌더가 죽는 편이
+    맞다(조용한 공란 금지). 404 는 명시적으로 `canonical=None` 을 넘긴다. #}
+{% if canonical %}<link rel="canonical" href="{{ canonical }}">
+{% endif %}
 {# 파비콘(2026-07-31) — SVG 가 주(모든 현대 브라우저), .ico 는 선언을 안 읽는 클라이언트·
    봇의 루트 프로브용. 이 선언이 없으면 브라우저가 자동으로 /favicon.ico 를 찾아 **페이지마다
    404 를 하나씩** 만든다(2026-07-30 링크 감사가 그렇게 잡았다).
