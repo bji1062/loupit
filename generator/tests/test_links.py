@@ -11,7 +11,7 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, policy
+from generator.pages import combo, company, company_index, heatmap, policy
 from generator.render import make_env
 
 # /community/ 는 수기 셸(web/community/index.html) + nginx ^~ 블록이 서빙하는 정적 라우트다(SC15, 2026-08-27).
@@ -64,6 +64,7 @@ def _build_all_pages(fake_bundle, fake_now):
     return (
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
+        + [heatmap.render(env, ctx, CFG)]
         + combo.render_all(env, ctx, CFG, pairs=pairs)
         + policy.render_all(env, ctx)
     )

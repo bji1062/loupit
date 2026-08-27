@@ -1,0 +1,46 @@
+/* web/assets/css/heatmap.css — /heatmap 전용(SP-HEAT). 토큰은 styles.css 의 :root 에서 온다.
+   배치 좌표는 생성기가 %-inline 으로 박고, 여기서는 색 7단계·타일 글자·탭·범례만 다룬다. */
+.heatmap-page { width:100%; }
+.hm-tabs { display:flex; gap:var(--sp-2); flex-wrap:wrap; margin:var(--sp-4) 0 var(--sp-3); }
+.hm-tabs button {
+  font:inherit; font-size:var(--fs-sm); font-weight:var(--fw-medium); padding:var(--sp-2) var(--sp-4);
+  border-radius:999px; border:var(--bw) solid var(--border-strong); background:var(--bg-1); color:var(--t2); cursor:pointer;
+}
+.hm-tabs button small { font-size:var(--fs-xs); font-weight:var(--fw-regular); color:var(--t3); margin-left:var(--sp-1); }
+.hm-tabs button[aria-selected="true"] { background:var(--brand); border-color:var(--brand); color:var(--on-brand); }
+.hm-tabs button[aria-selected="true"] small { color:var(--on-brand-soft); }
+.hm-mode + .hm-mode { margin-top:var(--sp-6); }          /* JS 없으면 두 모드가 세로로 나란히 */
+.hm-mode[hidden] { display:none; }
+.hm-map { position:relative; width:100%; background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-md); overflow:hidden; }
+.hm-landscape { aspect-ratio:16 / 10; }
+.hm-portrait { aspect-ratio:3 / 4; display:none; }
+@media (max-width:640px) { .hm-landscape { display:none; } .hm-portrait { display:block; } }
+.hm-grp { position:absolute; border:var(--bw) solid var(--border); background:var(--brand-tint); }
+.hm-grp.unlisted { background:var(--surface-soft); }
+.hm-grp span { position:absolute; left:5px; top:2px; font-size:11px; font-weight:var(--fw-bold); letter-spacing:.02em; color:var(--t2); white-space:nowrap; overflow:hidden; max-width:calc(100% - 8px); }
+.hm-grp span em { font-style:normal; font-weight:var(--fw-regular); color:var(--t3); }
+.hm-grp.narrow span { display:none; }
+.hm-t {
+  position:absolute; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;
+  padding:3px; text-decoration:none; overflow:hidden; box-shadow:inset 0 0 0 1px rgb(255 255 255 / .55); transition:filter var(--dur-fast) var(--ease-out);
+}
+.hm-t:hover, .hm-t:focus-visible { filter:brightness(1.08); z-index:2; text-decoration:none; outline:2px solid var(--t1); outline-offset:-2px; }
+.hm-t b { font-size:14px; font-weight:var(--fw-bold); letter-spacing:-.01em; line-height:1.2; }
+.hm-t i { font-style:normal; font-size:11px; opacity:.9; font-variant-numeric:tabular-nums; margin-top:2px; }
+.hm-t.md b { font-size:12px; } .hm-t.md i { font-size:10px; }
+.hm-t.sm b { font-size:10px; } .hm-t.sm i { display:none; }
+.hm-t.xs b { font-size:8px; }  .hm-t.xs i { display:none; }
+@media (max-width:640px) { .hm-t b { font-size:11px; } .hm-t i { display:none; } }
+/* 복지 7분위(연두→진녹) — 사실의 구간이지 평가가 아니다 */
+.c0 { background:#e6f2ea; color:#0f2a18; } .c1 { background:#c9e4d1; color:#0f2a18; } .c2 { background:#a4d2b0; color:#0f2a18; }
+.c3 { background:#79bd8a; color:#0f2a18; } .c4 { background:#4fa267; color:#fff; } .c5 { background:#2f7d43; color:#fff; } .c6 { background:#1d5a2f; color:#fff; }
+/* 실적 증감 7단계(빨강→회색→초록) */
+.d0 { background:#b3413a; color:#fff; } .d1 { background:#d67c72; color:#fff; } .d2 { background:#f0c2bb; color:#1a1a17; }
+.d3 { background:#d8d9d3; color:#1a1a17; } .d4 { background:#bfe3c8; color:#1a1a17; } .d5 { background:#6fbc82; color:#1a1a17; } .d6 { background:#2f7d43; color:#fff; }
+.hm-legend { display:flex; align-items:center; gap:var(--sp-3); flex-wrap:wrap; margin:var(--sp-3) 0 0; font-size:var(--fs-sm); color:var(--t2); }
+.hm-sw { display:inline-flex; gap:2px; } .hm-sw i { width:26px; height:14px; display:block; border-radius:2px; }
+.hm-note { margin-left:auto; color:var(--t3); }
+.hm-method { margin-top:var(--sp-6); padding:var(--sp-4) var(--sp-5); border-left:3px solid var(--brand); background:var(--bg-1); border-radius:0 var(--r-md) var(--r-md) 0; }
+.hm-method h2 { font-size:var(--fs-base); margin-bottom:var(--sp-2); }
+.hm-method ul { padding-left:18px; list-style:disc; color:var(--t2); font-size:var(--fs-sm); } .hm-method li { margin:var(--sp-1) 0; }
+@media (prefers-reduced-motion: reduce) { .hm-t { transition:none; } }
