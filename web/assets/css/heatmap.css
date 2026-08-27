@@ -44,3 +44,16 @@
 .hm-method h2 { font-size:var(--fs-base); margin-bottom:var(--sp-2); }
 .hm-method ul { padding-left:18px; list-style:disc; color:var(--t2); font-size:var(--fs-sm); } .hm-method li { margin:var(--sp-1) 0; }
 @media (prefers-reduced-motion: reduce) { .hm-t { transition:none; } }
+/* ── 카테고리 모드(2026-08-27 후반): 카테고리 칩 + 항목 묶음, 색 = 출처 ── */
+.hm-chips { display:flex; gap:var(--sp-2); flex-wrap:wrap; margin:0 0 var(--sp-3); }
+.hm-chips button { font:inherit; font-size:var(--fs-xs); font-weight:var(--fw-medium); padding:5px 12px; border-radius:999px; border:var(--bw) solid var(--border-strong); background:var(--bg-1); color:var(--t2); cursor:pointer; }
+.hm-chips button small { color:var(--t3); margin-left:2px; }
+.hm-chips button[aria-selected="true"] { background:var(--brand); border-color:var(--brand); color:var(--on-brand); }
+.hm-chips button[aria-selected="true"] small { color:var(--on-brand-soft); }
+.hm-panel + .hm-panel { margin-top:var(--sp-5); }           /* JS 없으면 9개가 세로로 */
+.hm-panel[hidden] { display:none; }
+.hm-panel-title { font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-medium); color:var(--t2); margin:0 0 var(--sp-2); }
+.s-stated { background:#2f7d43; color:#fff; }
+.s-est { background:#d9ebdd; color:#1c2f22; background-image:repeating-linear-gradient(135deg, transparent 0 6px, rgb(47 125 67 / .12) 6px 8px); }
+.s-qual { background:#e4e6e2; color:#4a5650; }
+.hm-key { display:inline-block; width:22px; height:14px; border-radius:2px; vertical-align:-2px; margin-right:5px; }
