@@ -13,8 +13,9 @@
 // 폴백: "이렇게 비교해 보세요"). 집계가 쌓이면 자동으로 원래 모드로 돌아온다.
 //
 // 동작: 접힘 상태에서 1~10위를 ROTATE_MS 간격 순차 롤링, 마우스 호버/키보드 포커스 시
-// 전체 목록 펼침(.trend-expanded). 클릭 → onPick(item) (배선은 app.js 소유 — 양 슬롯
-// 프리필). 위젯 실패는 비교 툴에 무해해야 한다(광고 MON6과 동일 원칙): fetch 실패·
+// 전체 목록 펼침(.trend-expanded). **호버가 없는 기기(터치)는 롤링 없이 처음부터 펼친다**
+// (2026-08-27 오조준 수정 — 아래 isHoverless 주석). 클릭 → onPick(item)
+// (배선은 app.js 소유 — 양 슬롯 프리필). 위젯 실패는 비교 툴에 무해해야 한다(광고 MON6과 동일 원칙): fetch 실패·
 // 빈 목록·host 부재 → 폴백 시도 후에도 빈손이면 host hidden 유지, throw 없음.
 import { el } from './dom.js';
 
@@ -175,6 +176,24 @@ function prefersReducedMotion() {
   } catch { return false; }
 }
 
+// ── 터치 기기: 롤링이 곧 오조준이다(2026-08-27, HANDOFF-2026-07-31 §3-7) ─────
+// 접힘 행은 ROTATE_MS마다 노드를 통째로 교체한다. 데스크톱은 mouseenter가 롤링을 멈춰
+// 주므로 사실상 안전하지만, **터치 기기에는 호버가 없다** — 멈출 방법 자체가 없어
+// ㉠ 행을 읽고 손가락을 내리는 사이에 내용이 바뀌고(다른 조합이 열린다), ㉡ pointerdown~
+// pointerup 사이에 교체되면 click 이 아예 발생하지 않는다(Playwright 클릭 타임아웃이
+// 같은 이유였다). 게다가 펼칠 수단이 없어 터치에서는 10개 중 1개만 도달 가능했다.
+//
+// 그래서 호버 없는 기기에서는 **처음부터 펼친 목록으로 렌더하고 롤링을 걸지 않는다**.
+// 접힘 행이 없으면 움직이는 과녁도 없다 — 결함의 원인(호버 부재)과 판정 기준이 같고,
+// 데스크톱 경로는 한 줄도 건드리지 않으며, CSS 는 이미 있는 .trend-expanded 를 쓴다.
+// `(pointer: coarse)` 가 아니라 `(hover: none)` 을 보는 이유: 멈추는 수단이 호버라서,
+// "호버가 없다"가 이 결함의 성립 조건 그 자체다.
+function isHoverless() {
+  try {
+    return typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
+  } catch { return false; }
+}
+
 // ── 마운트: fetch → 검증 → 렌더 → 롤링/펼침 배선. 항상 무해(throw 없음). ──
 export async function mountTrending(deps = {}) {
   const { fetchFn, onPick, rotateMs = ROTATE_MS, companies = [] } = deps;
@@ -227,9 +246,11 @@ export async function mountTrending(deps = {}) {
 
   // 롤링(접힘 상태 전용). prefers-reduced-motion이면 자동 롤링 없음(NFR 모션 배려).
   let timer = null;
+  // 잠기면 영구히 펼친 채로 둔다 — 되돌릴 길을 남기면(합성 mouseleave 등) 결함이 되살아난다.
+  let pinnedOpen = isHoverless();
   const canRotate = !prefersReducedMotion() && typeof setInterval === 'function';
   function start() {
-    if (!canRotate || timer != null) return;
+    if (pinnedOpen || !canRotate || timer != null) return;
     timer = setInterval(() => { idx = nextIndex(idx, items.length); renderCurrent(); }, rotateMs);
     // Node(테스트 러너)에서 이벤트 루프를 붙들지 않게 unref(브라우저는 number 반환 → no-op).
     if (timer && typeof timer.unref === 'function') timer.unref();
@@ -240,13 +261,26 @@ export async function mountTrending(deps = {}) {
 
   // 호버/키보드 포커스 → 펼침 + 롤링 정지. 이탈 → 접힘 + 재개.
   const expand = () => { host.classList.add('trend-expanded'); stop(); };
-  const collapse = () => { host.classList.remove('trend-expanded'); start(); };
+  const collapse = () => {
+    if (pinnedOpen) return; // 터치로 잠긴 뒤에는 접지 않는다(모바일 브라우저가 mouseleave를 합성한다)
+    host.classList.remove('trend-expanded');
+    start();
+  };
+  // 하이브리드(터치 되는 노트북)는 주 입력이 마우스라 (hover: none)에 걸리지 않는다.
+  // 실제 손가락이 닿는 그 순간 잠근다 — pointerdown은 click보다 먼저 오므로 최소한
+  // 그 탭부터는 누르고 있는 노드가 교체되지 않는다.
+  host.addEventListener('pointerdown', (e) => {
+    if (pinnedOpen || !e || e.pointerType !== 'touch') return;
+    pinnedOpen = true;
+    expand();
+  });
   host.addEventListener('mouseenter', expand);
   host.addEventListener('mouseleave', collapse);
   host.addEventListener('focusin', expand);
   host.addEventListener('focusout', collapse);
 
+  if (pinnedOpen) expand(); // 호버가 없는 기기 → 접힘 행 없이 시작
   start();
   host.hidden = false;
-  return { items, stop, mode: isFallback ? 'suggest' : 'trending' };
+  return { items, stop, mode: isFallback ? 'suggest' : 'trending', rolling: timer != null };
 }
