@@ -111,7 +111,9 @@ def test_gc22_reversed_pair_produces_same_canonical_and_single_file(fake_bundle,
     pages = combo.render_all(env, ctx, CFG)
     assert len(pages) == 1
     assert pages[0].path == "vs/samsung-elec-sk-hynix.html"
-    assert pages[0].url == "https://jobcho.wiki/vs/samsung-elec-sk-hynix"
+    # 계약은 "역순 쌍이 같은 canonical 로 접힌다"이지 오리진 리터럴이 아니다 —
+    # SITE_ORIGIN 주입 환경(베타·CI env 가드)에서 리터럴 단정은 오탐이 된다(함정 0079).
+    assert pages[0].url == f"{CFG.site_origin}/vs/samsung-elec-sk-hynix"
 
 
 # ── GC-23: 무효 조합 스킵(빌드 성공, 경고 로그) ─────────────────────────────

@@ -20,6 +20,14 @@ from dataclasses import dataclass, field
 _TRUTHY = frozenset({"1", "true", "t", "yes", "y", "on"})
 
 
+# 운영자가 env 를 주입하지 않았을 때 쓰이는 **폴백 실값**. 상수로 뽑아 둔 이유는
+# 테스트 때문이다 — 아래 필드 기본값은 임포트 시점에 고정되므로, 운영 env 가 설정된
+# 환경(배포 호스트)에서는 `GenConfig().policy_contact` 가 폴백이 아니다. 폴백 계약을
+# 검증하려면 **이 상수를** 봐야 한다(함정 0079: env 로 오염되는 단정은 CI 에서만 초록이다).
+POLICY_CONTACT_FALLBACK = "bji1062@gmail.com"
+POLICY_LAST_MODIFIED_FALLBACK = "2026-07-19"
+
+
 def env_flag(name: str) -> bool:
     """환경변수를 pydantic 과 동일 규칙으로 bool 파싱한다(미설정·미인식 = False).
 
@@ -42,8 +50,10 @@ class GenConfig:
     # SP-POL-2.2 정책 설정 키 (SP-POL 요구, FR-85 · NFR22)
     # 실값 기본(발견 #8, 2026-07-18 사용자 결정): 플레이스홀더 중괄호가 라이브에 노출되던
     # 문제를 없앤다. env(POLICY_CONTACT/POLICY_LAST_MODIFIED)로 여전히 override 가능.
-    policy_contact: str = os.environ.get("POLICY_CONTACT", "bji1062@gmail.com")
-    policy_last_modified: str = os.environ.get("POLICY_LAST_MODIFIED", "2026-07-19")
+    policy_contact: str = os.environ.get("POLICY_CONTACT", POLICY_CONTACT_FALLBACK)
+    policy_last_modified: str = os.environ.get(
+        "POLICY_LAST_MODIFIED", POLICY_LAST_MODIFIED_FALLBACK
+    )
     # 2026-07-19 사용자 결정: 개인 프로젝트 수준으로 확정 게시(초안 배너 해제). 정식 법률
     # 검토는 실수익 발생 시점으로 유예 — 문안이 스스로 '검토 안 된 초안'을 선언하는 상태가
     # 고지 효력·심사·신뢰 모두에 더 해롭다는 판단. env로 여전히 재점등 가능.

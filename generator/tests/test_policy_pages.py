@@ -15,7 +15,12 @@ import re
 import pytest
 
 from generator import build as build_module
-from generator.config import CFG, GenConfig
+from generator.config import (
+    CFG,
+    POLICY_CONTACT_FALLBACK,
+    POLICY_LAST_MODIFIED_FALLBACK,
+    GenConfig,
+)
 from generator.context import build_context
 from generator.pages import policy as policy_module
 from generator.pages import sitemap as sitemap_module
@@ -233,22 +238,46 @@ def test_pc12_content_and_config_modules_have_no_real_secrets():
         "정책 문안에 광고 client id가 섞였다 — 문맥상 오류"
 
 
-def test_pc12_policy_contact_env_unset_yields_real_email_default(monkeypatch):
-    """env 미주입 시 기본 연락처는 실 이메일(발견 #8) — mailto 링크가 생성된다."""
-    monkeypatch.delenv("POLICY_CONTACT", raising=False)
-    cfg = GenConfig()
-    assert cfg.policy_contact == "bji1062@gmail.com"
-    assert policy_module._correction_href(cfg.policy_contact) == "mailto:bji1062@gmail.com"
+def test_pc12_policy_contact_fallback_is_a_real_email():
+    """env 미주입 시 폴백 연락처는 실 이메일(발견 #8) — mailto 링크가 생성된다.
+
+    ⚠ 이 테스트는 일부러 `GenConfig()` 를 보지 않는다. `policy_contact` 는 dataclass
+    필드 기본값이라 **모듈 임포트 시점의 env 로 고정**되고, `monkeypatch.delenv` 는
+    이미 고정된 값을 되돌리지 못한다. 구판은 그 사실을 모른 채 delenv 후
+    `GenConfig().policy_contact == "bji1062@gmail.com"` 를 단정했고, 그래서
+    POLICY_CONTACT 가 없는 CI 에서만 초록이고 운영 env 가 있는 배포 호스트에서는
+    빨갰다(2026-08-27 릴리스가 [2/5] 에서 여기서 멈췄다). 폴백 계약은 폴백 상수로
+    검증한다 — env 로 오염될 수 없는 유일한 지점이다. → 함정 0079
+    """
+    assert re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", POLICY_CONTACT_FALLBACK), (
+        f"폴백 연락처가 실 이메일이 아니다: {POLICY_CONTACT_FALLBACK!r} — "
+        "플레이스홀더가 라이브에 노출되던 발견 #8 의 재발"
+    )
+    assert "{" not in POLICY_CONTACT_FALLBACK and "}" not in POLICY_CONTACT_FALLBACK
+    assert (
+        policy_module._correction_href(POLICY_CONTACT_FALLBACK)
+        == f"mailto:{POLICY_CONTACT_FALLBACK}"
+    )
+    assert re.fullmatch(r"\d{4}-\d{2}-\d{2}", POLICY_LAST_MODIFIED_FALLBACK)
 
 
-def test_pc12_default_policy_values_leave_no_placeholder_braces(fake_bundle, fake_now):
-    """발견 #8: 기본 CFG 렌더 시 중괄호 플레이스홀더가 남지 않는다(연락처·최종수정일)."""
+def test_pc12_rendered_policy_leaves_no_placeholder_braces(fake_bundle, fake_now):
+    """발견 #8: 렌더 결과에 중괄호 플레이스홀더가 남지 않는다(연락처·최종수정일).
+
+    단정은 **실효 설정값**(CFG)을 기준으로 한다 — 운영자가 POLICY_CONTACT 를 주입한
+    호스트에서도 같은 계약이 성립해야 하기 때문이다. 특정 주소 리터럴을 박으면
+    "운영자가 연락처를 바꾸면 테스트가 깨지는" 결합이 생긴다(그게 이 파일이 겪은 일이다).
+    """
     pages = _render_policy_pages(fake_bundle, fake_now)
     html = pages["disclaimer.html"].html
-    assert "bji1062@gmail.com" in html
-    assert "최종 수정일: 2026-07-19" in html
+    assert CFG.policy_contact in html, "실효 연락처가 렌더되지 않았다"
+    assert f"최종 수정일: {CFG.policy_last_modified}" in html
     assert "{운영자 정정·문의 연락처}" not in html
     assert "{게시 시 운영자 확정}" not in html
+    # 미치환 플레이스홀더 일반 검출 — 위 두 개만 막으면 새 플레이스홀더가 그대로 나간다.
+    assert not re.search(r"\{[가-힣][^{}]*\}", html), (
+        f"미치환 플레이스홀더 잔존: {re.findall(r'{[가-힣][^{}]*}', html)}"
+    )
 
 
 # ── GC-24: 정책 페이지 정적 광고·동의 배선(SP-ADS-9, 2026-07-19) ────────────
