@@ -22,9 +22,11 @@
 <footer>
 {% include "partials/_footer.html" %}
 </footer>
-{# SP-ADS-9 정적 배선(2026-07-19, 감사 #12): 동의 배너 + 광고·동의 진입점. 본문 표시·색인은
-   JS 없이 완성(NFR24)이며 이 스크립트는 enhancement 전용 — 실패해도 본문 무손상. #}
-{% include "partials/_consent_banner.html" %}
+{# SP-ADS-9 정적 배선. 본문 표시·색인은 JS 없이 완성(NFR24)이며 이 스크립트는 enhancement 전용.
+   ⚠ **동의 배너는 2026-08-28 제거**했다(SP-ADS-7). 광고는 항상 **비개인화**로 요청하므로 물을 것이
+   없고, 개인화 거부는 처리방침·광고고지의 외부 옵트아웃 링크가 담당한다. AdSense 승인 후 EEA/영국
+   트래픽에 개인화 광고를 켜려면 자체 배너가 아니라 **구글 인증 CMP**(AdSense 개인정보 보호 및 메시지)를
+   써야 한다 — 자체 UI 는 TCF 신호를 만들지 못한다. #}
 <script type="module" src="/assets/v2/js/static-ads.js" defer></script>
 {# 로그인 진입점(SC14). defer 모듈이라 본문 렌더를 막지 않고, 슬롯이 없거나 M9 가 꺼진 것이
    세션에 캐시돼 있으면 네트워크도 타지 않는다. 상세는 web/assets/js/authnav.js 주석. #}

@@ -73,7 +73,7 @@ def test_gc17_no_ad_host_inside_combo_benefit_summary(fake_bundle, fake_now, fak
 def test_gc24_combo_static_ads_wiring(fake_bundle, fake_now, fake_combinations_path):
     p = _render(fake_bundle, fake_now)[0]
     assert '<body data-page-type="combo">' in p.html
-    assert 'id="consent-banner"' in p.html
+    assert 'id="consent-banner"' not in p.html   # 배너 제거(SP-ADS-7, 2026-08-28)
     assert '/assets/v2/js/static-ads.js' in p.html
     assert "data-affiliate-host" in p.html
 

@@ -60,7 +60,7 @@ def test_gc27_index_is_policy_free_of_ads_but_has_consent_wiring(fake_bundle, fa
     p = _render(fake_bundle, fake_now)
     assert "data-ad-position" not in p.html
     assert 'class="ad-slot"' not in p.html
-    assert 'id="consent-banner"' in p.html
+    assert 'id="consent-banner"' not in p.html   # 배너 제거(SP-ADS-7, 2026-08-28)
     assert "/assets/v2/js/static-ads.js" in p.html
 
 

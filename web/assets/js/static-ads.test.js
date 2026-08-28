@@ -31,24 +31,21 @@ function withDom(html, fn) {
   }
 }
 
-const BANNER = '<div id="consent-banner" hidden>'
-  + '<button type="button" data-consent="grant">동의</button>'
-  + '<button type="button" data-consent="deny">거부</button></div>';
-
 function companyPage() {
   return '<body data-page-type="company">'
     + '<div data-ad-position="content_mid"></div>'
     + '<div data-ad-position="content_bottom"></div>'
-    + '<div data-affiliate-host></div>'
-    + BANNER + '</body>';
+    + '<div data-affiliate-host></div></body>';
 }
 
 describe('SP-ADS-9 정적 페이지 부트(static-ads.js)', () => {
-  test('회사 페이지: 첫 방문 → 배너 노출 + placeholder 슬롯 억제(빈 박스 0)', () => {
+  // 동의 배너는 2026-08-28 제거됐다(SP-ADS-7) — 광고는 항상 비개인화로 요청하므로 물을 것이 없고,
+  // 자체 UI 는 구글 인증 CMP 가 아니다. 부트는 광고 마운트만 한다.
+  test('회사 페이지: placeholder 슬롯 억제(빈 박스 0) — 배너 없이', () => {
     withDom(companyPage(), (dom) => {
       bootStaticAds();
       const d = dom.window.document;
-      assert.equal(d.getElementById('consent-banner').hidden, false, '첫 방문 배너 노출');
+      assert.equal(d.getElementById('consent-banner'), null, '동의 배너 마크업 부재');
       for (const pos of ['content_mid', 'content_bottom']) {
         const host = d.querySelector(`[data-ad-position="${pos}"]`);
         assert.equal(host.hidden, true, `${pos}: 승인 전 hidden(#12)`);
@@ -58,43 +55,25 @@ describe('SP-ADS-9 정적 페이지 부트(static-ads.js)', () => {
     });
   });
 
-  test('기존 동의 결정 존재 → 배너 hidden 유지(CS-2)', () => {
+  test('광고 로더에 비개인화 신호를 세팅한다(동의 UI 부재 → 항상 1)', () => {
     withDom(companyPage(), (dom) => {
-      setConsent(false);            // 이 JSDOM의 쿠키/스토리지에 결정 기록
       bootStaticAds();
-      assert.equal(dom.window.document.getElementById('consent-banner').hidden, true);
+      assert.equal(dom.window.adsbygoogle?.requestNonPersonalizedAds, 1);
     });
   });
 
-  test('배너의 동의 클릭 → 배너 숨김(결정 저장 경로 배선)', () => {
-    withDom(companyPage(), (dom) => {
+  test('policy 페이지: 무광고 게이팅 — 호스트 무접촉', () => {
+    withDom('<body data-page-type="policy"><div data-ad-position="content_mid"></div></body>', (dom) => {
       bootStaticAds();
-      const d = dom.window.document;
-      d.querySelector('[data-consent="grant"]').click();
-      assert.equal(d.getElementById('consent-banner').hidden, true, '클릭 후 숨김');
-    });
-  });
-
-  test('policy 페이지: 무광고 게이팅 — 호스트 무접촉, 배너는 노출', () => {
-    withDom('<body data-page-type="policy"><div data-ad-position="content_mid"></div>' + BANNER + '</body>', (dom) => {
-      bootStaticAds();
-      const d = dom.window.document;
-      const host = d.querySelector('[data-ad-position="content_mid"]');
+      const host = dom.window.document.querySelector('[data-ad-position="content_mid"]');
       assert.equal(host.hidden, false, 'policy는 mountAds 조기 반환 — 호스트 무접촉');
-      assert.equal(d.getElementById('consent-banner').hidden, false, '배너는 페이지 유형 무관 노출');
     });
   });
 
   test('page-type 부재(404 등) → default 무광고·무크래시', () => {
-    withDom('<body>' + BANNER + '</body>', (dom) => {
-      assert.doesNotThrow(() => bootStaticAds());
-      assert.equal(dom.window.document.getElementById('consent-banner').hidden, false);
-    });
-  });
-
-  test('배너 마크업 부재 페이지에서도 무크래시', () => {
-    withDom('<body data-page-type="company"></body>', () => {
+    withDom('<body></body>', () => {
       assert.doesNotThrow(() => bootStaticAds());
     });
   });
 });
+

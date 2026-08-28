@@ -224,8 +224,8 @@ def test_gc17_no_ad_host_inside_benefit_table(fake_bundle, fake_now):
 def test_gc24_company_static_ads_wiring(fake_bundle, fake_now):
     p = _samsung(fake_bundle, fake_now)
     assert '<body data-page-type="company">' in p.html
-    assert 'id="consent-banner"' in p.html
-    assert 'data-consent="grant"' in p.html and 'data-consent="deny"' in p.html
+    assert 'id="consent-banner"' not in p.html      # 배너 제거(SP-ADS-7, 2026-08-28)
+    assert "data-consent=" not in p.html            # 동의 버튼도 함께 사라졌다
     assert '/assets/v2/js/static-ads.js' in p.html
     assert "data-affiliate-host" in p.html
 
