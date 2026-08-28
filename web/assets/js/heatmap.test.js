@@ -48,6 +48,8 @@ test('activatePanel — 모르는 키는 첫 카테고리, 칩 없는 모드는 
   assert.equal(activatePanel(single.querySelector('.hm-mode'), 'all'), 0);
 });
 
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import { bindMap, clearHighlight, highlight, readoutText } from './heatmap.js';
 
 // 지도 하나: 그룹 2개(g0 반도체·g1 게임), 삼성전자가 두 묶음에 걸쳐 있다(카테고리 모드 형태)
@@ -120,4 +122,26 @@ test('bindMap — 키보드 포커스도 같은 강조를 준다(마우스 없�
   tile.dispatchEvent(new doc.defaultView.FocusEvent('focusin', { bubbles: true }));
   assert.ok(tile.classList.contains('is-hot'));
   assert.equal(doc.querySelector('[data-readout]').textContent, '반도체 · SK하이닉스 — 식대 · 300만원');
+});
+
+
+// ── 페인트 순서 가드 — jsdom 은 그리지 않으므로 CSS 텍스트로 잰다 ──
+// 그룹 사각형은 타일보다 먼저 나오는 **형제**다. 강조 규칙이 그룹을 z 축으로 올리면 자기 그룹의
+// 타일 전부가 배경에 덮인다(실측: 전기·전자 17칸 소실). 이 계약은 브라우저로만 보이는 종류라
+// 텍스트로 못박는다.
+const CSS = readFileSync(fileURLToPath(new URL('../css/heatmap.css', import.meta.url)), 'utf8');
+const ruleBody = (sel) => {
+  const i = CSS.indexOf(sel + ' {');
+  assert.ok(i >= 0, `${sel} 규칙이 없다`);
+  return CSS.slice(i, CSS.indexOf('}', i));
+};
+
+test('강조된 그룹은 z 축으로 올라가지 않는다(자기 타일을 덮는다)', () => {
+  assert.ok(!/z-index/.test(ruleBody('.hm-grp.is-hot')), '.hm-grp.is-hot 에 z-index 금지');
+  assert.match(ruleBody('.hm-grp.is-hot'), /box-shadow:\s*inset/, '테두리로 강조해야 한다');
+});
+
+test('강조된 칸과 같은 회사 칸은 z 축으로 올라간다(테두리가 이웃에 잘리지 않게)', () => {
+  assert.match(ruleBody('.hm-t.is-hot'), /z-index:\s*3/);
+  assert.match(ruleBody('.hm-t.is-peer'), /z-index:\s*2/);
 });

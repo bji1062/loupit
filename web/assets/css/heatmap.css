@@ -61,7 +61,10 @@
 /* ── 강조(SP-HEAT-7): 칸 → 그 칸 + 소속 그룹 + 같은 회사의 다른 칸 ──
    그룹 사각형은 타일 **뒤**에 깔리므로 테두리(inset box-shadow)와 머리줄만 보인다 — 그래서
    테두리를 굵게, 머리글자를 브랜드색으로 바꿔 눈에 띄게 한다. 색은 토큰이라 두 테마에서 함께 산다. */
-.hm-grp.is-hot { background:var(--brand-tint); box-shadow:inset 0 0 0 2px var(--brand); z-index:1; }
+.hm-grp.is-hot { background:var(--brand-tint); box-shadow:inset 0 0 0 2px var(--brand); }
+/* ⚠ 여기에 `z-index` 를 주지 마라. 그룹 사각형은 타일보다 **먼저** 나오는 형제라, 올리는 순간
+   자기 그룹의 타일 전부를 배경으로 덮는다(2026-08-27 실측: 전기·전자 17칸이 통째로 사라졌다).
+   강조가 보이는 곳은 테두리와 머리줄 — 그 둘로 충분하다. 가드: heatmap.test.js */
 .hm-grp.is-hot span { color:var(--brand); }
 .hm-t.is-hot { outline:3px solid var(--t1); outline-offset:-3px; z-index:3; filter:brightness(1.08); }
 .hm-t.is-peer { outline:2px dashed var(--t1); outline-offset:-2px; z-index:2; }
