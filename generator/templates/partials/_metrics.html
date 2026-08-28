@@ -1,0 +1,64 @@
+{# _metrics.html — 회사 상세 '연도별 추이' 섹션 (SP-MET-10). 뷰모델은
+   generator/employ.py::company_metrics(카드 6장 = MetricsView)이고, 거기에
+   generator/pages/company.py::_metrics_view 가 **표현**만 얹는다(latest_text·bar·line·rcept_url).
+   표현은 **사실만**(DEC-B): 수치·전년 대비·기준·출처. 등급·전망·평가 어휘는
+   test_finance_guard(FN-6) 가 생성물 전체에서 막는다.
+
+   - 기존 실적 표(`_finance_table.html`)를 **대체하지 않는다.** 표는 숫자를 정확히 읽는 자리고,
+     이 섹션은 11개년 추이를 한눈에 보는 자리다. 둘 다 같은 `TCORP_FINANCE` 를 본다.
+   - 카드는 **항상 6장, 순서 고정**이다. 값이 없으면 카드가 사라지는 게 아니라 `empty_text` 로
+     없다고 **말한다** — 회사마다 카드 수가 달라지면 세 회사를 나란히 둔 화면이 매번 다른 모양이 된다.
+   - 금융 세트는 매출 자리에 자산총계가 온다(SP-MET-2). 그 판단은 `finance.metric_columns` 하나가
+     내리므로 이 템플릿에는 세트 분기가 **없다** — 분기를 여기 두면 표와 카드가 갈라진다.
+   - 기준 배지(연결/별도)는 금액 3종에만 해당한다. 직원 현황은 사업보고서에 법인 1벌로만 실려
+     연결·별도 구분이 없고, 그 사실을 한 줄로 적어 둔다(안 적으면 근속에도 연결 기준이 있는 줄 안다).
+
+   🚨 **막대/꺾은선 전환에 JS 는 한 줄도 쓰지 않는다.** 두 벌을 다 HTML 에 넣고 라디오 `:checked ~`
+   가 CSS 로 고른다(SP-MET-10, 실측 gzip 5.1KB). 그래프 자체도 파이썬이 빌드 시점에 그려 박아
+   두므로 JS 가 없어도·죽어도 본문은 완전하다(NFR24). `metricshape.js` 는 **선택 기억만** 한다.
+
+   ⓘ `| safe` 는 여기 두 곳뿐이고, 대상은 `generator/charts.py` 가 만든 SVG 문자열이다. 그 모듈은
+     텍스트 노드를 `html.escape` 로 내보내고 좌표는 숫자, id 접두사(`uid`)는 정규식으로 검증한다 —
+     즉 사용자 데이터가 이스케이프 없이 지나가는 경로가 없다(NFR21). 새 값을 SVG 에 넣고 싶다면
+     템플릿이 아니라 그 모듈에서 넣어야 이 보증이 유지된다. #}
+{% macro metrics_section(m) -%}
+{#- 제목이 「실적 · 직원」 이 아니라 「연도별 추이」 인 이유(사용자 결정 2026-08-28): 바로 위 표가
+    이미 「실적」 이라, 둘 다 '실적'으로 시작하면 두 섹션이 같은 것의 반복으로 읽힌다. 표는 숫자를
+    정확히 읽는 자리, 여기는 11개년 흐름을 보는 자리 — 그 역할 차이를 제목이 말한다. 무엇의 추이인지는
+    카드 6장(평균연봉·평균근속·직원수 + 금액 3종)이 스스로 말한다. -#}
+<section class="metrics" aria-label="연도별 추이">
+  <h2>연도별 추이</h2>
+  <p class="metrics-basis-line">{% if m.basis %}<span class="badge finance-basis">{{ m.basis }}</span> {% endif %}금액 단위 {{ m.money_unit }} · 큰 숫자는 각 지표의 가장 최근 공시 연도 값입니다 · 직원 현황은 법인 1벌이라 연결·별도 구분이 없습니다.</p>
+  {#- 라디오·라벨·카드가 **형제**여야 `:checked ~ .metric-cards` 가 닿는다. 카드를 다른 상자로 한 겹
+      더 감싸는 순간 전환이 조용히 죽으므로(에러 없이 두 벌이 다 보인다) 이 구조를 지켜라. -#}
+  <fieldset class="mshape">
+    <legend class="sr-only">그래프 모양 고르기</legend>
+    <input class="mshape-in" type="radio" name="metric-shape" id="metric-shape-bar" value="bar" checked aria-label="막대 그래프로 보기">
+    <label class="mshape-lb" for="metric-shape-bar">막대</label>
+    <input class="mshape-in" type="radio" name="metric-shape" id="metric-shape-line" value="line" aria-label="꺾은선 그래프로 보기">
+    <label class="mshape-lb" for="metric-shape-line">꺾은선</label>
+    <div class="metric-cards">
+    {% for c in m.cards %}
+      <div class="metric-card" data-metric="{{ c.key }}">
+        <h3 class="metric-nm">{{ c.name }}<span class="metric-unit">{{ c.unit }}</span></h3>
+      {% if c.empty_text %}
+        <p class="metric-empty">{{ c.empty_text }}</p>
+      {% else %}
+        <p class="metric-latest"><strong>{{ c.latest_text }}</strong>{% if c.delta_text %}<span class="metric-delta {{ c.delta_dir }}"><span class="metric-delta-lb">전년 대비</span> {{ c.delta_text }}</span>{% endif %}</p>
+        {#- 두 벌 중 한 벌은 CSS 가 `display:none` 으로 접는다 = 접근성 트리에서도 빠진다. 그래서
+            같은 데이터가 스크린리더에 두 번 읽히지 않고, `aria-hidden` 을 따로 붙일 필요도 없다
+            (붙이면 꺾은선을 고른 사람에게는 그래프가 아예 사라진다). -#}
+        <div class="mchart mchart-bar">{{ c.bar | safe }}</div>
+        <div class="mchart mchart-line">{{ c.line | safe }}</div>
+      {% endif %}
+      </div>
+    {% endfor %}
+    </div>
+  </fieldset>
+  <p class="metrics-source">출처: 금융감독원 전자공시(DART) 사업보고서{% if m.rcept_url %} · 접수번호 <a href="{{ m.rcept_url }}" rel="noopener">{{ m.rcept_no }}</a>{% elif m.rcept_no %} · 접수번호 {{ m.rcept_no }}{% endif %}</p>
+  {#- 고지 한 줄. 실적 표의 고지문("…평가나 전망이 아닙니다")과 **일부러 다른 문장**이다:
+      그 문장은 test_finance_guard 의 유일한 예외로 등록돼 있어, 같은 말을 두 번 적으면 예외가
+      두 문장을 덮게 되고 금칙어 검사의 그물이 그만큼 성겨진다. -#}
+  <p class="metrics-notice">공시 수치를 그대로 옮긴 것이며 평가가 아닙니다</p>
+</section>
+{%- endmacro %}

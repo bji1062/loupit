@@ -4,25 +4,29 @@
 
    - 기준(연결/별도)은 수치가 있으면 항상 같이 나온다 — 기준 없는 수치는 부정확한 주장이다
      (LG 연결 9,122억 vs 별도 5,971억).
-   - 금융 세트는 순이익 열만 — 매출·영업이익 계정이 아예 없다(삼성생명 실측). 빈칸을 0 으로
-     그리지 않는다.
+   - **어느 3종을 어떤 이름으로 싣는지는 `fin.columns` 가 정한다**(SP-MET-2). 이 템플릿에는 세트
+     분기가 없다: 금융이냐 아니냐를 표가 스스로 판정하면 같은 페이지의 카드(`_metrics.html`)와
+     갈라지고, 갈라진 판정은 언젠가 한쪽만 고쳐진다(배지 함정, 2026-07-31).
+     ⛔ 구 판본은 여기서 `financial` 이면 순이익 열만 그리고 "금융업은 순이익만 표시합니다"라고
+       적었다. 2026-08-28 DART 전수 실측으로 **그 문장이 거짓**임이 확인됐다 — 영업이익이 비어
+       보인 건 계정 ID(`ifrs-full_ProfitLossFromOperatingActivities`)를 안 넣어서였고, 넣으면 7/7 이다.
+       진짜로 없는 것은 **단일 매출 계정 하나뿐**이고 그 자리에 자산총계(7/7)가 온다.
    - 데이터 없음도 섹션은 남긴다 — 없다는 사실도 정보다.
-   - 표 스타일은 복지표의 `.benefit-table` 을 재사용한다(web/assets 는 라이브 문서루트라 이 PR 에서
-     CSS 를 건드리지 않는다). #}
+   - 표 스타일은 복지표의 `.benefit-table` 을 재사용한다. #}
 {% macro finance_section(fin) -%}
 <section class="finance" aria-label="실적">
   <h2>실적</h2>
 {% if fin.present %}
-  <p class="finance-basis-line"><span class="badge finance-basis">{{ fin.basis }}</span>{% if fin.financial %} 금융업은 계정 체계가 달라 순이익만 표시합니다.{% endif %}</p>
+  <p class="finance-basis-line"><span class="badge finance-basis">{{ fin.basis }}</span>{% if fin.financial %} 금융업은 단일 매출 계정을 공시하지 않아 그 자리에 자산총계를 싣습니다.{% endif %}</p>
   {% if fin.sibling_note %}<p class="finance-corp-note">{{ fin.sibling_note }}</p>{% endif %}
   <table class="benefit-table finance-table">
     <caption>{{ fin.caption }}</caption>
     <thead>
-      <tr><th scope="col">연도</th>{% if not fin.financial %}<th scope="col">매출</th><th scope="col">전년 대비</th><th scope="col">영업이익</th><th scope="col">전년 대비</th>{% endif %}<th scope="col">순이익</th><th scope="col">전년 대비</th></tr>
+      <tr><th scope="col">연도</th>{% for c in fin.columns %}<th scope="col">{{ c.name }}</th><th scope="col">전년 대비</th>{% endfor %}</tr>
     </thead>
     <tbody>
     {% for r in fin.rows %}
-      <tr><th scope="row">{{ r.year }}</th>{% if not fin.financial %}<td class="finance-amt">{{ r.revenue }}</td><td class="finance-delta">{{ r.revenue_delta }}</td><td class="finance-amt">{{ r.op_income }}</td><td class="finance-delta">{{ r.op_income_delta }}</td>{% endif %}<td class="finance-amt">{{ r.net_income }}</td><td class="finance-delta">{{ r.net_income_delta }}</td></tr>
+      <tr><th scope="row">{{ r.year }}</th>{% for c in fin.columns %}<td class="finance-amt">{{ r[c.key] }}</td><td class="finance-delta">{{ r[c.key ~ '_delta'] }}</td>{% endfor %}</tr>
     {% endfor %}
     </tbody>
   </table>

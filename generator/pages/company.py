@@ -7,9 +7,12 @@ from __future__ import annotations
 
 import re
 
+from generator import charts
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
+from generator.employ import company_metrics
+from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
 from generator.format import badge_state, iso_date, krw_manwon
 from generator.slug import combo_slug
@@ -106,6 +109,7 @@ def _company_view(c: dict, ctx, now) -> dict:
         "benefit_groups": groups,
         "compare_href": f"{CFG.compare_path}?a={c['comp_eng_nm']}",
         "finance": _finance_view(c, ctx),
+        "metrics": _metrics_view(c, ctx),
     }
 
 
@@ -118,6 +122,59 @@ def _finance_view(c: dict, ctx) -> dict | None:
     fin = ctx.finance.get(c["comp_id"])
     siblings = [ctx.by_id[s]["comp_nm"] for s in (fin or {}).get("siblings", ()) if s in ctx.by_id]
     return finance_view(fin, c["comp_nm"], siblings)
+
+
+def _metric_fmt(card: dict):
+    """카드 → 표시 포맷 함수(천단위 쉼표 + 자릿수). 하이픈은 진짜 마이너스(−)로 바꾼다.
+
+    자릿수를 **단위 문자열이 아니라 카드에서** 받는 이유: 같은 `억원` 이라도 최솟값이 1억 미만이면
+    소수 1자리다(`employ._money_scale`). 정수로 자르면 소액 적자가 `0` 이 되어 부호를 잃는다.
+
+    `charts` 는 눈금 라벨에 **float** 를 넘긴다(`line_svg` 가 `float(v)` 로 정규화한 값). 그래서
+    `{:,}` 가 아니라 `{:,.Nf}` 여야 억원 카드에 `3,300,000.0` 같은 표기가 새지 않는다.
+    마이너스 기호를 살리는 이유는 부호를 **색으로만** 말하지 않기 위해서다 — 색각 이상에서
+    빨강·초록이 같아 보이면 남는 단서는 기준선 위아래와 이 기호뿐이다(SP-MET-9,
+    `charts._label` 이 같은 치환을 한다).
+    """
+    decimals = card["decimals"]
+    return lambda v: f"{v:,.{decimals}f}".replace("-", "−")
+
+
+def _metrics_view(c: dict, ctx) -> dict | None:
+    """'실적 · 직원' 카드 6장 섹션 뷰모델 (SP-MET-10). 그릴 것이 없으면 None(섹션 자체가 없다).
+
+    **카드의 데이터는 만들지 않는다.** 그건 `employ.company_metrics` 하나가 만든다(MetricsView) —
+    금융 세트의 세 번째 지표가 표와 카드에서 갈라지지 않게 하는 유일한 자리다(SP-MET-2). 여기서
+    얹는 것은 페이지 레이어의 **표현**뿐이다: 큰 숫자(`latest_text`)·SVG 두 벌(`bar`·`line`)·
+    출처 링크(`rcept_url`).
+
+    포맷 함수를 카드마다 **하나만** 만들어 큰 숫자와 그래프 라벨에 같이 넘긴다. 두 곳에서 따로
+    포맷하면 카드는 `15,706` 인데 그래프는 `15706.0` 이 되는 식으로 조용히 갈라진다 — 판정·표기가
+    두 곳에 있으면 언젠가 한쪽만 고쳐진다(배지 함정, 2026-07-31).
+
+    재무·직원 **둘 다** 미적재인 빌드는 섹션이 아예 없다(재무 섹션과 같은 경계). 수집 전 릴리스가
+    102개사 전부에 "값 없음"을 찍으면 그게 거짓이기 때문이다.
+    """
+    if not (ctx.finance_loaded or ctx.employ_loaded):
+        return None
+    view = company_metrics(ctx.finance.get(c["comp_id"]), ctx.employ.get(c["comp_id"]), c["comp_nm"])
+    if view is None:
+        return None
+    for card in view["cards"]:
+        if card["empty_text"]:
+            # 값이 하나도 없는 카드에는 그래프를 만들지 않는다. `charts` 도 이 경우 빈 문자열을
+            # 돌려주지만, 여기서 미리 갈라 두어야 템플릿이 "빈 SVG" 라는 세 번째 상태를 안 만든다.
+            card["latest_text"], card["bar"], card["line"] = "", "", ""
+            continue
+        fmt = _metric_fmt(card)
+        uid = "m" + card["key"]  # clipPath id 접두사 — 카드 6장이 겹치면 남의 클립에 면적이 잘린다
+        card["latest_text"] = fmt(card["latest"])
+        card["bar"] = charts.bar_svg(card["values"], view["years"], fmt, uid)
+        card["line"] = charts.line_svg(card["values"], view["years"], fmt, uid)
+    # 접수번호는 `company_metrics` 가 이미 숫자인지 검증했다(아니면 None). 링크 조립만 여기서 한다 —
+    # 뷰어 URL 은 `finance.DART_VIEWER` 한 곳에 있어야 표와 카드가 다른 곳을 가리키지 않는다.
+    view["rcept_url"] = DART_VIEWER + view["rcept_no"] if view["rcept_no"] else None
+    return view
 
 
 def _industry_tokens(industry_nm) -> set[str]:

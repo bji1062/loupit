@@ -205,18 +205,28 @@ PARTICIPATION_CREATE_ORDER = [
 # 되감겨 **릴리스가 곧 우회 수단**이 된다(퍼지 보존기간을 창보다 길게 잡은 것과 같은 이유).
 MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION", "TMAIL_SEND_RATE"]
 
-# ── 회사 재무 3테이블(DART, 2026-08-21) ─────────────────────────────────────────
-# docs/PLAN-회사정보-확장-2026-08-21.md. FK 위상: TCORP(무의존) → TCOMPANY_CORP(TCOMPANY·TCORP)
-# → TCORP_FINANCE(TCORP). TCOMPANY 는 _REFERENCE_CREATE_ORDER 에 있어 이 그룹보다 앞이므로
-# 그룹을 통째로 뒤에 붙이면 SI-4(부모→자식)를 만족한다.
+# ── DART 법인 데이터 4테이블(재무 2026-08-21 · 직원 2026-08-28) ──────────────────
+# ⚠ 이름이 `CORP_FINANCE_...` 지만 **재무 전용이 아니다** — SPEC/17(SP-MET-4)이 직원 현황
+# `TCORP_EMPLOY` 를 같은 법인 축에 얹으면서 이 그룹은 "DART 법인 데이터 전부"가 됐다.
+# 상수 이름은 참조하는 코드가 있어 그대로 두고, 범위는 이 주석이 정의한다.
 #
-# ⚠ 여기 넣는 것만으로는 부족하다 — 게이트가 서빙 스키마를 DROP/CREATE 하므로
-# `infra/deploy/run_tests.sh` 의 백업/재주입 목록에도 함께 넣어야 한다. 재무는 재수집이
-# 가능한 파생 데이터지만, 수집에 API 호출 비용과 시간이 들고 무엇보다 **비면 회사 페이지의
-# 실적 섹션이 통째로 사라진다** — 그리고 그 소멸은 에러를 남기지 않는다(함정 (57)).
-CORP_FINANCE_CREATE_ORDER = ["TCORP", "TCOMPANY_CORP", "TCORP_FINANCE"]
+# 근거: docs/PLAN-회사정보-확장-2026-08-21.md · docs/SPEC/17-회사정보-지표.md.
+# FK 위상: TCORP(무의존) → TCOMPANY_CORP(TCOMPANY·TCORP) → TCORP_FINANCE(TCORP)
+# → TCORP_EMPLOY(TCORP). 넷 다 부모가 TCORP(그룹 선두)·TCOMPANY(_REFERENCE_CREATE_ORDER,
+# 이 그룹보다 앞)뿐이라 그룹을 통째로 뒤에 붙이면 SI-4(부모→자식)를 만족한다.
+#
+# 🚨 **여기 넣지 않으면 그 테이블 구간에는 테스트가 없는 것과 같다.** schema.sql 로 생성만
+# 되고 DROP 목록에 없어 세션 간 행이 남으며, TCORP 재생성 시 살아남은 행이 다른 법인으로
+# 재해석된다 — 참여 7테이블이 실제로 겪은 #15 동형 결함이고, 이 저장소가 반복해서 당한 함정이다.
+#
+# ⚠ 서빙 스키마를 DROP/CREATE 하던 구 게이트에서는 `infra/deploy/run_tests.sh` 의 백업/재주입
+# 목록에도 함께 넣어야 했다(2026-08-26 격리 전환으로 그 목록은 사라졌다 — 게이트는 이제
+# loupit_test 만 만진다). 재무·직원은 재수집 가능한 파생 데이터지만, 수집에 API 호출 비용과
+# 시간이 들고 무엇보다 **비면 회사 페이지의 실적·직원 섹션이 통째로 사라진다** — 그리고 그
+# 소멸은 에러를 남기지 않는다(함정 (57)).
+CORP_FINANCE_CREATE_ORDER = ["TCORP", "TCOMPANY_CORP", "TCORP_FINANCE", "TCORP_EMPLOY"]
 
-# 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 3 + 재무 3. 참여가 뒤에 오는 것이 FK 부모→자식
+# 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 3 + DART 법인 4. 참여가 뒤에 오는 것이 FK 부모→자식
 # 순서를 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).
 TABLE_CREATE_ORDER = (
     _REFERENCE_CREATE_ORDER

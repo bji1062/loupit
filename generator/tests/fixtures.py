@@ -240,9 +240,13 @@ FAKE_FINANCE = {
         "stock_cd": "035420",
         "acct_set": "financial",
         "fs_div": "OFS",
+        # 금융 세트 실측 구조(SP-MET-2): **매출만 없다.** `ifrs-full_Revenue` 는 7곳 중 2곳뿐이지만
+        # 자산총계는 7/7, 영업이익도 7/7 이다(계정 ID 를 안 넣어서 비어 보였을 뿐이다). 그래서 이
+        # 픽스처는 revenue=None 을 유지한 채 assets·op_income 을 채운다 — 표·인덱스·카드가 매출
+        # 자리에 자산총계를 넣는 경로를 실제로 구동시키기 위해서다.
         "years": [
-            {"year": 2024, "revenue": None, "op_income": None, "net_income": 2_200_000_000_000, "rcept_no": "20250325000004"},
-            {"year": 2025, "revenue": None, "op_income": None, "net_income": 2_451_500_000_000, "rcept_no": "20260325000004"},
+            {"year": 2024, "revenue": None, "assets": 30_000_000_000_000, "op_income": 800_000_000_000, "net_income": 2_200_000_000_000, "rcept_no": "20250325000004"},
+            {"year": 2025, "revenue": None, "assets": 33_000_000_000_000, "op_income": 900_000_000_000, "net_income": 2_451_500_000_000, "rcept_no": "20260325000004"},
         ],
         "siblings": [],
     },
@@ -298,3 +302,54 @@ def make_sibling_fixture() -> tuple[dict, dict]:
     finance[98] = {"corp_nm": "씨제이이엔엠", "stock_cd": "035760", "acct_set": "general", "fs_div": "CFS", "years": copy.deepcopy(years), "siblings": [99]}
     finance[99] = {"corp_nm": "씨제이이엔엠", "stock_cd": "035760", "acct_set": "general", "fs_div": "CFS", "years": copy.deepcopy(years), "siblings": [98]}
     return bundle, finance
+
+
+# ── 직원 현황(DART 사업보고서) 픽스처 — SP-MET-8 로더 출력 형태(`generator/employ.py::assemble`) ──
+# `{comp_id: {year: {salary, tenure, head}}}` — salary 는 **원**, tenure 는 년(소수 2자리), head 는 명.
+# None 이 아니라 **연도 키 자체가 없는 것**이 결측이다(집계가 셀 값이 없는 해를 아예 버리기 때문).
+#
+# 표본을 이렇게 고른 이유:
+#   · 삼성전자(1) 는 2015~2025 중 **2023 만 비운다.** 재무가 2021~2025 라 두 계열을 합치면 연도축은
+#     11개년이 되고, 그 안에서 직원 카드는 **가운데가 끊기고**(2023) 금액 카드는 **앞이 비는**
+#     (2015~2020) 서로 다른 결측 모양을 한 페이지에서 동시에 그린다. 결측을 0 으로 잇는 회귀는
+#     이 두 모양 중 하나에서만 티가 나므로 둘 다 필요하다(SP-MET-9).
+#   · 2025 값은 SP-MET-1 검증값 그대로다 — 평균연봉 157,064,509원 · 근속 13.7년 · 128,881명.
+#     화면에 15,706만원 · 13.7년 · 128,881명 이 아닌 수가 뜨면 단위나 반올림이 어딘가에서 갈린 것이다.
+#   · SK하이닉스(2) 는 **키가 없다.** 재무도 없어 '연도별 추이' 섹션 자체가 안 나오는 경로다.
+#   · 네이버(3) 는 2024~2025 뿐 — 금융 세트 + 짧은 계열(막대 2개·선 2점)의 조합이다.
+FAKE_EMPLOY = {
+    1: {
+        2015: {"salary": 101_000_000, "tenure": 11.4, "head": 96_898},
+        2016: {"salary": 107_000_000, "tenure": 11.6, "head": 93_204},
+        2017: {"salary": 118_000_000, "tenure": 11.8, "head": 99_784},
+        2018: {"salary": 119_000_000, "tenure": 12.0, "head": 103_011},
+        2019: {"salary": 108_000_000, "tenure": 12.2, "head": 105_257},
+        2020: {"salary": 127_000_000, "tenure": 12.4, "head": 109_490},
+        2021: {"salary": 144_000_000, "tenure": 12.6, "head": 113_485},
+        2022: {"salary": 135_000_000, "tenure": 12.9, "head": 121_404},
+        # 2023 없음 — 연도축에는 있고(재무가 그 해를 낸다) 직원 값만 비는 **가운데 결측**
+        2024: {"salary": 130_000_000, "tenure": 13.4, "head": 125_000},
+        2025: {"salary": 157_064_509, "tenure": 13.7, "head": 128_881},
+    },
+    3: {
+        2024: {"salary": 132_000_000, "tenure": 5.8, "head": 4_930},
+        2025: {"salary": 138_000_000, "tenure": 6.1, "head": 5_100},
+    },
+}
+
+# 형제 페이지(CJ ENM 두 부문)의 직원 현황 — **같은 법인이므로 두 페이지가 같은 수치를 받는다**
+# (사용자 결정 2026-08-28: 부문별로 나누지 않는다). DART 의 `fo_bbm` 부문명과 우리 페이지 구분이
+# 1:1 이라는 보장이 없어, 나누는 순간 근거 없는 매핑을 우리가 만들게 된다.
+SIBLING_EMPLOY_YEARS = {
+    2024: {"salary": 96_000_000, "tenure": 7.4, "head": 2_320},
+    2025: {"salary": 98_500_000, "tenure": 7.6, "head": 2_180},
+}
+
+
+def make_sibling_employ() -> dict:
+    """`make_sibling_fixture()` 의 짝 — 회사 98·99 가 **각자 복사본**을 받는다.
+
+    한 dict 를 나눠 쓰면 한 페이지의 뷰 조립이 다른 페이지 값을 건드릴 수 있다
+    (`employ.assemble` 이 실제로 복사본을 주는 이유와 같다).
+    """
+    return {98: copy.deepcopy(SIBLING_EMPLOY_YEARS), 99: copy.deepcopy(SIBLING_EMPLOY_YEARS)}

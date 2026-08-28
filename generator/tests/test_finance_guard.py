@@ -21,7 +21,7 @@ from generator.config import CFG
 from generator.context import build_context
 from generator.pages import combo, company, company_index, heatmap, policy
 from generator.render import make_env
-from generator.tests.fixtures import make_sibling_fixture
+from generator.tests.fixtures import make_sibling_employ, make_sibling_fixture
 
 REPO = Path(__file__).resolve().parents[2]
 FORBIDDEN = ("성장성", "등급", "전망", "우수", "양호")
@@ -29,9 +29,9 @@ NOTICE = "공시 수치이며 평가나 전망이 아닙니다"
 _TAG_RE = re.compile(r"<[^>]+>")
 
 
-def _all_pages(bundle, finance, now):
+def _all_pages(bundle, finance, now, employ=None):
     env = make_env()
-    ctx = build_context(bundle, now=now, finance=finance)
+    ctx = build_context(bundle, now=now, finance=finance, employ=employ)
     pairs = combo.load_pairs(ctx)
     return (
         company.render_all(env, ctx, combo_pairs=pairs)
@@ -44,8 +44,11 @@ def _all_pages(bundle, finance, now):
 
 def test_FN6_no_rating_or_outlook_vocabulary_anywhere(fake_now, fake_combinations_path):
     bundle, finance = make_sibling_fixture()  # 일반·금융·없음·형제 전부 포함된 가장 넓은 표본
-    pages = _all_pages(bundle, finance, fake_now)
+    # 직원 현황까지 실어 '연도별 추이' 카드 6장을 **값이 있는 상태로** 그물에 넣는다(SP-MET-10).
+    # 안 실으면 직원 카드가 전부 "값이 없습니다" 로 나가 그 문장들만 검사한 셈이 된다.
+    pages = _all_pages(bundle, finance, fake_now, employ=make_sibling_employ())
     assert any("<table" in p.html and 'class="finance"' in p.html for p in pages), "재무 표가 렌더되지 않았다 — 가드가 공회전한다"
+    assert any('class="metrics"' in p.html and "평균연봉<" in p.html for p in pages), "추이 카드가 렌더되지 않았다 — 가드가 공회전한다"
     offenders = []
     for p in pages:
         text = _TAG_RE.sub(" ", p.html).replace(NOTICE, " ")
@@ -79,5 +82,6 @@ def test_FN6_bundle_dict_stays_three_keys_and_finance_travels_beside_it(fake_bun
     ctx = build_context(fake_bundle)
     assert ctx.finance == {} and ctx.finance_loaded is False
     assert "finance" in inspect.signature(build_context).parameters
-    assert hasattr(bundle_module, "load_bundle") and hasattr(bundle_module, "load_bundle_with_finance")
-    assert hasattr(bundle_module, "load_finance_json")
+    assert hasattr(bundle_module, "load_bundle") and hasattr(bundle_module, "load_bundle_with_metrics")
+    assert hasattr(bundle_module, "load_finance_json") and hasattr(bundle_module, "load_employ_json")
+    assert "employ" in inspect.signature(build_context).parameters

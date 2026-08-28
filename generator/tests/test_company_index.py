@@ -97,7 +97,8 @@ def test_FN7_index_splits_general_and_financial_sections(fake_bundle, fake_finan
     assert "<h2>일반</h2>" in general and "<h2>금융</h2>" in financial
     assert _names_in(general) == ["SK하이닉스", "삼성전자"]
     assert _names_in(financial) == ["네이버"]
-    assert "금융업은 계정 체계가 달라 순이익만 표시" in financial
+    assert "금융업은 단일 매출 계정을 공시하지 않아 그 자리에 자산총계를 싣습니다" in financial
+    assert "순이익만" not in p.html, "거짓으로 판명된 구 문장(SP-MET-2)이 남아 있다"
 
 
 def test_FN7_index_rows_carry_latest_year_figures_and_basis(fake_bundle, fake_finance, fake_now):
@@ -112,11 +113,14 @@ def test_FN7_index_rows_carry_latest_year_figures_and_basis(fake_bundle, fake_fi
     sk = re.search(r"<tr>(?:(?!</tr>).)*?SK하이닉스.*?</tr>", general, re.S).group(0)
     assert sk.count("—") >= 4, "재무 없는 회사는 '—'"
     assert "반도체" in sk, "업종 열은 유지"
+    # 금융 섹션은 매출 자리만 자산총계로 바뀐다(SP-MET-2) — 영업이익·순이익은 그대로 있다.
     financial = _section_html(p.html, "financial")
-    assert '<th scope="col">순이익(억원)</th>' in financial
-    assert "매출(억원)" not in financial and "영업이익(억원)" not in financial
+    for th in ("자산총계(억원)", "영업이익(억원)", "순이익(억원)"):
+        assert f'<th scope="col">{th}</th>' in financial, th
+    assert "매출(억원)" not in financial, "금융에 없는 것은 매출 계정 하나뿐이다"
     naver = re.search(r"<tr>(?:(?!</tr>).)*?네이버.*?</tr>", financial, re.S).group(0)
-    assert "24,515" in naver and "별도" in naver
+    for cell in ("330,000", "9,000", "24,515", "별도"):
+        assert cell in naver, cell
 
 
 def test_FN7_index_each_section_sorted_and_every_company_once(fake_bundle, fake_finance, fake_now):

@@ -36,6 +36,12 @@
   --accent:var(--brand); --accent-hover:var(--brand-active); --accent-ink:#ffffff; --link:var(--brand);
   --accent-tint:var(--brand-tint);
   --positive:var(--green); --negative:var(--red); --warning:var(--amber);
+  /* 그래프 부호색(SP-MET-9) — `--positive/--negative`(텍스트용)와 **일부러 다른 값**이다:
+     면적을 12% 워시로 깔고 얇은 막대로 찍을 때 대비를 잃지 않는 조합으로 검증된 쌍이고,
+     양수는 브랜드 그린과 같은 값이라 그래프가 사이트 안에서 이물질로 보이지 않는다.
+     ⚠ 이 두 값은 SVG **클래스**로만 쓴다 — 프레젠테이션 속성에 `var(--x)` 를 쓰면 브라우저에
+     따라 조용히 무시되어 검은 도형만 남는다(실측, generator/charts.py 머리말). */
+  --pos:#2f7d43; --neg:#e11d48;
   --brand-axis:var(--purple);
   --text:var(--t1); --text-muted:var(--t3);
   --surface:var(--bg-1); --surface-raised:var(--bg-2);
@@ -533,6 +539,75 @@ main p { margin-top:var(--sp-3); }
 .cp-cand-nm { font-weight:var(--fw-medium); }
 .cp-cand-meta { font-size:var(--fs-xs); color:var(--t4); }
 
+/* ═══════════════════════════ 연도별 추이(회사 상세 카드 6장 + 정적 SVG) ══ */
+/* SP-MET-9·10. 그래프는 `generator/charts.py` 가 빌드 시점에 좌표까지 계산해 SVG 로 박아 둔다 —
+   여기서 하는 일은 **색과 치수를 입히는 것뿐**이고, 막대/꺾은선 전환도 라디오 `:checked ~` 로
+   CSS 가 한다(JS 0, NFR24). `metricshape.js` 는 고른 값을 기억만 한다. */
+.metrics { margin-top:var(--sp-6); }
+.metrics-basis-line { color:var(--t3); font-size:var(--fs-sm); }
+.metrics-source, .metrics-notice { color:var(--t4); font-size:var(--fs-xs); }
+
+/* 모양 고르기 — fieldset 의 기본 테두리·여백을 걷어내야 카드 격자가 제 폭을 쓴다.
+   ⚠ 라디오·라벨·카드가 **형제**여야 `:checked ~ .metric-cards` 가 닿는다(템플릿 주석 참고).
+   카드를 상자로 한 겹 더 감싸는 순간 전환이 조용히 죽고 두 벌이 다 보인다. */
+.mshape { border:0; margin:var(--sp-4) 0 0; padding:0; min-width:0; }
+/* 라디오 자체는 안 보이지만 **포커스는 받는다** — `.sr-only` 의 clip 은 레이아웃에서 빼 버려
+   키보드 이동이 어색해지므로 여기서는 쓰지 않는다. */
+.mshape-in { position:absolute; width:1px; height:1px; opacity:0; pointer-events:none; }
+.mshape-lb {
+  display:inline-flex; align-items:center; justify-content:center;
+  min-height:32px; padding:var(--sp-1) var(--sp-4); margin-right:var(--sp-2);
+  background:var(--bg-1); color:var(--t3); border:var(--bw) solid var(--border);
+  border-radius:var(--r-pill); font-size:var(--fs-xs); font-weight:var(--fw-medium); cursor:pointer;
+  transition:background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.mshape-lb:hover { background:var(--brand-tint); color:var(--t1); }
+.mshape-in:checked + .mshape-lb { background:var(--brand-tint); color:var(--brand); border-color:var(--brand); }
+.mshape-in:focus-visible + .mshape-lb { outline:var(--focus-width) solid var(--focus); outline-offset:var(--focus-offset); }
+
+/* 카드 6장: 1열 → 2열 → 3열. 개수가 회사마다 달라지지 않으므로 격자가 흔들리지 않는다.
+   폭에 따른 열 수는 아래 @media(768) 한 곳에서만 바뀐다 — 이 디자인 시스템은 **min-width 분기가
+   768 하나뿐**이고 그 계약을 web/test/tokens.test.js 가 강제한다(중간 분기를 추가하면 빨간다). */
+.metric-cards { display:grid; grid-template-columns:1fr; gap:var(--sp-4); margin-top:var(--sp-4); }
+.metric-card {
+  min-width:0;  /* 격자 칸의 기본 min-width:auto 는 SVG 가 칸을 밀어내게 둔다 */
+  padding:var(--sp-4); background:var(--bg-1);
+  border:var(--bw) solid var(--border); border-radius:var(--r-lg);
+}
+.metric-nm { display:flex; align-items:baseline; gap:var(--sp-2); margin-top:0; font-size:var(--fs-sm); font-family:var(--font-sans); font-weight:var(--fw-semibold); color:var(--t2); }
+.metric-unit { color:var(--t4); font-size:var(--fs-xs); font-weight:var(--fw-regular); }
+.metric-latest { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-2); }
+.metric-latest strong { font-family:var(--font-serif); font-size:var(--fs-h2); font-weight:var(--fw-regular); line-height:var(--lh-tight); letter-spacing:var(--ls-tight); }
+/* 전년 대비는 **방향**이지 좋고 나쁨이 아니다(DEC-B). 그래서 `.up`/`.down` 에 초록·빨강을 주지
+   않는다 — 직원 수가 준 것을 빨강으로 칠하면 그 순간 우리가 평가를 한 것이 된다. 부호는 텍스트의
+   +/− 가 이미 말한다. 두 클래스는 마크업에 남겨 둔다(뷰모델이 내는 사실이다). */
+.metric-delta { color:var(--t3); font-size:var(--fs-xs); }
+.metric-delta-lb { color:var(--t4); }
+.metric-empty { margin-top:var(--sp-2); color:var(--t4); font-size:var(--fs-sm); }
+
+/* 막대/꺾은선 전환 — 두 벌 다 HTML 에 있고 한 벌만 접는다. `display:none` 이라 접힌 쪽은
+   접근성 트리에서도 빠진다(같은 데이터가 스크린리더에 두 번 읽히지 않는다). */
+.mchart { margin-top:var(--sp-3); }
+#metric-shape-bar:checked ~ .metric-cards .mchart-line,
+#metric-shape-line:checked ~ .metric-cards .mchart-bar { display:none; }
+.mchart svg { display:block; width:100%; height:auto; overflow:visible; }
+
+/* SVG 색·치수는 전부 여기서 준다(클래스 목록은 generator/charts.py 소유 — 새 이름을 만들면
+   스타일 없이 나간다). 선택자를 `.mchart` 아래로 묶는 이유는 `bar`·`ax` 같은 짧은 이름이
+   전역에서 다른 것과 부딪히지 않게 하기 위해서다. */
+.mchart .bar.pos { fill:var(--pos); }
+.mchart .bar.neg { fill:var(--neg); }
+.mchart .ax { stroke:var(--t4); stroke-width:1; }
+.mchart .gl { stroke:var(--border-strong); stroke-width:1; stroke-dasharray:2 3; }
+.mchart .yt { fill:var(--t3); font-size:9px; font-family:var(--font-sans); }
+.mchart .yr { fill:var(--t4); font-size:9px; font-family:var(--font-sans); }
+.mchart .yr.last { fill:var(--t2); font-weight:var(--fw-medium); }
+/* 꺾은선은 한 벌이라 부호로 색을 가를 수 없다(경로 하나가 0 선을 넘나든다). 그래서 선은 중립
+   색이고, 부호는 **면적의 색 + 0 선 + 값의 − 기호**가 말한다 — 색각 이상에서도 단서가 남는다. */
+.mchart .lp { fill:none; stroke:var(--t2); stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
+.mchart .ar-pos { fill:var(--pos); opacity:.12; }
+.mchart .ar-neg { fill:var(--neg); opacity:.12; }
+
 /* ══════════════════════════════════════════════════════ ADS ══ */
 /* 광고 박스는 JS가 실 슬롯(.ad-slot)을 주입했을 때만 그린다. 빈 [data-ad-position] 컨테이너는
    무스타일(승인 전 placeholder 동안 내용 없는 "광고" 점선 박스 상시 노출 방지, #12). */
@@ -571,4 +646,9 @@ main p { margin-top:var(--sp-3); }
   .dir-panel { margin-top:var(--sp-3); }
   /* GNB 검색: 데스크톱에서 여유 폭 */
   .gnb-search input[type="search"] { width:240px; }
+  /* 추이 카드: 분기 하나로 2열(태블릿)과 3열(넓은 화면)을 함께 얻는다. 최소 폭이 `max(29%,240px)`
+     이라 본문이 좁으면 240px 가 이겨 2열, 넓어지면 29% 가 이겨 3열에서 멈춘다 — 6장이 4열로
+     쪼개져 2장만 남는 둘째 줄을 만들지 않기 위해서다. `max()` 를 모르는 브라우저는 선언 전체를
+     버리고 1열로 남는다(깨지지 않는 폴백). */
+  .metric-cards { grid-template-columns:repeat(auto-fit, minmax(max(29%, 240px), 1fr)); }
 }
