@@ -6,7 +6,7 @@ import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
 import { mountUI, reflectSlotLabel, maybeAdvance, bindBootRetry, renderInputView } from './ui.js';
-import { mountAds, initConsentBanner } from './ads.js';
+import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
 import { findCompanies, renderCompanyView } from './company.js';
@@ -137,7 +137,7 @@ export function showBootError(err) {
 export async function boot(hooks = {}) {
   const {
     loadReferenceFn = loadReference, bindGlobalUIFn = bindGlobalUI,
-    mountAdsFn = mountAds, initConsentBannerFn = initConsentBanner,
+    mountAdsFn = mountAds,
   } = hooks;
   bindGlobalUIFn();
   try {
@@ -190,7 +190,6 @@ export async function boot(hooks = {}) {
   };
   deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
-  try { initConsentBannerFn(); } catch { /* 동의 배너 실패 무손상 */ } // 광고 동의 배너 배선(#12)
   try { mountAdsFn(); } catch { /* 광고 마운트 실패 무손상(MON6) */ } // page_type별 광고 배선(랜딩 등, #12)
   // "많이 찾아본 조합" 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
   // companies: 집계 0건일 때 같은 업종 폴백을 만들 재료(REF는 위에서 이미 로드됨 — 추가 네트워크 없음).

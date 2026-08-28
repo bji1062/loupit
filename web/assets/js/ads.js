@@ -74,11 +74,18 @@ export function setConsent(personalized) {
 }
 export function isPersonalized() { return getConsent() === true; }
 
-// 로더 실행 전 비개인화 신호 세팅(FR-79): 미동의/거부 → requestNonPersonalizedAds=1
+// 로더 실행 전 비개인화 신호 세팅(FR-79) — **항상 1**(2026-08-28).
+//
+// 동의 배너를 걷어냈으므로 개인화 동의를 받을 창구가 없다. 창구가 없는데 개인화 광고를 요청하면
+// 그게 곧 무단 처리다 — 그래서 신호를 저장값이 아니라 **상수**로 보낸다. `isPersonalized()` 는
+// 저장 계층으로 남아 있지만(아래 주석) 이 신호를 좌우하지 않는다.
+//
+// 되돌릴 때(=개인화를 켤 때)의 조건: AdSense **개인정보 보호 및 메시지**(구글 인증 CMP)를 켜고
+// 그 동의 신호를 읽어야 한다. 자체 UI 로는 EEA/영국 TCF 요구를 충족하지 못한다.
 // export: 공개 심볼표(SP-ADS-1.1)는 "대표" 목록이며 단위 테스트 가능성을 위해 공개한다.
 export function applyConsentSignal() {
   const ab = (window.adsbygoogle = window.adsbygoogle || []);
-  ab.requestNonPersonalizedAds = isPersonalized() ? 0 : 1;
+  ab.requestNonPersonalizedAds = 1;
 }
 
 // ── SP-ADS-4.1 자동광고 로더·활성화(DOM/네트워크, 수동 브라우저 검증 대상) ──
@@ -199,22 +206,14 @@ function renderAffiliateCard(it) {
   return card;
 }
 
-// ── SP-ADS-7.2 동의 배너 배선(DOM, 수동 브라우저 검증 대상) ────────────────
-// 배너 마크업(SCR-61)은 셸/정적 페이지가 방출(SP-ADS-9). 본 함수는 로직만.
-export function initConsentBanner() {
-  const banner = document.getElementById('consent-banner');
-  if (!banner) return;
-  if (getConsent() !== null) { banner.hidden = true; return; }        // 이미 결정 → 미노출(재방문, CS-2)
-  banner.hidden = false;                                              // 첫 방문 → 노출
-  banner.querySelector('[data-consent="grant"]')?.addEventListener('click', () => decideConsent(true));
-  banner.querySelector('[data-consent="deny"]')?.addEventListener('click', () => decideConsent(false));
-}
-function decideConsent(personalized) {
-  setConsent(personalized);
-  const banner = document.getElementById('consent-banner');
-  if (banner) banner.hidden = true;
-  // 이번 세션 광고는 이미 비개인화로 로드됨. 개인화 전환은 다음 로드에 적용(FR-79 재방문 적용).
-}
+// ── SP-ADS-7.2 동의 배너 — **제거됨(2026-08-28)** ─────────────────────────────
+// 배너는 "맞춤형 광고 표시에 동의하시겠습니까?"를 물었지만, ① AdSense 승인 전이라 광고가 나가지
+// 않았고 ② 히트맵·회사목록처럼 광고를 아예 안 붙이는 페이지에도 떴으며 ③ 자체 UI 는 구글이 요구하는
+// 인증 CMP(TCF)가 아니어서 EEA/영국 요건도 못 채운다. 지금은 **항상 비개인화**로 요청하고(위
+// applyConsentSignal) 개인화 거부는 처리방침·광고고지의 외부 옵트아웃 링크가 담당한다.
+//
+// 아래 저장 계층(parseConsent·getConsent·setConsent·isPersonalized)은 **남긴다** — 승인 후 구글
+// 동의 메시지를 붙일 때 재사용하고, `DENY_FALLBACK='suppress'` 폴백도 이 값을 읽는다.
 
 // ── SP-ADS-3.3 마운트 오케스트레이터 ────────────────────────────────────────
 export function mountAds(pageType = detectPageType(), root = document) {

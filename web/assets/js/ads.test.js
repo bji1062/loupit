@@ -3,7 +3,7 @@
 // 순수 서브셋(adPolicy·resolveSlotId·filterAffiliate·buildAffiliateAttrs·parseConsent)은
 // 브라우저 없이 테스트. document/window/fetch가 필요한 경로(getConsent 쿠키 폴백·
 // applyConsentSignal·loadAffiliate)는 최소 in-memory 목으로 검증한다.
-// DOM 렌더(mountManualSlot·renderAffiliateCard·initConsentBanner 등)는 SP-ADS-1.2에 따라
+// DOM 렌더(mountManualSlot·renderAffiliateCard 등)는 SP-ADS-1.2에 따라
 // 수동 브라우저 체크리스트(MB-ADS-*)로 검증하며 여기서는 다루지 않는다.
 import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
@@ -15,7 +15,6 @@ import {
   PAGE_TYPES, adPolicy, resolveSlotId, detectPageType, mountAds,
   filterAffiliate, buildAffiliateAttrs, loadAffiliate,
   parseConsent, getConsent, setConsent, isPersonalized, applyConsentSignal,
-  initConsentBanner,
 } from './ads.js';
 import { adsConfig } from './adsConfig.js';
 import { JSDOM } from 'jsdom';
@@ -70,7 +69,7 @@ describe('T-08.1.1 ads.js 모듈 골격·공개 심볼 스모크', () => {
     assert.deepEqual(PAGE_TYPES, ['landing', 'company', 'combo', 'input', 'result', 'policy']);
     for (const fn of [
       mountAds, adPolicy, filterAffiliate, resolveSlotId, loadAffiliate,
-      initConsentBanner, getConsent, setConsent, isPersonalized, parseConsent,
+      getConsent, setConsent, isPersonalized, parseConsent,
       detectPageType, buildAffiliateAttrs,
     ]) assert.equal(typeof fn, 'function');
   });
@@ -329,20 +328,20 @@ describe('T-08.7.2 getConsent·setConsent·isPersonalized (localStorage 우선·
 });
 
 // ── T-08.7.3: applyConsentSignal 비개인화 신호(로더 실행 전 세팅) ──────────
-describe('T-08.7.3 applyConsentSignal (window.adsbygoogle 비개인화 신호)', () => {
-  test('동의(personalized=true) → requestNonPersonalizedAds===0', () => {
+describe('T-08.7.3 applyConsentSignal — 동의 UI 제거 후 항상 비개인화(2026-08-28)', () => {
+  // 배너를 걷어내 개인화 동의를 받을 창구가 없다. 창구 없이 개인화를 요청하면 그게 무단 처리라,
+  // 저장값이 무엇이든 신호는 1 이어야 한다. 되돌리려면 구글 인증 CMP 를 먼저 붙여야 한다.
+  test('저장값이 동의(true)여도 requestNonPersonalizedAds===1', () => {
     setConsent(true);
-    applyConsentSignal();
-    assert.equal(globalThis.window.adsbygoogle.requestNonPersonalizedAds, 0);
-  });
-
-  test('거부(personalized=false) → requestNonPersonalizedAds===1', () => {
-    setConsent(false);
     applyConsentSignal();
     assert.equal(globalThis.window.adsbygoogle.requestNonPersonalizedAds, 1);
   });
 
-  test('미선택(null, 첫 방문) → 비개인화 폴백(===1, FR-79)', () => {
+  test('거부(false)·미선택(null)도 1', () => {
+    setConsent(false);
+    applyConsentSignal();
+    assert.equal(globalThis.window.adsbygoogle.requestNonPersonalizedAds, 1);
+    globalThis.localStorage.clear();
     applyConsentSignal();
     assert.equal(globalThis.window.adsbygoogle.requestNonPersonalizedAds, 1);
   });

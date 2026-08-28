@@ -190,12 +190,12 @@ def test_pc10_banner_target_routes_privacy_and_ads_exist_and_reachable(fake_bund
 
 
 def test_pc10_privacy_and_ads_share_same_consent_facts(fake_bundle, fake_now):
-    """P3·P4·P5(쿠키·제3자 Google·개인화 동의/거부) ≡ A-4(제3자 광고 쿠키·개인화
-    동의) — 배너가 참조할 사실이 두 문서에서 동일하게 존재해야 한다(PC-10)."""
+    """P3·P4·P5 ≡ A-4 — 두 문서가 같은 사실을 말해야 한다(PC-10). 2026-08-28 부터 그 사실은
+    "동의를 받는다"가 아니라 **"개인화를 요청하지 않는다"** 다 — 한쪽만 고치면 여기서 잡힌다."""
     pages = _render_policy_pages(fake_bundle, fake_now)
     privacy_html = pages["privacy.html"].html
     ads_html = pages["ads.html"].html
-    for keyword in ("쿠키", "Google", "동의"):
+    for keyword in ("쿠키", "Google", "비개인화"):
         assert keyword in privacy_html, f"privacy.html에 '{keyword}' 부재"
         assert keyword in ads_html, f"ads.html에 '{keyword}' 부재"
     assert "거부" in privacy_html  # P5: 거부해도 이용 가능
@@ -283,17 +283,19 @@ def test_pc12_rendered_policy_leaves_no_placeholder_braces(fake_bundle, fake_now
 # ── GC-24: 정책 페이지 정적 광고·동의 배선(SP-ADS-9, 2026-07-19) ────────────
 
 
-def test_gc24_policy_static_wiring_no_ads_but_consent(fake_bundle, fake_now):
-    """정책 페이지: page_type=policy(무광고 게이팅)·광고 호스트 0. 동의 배너와
-    static-ads.js는 base 공통 — 개인정보처리방침이 약속한 동의 선택 경로를
-    모든 정적 페이지에서 제공한다(감사 #12 후속). render_all이 함께 렌더하는
-    404.html은 page_type 미선언(→ ads.js 'default' 무광고)이 설계 의도."""
+def test_gc24_policy_static_wiring_no_ads_no_consent_banner(fake_bundle, fake_now):
+    """정책 페이지: page_type=policy(무광고 게이팅)·광고 호스트 0·**동의 배너 0**.
+
+    배너는 2026-08-28 제거했다(SP-ADS-7): 광고를 항상 비개인화로 요청하므로 물을 것이 없고,
+    자체 UI 는 구글 인증 CMP 가 아니라 EEA 요건도 못 채운다. 개인화 거부는 처리방침 P4·광고고지
+    A-4 의 외부 옵트아웃 링크가 담당한다 — 배너 **부재**를 계약으로 못박는다(되살리면 그 문안과
+    어긋난다). static-ads.js 는 광고 마운트용으로 남는다. 404.html 은 page_type 미선언(무광고)."""
     for path, p in _render_policy_pages(fake_bundle, fake_now).items():
         if path == "404.html":
             assert "data-page-type" not in p.html, path    # 미선언 = default 무광고
         else:
             assert '<body data-page-type="policy">' in p.html, path
-        assert 'id="consent-banner"' in p.html, path
+        assert 'id="consent-banner"' not in p.html, path   # 배너 제거(SP-ADS-7, 2026-08-28)
         assert "/assets/v2/js/static-ads.js" in p.html, path
         assert "data-ad-position" not in p.html, path      # 무광고: 호스트 자체 미방출
         assert 'class="ad-slot"' not in p.html, path

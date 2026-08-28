@@ -578,17 +578,15 @@ describe('B-1 해시 딥링크 강등', () => {
 });
 
 // ── #12: 광고·동의 배너 배선(dead code 해소) ────────────────────────────────
-describe('#12 boot() 광고·동의 배선', () => {
-  test('boot 성공 → mountAds·initConsentBanner 각 1회 호출', async () => {
+describe('#12 boot() 광고 배선', () => {
+  test('boot 성공 → mountAds 1회 호출(동의 배너는 2026-08-28 제거)', async () => {
     const ref = { company_types: [], benefit_presets: {}, companies: [] };
     let ads = 0, consent = 0;
     await boot({
       loadReferenceFn: async () => ref,
       mountAdsFn: () => { ads += 1; },
-      initConsentBannerFn: () => { consent += 1; },
     });
     assert.equal(ads, 1, 'mountAds 배선(랜딩 등 page_type)');
-    assert.equal(consent, 1, 'initConsentBanner 배선');
   });
 });
 
