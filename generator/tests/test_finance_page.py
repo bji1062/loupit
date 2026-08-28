@@ -6,7 +6,9 @@
   - 섹션은 복지표 **뒤**, CTA **앞**(복지가 이 사이트의 본체다).
   - 기준(연결/별도)·출처(접수번호 아웃링크)·고지 한 줄은 수치가 있을 때 **항상** 함께 나온다 —
     기준을 안 적으면 그 자체가 부정확한 주장이다(LG 연결 9,122억 vs 별도 5,971억).
-  - 금융 세트는 열이 다르다(순이익만). 없는 회사는 "공시 데이터 없음"을 **말한다**.
+  - 금융 세트는 **세 번째 열이 다르다**(매출 자리에 자산총계, SP-MET-2). 열을 고르는 것은
+    `finance.metric_columns` 하나이고 템플릿은 그대로 그린다 — 표가 스스로 판정하면 같은 페이지의
+    카드와 갈라진다. 없는 회사는 "공시 데이터 없음"을 **말한다**.
   - 재무가 아예 주입되지 않은 빌드(`finance=None`)는 기존 페이지와 100% 같다 — 수집 전 릴리스가
     102개사 전부에 "미제출"이라는 거짓말을 찍지 않게 하는 경계다.
 """
@@ -24,7 +26,7 @@ from generator.tests.fixtures import FAKE_BUNDLE, FAKE_FINANCE, make_sibling_fix
 
 NOTICE = "공시 수치이며 평가나 전망이 아닙니다"
 NONE_TEXT = "공시 데이터 없음(비상장 또는 미제출)"
-FINANCIAL_TEXT = "금융업은 계정 체계가 달라 순이익만 표시"
+FINANCIAL_TEXT = "금융업은 단일 매출 계정을 공시하지 않아 그 자리에 자산총계를 싣습니다"
 
 
 def _pages(bundle, finance, now):
@@ -92,13 +94,36 @@ def test_FN5_notice_is_one_line_of_fact(fake_bundle, fake_finance, fake_now):
 
 # ── 금융 세트·없음·형제 ──────────────────────────────────────────────────────
 
-def test_FN5_financial_set_shows_net_income_only(fake_bundle, fake_finance, fake_now):
+def test_FN5_financial_set_swaps_revenue_for_total_assets(fake_bundle, fake_finance, fake_now):
+    """금융 세트도 열은 **3종**이다 — 자산총계·영업이익·순이익(SP-MET-2, 2026-08-28 DART 전수 실측).
+
+    구 판본은 여기서 순이익 하나만 그리고 "금융업은 순이익만 표시합니다"라고 적었다. 그 문장은
+    사실이 아니었다: 영업이익이 비어 보인 건 계정 ID 누락이었고 넣으면 7/7 이다. 진짜로 없는 것은
+    단일 매출 계정 하나뿐이라, 그 자리에만 자산총계(7/7)가 들어간다.
+    """
     sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/naver.html"])
-    assert '<th scope="col">순이익</th>' in sec
-    assert '<th scope="col">매출</th>' not in sec and '<th scope="col">영업이익</th>' not in sec
+    for th in ("자산총계", "영업이익", "순이익"):
+        assert f'<th scope="col">{th}</th>' in sec, th
+    assert '<th scope="col">매출</th>' not in sec, "금융에 없는 것은 매출 계정 하나뿐이다"
+    assert "순이익만" not in sec, "거짓으로 판명된 구 문장이 남아 있다"
     assert FINANCIAL_TEXT in sec
-    assert _rows(sec)[0] == ["2025", "24,515", "+11.4%"]
+    assert _rows(sec)[0] == ["2025", "330,000", "+10.0%", "9,000", "+12.5%", "24,515", "+11.4%"]
     assert NONE_TEXT not in sec
+
+
+def test_FN5_column_set_is_decided_by_one_function_not_by_the_template(fake_bundle, fake_finance, fake_now):
+    """표의 열 구성이 `finance.metric_columns` 와 **글자 그대로** 일치한다(SP-MET-2 단일 판정).
+
+    이 테스트가 잡는 회귀는 '템플릿이 세트를 다시 판정하는 것'이다 — 그렇게 되면 같은 페이지에서
+    표는 순이익만, 카드는 자산총계를 그리는 상태가 아무 에러 없이 성립한다.
+    """
+    from generator.finance import metric_columns
+
+    pages = _pages(fake_bundle, fake_finance, fake_now)
+    for path, acct_set in (("company/samsung-elec.html", "general"), ("company/naver.html", "financial")):
+        sec = _section(pages[path])
+        heads = [h for h in re.findall(r'<th scope="col">(.*?)</th>', sec) if h != "전년 대비"]
+        assert heads == ["연도", *[n for _, n in metric_columns(acct_set)]], path
 
 
 def test_FN5_company_without_data_says_so_and_keeps_section(fake_bundle, fake_finance, fake_now):

@@ -13,9 +13,12 @@ from __future__ import annotations
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
-from generator.finance import index_row
+from generator.finance import index_row, metric_columns
 
-# 섹션 순서·라벨(SP-FIN-5). 금융은 지표 세트가 달라(매출·영업이익 계정 부재) 표를 가른다.
+# 섹션 순서·라벨(SP-FIN-5). 금융을 갈라 두는 이유는 **세 번째 지표가 다르기 때문**이다 — 일반은
+# 매출, 금융은 자산총계(SP-MET-2). 한 표에 섞으면 같은 열에 뜻이 다른 두 숫자가 앉는다.
+# ⛔ "금융은 매출·영업이익 계정이 없다"는 구 판본의 설명은 절반이 틀렸다: 없는 것은 단일 매출
+#   계정뿐이고 영업이익은 7/7 로 있다(2026-08-28 DART 전수 실측, SP-MET-2).
 _SECTIONS = (("general", "일반"), ("financial", "금융"))
 
 
@@ -29,8 +32,11 @@ def _finance_sections(items: list[dict], ctx) -> list[dict]:
         fin = ctx.finance.get(it["comp_id"])
         key = fin["acct_set"] if fin and fin.get("acct_set") in groups else "general"
         groups[key].append({**it, **index_row(fin)})
+    # 어느 3종을 어떤 이름으로 그릴지는 `metric_columns` 하나가 답한다(SP-MET-2) — 회사 상세의
+    # 표·카드와 **같은 함수**다. 여기서 열을 따로 적어 두면 세트 판정이 세 곳으로 흩어진다.
     return [
-        {"key": key, "label": label, "financial": key == "financial", "rows": groups[key]}
+        {"key": key, "label": label, "financial": key == "financial",
+         "columns": [{"key": f, "name": n} for f, n in metric_columns(key)], "rows": groups[key]}
         for key, label in _SECTIONS
         if groups[key]
     ]

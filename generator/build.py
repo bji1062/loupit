@@ -11,7 +11,14 @@ import os
 import sys
 from datetime import date
 
-from generator.bundle import load_bundle_json, load_bundle_with_finance, load_finance_json
+from generator.bundle import (
+    load_bundle_json,
+    load_bundle_with_metrics,
+    load_employ_json,
+    load_finance_json,
+)
+from generator.employ import coverage as employ_coverage
+from generator.employ import is_loaded as employ_is_loaded
 from generator.config import CFG
 from generator.context import build_context
 from generator.pages import combo, company, company_index, heatmap, policy
@@ -29,6 +36,7 @@ def run(
     bundle: dict,
     *,
     finance: dict | None = None,
+    employ: dict | None = None,
     incremental: bool = False,
     only: list[str] | None = None,
     lastmod: str | None = None,
@@ -40,7 +48,7 @@ def run(
     `{out_dir}`는 변경되지 않는다(`main()`이 비0 종료코드로 표면화).
     """
     env = make_env()
-    ctx = build_context(bundle, finance=finance)  # 인덱스·slug 충돌 검증(BuildError, SP-GEN-3)
+    ctx = build_context(bundle, finance=finance, employ=employ)  # 인덱스·slug 충돌 검증(BuildError, SP-GEN-3)
     # 조합 쌍은 한 번만 로드해 양쪽에 전달한다 — 회사 페이지의 /vs/ 링크와 실제
     # 생성되는 조합 페이지가 같은 목록에서 나와야 죽은 링크가 생기지 않는다(GC-20).
     combo_pairs = combo.load_pairs(ctx)
@@ -93,6 +101,7 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=CFG.out_dir)
     ap.add_argument("--bundle-json", help="DB 없이 렌더(사전 덤프 JSON)")
     ap.add_argument("--finance-json", help="재무 사전 덤프 JSON(--bundle-json 의 짝, SP-FIN-4). 없으면 실적 섹션 미렌더")
+    ap.add_argument("--employ-json", help="직원 현황 사전 덤프 JSON(--bundle-json 의 짝, SP-MET-8). 없으면 직원 카드 미렌더")
     ap.add_argument("--incremental", action="store_true", help="변경분만 기록(SP-GEN-10)")
     ap.add_argument("--only", nargs="*", help="경로 접두 필터(dev)")
     ap.add_argument(
@@ -108,23 +117,37 @@ def main(argv=None) -> int:
     if reject:
         print(f"generator build refused: {reject}", file=sys.stderr)
         return 2
-    if a.finance_json and not a.bundle_json:
-        print("generator build refused: --finance-json 은 --bundle-json 과 짝이다(DB 경로는 재무를 함께 읽는다)", file=sys.stderr)
-        return 2
+    for flag, val in (("--finance-json", a.finance_json), ("--employ-json", a.employ_json)):
+        if val and not a.bundle_json:
+            print(f"generator build refused: {flag} 은 --bundle-json 과 짝이다(DB 경로는 셋을 함께 읽는다)", file=sys.stderr)
+            return 2
     if a.bundle_json:
         bundle = load_bundle_json(a.bundle_json)
         finance = load_finance_json(a.finance_json) if a.finance_json else None
+        employ = load_employ_json(a.employ_json) if a.employ_json else None
     else:
-        bundle, finance = load_bundle_with_finance()
-    # 재무 미적재를 조용히 넘기지 않는다 — 실적 섹션이 통째로 빠지는 것은 에러를 남기지 않는 소멸이다(함정 (57)).
+        bundle, finance, employ = load_bundle_with_metrics()
+    # 미적재를 조용히 넘기지 않는다 — 섹션이 통째로 빠지는 것은 에러를 남기지 않는 소멸이다(함정 (57)).
     if not (finance and any(v.get("years") for v in finance.values())):
         print("generator build: finance 미주입(--finance-json 없음 또는 TCORP_FINANCE 0건) — 실적 섹션 없이 렌더한다", file=sys.stderr)
+    if not employ_is_loaded(employ):
+        print("generator build: employ 미주입(--employ-json 없음 또는 TCORP_EMPLOY 0건) — 직원 카드 없이 렌더한다", file=sys.stderr)
+    else:
+        # 결측은 **세어서** 찍는다(SP-MET-8 `coverage`). 0 으로 채우면 화면에 거짓이 나가고,
+        # 세지 않고 비우면 언제부터 비었는지 아무도 모른다 — 이 프로젝트가 반복해서 밟은 함정이다.
+        cov = employ_coverage(employ)
+        print(
+            f"generator build: employ 회사 {cov['companies']} · 회사×연도 {cov['years']} · "
+            f"결측 연봉 {cov['salary']} · 근속 {cov['tenure']} · 인원 {cov['head']}",
+            file=sys.stderr,
+        )
     lastmod = a.lastmod or _today_iso()
     try:
         return run(
             a.out,
             bundle,
             finance=finance,
+            employ=employ,
             incremental=a.incremental,
             only=a.only,
             lastmod=lastmod,

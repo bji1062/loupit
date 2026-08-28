@@ -14,6 +14,7 @@ from generator.tests.fixtures import (
     FAKE_BUNDLE,
     FAKE_BUNDLE_XSS,
     FAKE_COMBINATIONS_RAW,
+    FAKE_EMPLOY,
     FAKE_FINANCE,
 )
 
@@ -44,6 +45,17 @@ def fake_finance() -> dict:
     """재무 픽스처(SP-FIN) 깊은 복사본 — `build_context(bundle, finance=…)` 에 주입한다.
     기존 스위트는 이걸 쓰지 않으므로 재무 없는 렌더 경로가 그대로 남는다(무회귀 계약)."""
     return copy.deepcopy(FAKE_FINANCE)
+
+
+@pytest.fixture
+def fake_employ() -> dict:
+    """직원 현황 픽스처(SP-MET-8) 깊은 복사본 — `build_context(bundle, employ=…)` 에 주입한다.
+
+    재무와 **따로** 받는 이유는 둘의 경계가 실제로 다르기 때문이다: 재무만 실린 빌드(수집 순서상
+    실제로 존재했다)와 둘 다 실린 빌드가 서로 다른 화면을 내야 하고, 그 차이를 테스트가 갈라 볼 수
+    있어야 한다. 기존 스위트는 이 픽스처를 쓰지 않으므로 직원 없는 렌더 경로가 그대로 남는다.
+    """
+    return copy.deepcopy(FAKE_EMPLOY)
 
 
 @pytest.fixture
