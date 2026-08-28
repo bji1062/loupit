@@ -88,5 +88,6 @@
 | 82 | 스펙이 요구한 고지문이 스펙이 금지한 어휘를 담고 있다 — 가드는 문장 단위 예외로만 뚫어라 | PITFALLS/0082-mandated-notice-contains-forbidden-word.md |
 | 83 | "익명 GET" 이라도 응답에 회원 필드가 있으면 credentials:'omit' 으로 부르면 안 된다 | PITFALLS/0083-optional-session-get-needs-credentials-include.md |
 | 84 | 부분 실행에서 파일 순서를 바꾸면 남의 세션 픽스처 잔존행이 내 변경 탓으로 보인다 | PITFALLS/0084-partial-test-order-hides-cross-file-seed-coupling.md |
+| 85 | 강조하려고 올린 그룹이 자기 칸들을 덮는다 | PITFALLS/0085-hot-group-zindex-covers-its-own-tiles.md |
 
 **번호 대기(_incoming): 0건**
