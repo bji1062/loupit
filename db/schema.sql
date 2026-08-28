@@ -532,3 +532,45 @@ CREATE TABLE IF NOT EXISTS TCORP_FINANCE (
   UNIQUE KEY uq_corp_fin (CORP_CODE, BSNS_YEAR, FS_DIV_CD, ACCT_ID),
   INDEX idx_corp_fin_lookup (CORP_CODE, BSNS_YEAR)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인별 연도별 재무 (DART 공시 — 법인 단위 1벌, 연결/별도 공존)';
+
+-- ─────────────────────────────────────────────────────────────────────
+-- TCORP_EMPLOY — 법인별·연도별 직원 현황 (SPEC/17 SP-MET-4)
+-- 재무와 같은 이유로 **법인(TCORP)에 매단다** — CJ ENM 두 페이지가 인원을 두 벌 갖지 않도록.
+--
+-- **원문을 그대로 남긴다.** DART 직원현황(empSttus)은 부문(fo_bbm)×성별(sexdstn)로 쪼개져
+-- 오고, 회사 단위 값은 인원 가중평균으로 **우리가 계산**한다(SP-MET-8). 정규화 규칙이 바뀌면
+-- 재수집 없이 재계산할 수 있어야 하므로 `RAW_*` 원문 컬럼을 함께 저장한다 —
+-- 근속 표기는 5종(`11.70`·`92개월`·`13년 6월`·`6년 4개월`·`-`)이고 급여 단위는 **같은 회사가
+-- 해마다 바뀐다**(CJ ENM: 2018 원 → 2019 백만원 → 2020 원, 실측). 정규화값만 남기면 그 판단이
+-- 틀렸을 때 되돌릴 근거가 사라진다.
+--
+-- ⚠ **합계행이 함께 온다**(SP-MET-5). 7사가 부문행과 합계행을 같이 내며, 전부 더하면
+--    삼성전자가 128,881 → 257,762 명이 된다. 판정 결과를 `TOTAL_ROW_YN` 에 **저장**하는 이유는
+--    집계 때마다 문자열을 다시 판정하면 규칙이 갈라지기 때문이다(배지 함정과 같은 종류).
+--
+-- ⚠ **성별은 저장하되 표시하지 않는다**(사용자 결정 2026-08-28). 가중평균의 분모로만 쓴다.
+--
+-- ⚠ NULL 은 0 이 아니다 — `TENURE_YEAR`/`AVG_SALARY_AMT` 의 NULL 은 "파싱 실패·타당 범위 밖"
+--    이라는 뜻이고, 0 으로 채우면 평균연봉 0원이 사실인 것처럼 화면에 나간다.
+-- ─────────────────────────────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS TCORP_EMPLOY (
+  EMPLOY_ID      INT AUTO_INCREMENT PRIMARY KEY COMMENT '직원 현황 PK',
+  CORP_CODE      CHAR(8)      NOT NULL COMMENT '법인 FK (TCORP.CORP_CODE)',
+  BSNS_YEAR      SMALLINT     NOT NULL COMMENT '사업연도',
+  SEGMENT_NM     VARCHAR(200) NOT NULL COMMENT '사업부문 원문 (fo_bbm). 합계행이면 "성별합계" 등',
+  SEX_CD         VARCHAR(10)  NOT NULL COMMENT '성별 원문 (sexdstn). 표시하지 않는다 — 집계에만 쓴다',
+  TOTAL_ROW_YN   BOOLEAN      NOT NULL DEFAULT FALSE COMMENT '합계행 판정 결과(SP-MET-5). 부문행과 함께 오면 이 행만 센다',
+  HEADCNT        INT          DEFAULT NULL COMMENT '인원 (sm)',
+  TENURE_YEAR    DECIMAL(5,2) DEFAULT NULL COMMENT '평균 근속(년, 정규화). NULL=파싱 실패 — 0 이 아니다',
+  AVG_SALARY_AMT BIGINT       DEFAULT NULL COMMENT '1인평균급여(원, 단위 정규화 후). 타당 범위 밖이면 NULL',
+  RAW_TENURE_NM  VARCHAR(50)  DEFAULT NULL COMMENT '근속 원문 — "92개월"·"13년 6월" 등. 재정규화 근거',
+  RAW_SALARY_NM  VARCHAR(50)  DEFAULT NULL COMMENT '급여 원문 — 단위가 연도마다 바뀐다(SP-MET-6)',
+  RCEPT_NO       VARCHAR(20)  DEFAULT NULL COMMENT '공시 접수번호',
+  INS_ID  INT COMMENT '입력자 ID',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',
+  MOD_ID  INT COMMENT '수정자 ID',
+  MOD_DTM TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '수정 일시',
+  UNIQUE KEY uq_corp_employ (CORP_CODE, BSNS_YEAR, SEGMENT_NM, SEX_CD),
+  INDEX idx_corp_employ_lookup (CORP_CODE, BSNS_YEAR),
+  FOREIGN KEY (CORP_CODE) REFERENCES TCORP(CORP_CODE) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인별 연도별 직원 현황 (DART 사업보고서 — 부문×성별 원문 1벌)';
