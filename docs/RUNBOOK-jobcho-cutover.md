@@ -125,6 +125,31 @@ BASE=https://jobcho.wiki bash infra/deploy/smoke.sh   # SMOKE PASS 확인
 
 ## 4. 검색엔진 등록 (색인 기반 만들기)
 
+### IndexNow · sitemap lastmod (2026-08-29)
+
+**무엇**: 빌드가 (1) 사이트맵 `lastmod` 를 **내용이 실제로 바뀐 URL 에만** 갱신하고 (2) 바뀐 URL 을
+IndexNow(`api.indexnow.org` → 빙·네이버 서치어드바이저·얀덱스)로 즉시 통보한다. 구글은 IndexNow 를
+받지 않는다 — 구글 쪽은 Search Console 색인 요청과 외부 링크가 움직인다.
+
+**왜**: Search Console 실측(2026-08-29) — 사이트맵 111 URL 발견 · "발견됨-미색인" 다수 · 28일 노출 5.
+nginx 로그 15일: 진짜 Googlebot 18건(회사 페이지 1), 네이버 Yeti 는 매일 회사 페이지 3~9개 크롤 +
+검색 유입 21건. 그리고 우리 사이트맵은 매 빌드 113 URL 전부에 오늘을 찍고 있었다(구글이 날짜를
+무시하게 만드는 패턴).
+
+**운영**
+- 키: `server/.env` 의 `INDEXNOW_KEY`(공개값 — `/indexnow-key.txt` 로 노출된다). 없으면 키 파일도
+  통보도 없다. 회전: 값을 바꾸고 다시 빌드하면 된다(nginx 는 경로 고정이라 무관).
+- nginx: `location = /indexnow-key.txt` (loupit.conf). 저장소 conf 를 `/etc/nginx/sites-available/`
+  로 복사 → `sudo nginx -t && sudo systemctl reload nginx`. **release.sh 는 conf 를 복사하지 않는다.**
+- 통보 게이트 3조건: 키 있음 · `--no-indexnow` 아님 · `--out` 이 서빙 dist(`web/dist`). 스크래치 빌드는
+  절대 통보하지 않는다(라이브의 옛 내용을 가져가게 만든다).
+- 빌드 stderr 에 항상 두 줄이 찍힌다: `sitemap N URL 중 내용이 바뀐 것 M개` · `IndexNow — M개 URL 통보,
+  HTTP 202`(또는 `바뀐 URL 0개, 통보 생략` / `실패 — …`). **실패해도 빌드는 성공한다** — 통보만 안 된 것.
+- 첫 배포(2026-08-29 13:20 UTC): 113 URL 통보 HTTP 202, 2초 뒤 빙 봇(40.77.167.x)이 키 파일 확인.
+- ⚠ 수동 빌드 시 env 를 source 해야 키가 잡힌다: `set -a; . server/.env; set +a; python3 -m generator.build --out web/dist`.
+  안 하면 키 없음 → 키 파일 **없이** 빌드돼 라이브에서 `/indexnow-key.txt` 가 404 가 된다(release.sh 는 source 한다).
+- `.manifest.json` 의 `urls` 가 "직전 빌드의 지문·날짜"다. 이 파일이 사라지면 다음 빌드는 전부 오늘을 찍는다(한 번).
+
 ### Google Search Console — https://search.google.com/search-console
 
 1. "속성 추가" → **도메인** 속성으로 `jobcho.wiki` 입력

@@ -23,7 +23,8 @@ from generator.config import CFG
 from generator.context import build_context
 from generator.pages import combo, company, company_index, heatmap, policy
 from generator.pages import sitemap as sitemap_page
-from generator.release import stage_and_swap, write_manifest
+from generator import indexnow
+from generator.release import lastmod_index, stage_and_swap, write_manifest
 from generator.render import make_env
 
 
@@ -41,11 +42,23 @@ def run(
     only: list[str] | None = None,
     lastmod: str | None = None,
     gzip: bool = True,
+    notify: bool = True,
+    indexnow_opener=None,
 ) -> int:
-    """번들 → 렌더(회사·조합·정책·404) → sitemap/robots → 검증·원자 스왑.
+    """번들 → 렌더(회사·조합·정책·404) → sitemap/robots → 검증·원자 스왑 → (바뀐 URL 통보).
 
     성공 시 0 반환. 실패(렌더/검증/스왑)는 `BuildError` 등 예외로 전파되며
     `{out_dir}`는 변경되지 않는다(`main()`이 비0 종료코드로 표면화).
+
+    `lastmod` 는 **바뀐 페이지에 찍을 날짜**(기본 오늘)다. 안 바뀐 페이지는 직전 매니페스트의
+    날짜를 그대로 받는다(`release.lastmod_index`) — 전 URL 에 오늘을 찍던 사이트맵은 구글이
+    날짜를 무시하게 만들었다(2026-08-29).
+
+    IndexNow 통보(`generator/indexnow.py`)는 세 조건이 **모두** 참일 때만 나간다:
+      ① `CFG.indexnow_key` 가 있다 ② `notify` 가 True 다 ③ `out_dir` 이 서빙 dist(`CFG.out_dir`)다.
+    ③ 이 있는 이유: 테스트·CI·스크래치 빌드는 라이브가 아니다. 거기서 통보하면 검색엔진이 가져갈
+    URL 은 라이브의 **옛** 내용이고, 키 파일도 라이브에 없어 403 만 쌓인다. `indexnow_opener` 는
+    테스트 주입점이다.
     """
     env = make_env()
     ctx = build_context(bundle, finance=finance, employ=employ)  # 인덱스·slug 충돌 검증(BuildError, SP-GEN-3)
@@ -61,15 +74,44 @@ def run(
     if only:  # 개발용 경로 접두 필터
         pages = [p for p in pages if any(p.path.startswith(o) for o in only)]
     resolved_lastmod = lastmod or _today_iso()
-    site_urls = [p.url for p in pages if p.in_sitemap] + [
-        CFG.site_origin + path for path in CFG.extra_sitemap_paths
-    ]
-    pages.append(sitemap_page.render_sitemap(env, site_urls, resolved_lastmod, CFG))
+    # 비-생성 URL(대문·커뮤니티 허브)은 SPA 셸 파일이 원본이다. dist 의 형제 디렉터리(web/)에서
+    # 찾고, 없으면(테스트·다른 out_dir) 날짜를 지어내지 않고 오늘로 둔다(`lastmod_index`).
+    extra_sources = {
+        CFG.site_origin + path: _extra_source(out_dir, path) for path in CFG.extra_sitemap_paths
+    }
+    index = lastmod_index(out_dir, pages, extra_sources, resolved_lastmod)
+    site_urls = [p.url for p in pages if p.in_sitemap] + list(extra_sources)
+    pages.append(sitemap_page.render_sitemap(env, site_urls, index, CFG))
     pages.append(sitemap_page.render_robots(CFG))
     pages.append(sitemap_page.render_ads_txt(CFG))  # /ads.txt (AdSense, 2026-07-21)
+    key_page = sitemap_page.render_indexnow_key(CFG)  # 키가 있을 때만 (IndexNow, 2026-08-29)
+    if key_page:
+        pages.append(key_page)
     manifest = stage_and_swap(out_dir, pages, incremental=incremental, gzip=gzip)
-    write_manifest(out_dir, manifest)
+    write_manifest(out_dir, manifest, urls=index)
+    changed = sum(1 for v in index.values() if v["changed"])
+    print(f"generator build: sitemap {len(index)} URL 중 내용이 바뀐 것 {changed}개 → lastmod {resolved_lastmod}", file=sys.stderr)
+    if key_page and notify and _is_serving_dist(out_dir):
+        # 스왑 **뒤**다 — 엔진이 keyLocation 을 읽을 수 있어야 하고, 가져갈 내용이 새것이어야 한다.
+        indexnow.notify_changed(index, site_origin=CFG.site_origin, key=CFG.indexnow_key.strip(),
+                                key_path=sitemap_page.INDEXNOW_KEY_PATH,
+                                **({"opener": indexnow_opener} if indexnow_opener else {}))
     return 0
+
+
+def _is_serving_dist(out_dir: str) -> bool:
+    """이 빌드가 **라이브 서빙 dist** 를 겨냥하는가 — IndexNow 통보 게이트(위 `run` 주석 ③)."""
+    return os.path.normpath(os.path.abspath(out_dir)) == os.path.normpath(os.path.abspath(CFG.out_dir))
+
+
+def _extra_source(out_dir: str, path: str) -> str | None:
+    """sitemap 의 비-생성 URL 경로 → SPA 셸 원본 파일. `/` → web/index.html, `/community/` →
+    web/community/index.html. dist 의 부모(web/)를 기준으로 찾는다 — 있으면 그 파일의 지문으로
+    "바뀌었는지"를 판정하고, 없으면 None(= 오늘)."""
+    base = os.path.dirname(os.path.abspath(out_dir))
+    rel = path.strip("/")
+    cand = os.path.join(base, rel, "index.html") if not rel or path.endswith("/") else os.path.join(base, rel + ".html")
+    return cand if os.path.isfile(cand) else None
 
 
 def _reject_only_prod_swap(out: str, only, force: bool) -> str | None:
@@ -109,7 +151,10 @@ def main(argv=None) -> int:
         action="store_true",
         help="--only 를 프로덕션 out(web/dist)으로 스왑하는 것을 명시 허용(위험, 발견 #9)",
     )
-    ap.add_argument("--lastmod", help="기본 = 오늘(로컬 date)")
+    ap.add_argument("--lastmod", help="바뀐 페이지에 찍을 날짜(기본 = 오늘). 안 바뀐 페이지는 직전 날짜 유지")
+    ap.add_argument("--no-indexnow", dest="notify", action="store_false",
+                    help="IndexNow 통보 생략(라이브 dist 로 빌드하되 검색엔진에는 알리지 않을 때)")
+    ap.set_defaults(notify=True)
     ap.add_argument("--no-gzip", dest="gzip", action="store_false")
     ap.set_defaults(gzip=True)
     a = ap.parse_args(argv)
@@ -152,6 +197,7 @@ def main(argv=None) -> int:
             only=a.only,
             lastmod=lastmod,
             gzip=a.gzip,
+            notify=a.notify,
         )
     except Exception as exc:  # noqa: BLE001 — CLI 표면: 실패 시 비0 종료, 이전 산출물 유지(SP-ARCH-9)
         print(f"generator build failed: {exc}", file=sys.stderr)

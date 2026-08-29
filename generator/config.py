@@ -82,6 +82,11 @@ class GenConfig:
     )  # AdSense 게시자 ID(공개값). 용도: render_ads_txt의 pub-id 소스(2026-07-21 발급).
     #   ※ 런타임 광고 로더의 client id는 web/assets/js/adsConfig.js AD_CLIENT가 별도 소유
     #     (SPA·정적 공용, static-ads.js→ads.js 경로). 이 config는 정적 ads.txt 생성 전용.
+    # IndexNow 키(2026-08-29). 빙·네이버 서치어드바이저 등에 "이 URL 이 바뀌었다"를 **우리가 먼저**
+    # 통보하는 규격이다(구글은 안 받는다). 키는 사이트에 공개되는 값이라 시크릿이 아니지만, env 로
+    # 두는 이유는 회전 때 코드를 안 건드리기 위해서다. 비어 있으면 키 파일도 통보도 없다 —
+    # 테스트·CI 가 실 검색엔진을 두드리지 않는 경계다(`build.run` 은 out_dir 도 함께 본다).
+    indexnow_key: str = os.environ.get("INDEXNOW_KEY", "")
     compare_path: str = "/compare"  # CTA 진입 경로(SP-FE 셸)
     site_name: str = "jobcho.wiki"
     lang: str = "ko"

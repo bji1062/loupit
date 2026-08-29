@@ -2,12 +2,14 @@
 {#- generator/templates/sitemap.xml — 전 URL(회사+조합+정책+랜딩) sitemap (SP-GEN-9, NFR9).
     ⚠ 이 파일은 .gitignore 의 `sitemap.xml`(생성물 무시 패턴)에 잡혀 커밋에서 빠진 채
     서버 디스크에만 존재해 왔다(fresh clone·CI 에서 TemplateNotFound 로 13개 테스트 실패).
-    .gitignore 에 `!generator/templates/sitemap.xml` 예외를 함께 추가해 복원했다. -#}
+    .gitignore 에 `!generator/templates/sitemap.xml` 예외를 함께 추가해 복원했다.
+    `lastmods[url]` 은 URL 마다 **내용이 실제로 바뀐 날**이다(release.lastmod_index). 전부 같은
+    날짜를 찍던 구 판본은 구글이 날짜를 무시하게 만들었다(2026-08-29). -#}
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 {%- for url in urls %}
   <url>
     <loc>{{ url }}</loc>
-    <lastmod>{{ lastmod }}</lastmod>
+    <lastmod>{{ lastmods[url] }}</lastmod>
   </url>
 {%- endfor %}
 </urlset>
