@@ -5,10 +5,24 @@ from generator.config import CFG
 from generator.context import Page
 
 
-def render_sitemap(env, urls: list[str], lastmod: str, cfg=CFG) -> Page:
-    """전 URL(회사+조합+정책+랜딩) → sitemap.xml (NFR9). 중복 URL 0."""
+def render_sitemap(env, urls: list[str], lastmod, cfg=CFG) -> Page:
+    """전 URL(회사+조합+정책+랜딩) → sitemap.xml (NFR9). 중복 URL 0.
+
+    `lastmod` 는 **URL 별 dict**(`release.lastmod_index` 결과)이거나, 하위 호환으로 문자열 하나다
+    (문자열이면 전 URL 에 같은 날짜 — 테스트·수동 빌드용). 빌드 경로는 항상 dict 를 넘긴다:
+    전 URL 에 오늘을 찍는 사이트맵은 구글이 날짜를 무시하게 만든다(`lastmod_index` 주석).
+    dict 에 없는 URL 은 그리지 않고 **즉시 실패**한다 — 날짜 없는 URL 을 조용히 빼면 사이트맵에서
+    페이지가 사라지고, 아무도 모른다.
+    """
     seen = sorted(set(urls))
-    xml = env.get_template("sitemap.xml").render(urls=seen, lastmod=lastmod)
+    if isinstance(lastmod, str):
+        dates = {u: lastmod for u in seen}
+    else:
+        missing = [u for u in seen if u not in lastmod or not lastmod[u].get("lastmod")]
+        if missing:
+            raise ValueError(f"sitemap: lastmod 가 없는 URL {len(missing)}개 — {missing[:3]}")
+        dates = {u: lastmod[u]["lastmod"] for u in seen}
+    xml = env.get_template("sitemap.xml").render(urls=seen, lastmods=dates)
     return Page(
         path="sitemap.xml",
         url=f"{cfg.site_origin}/sitemap.xml",
@@ -17,6 +31,29 @@ def render_sitemap(env, urls: list[str], lastmod: str, cfg=CFG) -> Page:
         description="",
         in_sitemap=False,
         content_type="application/xml; charset=utf-8",
+    )
+
+
+# IndexNow 키 파일 경로. 키 자체는 env(`INDEXNOW_KEY`)에서 오고 **공개값**이다 — 이 파일을
+# 검색엔진이 직접 읽어 "이 호스트의 주인이 보낸 통보"임을 확인한다. 경로를 고정하는 이유:
+# nginx 가 `location = /indexnow-key.txt` 로 dist 에서 서빙해야 하는데, 키를 파일명에 넣으면
+# 키를 바꿀 때마다 nginx 설정도 바뀌어야 한다. IndexNow 는 `keyLocation` 으로 아무 경로나 허용한다.
+INDEXNOW_KEY_PATH = "indexnow-key.txt"
+
+
+def render_indexnow_key(cfg=CFG) -> Page | None:
+    """`/indexnow-key.txt` — 키가 설정돼 있을 때만 만든다(없으면 None = 페이지 없음, 통보도 없음)."""
+    key = (cfg.indexnow_key or "").strip()
+    if not key:
+        return None
+    return Page(
+        path=INDEXNOW_KEY_PATH,
+        url=f"{cfg.site_origin}/{INDEXNOW_KEY_PATH}",
+        html=key + "\n",
+        title="",
+        description="",
+        in_sitemap=False,
+        content_type="text/plain; charset=utf-8",
     )
 
 
