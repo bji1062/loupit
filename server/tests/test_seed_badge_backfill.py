@@ -170,6 +170,8 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # CJ 계열(2026-07-30, 7) — 근거는 전부 CJ 소유 도메인
         "cj_enm_ent", "cj_enm_com", "cj_freshway", "cj_oliveyoung",
         "cj_logistics", "cj_cheiljedang", "cj_cgv",
+        # 에이전트 재수집 파일럿(2026-08-31, 2) — 자사 공식 채용/복지 페이지 URL
+        "celltrion", "isens",
     }
     rows = _rows(
         seeded_db,
