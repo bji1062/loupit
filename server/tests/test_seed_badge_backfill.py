@@ -172,6 +172,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "cj_logistics", "cj_cheiljedang", "cj_cgv",
         # 에이전트 재수집 파일럿(2026-08-31, 2) — 자사 공식 채용/복지 페이지 URL
         "celltrion", "isens",
+        # 에이전트 재수집 배치 1(2026-08-31, 7) — 자사 공식 채용/복지 페이지 URL
+        "alteogen", "eugenetech", "mcnex", "enchem",
+        "samsung_card", "silicon2", "samchundang",
     }
     rows = _rows(
         seeded_db,

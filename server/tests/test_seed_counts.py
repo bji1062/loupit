@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 102
 
 
-# ── SD-4: 복지 총행 1487(=1330-모비스13+CJ계열148+파일럿재수집+22), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 1553(=1330-모비스13+CJ계열148+파일럿22+배치1 66), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -46,9 +46,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
           + 에이전트 재수집 파일럿 +22행(2026-08-31) = 1487
           셀트리온 22→20(근거 없는 8행 제외·신규 6행) · 아이센스 5→29(구본=자회사 오염 전면 교체)
           — handoff/2026-08-31-복지-에이전트수집-파일럿.md
+          + 에이전트 재수집 배치 1 +66행(2026-08-31) = 1553
+          알테오젠 3→12 · 유진테크 4→12 · 엠씨넥스 5→14 · 엔켐 6→16 · 삼성카드 7→23(구본=에코비트
+          오염) · 실리콘투 6→20 · 삼천당제약 7→7 — 리메드·오스코텍·리노공업은 공식 소스 부재로
+          무변경. handoff/2026-08-31-복지-배치1.md
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 1487, f"복지 총행 불일치: {count} (기대 1487 = 1317 + CJ계열 148 + 파일럿 22)"
+    assert count == 1553, f"복지 총행 불일치: {count} (기대 1553 = 1317 + CJ계열 148 + 파일럿 22 + 배치1 66)"
     assert count >= 1200
 
 
