@@ -308,35 +308,13 @@ export function bindReportNav(state, deps) {
   });
 }
 
-// ── GNB 헤더 검색(나무위키식 상단 바) — 제출 → 회사 복지 페이지 직행 ──────────
-// deps.showCompany(term)가 정본(app.js showCompanyPage 연결, 2026-07-16).
-// 훅 부재 시 구 동작(A 슬롯 주입) 폴백 — 하위호환.
-export function bindHeaderSearch(state, deps) {
-  const form = qs('.gnb-search');
-  if (!form) return;
-  form.addEventListener('submit', (e) => {
-    if (e && typeof e.preventDefault === 'function') e.preventDefault(); // 페이지 리로드 방지
-    const q = form.querySelector('input[type="search"]');
-    if (!q) return;
-    const term = String(q.value || '').trim();
-    if (!term) return; // 빈 검색어 → 무해 no-op
-    if (typeof deps.showCompany === 'function') { deps.showCompany(term); return; } // 복지 페이지 직행
-    // 폴백: A 슬롯 주입 + 검색 뷰(구 동작)
-    const target = byId('search-input-a');
-    if (!target) return;
-    if (typeof deps.go === 'function') deps.go('search');
-    target.value = term;
-    const win = (target.ownerDocument && target.ownerDocument.defaultView)
-      || (typeof window !== 'undefined' ? window : null);
-    const EventCtor = (win && typeof win.Event === 'function') ? win.Event
-      : (typeof Event === 'function' ? Event : null);
-    if (EventCtor) target.dispatchEvent(new EventCtor('input', { bubbles: true }));
-    if (typeof target.focus === 'function') target.focus();
-    if (typeof target.scrollIntoView === 'function') target.scrollIntoView({ block: 'center' });
-  });
-}
+// ── GNB 헤더 검색 — 은퇴(2026-09-01) ────────────────────────────────────────
+// 랜딩·비교 셸에만 `.gnb-search` 가 있어 상단이 페이지마다 달라 보였다(사용자 신고).
+// 같은 기능은 본문 A/B 슬롯 검색(#search-input-a·b)에 그대로 있고, 생성 페이지·커뮤니티는
+// 이 모듈을 싣지 않아 폼을 넣으면 죽은 UI 가 된다 — 그래서 폼과 배선을 함께 걷어냈다.
+// 되살리려면 **모든** 헤더에 폼을 넣고 ui.js 없는 페이지의 제출 처리부터 정해라
+// (generator/tests/test_header_markup.py 가 부활을 막고 있다 — 그 테스트도 함께 고칠 것).
 
-// ── 부팅 재시도 ──────────────────────────────────────────────────────────────
 export function bindBootRetry(state, deps) {
   const btn = byId('btn-boot-retry');
   if (!btn || typeof deps.reboot !== 'function') return;
@@ -353,7 +331,6 @@ export function mountUI(state, deps = {}) {
   bindInputView(state, deps);
   bindReportNav(state, deps);
   bindBootRetry(state, deps);
-  bindHeaderSearch(state, deps);
   // 프리필·초안으로 이미 슬롯이 채워졌다면 입력 뷰 컨트롤을 렌더한다.
   // chosenType 도 보는 이유(2026-07-31): 직접 입력 모드는 matched 가 null 이라 회사 조건만
   // 보면 초안 복원 후 입력 뷰가 비어 보인다(hasSlotState 는 이미 chosenType 을 센다 — 두 판정이

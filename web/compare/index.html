@@ -31,11 +31,7 @@
     <a href="/community/" class="gnb-link">커뮤니티</a>
     <a href="/companies" class="gnb-link">회사정보</a>
     <a href="/heatmap" class="gnb-link">히트맵</a>
-    <a href="#trending" class="gnb-link">비교 조합</a><!-- 위젯이 두 모드를 오가므로 중립 문구(2026-07-31) -->
-    <form class="gnb-search" role="search" aria-label="회사 검색"> <!-- 제출 → A 슬롯 주입(ui.js bindHeaderSearch) -->
-      <input type="search" placeholder="회사명으로 복지 찾기" aria-label="회사명으로 복지 찾기" autocomplete="off">
-      <button type="submit" aria-label="검색">→</button>
-    </form>
+    <!-- GNB 검색 폼 제거(2026-09-01) — 상단 고정. 사유는 web/index.html 참조 -->
     <!-- 로그인 진입점 슬롯(SC14). 기본 hidden — authnav.js 가 /members/me 프로브로 채운다:
          404=M9 꺼짐(숨김 유지·현재 prod) / 401="로그인" / 200=닉네임→/mypage.
          정적 렌더가 아닌 이유: 생성물(web/dist)을 prod·beta 가 공유해 빌드 분기가 불가능하고,
