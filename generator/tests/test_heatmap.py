@@ -125,7 +125,9 @@ def test_page_route_seo_and_nav():
     assert p.path == "heatmap.html" and p.url == f"{CFG.site_origin}/heatmap" and p.in_sitemap
     assert p.title.endswith(CFG.site_name) and p.description
     assert f'<link rel="canonical" href="{CFG.site_origin}/heatmap">' in p.html
-    assert 'href="/heatmap" aria-current="page"' in p.html
+    # 속성 순서·개수에 기대지 않는다 — 헤더 마크업이 바뀌어도(2026-09-01 gnb 통일에서 실제로
+    # `class="gnb-link"` 이 끼어들었다) 이 검사가 지키려는 것은 "히트맵 탭이 현재 탭인가" 하나다.
+    assert re.search(r'<a href="/heatmap"[^>]*aria-current="page"', p.html)
     assert "/assets/v2/css/heatmap.css" in p.html and "/assets/v2/js/heatmap.js" in p.html
     assert "data-page-type" not in p.html  # 광고 0
 

@@ -13,10 +13,15 @@
 {#- page_type: 자식 템플릿이 최상위 {% set page_type = '...' %}로 선언(SP-ADS-3.2 게이팅 값:
     company/combo/policy). 미선언(404 등) → 속성 미방출 = ads.js 'default'(무광고). -#}
 <body{% if page_type is defined and page_type %} data-page-type="{{ page_type }}"{% endif %}>
-<header>
+{#- 수기 셸과 같은 초록 GNB(2026-09-01 통일). `data-global` 이 CSS 분기의 키다 —
+    이 속성이 빠지면 `header:not([data-global])` 쪽 규칙이 걸려 옛 텍스트 헤더 레이아웃으로 돌아간다. -#}
+<header data-global class="gnb">
 {% include "partials/_header.html" %}
 </header>
-<main>
+{#- skip-link(`#main-heading`) 대상. 수기 셸은 h1 에 이 id 를 달지만 생성 템플릿은 h1 이 6곳에
+    흩어져 있어 랜드마크에 단다 — 앵커 문자열이 같으므로 동작은 동일하고, `tabindex="-1"` 덕에
+    스크롤만이 아니라 포커스까지 실제로 옮겨간다(WCAG 2.4.1). -#}
+<main id="main-heading" tabindex="-1">
 {% block main %}{% endblock %}
 </main>
 <footer>
