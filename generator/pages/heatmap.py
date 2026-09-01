@@ -224,7 +224,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
     실적은 미적재면 빠진다."""
     sectors = load_sectors() if sectors is None else sectors
     wi = _welfare_items(ctx, sectors)
-    modes = [{"key": "w", "label": "복지", "hint": "크기 항목 수 · 색 금액 합계", "legend_kind": "steps",
+    modes = [{"key": "w", "label": "복지", "hint": "크기=항목 수, 색=금액 합계", "legend_kind": "steps",
               "legend": "금액 합계(만원, 7분위)", "lo": "적음", "hi": "많음",
               "note": "정성 복지(금액 없음)는 크기에만 반영", "steps": [f"c{i}" for i in range(7)],
               "panels": [{"key": "all", "label": "복지", "count": len(wi),
@@ -234,7 +234,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
         fi = _finance_items(ctx, sectors)
         if fi:
             year = max(i["year"] for i in fi)
-            modes.append({"key": "f", "label": "실적", "hint": "크기 매출 · 색 영업이익 전년 대비", "legend_kind": "steps",
+            modes.append({"key": "f", "label": "실적", "hint": "크기=매출, 색=영업이익 증감", "legend_kind": "steps",
                           "legend": f"{year} 영업이익 전년 대비", "lo": "−30%↓", "hi": "+30%↑",
                           "note": f"회색 = ±3% 이내 · 금융업·공시 없는 {len(ctx.companies) - len(fi)}곳 제외",
                           "steps": [f"d{i}" for i in range(7)],
@@ -243,7 +243,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
                           "count": len(fi)})
     cp = _category_panels(ctx)
     if cp:
-        modes.append({"key": "c", "label": "카테고리", "hint": "항목 묶음 안에서 회사 비교 · 색 출처", "legend_kind": "source",
+        modes.append({"key": "c", "label": "카테고리", "hint": "항목 하나씩 회사 비교", "legend_kind": "source",
                       "legend": "칸 크기 = 금액 · 색 = 출처", "lo": "", "hi": "",
                       "note": "추정·정성 칸은 재직 인증 후 회사 페이지에서 수정할 수 있어요",
                       "steps": ["s-stated", "s-est", "s-qual"], "panels": cp,
