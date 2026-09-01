@@ -99,25 +99,44 @@ def test_old_text_header_is_gone_everywhere(fake_bundle, fake_now, fake_combinat
         assert "site-logo" not in html, f"{name}: 옛 텍스트 헤더(.site-logo)가 남아 있다"
 
 
-# ── (4) 탭 뒤 구성 ──────────────────────────────────────────────────────────
+# ── (4) 상단 고정: 정규화하면 한 글자도 다르지 않다 ────────────────────────
 
 
-def test_trailing_links_are_identical(fake_bundle, fake_now, fake_combinations_path):
-    """탭 다음에 오는 것도 같아야 한다 — '비교 조합'(랜딩 레일 앵커) + 로그인 슬롯.
+def _normalized_header(html: str) -> str:
+    """헤더에서 주석·공백·현재 탭 표시를 걷어낸 뼈대. 이게 페이지마다 같아야 '상단 고정'이다."""
+    m = re.search(r"<header.*?</header>", html, re.S | re.I)
+    assert m, "header 랜드마크 없음"
+    s = re.sub(r"<!--.*?-->", "", m.group(0), flags=re.S)  # 주석은 화면에 없다
+    s = s.replace(' aria-current="page"', "")              # 현재 탭 표시만 페이지마다 다른 게 정상
+    s = re.sub(r"\s+", " ", s)
+    return re.sub(r">\s*<", "><", s).strip()
 
-    생성 페이지는 `/#trending`, 랜딩 자신은 같은 문서 안이라 `#trending` 이다(둘 다 같은 곳).
+
+def test_navigable_headers_are_identical(fake_bundle, fake_now, fake_combinations_path):
+    """**사용자 요구의 본체다**: 상단 메뉴로 오가는 동안 헤더가 흔들리지 않는다.
+
+    앞선 1차 수정(마크업 통일) 뒤에도 랜딩·비교에만 `.gnb-search` 가 남아 상단이 달랐다 —
+    항목 몇 개를 따로 세는 검사로는 그런 차이를 못 잡는다. 그래서 뼈대 문자열을 통째로 비교한다.
     """
-    for p in _all_pages(fake_bundle, fake_now):
-        hrefs = [h for h, _, _ in _header_links(p.html)]
-        assert "/#trending" in hrefs, f"{p.path}: '비교 조합' 링크 없음"
-        assert "/compare" not in hrefs and CFG.compare_path not in hrefs, (
-            f"{p.path}: GNB 에 비교하기 링크가 남아 있다 — 수기 셸엔 없어 구성이 갈린다"
-            " (회사 상세는 본문에 비교 CTA 를 이미 갖고 있다)"
-        )
-        assert 'data-authnav' in p.html, f"{p.path}: 로그인 슬롯 없음"
-    for name, html in _shell_htmls(NAV_SHELL_NAMES).items():
-        hrefs = [h for h, _, _ in _header_links(html)]
-        assert any(h in ("#trending", "/#trending") for h in hrefs), f"{name}: '비교 조합' 링크 없음"
+    sources = {p.path: p.html for p in _all_pages(fake_bundle, fake_now)} | _shell_htmls(NAV_SHELL_NAMES)
+    normalized = {name: _normalized_header(html) for name, html in sources.items()}
+    ref_name, ref = next(iter(normalized.items()))
+    for name, got in normalized.items():
+        assert got == ref, f"{name}: 헤더가 {ref_name} 와 다르다\n  {name}: {got}\n  {ref_name}: {ref}"
+
+
+def test_no_search_form_and_no_trending_link_anywhere(fake_bundle, fake_now, fake_combinations_path):
+    """검색 폼(랜딩 전용이라 상단을 흔들었다)과 '비교 조합'(홈 탭과 도착지가 같아 중복)은 은퇴했다.
+
+    되살리려면 **모든** 헤더에 함께 넣어야 하고, ui.js 없는 페이지에서 죽은 폼이 되지 않을
+    방법부터 세워야 한다 — 그 판단을 다시 꺼내 보게 하려고 여기서 막는다.
+    """
+    sources = {p.path: p.html for p in _all_pages(fake_bundle, fake_now)} | _shell_htmls()
+    for name, html in sources.items():
+        head = _normalized_header(html)  # 주석 제거본 — 셸 주석이 사유를 적고 있어 원문으로 보면 오탐
+        assert "gnb-search" not in head, f"{name}: GNB 검색 폼이 되살아났다"
+        assert "trending" not in head, f"{name}: '비교 조합' 링크가 되살아났다"
+        assert "data-authnav" in html or name in AUTH_SHELL_NAMES, f"{name}: 로그인 슬롯 없음"
 
 
 # ── (5) skip-link 는 실재하는 곳을 가리킨다 ──────────────────────────────────
@@ -145,6 +164,6 @@ def test_auth_shells_keep_brand_and_tabs_but_drop_extras():
         assert BRAND_HTML in html, f"{name}: 브랜드 로고가 없다"
         hrefs = [h for h, _, _ in _header_links(html)]
         assert "/companies" in hrefs and "/heatmap" in hrefs, f"{name}: 탭이 빠졌다"
-        assert not any(h in ("#trending", "/#trending") for h in hrefs), (
-            f"{name}: 인증 화면에 '비교 조합' 링크가 생겼다 — 의도 변경이면 이 테스트도 함께 고쳐라"
+        assert "data-authnav" not in html, (
+            f"{name}: 인증 화면에 로그인 슬롯이 생겼다 — 이미 그 흐름 안이라 뺀 것이다"
         )

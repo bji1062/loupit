@@ -16,7 +16,8 @@
    상단 탭 정본은 `generator/content/nav.py::GNB_TABS`(env 전역 `gnb_tabs`) 하나이고,
    `test_gnb_tabs.py` 가 수기 셸과의 동기화를 문자열로 강제한다. `nav_active` 는 페이지가 자기 탭
    href 로 override 한다 — `aria-current` 는 CSS(활성 밑줄)와 스크린리더 양쪽의 정본이다.
-   '비교 조합'은 랜딩의 레일 앵커라 여기서는 절대 경로(`/#trending`)로 건다(커뮤니티 셸과 동일).
+   '비교 조합'(랜딩 레일 앵커)은 2026-09-01 에 **모든 헤더에서 뺐다** — 홈 탭과 도착지가 사실상
+   같아 중복이었고(사용자 지시), 랜딩에만 있던 검색 폼과 함께 상단이 페이지마다 달라 보이게 했다.
    브랜드 문자열은 `cfg.site_name`("jobcho.wiki")과 같되, 가운뎃점만 `.brand-dot` 으로 감싸야 해서
    수기 셸과 **바이트 동일**하게 적는다(test_header_markup.py 가 어긋남을 잡는다). #}
 <a class="skip-link" href="#main-heading">본문 바로가기</a>
@@ -25,6 +26,5 @@
 {% for label, href in gnb_tabs %}
   <a href="{{ href }}" class="gnb-link"{% if nav_active == href %} aria-current="page"{% endif %}>{{ label }}</a>
 {% endfor %}
-  <a href="/#trending" class="gnb-link">비교 조합</a>
   {% include "partials/_authnav.html" %}
 </nav>

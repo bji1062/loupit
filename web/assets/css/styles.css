@@ -161,18 +161,8 @@ header nav a[aria-current="page"] {
   text-decoration-thickness:2px; text-underline-offset:.4em;
 }
 header nav a[aria-current="page"]:hover { text-decoration:underline; }
-/* GNB 검색(우측) — 제출 시 A 슬롯 주입(ui.js bindHeaderSearch) */
-.gnb-search { display:flex; align-items:center; margin-left:auto; background:var(--bg-1); border-radius:var(--r-sm); overflow:hidden; }
-.gnb-search input[type="search"] {
-  width:150px; max-width:38vw; border:0; background:none; color:var(--t1);
-  padding:var(--sp-2) var(--sp-3); font-size:var(--fs-sm); font-family:var(--font-sans);
-}
-.gnb-search input[type="search"]::placeholder { color:var(--t4); }
-.gnb-search button {
-  border:0; background:none; color:var(--brand); cursor:pointer;
-  padding:var(--sp-2) var(--sp-3); font-size:var(--fs-base); font-weight:var(--fw-bold);
-}
-.gnb-search button:hover { color:var(--brand-active); }
+/* GNB 검색은 은퇴했다(2026-09-01) — 상단을 페이지마다 다르게 만든 유일한 조각이었다.
+   되살릴 땐 마크업·ui.js 배선과 함께 이 자리에 규칙을 다시 놓아라. */
 
 /* 로그인 진입점(SC14) — 두 헤더 모두에서 동작해야 한다: 초록 gnb(검색창 있음)와 생성 페이지의
    단순 헤더. gnb 에서는 `.gnb-search` 가 `margin-left:auto` 로 우측을 잡으므로 그 뒤에 붙어
@@ -192,8 +182,10 @@ header nav a[aria-current="page"]:hover { text-decoration:underline; }
    바로 옆에 붙었다(실측). nav 가 남은 공간을 차지하게 해야 auto 여백이 실제로 동작한다.
    기존 링크는 nav 안에서 여전히 좌측 정렬이므로 레이아웃 회귀는 없다. gnb 는 `.gnb-search` 가
    이미 `margin-left:auto` 로 우측을 잡으므로 이 규칙 대상이 아니다. */
-header:not([data-global]) nav { flex:1 1 auto; }
-header:not([data-global]) .authnav { margin-left:auto; }
+/* 헤더가 한 종류가 되고(2026-09-01) 검색창도 사라져, 로그인 진입점은 어디서나 nav 안에서
+   우측으로 밀린다 — 밀어낼 여백을 만들려면 nav 가 남은 폭을 차지해야 한다. */
+header nav { flex:1 1 auto; }
+header nav .authnav { margin-left:auto; }
 .authnav:hover { color:var(--on-brand); background:rgba(255,255,255,.12); text-decoration:none; }
 .authnav-ico { display:block; flex:0 0 auto; }
 
