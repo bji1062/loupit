@@ -79,6 +79,23 @@ CJ_AFFILIATE_ALIASES: dict[str, list[str]] = {
     "cj_cheiljedang": ["CJ제일제당", "제일제당", "CJ CheilJedang"],
     "cj_cgv": ["CJ CGV", "CGV", "씨지브이", "CJCGV"],
 }
+# 확장 웨이브 1(2026-09-01, 11개사 신규 등록) — 전부 200-seed 에 없어 override 가 필수다
+# (없으면 자기명 하나로 폴백 → 브랜드·구명·영문 검색이 전부 죽는다). 구명 LS산전은 유입 자산.
+# ⚠ '한국앤컴퍼니'(별도 지주 법인)·'국민은행'(자회사 법인)은 넣지 않는다 — 타 법인 오귀속.
+WAVE1_ALIASES: dict[str, list[str]] = {
+    "korea_zinc": ["고려아연", "Korea Zinc", "코리아징크"],
+    "hyundai_enc": ["현대건설", "Hyundai E&C"],
+    "ls_electric": ["LS ELECTRIC", "LS일렉트릭", "엘에스일렉트릭", "LS산전", "LS Electric"],
+    "wonik_ips": ["원익IPS", "원익아이피에스", "WONIK IPS"],
+    "lg_cns": ["LG CNS", "LG씨엔에스", "엘지씨엔에스", "LGCNS"],
+    "landf": ["엘앤에프", "L&F"],
+    "hana_micron": ["하나마이크론", "Hana Micron"],
+    # 심텍: 지주 '심텍홀딩스'는 별도 법인 — 별칭에 넣지 않는다
+    "simmtech": ["심텍", "SIMMTECH"],
+    "hankook_tire": ["한국타이어앤테크놀로지", "한국타이어", "한타", "Hankook Tire"],
+    "kbfg": ["KB금융", "KB금융지주", "KB Financial Group", "KB금융그룹"],
+    "hd_hyundai": ["HD현대", "에이치디현대", "HD Hyundai", "현대중공업지주"],
+}
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -233,6 +250,9 @@ def build_company_meta() -> dict:
     if "hyundai_mobis" in meta:
         meta["hyundai_mobis"]["aliases"] = _dedup(meta["hyundai_mobis"]["aliases"] + ["모비스"])
     for eng, extra_aliases in CJ_AFFILIATE_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE1_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

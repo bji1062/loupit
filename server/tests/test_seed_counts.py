@@ -32,7 +32,7 @@ def test_SD2_benefit_preset_total_count(seeded_db):
 def test_SD3_company_count_is_102(seeded_db):
     """정확 카운트 핀. 회사 추가는 **의도적으로만** 가능해야 한다(시드 유실·중복 조기 발견).
     회사를 늘리거나 줄일 땐 이 값과 SI-8·멱등성 스냅샷을 함께 갱신하라."""
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 102
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 113
 
 
 # ── SD-4: 복지 총행 1553(=1330-모비스13+CJ계열148+파일럿22+배치1 66), 하한 1200 방어 ──
@@ -50,9 +50,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
           알테오젠 3→12 · 유진테크 4→12 · 엠씨넥스 5→14 · 엔켐 6→16 · 삼성카드 7→23(구본=에코비트
           오염) · 실리콘투 6→20 · 삼천당제약 7→7 — 리메드·오스코텍·리노공업은 공식 소스 부재로
           무변경. handoff/2026-08-31-복지-배치1.md
+          + 확장 웨이브 1 신규 11개사 +202행(2026-09-01) = 1755
+          원익IPS 24 · LG CNS 27 · 한국타이어 22 · KB금융 21 · 엘앤에프 20 · HD현대 19 ·
+          심텍 17 · 하나마이크론 14 · 현대건설 14 · LS ELECTRIC 12 · 고려아연 12
+          — handoff/2026-09-01-회사확장-웨이브1.md
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 1553, f"복지 총행 불일치: {count} (기대 1553 = 1317 + CJ계열 148 + 파일럿 22 + 배치1 66)"
+    assert count == 1755, f"복지 총행 불일치: {count} (기대 1755 = 1553 + 웨이브1 202)"
     assert count >= 1200
 
 

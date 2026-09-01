@@ -175,6 +175,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 에이전트 재수집 배치 1(2026-08-31, 7) — 자사 공식 채용/복지 페이지 URL
         "alteogen", "eugenetech", "mcnex", "enchem",
         "samsung_card", "silicon2", "samchundang",
+        # 확장 웨이브 1(2026-09-01, 11) — 신규 등록, 전부 실 URL 헤더
+        "korea_zinc", "hyundai_enc", "ls_electric", "wonik_ips", "lg_cns",
+        "landf", "hana_micron", "simmtech", "hankook_tire", "kbfg", "hd_hyundai",
     }
     rows = _rows(
         seeded_db,

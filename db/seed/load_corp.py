@@ -30,9 +30,11 @@ CSV_PATH = SEED_DIR / "corp_code_map.csv"
 if str(SEED_DIR) not in sys.path:
     sys.path.insert(0, str(SEED_DIR))
 
-# 금융 7사 — 재무제표 양식 자체가 다르다(매출·영업이익 계정 부재, 삼성생명 실측). §3 군 분류.
+# 금융 8사 — 재무제표 양식 자체가 다르다(매출·영업이익 계정 부재, 삼성생명 실측). §3 군 분류.
+# KB금융(금융지주)은 확장 웨이브 1(2026-09-01)에서 추가.
 FINANCIAL_COMPANIES = frozenset({
     "DB손해보험", "NH투자증권", "기업은행", "삼성생명", "삼성카드", "카카오뱅크", "카카오페이",
+    "KB금융",
 })
 
 # note 에 적힌 DART 정식명 — "DART 명 '씨제이올리브네트웍스'" · "DART 'LIG…'" · "DART corp_name 은 'NC'" 꼴.

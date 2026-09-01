@@ -23,14 +23,15 @@ def _strip_scripts(html: str) -> str:
 
 
 def _check_company_count(pages: list[Page]) -> None:
-    """GC-2(Tier-0, INV-6) — 회사 페이지 개수 ≥1, 200 아님."""
+    """GC-2(Tier-0, INV-6) — 회사 페이지 개수 ≥1.
+
+    구판의 `== 200 이면 BuildError`(200-seed 프리셋 일괄 등록 사고 방지)는 2026-09-01
+    회사 확장 개정으로 은퇴했다 — 정상 확장이 200 을 지나는 순간 오폭한다. 그 가드가
+    지키던 실질(복지 없는 회사 페이지 금지)은 DB 층 SD-5(회사별 복지 ≥1)와 페이지 층
+    GC-10(script 제거 후 복지 본문 존재)이 이미 이중으로 강제한다(INV-6 개정판)."""
     company_pages = [p for p in pages if p.path.startswith("company/")]
     if len(company_pages) == 0:
         raise BuildError("GC-2: 회사 페이지 0개(등록 회사 없음)")
-    if len(company_pages) == 200:
-        raise BuildError(
-            "GC-2: 회사 페이지 200개(KOSPI/KOSDAQ 200 목록 오적용 의심, INV-6 위반)"
-        )
 
 
 def _check_non_js_body(pages: list[Page]) -> None:

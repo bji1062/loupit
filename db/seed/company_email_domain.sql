@@ -343,3 +343,22 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- @lottechem.com, 임직원 실계정은 @lotte.net 에 있다(자사 e-Sales 처리방침 게시).
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lotte_chem';
+
+-- ── 확장 웨이브 1 (2026-09-01, 11개사 신규 등록 중 관측 6사) ─────────────────────
+-- 근거: 각사 공식 페이지 실관측(docs/handoff/2026-09-01-evidence/wave1/ 각 evidence).
+-- @rejected: wonik.com — 원익그룹 계열 공용 개연(관측 1건, ips.esg@wonik.com). 단독 등록 시
+--            원익 계열사 추가에서 SED-5(같은 도메인 이중 선언) 충돌 — IN(...) 병합으로만 재검토.
+-- @rejected: hankookn.com — 한국앤컴퍼니 그룹 공용(recruit@hankookn.com). 위와 동일 사유.
+-- 미관측 3사(현대건설·LS ELECTRIC·하나마이크론): 공식 페이지 전수 스캔에서 이메일 0건 — 보류.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'koreazinc.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'korea_zinc';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lgcns.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lg_cns';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kbfg.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kbfg';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'simmtech.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'simmtech';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'landf.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'landf';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hd.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hd_hyundai';
