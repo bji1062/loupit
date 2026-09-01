@@ -106,6 +106,22 @@ def _year_text(i: int, n: int, cx: float, years: list) -> str:
     )
 
 
+def _hover_col(x: float, w: float, year, v, fmt: Callable[[float], str]) -> str:
+    """연도 한 칸을 덮는 투명 히트 렉트 + 네이티브 `<title>` 툴팁 (JS 0, SP-MET-9).
+
+    막대 자체에 title 을 달면 2px 스텁·결측 해는 호버할 곳이 없다 — 그래서 값이 아니라
+    **칸**에 단다(선 그래프도 같은 이유로 점이 아니라 칸이다). `fill="transparent"` 는
+    `none` 과 달리 페인트로 취급되어 포인터를 받고, 화면에는 아무것도 그리지 않으므로
+    새 CSS 클래스가 필요 없다(목록 밖 클래스 금지 규칙). 마지막에 그려 맨 위에 얹는다 —
+    SVG 호버는 최상단 페인트 요소가 받는다. 결측 해는 "값 없음"이라고 **말한다**.
+    """
+    label = f"{escape(str(year), quote=False)}년 " + ("값 없음" if v is None else _label(fmt, v))
+    return (
+        f'<rect x="{_n(x)}" y="0" width="{_n(w)}" height="{H}" fill="transparent">'
+        f"<title>{label}</title></rect>"
+    )
+
+
 def _bar_d(x: float, y: float, w: float, h: float, r: float, up: bool) -> str:
     """막대 하나의 path — **기준선에서 먼 끝만** 둥글다.
 
@@ -167,6 +183,10 @@ def bar_svg(values: list[float | None], years: list[int], fmt: Callable[[float],
                 out.append(f'<text class="yt" x="{_n(cx)}" y="{_n(ly)}" text-anchor="middle">{_label(fmt, v)}</text>')
         if _year_shown(i, n):
             out.append(_year_text(i, n, cx, years))
+    for i, v in enumerate(values):  # 히트 칸은 전부 그린 뒤 맨 위에 — 칸을 이어 붙여 사각지대 0
+        x = i * (slot + gap)
+        w = slot + (gap if i < n - 1 else 0)
+        out.append(_hover_col(x, w, years[i], v, fmt))
     out.append("</svg>")
     return "".join(out)
 
@@ -266,5 +286,9 @@ def line_svg(values: list[float | None], years: list[int], fmt: Callable[[float]
     for i in range(n):
         if _year_shown(i, n):
             out.append(_year_text(i, n, xx(i), years))
+    for i, v in enumerate(values):  # 히트 칸 — 경계는 이웃 점과의 중점(칸을 이어 붙여 사각지대 0)
+        left = PAD_L if i == 0 else (xx(i - 1) + xx(i)) / 2
+        right = float(W) if i == n - 1 else (xx(i) + xx(i + 1)) / 2
+        out.append(_hover_col(left, right - left, years[i], v, fmt))
     out.append("</svg>")
     return "".join(out)

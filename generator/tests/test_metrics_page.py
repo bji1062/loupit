@@ -186,7 +186,10 @@ def test_MET9_svg_never_carries_css_variables_in_presentation_attributes(fake_bu
             continue
         for svg in re.findall(r"<svg.*?</svg>", _section(html), re.S):
             assert "var(--" not in svg
-            assert not re.search(r'\b(fill|stroke|opacity)=', svg), "프레젠테이션 속성은 CSS 소유다"
+            # 유일 허용 예외: 호버 툴팁 히트 칸의 fill="transparent"(2026-09-01, SP-MET-9) —
+            # 색이 아니라 포인터 수신 장치라 이 불변식(테마 색은 CSS 소유)의 취지를 해치지 않는다.
+            stripped = svg.replace('fill="transparent"', "")
+            assert not re.search(r'\b(fill|stroke|opacity)=', stripped), "프레젠테이션 속성은 CSS 소유다"
             assert set(re.findall(r'class="([^"]+)"', svg)) <= allowed
 
 

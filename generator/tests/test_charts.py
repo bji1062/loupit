@@ -268,8 +268,42 @@ def test_no_css_var_in_svg_attributes(fn):
     """
     svg = fn([10, -20, None, 30], [2022, 2023, 2024, 2025], FMT, "u1")
     assert "var(--" not in svg
-    for attr in ("fill=", "stroke=", "opacity=", "style="):
+    # 유일 허용 예외: 히트 칸의 `fill="transparent"` — 색이 아니라 포인터 수신 장치다
+    # (none 은 포인터를 못 받고, 클래스를 새로 만들면 목록 밖 클래스 금지 규칙에 걸린다).
+    for attr in ("stroke=", "opacity=", "style="):
         assert attr not in svg
+    assert svg.count("fill=") == svg.count('fill="transparent"')
+
+
+@pytest.mark.parametrize("fn", [bar_svg, line_svg])
+def test_hover_columns_cover_every_year_with_native_tooltips(fn):
+    """마우스를 대면 숫자가 나온다(SP-MET-9 툴팁) — JS 0 이므로 SVG 네이티브 `<title>` 로.
+
+    값이 아니라 **칸**에 단다: 2px 스텁·결측 해도 호버가 잡혀야 하고, 결측은 "값 없음"이라고
+    말한다. 칸은 이어 붙어 사각지대가 없고, 맨 마지막에 그려져 호버를 받는다(최상단 페인트)."""
+    svg = fn([10, None, 30], [2023, 2024, 2025], FMT, "u1")
+    hit_re = re.compile(
+        rf'<rect x="([\d.]+)" y="0" width="([\d.]+)" height="{H}" fill="transparent">'
+        r"<title>([^<]*)</title></rect>"
+    )
+    hits = list(hit_re.finditer(svg))
+    assert [m.group(3) for m in hits] == ["2023년 10억원", "2024년 값 없음", "2025년 30억원"]
+    body_last = max(svg.rindex('class="bar') if fn is bar_svg else svg.rindex('class="lp'),
+                    svg.rindex('class="yr'))
+    assert svg.index(hits[0].group(0)) > body_last, "히트 칸이 본체보다 먼저 그려지면 호버를 뺏긴다"
+    xs = [float(m.group(1)) for m in hits]
+    ws = [float(m.group(2)) for m in hits]
+    assert xs[0] in (0.0, float(PAD_L))  # 막대는 0, 선은 눈금 자리 뒤부터
+    assert abs(xs[-1] + ws[-1] - W) < 0.11
+    for a in range(len(hits) - 1):
+        assert abs(xs[a] + ws[a] - xs[a + 1]) < 0.11, "칸 사이가 벌어지면 그 자리는 툴팁이 없다"
+
+
+@pytest.mark.parametrize("fn", [bar_svg, line_svg])
+def test_hover_tooltip_escapes_fmt_output(fn):
+    """title 텍스트도 fmt(호출자 코드) 경유라 이스케이프 구간이다."""
+    svg = fn([5], [2025], lambda v: "<b>&x", "u1")
+    assert "<title>2025년 &lt;b&gt;&amp;x</title>" in svg
 
 
 @pytest.mark.parametrize("fn", [bar_svg, line_svg])
