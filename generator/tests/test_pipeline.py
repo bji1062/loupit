@@ -67,16 +67,19 @@ def test_gc2_company_page_count_equals_bundle_company_count(fake_bundle, fake_no
     assert len(pages) == len(fake_bundle["companies"]) == 3
 
 
-def test_gc2_company_count_is_never_200_guard_rejects_it():
-    """INV-6 회귀 — 200개 회사 페이지가 검출되면 빌드 실패해야 한다."""
+def test_gc2_company_count_200_is_allowed_after_expansion_revision():
+    """INV-6 개정(2026-09-01, PLAN-회사확장) — 구판의 `== 200 이면 BuildError` 트랩은 은퇴했다.
+
+    그 가드가 지키던 실질(복지 없는 회사 페이지 금지)은 SD-5(DB, 회사별 복지 ≥1)와
+    GC-10(페이지, script 제거 후 복지 본문 존재)이 이중으로 강제한다. 정상 확장이 200 을
+    지나는 순간 오폭하지 않아야 한다 — 그 회귀를 여기서 고정한다."""
     from generator.context import Page
 
     fake_200_pages = [
         Page(path=f"company/c{i}.html", url=f"https://jobcho.wiki/company/c{i}", html="<h1>x</h1>복지", title="t", description="d")
         for i in range(200)
     ]
-    with pytest.raises(BuildError):
-        _check_company_count(fake_200_pages)
+    _check_company_count(fake_200_pages)  # 예외 없어야 GREEN
 
 
 def test_gc2_zero_company_pages_rejected():
