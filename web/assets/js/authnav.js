@@ -47,8 +47,23 @@ export function navTargetFor(state, nickname) {
   return null; // off·판단보류 → 노출하지 않는다
 }
 
+/**
+ * 회사 페이지 복지 원장의 **편집 진입 링크**(`[data-authnav-edit]`)를 같은 프로브 결과로 연다.
+ *
+ * 헤더 슬롯과 한 함수에 두는 이유: M9 가 켜졌는지 판정하는 자리가 둘이면 언젠가 한쪽만 고쳐진다
+ * (배지 함정과 같은 종류). 링크만 열고 **질문 문장은 건드리지 않는다** — 그 텍스트는 본문이라
+ * JS 와 무관하게 항상 보인다(NFR24).
+ */
+export function applyEditLinks(doc, state) {
+  const on = state === 'anon' || state === 'member';
+  const els = doc?.querySelectorAll?.('[data-authnav-edit]') || [];
+  for (const el of els) el.hidden = !on;
+  return els.length;
+}
+
 /** 슬롯에 반영. doc 을 인자로 받아 jsdom 테스트에서 전역 없이 검증 가능하게 한다. */
 export function applyAuthNav(doc, state, nickname) {
+  applyEditLinks(doc, state);
   const el = doc?.querySelector('[data-authnav]');
   if (!el) return false;
   const target = navTargetFor(state, nickname);

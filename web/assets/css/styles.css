@@ -27,6 +27,9 @@
 
   /* ── 1c) jobcho.wiki 브랜드색(풀잎 연두 + 진초록) + 서피스 ── */
   --grass:#8bc34a; --brand:#2f7d43; --brand-active:#266336; --brand-tint:#e9f4ec;
+  /* 스탯 카드(SP-GEN-5.4) — 레이더 면(반투명이라 눈금 고리가 비쳐야 한다)·앵커 도착 강조.
+     `--brand-tint` 는 불투명이라 면으로 쓰면 고리를 덮는다. */
+  --radar-fill:rgb(47 125 67 / .18); --band-hit:#dcefe2;
   --brand-bar:var(--brand); --on-brand:#ffffff; --on-brand-soft:rgb(255 255 255 / .85);
   --surface-card:#eef0f2; --surface-soft:#f3f5f6;
   --surface-dark:#1d2620; --surface-dark-elevated:#2a352d;
@@ -600,6 +603,134 @@ main p { margin-top:var(--sp-3); }
 .mchart .ar-pos { fill:var(--pos); opacity:.12; }
 .mchart .ar-neg { fill:var(--neg); opacity:.12; }
 
+/* ═══════════════════════════════ 복지 스탯 카드 + 원장(회사 상세, SP-GEN-5.4) ══ */
+/* 2026-09-03 채택 시안. 카드는 **목차**, 아래 원장이 본문이다. 행 → 원장 이동은 앵커 + `:target`
+   이라 **JS 0**(NFR24) — 스크립트가 없어도·죽어도 이동과 강조가 그대로 동작한다.
+   레이더는 `generator/radar.py` 가 빌드 시점에 좌표까지 계산해 박아 둔 SVG 라, 여기서 하는 일은
+   `charts.py` 때와 같이 **색과 치수를 입히는 것뿐**이다(클래스 목록은 그 모듈이 소유). */
+
+.company-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:var(--sp-3); margin-top:var(--sp-5); }
+.company-sub { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-sm); }
+/* 머리의 비교 버튼 — 아래 풀블리드 `.cta` 콜아웃과 같은 클래스를 쓰되 상자만 벗긴다. */
+.cta-inline { margin:0; padding:0; background:none; border-radius:0; text-align:left; }
+.cta-inline a { margin-top:0; background:var(--accent); color:var(--accent-ink); }
+.cta-inline a:hover { background:var(--accent-hover); }
+
+.stat-card { display:grid; grid-template-columns:1fr; gap:var(--sp-4); margin-top:var(--sp-5); align-items:start; }
+.sc-left, .sc-main, .sc-side { min-width:0; background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-4); }
+.sc-side { display:flex; flex-direction:column; gap:var(--sp-4); }
+
+/* 레이더 — 라벨이 viewBox 밖으로 조금 넘치므로 overflow 를 열어 둔다(잘리면 '근무환경'이 깨진다). */
+.rd { display:block; width:100%; height:auto; overflow:visible; }
+.rd-ring, .rd-ax { fill:none; stroke:var(--border); stroke-width:1; }
+.rd-tick { fill:var(--t4); font-size:10px; font-family:var(--font-sans); }
+.rd-lb { fill:var(--t2); font-size:13px; font-weight:var(--fw-medium); font-family:var(--font-sans); }
+/* 점선 = 등록 회사 평균. 색이 아니라 **선 모양**으로 구분한다 — 색각 이상에서도 두 도형이 갈린다. */
+.rd-avg { fill:none; stroke:var(--t4); stroke-width:1.5; stroke-dasharray:4 3; }
+.rd-you { fill:var(--radar-fill); stroke:var(--brand); stroke-width:2.5; stroke-linejoin:round; }
+.rd-dot { fill:var(--brand); stroke:var(--bg-1); stroke-width:2; }
+
+.sc-legend { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-3); margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
+.sc-key { display:inline-block; width:12px; height:12px; margin-right:var(--sp-1); vertical-align:middle; }
+.sc-key-you { background:var(--radar-fill); border:1.5px solid var(--brand); border-radius:var(--r-xs); }
+.sc-key-avg { height:0; border-top:1.5px dashed var(--t4); }
+.sc-pill { display:inline-flex; align-self:flex-start; align-items:center; margin-top:var(--sp-3); padding:var(--sp-1) var(--sp-3);
+  background:var(--brand-tint); color:var(--brand-active); border-radius:var(--r-pill); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+
+.sc-metrics { display:grid; grid-template-columns:repeat(auto-fit, minmax(110px, 1fr)); gap:0 var(--sp-4); margin-top:var(--sp-3); }
+.sc-metric { padding:var(--sp-2) 0; border-top:var(--bw) solid var(--border); }
+.sc-metric dt { color:var(--t3); font-size:var(--fs-xs); }
+.sc-metric dd { margin:0; }
+.sc-metric strong, .fs-cell strong { font-family:var(--font-serif); font-size:var(--fs-h3); font-weight:var(--fw-regular); letter-spacing:var(--ls-tight); }
+.sc-unit { margin-left:var(--sp-1); color:var(--t3); font-size:var(--fs-xs); }
+/* 전년 대비는 **방향**이지 좋고 나쁨이 아니다(DEC-B) — 색을 주지 않는다. 부호는 텍스트가 말한다. */
+.sc-delta { display:block; color:var(--t3); font-size:var(--fs-xs); }
+.sc-empty { color:var(--t4); font-size:var(--fs-sm); }
+.sc-metrics-src { margin-top:var(--sp-2); padding-top:var(--sp-2); border-top:var(--bw) solid var(--border); color:var(--t4); font-size:var(--fs-xs); }
+.sc-rank { margin-top:var(--sp-3); padding:var(--sp-3); background:var(--surface-soft); border:var(--bw) solid var(--border); border-radius:var(--r-md); }
+.sc-rank > div { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2); }
+.sc-rank > div + div { margin-top:var(--sp-2); }
+.sc-rank dt { color:var(--t2); font-size:var(--fs-sm); }
+.sc-rank dd { margin:0; font-size:var(--fs-sm); text-align:right; }
+.sc-rank strong { font-variant-numeric:tabular-nums; }
+.sc-rank span { color:var(--t3); }
+
+.sc-main h2 { font-family:var(--font-sans); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+.sc-main h2 span { color:var(--t3); font-weight:var(--fw-regular); font-size:var(--fs-sm); }
+.sc-hint { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-snug); }
+.sc-est-key { border-bottom:1px dotted var(--t3); }
+.sc-cats { display:grid; grid-template-columns:1fr; gap:var(--sp-4); margin-top:var(--sp-4); }
+.sc-cat { min-width:0; }
+.sc-cat h3 { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:var(--sp-2);
+  margin:0; padding-bottom:var(--sp-1); border-bottom:var(--bw) solid var(--border-strong);
+  color:var(--brand); font-family:var(--font-sans); font-size:var(--fs-xs); font-weight:var(--fw-bold); }
+.sc-cat-sub { color:var(--t3); font-weight:var(--fw-regular); }
+.sc-cat ul { margin-top:var(--sp-1); }
+/* 행 전체가 링크다 — 이름만 링크면 손가락으로 누를 것이 이름 폭뿐이 된다. */
+.sc-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2);
+  min-height:var(--tap-min); padding:0 var(--sp-2); border-radius:var(--r-xs); color:var(--t1); font-size:var(--fs-sm); }
+.sc-row.has-amt { background:var(--surface-soft); }
+.sc-row:hover, .sc-row:focus-visible { background:var(--brand-tint); text-decoration:none; }
+.sc-nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sc-amt { font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.sc-hi { color:var(--brand-active); } .sc-mid { color:var(--brand); } .sc-lo { color:var(--t1); }
+/* 추정치는 **점선**으로도 표시한다 — 색만으로 구분하면 색각 이상·흑백 인쇄에서 사라진다. */
+.sc-est { border-bottom:1px dotted var(--t3); }
+.sc-est i { margin-right:2px; color:var(--t3); font-size:var(--fs-ad); font-style:normal; font-weight:var(--fw-medium); }
+.sc-qual { color:var(--t3); font-size:var(--fs-ad); }
+
+.sc-block h3 { margin:0 0 var(--sp-2); color:var(--t3); font-family:var(--font-sans); font-size:var(--fs-xs); font-weight:var(--fw-medium); }
+.sc-block + .sc-block { padding-top:var(--sp-4); border-top:var(--bw) solid var(--border); }
+.sc-ws li { color:var(--t1); font-size:var(--fs-sm); }
+.sc-ws li + li { margin-top:var(--sp-2); }
+.sc-ws li::before { content:"✓"; margin-right:var(--sp-2); color:var(--brand); font-weight:var(--fw-bold); }
+.sc-tally > div { display:flex; align-items:baseline; justify-content:space-between; gap:var(--sp-2); padding:var(--sp-1) 0; }
+.sc-tally > div.sub { padding-left:var(--sp-3); }
+.sc-tally dt { color:var(--t2); font-size:var(--fs-sm); }
+.sc-tally > div.sub dt { color:var(--t3); font-size:var(--fs-xs); }
+.sc-tally dt span { margin-left:var(--sp-1); color:var(--t4); font-size:var(--fs-ad); }
+.sc-tally dd { margin:0; color:var(--t1); font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
+.sc-note { margin-top:var(--sp-2); color:var(--t4); font-size:var(--fs-xs); line-height:var(--lh-snug); }
+.sc-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+.sc-chips li { display:inline-flex; align-items:center; gap:var(--sp-1); padding:var(--sp-1) var(--sp-3);
+  background:var(--brand-tint); color:var(--t1); border-radius:var(--r-pill); font-size:var(--fs-xs); }
+.sc-chips span { color:var(--t3); }
+
+/* 실적 띠 — 최신 공시 연도 3종. 11개년 표와 추이 그래프는 원장 뒤에 그대로 남는다. */
+.fin-strip { margin-top:var(--sp-4); background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-4); }
+.fs-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--sp-2) var(--sp-3); }
+.fs-head h2 { font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-semibold); }
+.fs-head p { color:var(--t4); font-size:var(--fs-xs); }
+.fs-cells { display:grid; grid-template-columns:1fr; gap:var(--sp-3); margin-top:var(--sp-3); }
+.fs-cell { min-width:0; padding-top:var(--sp-2); border-top:var(--bw) solid var(--border); }
+.fs-cell dt { color:var(--t3); font-size:var(--fs-xs); }
+.fs-cell dd { margin:0; }
+
+/* ── 복지 상세 원장 ── */
+.h2-sub { color:var(--t3); font-family:var(--font-sans); font-size:var(--fs-sm); }
+.ledger-lead { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-sm); }
+/* 카테고리 상자는 **단(column) 흐름**으로 쌓는다 — 격자로 놓으면 항목 1개짜리 카테고리 옆에
+   빈 칸이 크게 남는다(보상 1행 vs 유연성 3행). `break-inside:avoid` 로 상자는 쪼개지지 않는다. */
+.benefit-table { columns:1; column-gap:var(--sp-4); margin-top:var(--sp-4); }
+.benefit-group { margin-top:0; margin-bottom:var(--sp-4); break-inside:avoid; background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); overflow:hidden; }
+.benefit-group > h3 { margin:0; padding:var(--sp-3) var(--sp-4); background:var(--bg-2); border-bottom:var(--bw) solid var(--border);
+  color:var(--brand); font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-bold); }
+/* 앵커 도착 지점 — 고정 GNB(56px) 아래로 밀어 내지 않으면 제목이 헤더에 가린다. */
+.led-row { padding:var(--sp-3) var(--sp-4); border-top:var(--bw) solid var(--border); scroll-margin-top:72px; }
+.led-row:first-of-type { border-top:0; }
+.led-row:target { background:var(--band-hit); }
+.led-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:var(--sp-1) var(--sp-2); }
+h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-weight:var(--fw-semibold); }
+.benefit-amount.est { border-bottom:1px dotted var(--t3); }
+.led-src { color:var(--t3); font-size:var(--fs-xs); }
+/* 확인일·만료는 27행에 반복되는 **부가 정보**다. 만료 색(주황)을 그대로 쓰면 아직 유효한
+   행까지 경고처럼 읽힌다 — 실제로 만료된 행은 배지가 '만료·재확인 필요'로 말한다. */
+.led-badges .benefit-verified, .led-badges .benefit-expires { color:var(--t4); font-size:var(--fs-xs); font-weight:var(--fw-regular); }
+.led-badges { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-2); margin-left:auto; }
+.benefit-note { margin-top:var(--sp-2); color:var(--t2); font-size:var(--fs-sm); line-height:var(--lh-base); }
+.led-ask { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
+.led-ask-go { font-weight:var(--fw-medium); }
+
 /* ══════════════════════════════════════════════════════ ADS ══ */
 /* 광고 박스는 JS가 실 슬롯(.ad-slot)을 주입했을 때만 그린다. 빈 [data-ad-position] 컨테이너는
    무스타일(승인 전 placeholder 동안 내용 없는 "광고" 점선 박스 상시 노출 방지, #12). */
@@ -638,6 +769,13 @@ main p { margin-top:var(--sp-3); }
   .dir-panel { margin-top:var(--sp-3); }
   /* GNB 검색: 데스크톱에서 여유 폭 */
   .gnb-search input[type="search"] { width:240px; }
+  /* 스탯 카드: 왼쪽 패널(레이더·지표) · 본문(카테고리 목차) · 사이드(신뢰도). 폭이 좁으면
+     1열로 자연스럽게 쌓인다 — 이 디자인 시스템의 min-width 분기는 768 하나뿐이다(UT-BP). */
+  .stat-card { grid-template-columns:minmax(0, 380px) minmax(0, 1fr) minmax(0, 232px); }
+  .sc-cats { grid-template-columns:repeat(auto-fit, minmax(max(30%, 190px), 1fr)); }
+  .sc-row { min-height:32px; }
+  .fs-cells { grid-template-columns:repeat(3, minmax(0, 1fr)); }
+  .benefit-table { columns:2; }
   /* 추이 카드: 분기 하나로 2열(태블릿)과 3열(넓은 화면)을 함께 얻는다. 최소 폭이 `max(29%,240px)`
      이라 본문이 좁으면 240px 가 이겨 2열, 넓어지면 29% 가 이겨 3열에서 멈춘다 — 6장이 4열로
      쪼개져 2장만 남는 둘째 줄을 만들지 않기 위해서다. `max()` 를 모르는 브라우저는 선언 전체를

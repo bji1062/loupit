@@ -1,0 +1,129 @@
+{# _stat_card.html — 회사 복지 「스탯 카드」 (SP-GEN-5.4, 2026-09-03 채택 시안).
+
+   축구 매니저 선수 화면의 문법을 복지에 옮긴 것: 왼쪽에 9각형(카테고리별 항목 수)과 기본 지표,
+   가운데에 9카테고리 복지 목록, 오른쪽에 근무형태·신뢰도·출처. 카드는 **목차**이고 설명·환산
+   근거·출처 전문은 바로 아래 「복지 상세 — 원장」이 갖는다 — 텍스트의 집이 두 곳이면 같은 문장이
+   두 번 실리거나 한쪽만 갱신된다.
+
+   🚨 **행 → 원장 이동은 JS 를 한 줄도 쓰지 않는다.** 카드 행이 `<a href="#b-{코드}">`, 원장 행이
+   그 id 를 갖고, 강조는 `:target` 이 한다(NFR24). 스크립트가 없어도·죽어도 이동과 본문이 완전하다.
+
+   ⓘ `| safe` 는 레이더 SVG 한 곳뿐이고 대상은 `generator/radar.py` 가 만든 문자열이다. 그 모듈은
+     텍스트를 `html.escape` 로 내보내고 좌표는 숫자다 — 사용자 데이터가 이스케이프 없이 지나가는
+     경로가 없다(NFR21). 새 값을 SVG 에 넣고 싶다면 템플릿이 아니라 그 모듈에서 넣어야 한다. #}
+{% macro stat_card(card, comp_tp_nm, industry_nm, work_style, metrics) -%}
+<section class="stat-card" aria-label="복지 요약">
+  <div class="sc-left">
+    {{ card.radar | safe }}
+    <p class="sc-legend">
+      <span class="sc-key sc-key-you"></span>이 회사 카테고리별 항목 수
+      <span class="sc-key sc-key-avg"></span>등록 {{ card.rank.total }}개사 평균
+    </p>
+    {% if industry_nm or comp_tp_nm %}
+    <p class="sc-pill">{{ [industry_nm, comp_tp_nm] | select | join(' · ') }}</p>
+    {% endif %}
+    {% if metrics %}
+    <dl class="sc-metrics">
+      {% for c in metrics.cards[:3] %}
+      <div class="sc-metric">
+        <dt>{{ c.name }}</dt>
+        <dd>{% if c.empty_text %}<span class="sc-empty">{{ c.empty_text }}</span>{% else %}
+          <strong>{{ c.latest_text }}</strong><span class="sc-unit">{{ c.unit }}</span>
+          {% if c.delta_text %}<span class="sc-delta">전년 대비 {{ c.delta_text }}</span>{% endif %}
+        {% endif %}</dd>
+      </div>
+      {% endfor %}
+    </dl>
+    <p class="sc-metrics-src">평균연봉·평균근속·직원수 = 금융감독원 전자공시(DART) 사업보고서</p>
+    {% endif %}
+    {#- 순위는 **사실만**(DEC-B): 등수와 동률 여부를 함께 적는다. 동률을 숨긴 "2번째"는 거짓이다
+        (실측: SK텔레콤 27항목 = LG CNS 27항목). -#}
+    <dl class="sc-rank">
+      <div><dt>등록 복지 항목</dt><dd><strong>{{ card.rank.item_count }}</strong>
+        <span>· {{ card.rank.total }}개사 중 {% if card.rank.items_tied %}공동 {% endif %}{{ card.rank.items_rank }}번째</span></dd></div>
+      <div><dt>금액 합계(연{% if card.counts.est %}, 추정 포함{% endif %})</dt><dd><strong>{{ card.amount_text or '—' }}</strong>
+        {% if card.rank.amount %}<span>· {% if card.rank.amount_tied %}공동 {% endif %}{{ card.rank.amount_rank }}번째</span>{% endif %}</dd></div>
+    </dl>
+  </div>
+
+  <div class="sc-main">
+    <h2>복지 항목 <span>— {{ card.counts.categories }}개 카테고리 · {{ card.counts.total }}항목</span></h2>
+    <p class="sc-hint">숫자 = 연간 환산 금액(만원) · <span class="sc-est-key">점선</span> = 추정치(회사 공식 수치 아님) · 정성 = 금액 환산 없음 · 항목을 누르면 아래 <a href="#benefit-ledger">복지 상세</a>로 갑니다</p>
+    <div class="sc-cats">
+    {% for cat in card.categories %}
+      <section class="sc-cat">
+        <h3>{{ cat.label }}<span class="sc-cat-sub">{{ cat.count }}항목 · {{ cat.amount_text or '금액 환산 항목 없음' }}</span></h3>
+        <ul>
+        {% for item in cat.rows %}
+          <li><a class="sc-row{% if item.amt %} has-amt{% endif %}" href="#{{ item.anchor }}">
+            <span class="sc-nm">{{ item.name }}</span>
+            {% if item.qual or item.amt is none %}<span class="sc-qual">정성</span>
+            {% else %}<span class="sc-amt sc-{{ item.tier }}{% if item.est %} sc-est{% endif %}">{% if item.est %}<i>추정</i>{% endif %}{{ item.amt }}</span>{% endif %}
+          </a></li>
+        {% endfor %}
+        </ul>
+      </section>
+    {% endfor %}
+    </div>
+  </div>
+
+  <aside class="sc-side">
+    {% if work_style %}
+    <div class="sc-block">
+      <h3>근무형태</h3>
+      <ul class="sc-ws">
+      {% for k, v in work_style %}<li>{{ k | ws_label }} 제공</li>{% endfor %}
+      </ul>
+    </div>
+    {% endif %}
+    {#- 신뢰도 원장 — **배지(출처 계보)와 금액 신뢰도는 별개 축**이다(DEC-2). 배지가 '공식'이어도
+        금액은 추정치일 수 있어서, 그 사실을 숫자로 갈라 둔다(SK텔레콤 실측 3 / 8). -#}
+    <div class="sc-block">
+      <h3>항목 구성</h3>
+      <dl class="sc-tally">
+        <div><dt>금액 환산</dt><dd>{{ card.counts.amount }}</dd></div>
+        <div class="sub"><dt>회사 공식 수치<span>밴드 ±5%</span></dt><dd>{{ card.counts.stated }}</dd></div>
+        <div class="sub"><dt>추정치<span>밴드 ±20%</span></dt><dd>{{ card.counts.est }}</dd></div>
+        <div><dt>정성 항목<span>금액 환산 없음</span></dt><dd>{{ card.counts.qual }}</dd></div>
+        <div><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
+        <div><dt>만료·재확인 필요<span>밴드 +15%</span></dt><dd>{{ card.counts.expired }}</dd></div>
+      </dl>
+      <p class="sc-note">밴드는 비교 리포트가 금액에 두는 불확실성 폭입니다. 출처 배지가 공식이어도 금액이 추정치이면 ±20%가 유지됩니다.</p>
+    </div>
+    {% if card.top_ratio %}
+    <div class="sc-block">
+      <h3>평균 대비 배율 상위 {{ card.top_ratio | length }}개 카테고리</h3>
+      <ul class="sc-chips">
+      {% for t in card.top_ratio %}<li>{{ t.label }} {{ t.count }}<span>/ {{ t.avg }}</span></li>{% endfor %}
+      </ul>
+      <p class="sc-note">{% if card.above_all %}{{ card.counts.category_total }}개 카테고리 모두{% else %}{{ card.above_count }}개 카테고리가{% endif %} 등록 {{ card.rank.total }}개사 평균 이상입니다 · 항목 수 / 평균</p>
+    </div>
+    {% endif %}
+  </aside>
+</section>
+{%- endmacro %}
+
+{# 실적 띠 — 카드 **바로 아래**(사용자 결정 2026-09-03). 최신 공시 연도의 금액 3종만 한 줄로 보여
+   주고, 11개년 표와 추이 그래프는 원장 뒤에 그대로 남는다. 수치·전년 대비는 `metrics.cards` 의
+   뒤 3장을 그대로 쓴다 — 같은 숫자를 두 곳에서 따로 계산하면 언젠가 갈라진다(SP-MET-2). #}
+{% macro finance_strip(m) -%}
+{% if m %}
+<section class="fin-strip" aria-label="최근 실적">
+  <div class="fs-head">
+    <h2>실적 {{ m.years | last }}{% if m.basis %} <span class="badge finance-basis">{{ m.basis }}</span>{% endif %}</h2>
+    <p>출처: 금융감독원 전자공시(DART) 사업보고서 · 공시 수치이며 평가가 아닙니다</p>
+  </div>
+  <dl class="fs-cells">
+  {% for c in m.cards[3:] %}
+    <div class="fs-cell">
+      <dt>{{ c.name }}</dt>
+      <dd>{% if c.empty_text %}<span class="sc-empty">{{ c.empty_text }}</span>{% else %}
+        <strong>{{ c.latest_text }}</strong><span class="sc-unit">{{ c.unit }}</span>
+        {% if c.delta_text %}<span class="sc-delta">전년 대비 {{ c.delta_text }}</span>{% endif %}
+      {% endif %}</dd>
+    </div>
+  {% endfor %}
+  </dl>
+</section>
+{% endif %}
+{%- endmacro %}

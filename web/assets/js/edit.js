@@ -100,14 +100,29 @@ export function pickCompany(verifications, compParamId) {
   return { mode: 'multi', company: null };
 }
 
+// ── 순수: `?benefit=<코드>` 로 지목된 복지 고르기 ────────────────────────────
+// 회사 페이지 복지 원장의 각 행이 `/edit?comp=&benefit=` 로 **그 항목을 지목**해 보낸다
+// (SP-GEN-5.4). 코드는 회사 안에서 UNIQUE 라 하나만 맞는다. 없으면 null — 목록만 보여 준다
+// (남의 회사 코드·오타·삭제된 항목 어느 쪽이든 화면이 죽지 않는다).
+export function pickBenefit(benefits, cd) {
+  const want = String(cd || '').trim().toLowerCase();
+  if (!want) return null;
+  return (benefits || []).find((b) => String(b.benefit_cd || '').toLowerCase() === want) || null;
+}
+
 // ── 이하 DOM 배선(브라우저 전용) — 편집 폼 루트가 있을 때만 초기화(테스트 import 안전) ──
 export function initEditPage() {
   const $ = (id) => document.getElementById(id);
-  const state = { comp_id: null, comp_nm: '', benefits: new Map(), mode: 'create', editingId: null };
+  const state = { comp_id: null, comp_nm: '', benefits: new Map(), mode: 'create', editingId: null, prefillDone: false };
 
   const compParam = () => {
     const m = /[?&]comp=(\d+)/.exec(location.search);
     return m ? parseInt(m[1], 10) : null;
+  };
+  // 회사 페이지 원장이 지목해 보낸 복지 코드. 소문자·숫자·_- 만 받는다(주소창 잡음 차단).
+  const benefitParam = () => {
+    const m = /[?&]benefit=([A-Za-z0-9_-]{1,30})/.exec(location.search);
+    return m ? m[1] : null;
   };
 
   function setErr(msg) { const e = $('form-err'); e.textContent = msg; e.hidden = !msg; }
@@ -173,6 +188,13 @@ export function initEditPage() {
       for (const b of benefits) state.benefits.set(b.benefit_id, b);
       renderBenefitList(listEl, benefits);
       emptyEl.hidden = benefits.length > 0;
+      // 지목된 항목이 있으면 그 수정 폼을 **첫 로드에 한 번만** 연다. 저장 후 재로드에서도 열면
+      // 방금 닫은 폼이 되살아난다(사용자가 끝냈다고 말한 것을 되돌리는 셈이다).
+      if (!state.prefillDone) {
+        state.prefillDone = true;
+        const target = pickBenefit(benefits, benefitParam());
+        if (target) openForm('update', target);
+      }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) { location.href = '/login'; return; }
       if (err instanceof ApiError && err.status === 403) { showNeedVerify(); return; }

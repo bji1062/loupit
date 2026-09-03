@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 
-from generator import charts
+from generator import charts, corpus as corpus_mod
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -15,6 +15,7 @@ from generator.employ import company_metrics
 from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
 from generator.format import badge_state, iso_date, krw_manwon
+from generator.radar import radar_svg
 from generator.slug import combo_slug
 
 # 관련 회사 링크 개수 상한 (FR-63 확장, 2026-07-19 고아 페이지 해소).
@@ -61,28 +62,115 @@ def _truncate(text: str, max_len: int) -> str:
     return text[: max_len - 1].rstrip() + "…"
 
 
-def _group_benefits(benefits: list[dict], now) -> list[tuple[str, str, list[dict]]]:
+def benefit_anchor(cd, name: str = "") -> str:
+    """복지 한 건의 페이지 내 주소 `b-{코드}` (SP-GEN-5.4).
+
+    **이 함수가 앵커 규칙의 유일한 자리다.** 회사 페이지(원장 행 id·카드 행 링크)와 히트맵 타일
+    링크가 같은 문자열을 만들어야 타일에서 그 행으로 정확히 떨어진다 — 규칙이 두 곳에 있으면
+    언젠가 한쪽만 고쳐지고, 그때 링크는 에러 없이 **페이지 맨 위**로 간다.
+
+    `BENEFIT_CD` 는 NOT NULL 이고 회사 안에서 UNIQUE(`uq_comp_benefit`)라 그대로 쓰면 충돌이 없다.
+    """
+    return "b-" + (re.sub(r"[^a-z0-9_-]+", "-", str(cd or name).strip().lower()).strip("-") or "b")
+
+
+def _anchor(cd, name: str, seen: set) -> str:
+    """`benefit_anchor` + 한 페이지 안의 중복 방지. 코드가 없는 구(舊) 데이터끼리 이름이 겹치면
+    번호를 붙인다 — 같은 id 가 둘이면 앵커가 조용히 첫 행으로만 간다(에러 없이 틀린 동작)."""
+    base = benefit_anchor(cd, name)
+    key = base
+    n = 2
+    while key in seen:
+        key, n = f"{base}-{n}", n + 1
+    seen.add(key)
+    return key
+
+
+def _amount_kind(b: dict) -> str:
+    """금액 신뢰도 축(`AMT_SOURCE_CD`) — 배지(출처 계보)와 **독립**이다(DEC-2, SP-DB-5).
+
+    ⚠ 배지가 '공식'이어도 금액은 추정치일 수 있다(SK텔레콤 실측: 금액 11건 중 8건이 추정).
+    화면이 이 둘을 한 축으로 합치면 추정 상수가 회사 공식 수치인 것처럼 읽힌다.
+    """
+    if b.get("qual_yn") or b.get("benefit_amt") is None:
+        return "none"
+    return "stated" if b.get("amt_source") == "stated" else "estimated"
+
+
+# 금액 신뢰도 → 원장 한 줄. 밴드 계수는 정책 D-4(비교 리포트가 금액에 두는 불확실성 폭)와 같은 값이다.
+AMOUNT_SOURCE_TEXT = {
+    "stated": "회사 공식 수치 · 밴드 ±5%",
+    "estimated": "추정치 · 밴드 ±20%",
+    "none": "금액 환산 없음",
+}
+# 출처 상태 → 재직자에게 던지는 **사실 질문**(q) + 행동(a). 모르는 값일수록 물음이 커진다(SC14 유입구).
+#
+# 🚨 질문은 **본문 텍스트**이고 행동만 링크다. `/edit` 은 M9(로그인 기능) 게이트 뒤이고 prod·beta 가
+#    같은 산출물을 서빙하므로(authnav.js 머리말), 링크는 `data-authnav-edit hidden` 슬롯으로 내보내
+#    `authnav.js` 의 `/members/me` 프로브가 켜진 호스트에서만 드러낸다. 텍스트를 링크 안에 넣으면
+#    M9 가 꺼진 곳에서 그 문장까지 사라진다 — 본문은 JS 와 무관해야 한다(NFR24).
+EDIT_ASK = {
+    "stale": ("아직 유효한가요?", "재직 인증 후 재확인"),
+    "none": ("연간 환산 금액을 아시나요?", "재직 인증 후 추가"),
+    "estimated": ("실제 금액을 아세요?", "재직 인증 후 수정"),
+    "stated": ("", "수정"),
+}
+# 카드 금액의 색 구간(만원). 색은 **구간**이지 등급이 아니다 — 문구도 구간으로만 적는다(DEC-B).
+AMOUNT_TIERS = ((300, "hi"), (100, "mid"))
+
+
+def _amount_tier(amt) -> str:
+    if amt is None:
+        return ""
+    for floor, tier in AMOUNT_TIERS:
+        if amt >= floor:
+            return tier
+    return "lo"
+
+
+def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> list[tuple[str, str, list[dict]]]:
     """9카테고리 그룹·정렬·정성/금액·출처 스킴 (FR-53·54).
 
     비지 않은 카테고리만 `(key, label, items)`로 반환한다. 알 수 없는
     카테고리 코드도 방어적으로 수용(버킷 없으면 무시하지 않고 별도 보관은
     하지 않는다 — 9종 정본 외 카테고리는 CATEGORY_ORDER에 없으므로 UI에
     노출되지 않는다. 데이터 정합은 SP-SEED 소유).
+
+    `comp_id` 를 주면 항목마다 **편집 진입 링크**(`/edit?comp=&benefit=`)를 얹는다. 조합 페이지는
+    남의 회사 복지를 나란히 보여 주는 자리라 주지 않는다 — 그 화면에서 '수정'은 누구의 것인지
+    모호해진다.
     """
     buckets: dict[str, list[dict]] = {k: [] for k in CATEGORY_ORDER}
+    seen: set = set()
     for b in benefits:
+        kind = _amount_kind(b)
+        badge = badge_state(b, now)
+        anchor = _anchor(b.get("benefit_cd"), b["benefit_nm"], seen)
         item = {
             "name": b["benefit_nm"],
             "amount": krw_manwon(b["benefit_amt"]) if not b["qual_yn"] else "",
+            "amt": None if b["qual_yn"] else b.get("benefit_amt"),
             "qual": b["qual_yn"],
             "qual_desc": b.get("qual_desc_ctnt"),
             "note": b.get("note_ctnt"),
-            "badge": badge_state(b, now),
+            "badge": badge,
             "src_cd": b.get("badge_src_cd"),
             "src_url": _safe_http(b.get("badge_src_url_ctnt")),
             "verified": iso_date(b.get("verified_dtm")),
             "expires": iso_date(b.get("expires_dtm")),
             "sort": b.get("sort_order_no") or 0,
+            # ── 스탯 카드·원장(SP-GEN-5.4) ──
+            "anchor": anchor,
+            "amt_kind": kind,
+            "est": kind == "estimated",
+            "tier": _amount_tier(None if b["qual_yn"] else b.get("benefit_amt")),
+            "src_text": AMOUNT_SOURCE_TEXT[kind],
+            "ask_q": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[0],
+            "ask_a": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[1],
+            "edit_href": (
+                f"{CFG.edit_path}?comp={comp_id}&benefit={b['benefit_cd']}"
+                if comp_id is not None and b.get("benefit_cd") else None
+            ),
         }
         cat = b["benefit_ctgr_cd"]
         if cat in buckets:
@@ -92,12 +180,73 @@ def _group_benefits(benefits: list[dict], now) -> list[tuple[str, str, list[dict
     return [(k, CATEGORY_LABEL[k], buckets[k]) for k in CATEGORY_ORDER if buckets[k]]
 
 
-def _company_view(c: dict, ctx, now) -> dict:
+def _card_view(c: dict, groups, corpus) -> dict:
+    """스탯 카드 뷰모델 (SP-GEN-5.4) — 레이더·카테고리 요약·신뢰도 원장·순위.
+
+    **여기서 새 사실을 만들지 않는다.** 카드가 보여 주는 것은 아래 원장과 같은 27행이고, 카드는
+    그 목차다(행을 누르면 `#b-{코드}` 로 원장의 같은 항목으로 간다). 텍스트의 집이 두 곳이면
+    같은 설명이 두 번 실리거나 한쪽만 갱신된다.
+
+    비교 기준(평균·축 최댓값·순위)은 `corpus` 하나가 소유한다 — 회사마다 다시 계산하면 페이지마다
+    다른 기준이 섞일 수 있다.
+    """
+    used = {k for k, _, _ in groups}
+    cats = []
+    for key, label, items in groups:
+        stated = sum(i["amt"] for i in items if i["amt"] and i["amt_kind"] == "stated")
+        est = sum(i["amt"] for i in items if i["amt"] and i["amt_kind"] == "estimated")
+        cats.append({
+            "key": key, "label": label, "rows": items, "count": len(items),
+            "amount": stated + est, "amount_text": krw_manwon(stated + est) if stated + est else "",
+            "stated": stated, "est": est,
+        })
+    flat = [i for _, _, items in groups for i in items]
+    counts = {
+        "total": len(flat),
+        "amount": sum(1 for i in flat if i["amt_kind"] != "none"),
+        "stated": sum(1 for i in flat if i["amt_kind"] == "stated"),
+        "est": sum(1 for i in flat if i["amt_kind"] == "estimated"),
+        "qual": sum(1 for i in flat if i["amt_kind"] == "none"),
+        # 배지 계보 두 종(재직자 등록·공식·재직자 수정)을 한 줄로 센다 — 화면이 묻는 것은
+        # "사람 손이 닿았는가"이고, 어느 쪽인지는 행의 배지가 말한다.
+        "edited": sum(1 for i in flat if i["badge"]["code"] in ("member", "edited")),
+        "expired": sum(1 for i in flat if i["badge"]["code"] == "stale"),
+        "categories": len(used),
+        "category_total": len(CATEGORY_ORDER),
+    }
+    # 레이더: 카테고리 정본 순서로 항목 수 / 등록 회사 평균. 빈 카테고리는 0 이다(빼지 않는다 —
+    # 없는 축은 "모른다"가 아니라 "없다"이고, 그 사실이 모양의 절반을 만든다).
+    per_cat = {k: 0 for k in CATEGORY_ORDER}
+    for key, _, items in groups:
+        per_cat[key] = len(items)
+    counts_list = [per_cat[k] for k in CATEGORY_ORDER]
+    avgs = [round(corpus.avgs.get(k, 0.0), 2) for k in CATEGORY_ORDER]
+    labels = [CATEGORY_LABEL[k] for k in CATEGORY_ORDER]
+    # 평균 대비 배율 상위 3 — "많은 카테고리"가 아니라 **배율이 큰 순서**다. 9개가 전부 평균
+    # 이상인 회사도 있어(SK텔레콤 실측) 제목이 곧 거짓이 되기 때문이다.
+    ratios = [(labels[i], counts_list[i], avgs[i], (counts_list[i] / avgs[i]) if avgs[i] else 0.0)
+              for i in range(len(CATEGORY_ORDER)) if counts_list[i]]
+    ratios.sort(key=lambda t: -t[3])
+    above = [t for t in ratios if t[3] > 1]
+    return {
+        "radar": radar_svg(counts_list, avgs, labels, corpus.rmax, c["comp_nm"]),
+        "categories": cats,
+        "counts": counts,
+        "rank": corpus.rank_of(c["comp_id"]),
+        "amount_text": krw_manwon(corpus.amounts.get(c["comp_id"], 0)),
+        "top_ratio": [{"label": lb, "count": n, "avg": f"{a:.1f}"} for lb, n, a, _ in ratios[:3]],
+        "above_all": len(above) == len(ratios) and len(ratios) == len(CATEGORY_ORDER),
+        "above_count": len(above),
+    }
+
+
+def _company_view(c: dict, ctx, now, corpus) -> dict:
     """뷰모델 파생 — 기업정보·유형지표·근무형태·복지·CTA (SP-GEN-5.2)."""
     t = ctx.types_by_cd.get(c["comp_tp_cd"], {})
-    groups = _group_benefits(c["benefits"], now)
+    groups = _group_benefits(c["benefits"], now, comp_id=c["comp_id"])
     ws = c.get("work_style_val") or {}
     return {
+        "card": _card_view(c, groups, corpus),
         "comp_nm": c["comp_nm"],
         "industry_nm": c.get("industry_nm"),
         "comp_tp_nm": t.get("comp_tp_nm"),
@@ -314,12 +463,16 @@ def render_all(env, ctx, combo_pairs=None) -> list[Page]:
     """
     now = ctx.build_now
     tpl = env.get_template("company.html")
+    # 비교 기준은 **빌드당 한 번**만 만든다(SP-GEN-5.4). 회사마다 계산하면 O(n²)이고, 더 나쁘게는
+    # 페이지마다 다른 평균이 섞일 여지가 생긴다. ⚠ 회사가 하나 늘면 전 회사 페이지의 평균·순위가
+    # 함께 움직인다 — 정적 재생성이 전량인 이유가 여기에도 하나 더 있다.
+    corpus = corpus_mod.build(ctx.companies, CATEGORY_ORDER)
     pages: list[Page] = []
     for c in ctx.companies:
         eng = c["comp_eng_nm"]
         slug = ctx.slugs[eng]
         url = f"{CFG.site_origin}/company/{slug}"
-        vm = _company_view(c, ctx, now)
+        vm = _company_view(c, ctx, now, corpus)
         seo = _company_seo(c, ctx, url)
         html = tpl.render(
             **vm,

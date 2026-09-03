@@ -1,35 +1,45 @@
-{# company.html — 회사 상세 본문(SP-GEN-5): 기업정보 G2 + 근무형태 G3 +
-   복지표 G4 + 실적 표 + 연도별 추이(카드 6장) + CTA C1 + 면책 B6 +
-   광고 슬롯 content_mid/content_bottom. #}
+{# company.html — 회사 상세 본문(SP-GEN-5). 2026-09-03 「스탯 카드」 채택으로 순서가 바뀌었다:
+   머리(h1·부제·비교 CTA) → **스탯 카드**(9각형·카테고리 목차·신뢰도) → **실적 띠**(최신 연도 3종)
+   → **복지 상세 원장**(설명·환산 근거·출처 전문) → 실적 표 11개년 → 연도별 추이 6장 → CTA C1 →
+   면책 B6 · 광고 슬롯 content_mid/content_bottom.
+
+   카드는 목차, 원장이 본문이다. 카드 행을 누르면 `#b-{복지코드}` 로 원장의 같은 항목으로 가고
+   강조는 `:target` 이 한다 — **JS 0**(NFR24). 실적 띠를 카드 바로 아래 둔 것은 사용자 결정
+   (2026-09-03): 요약 화면이 한 묶음으로 끝나고 그 다음이 상세다. #}
 {% extends "base.html" %}
 {% set page_type = 'company' %}
 {% from "partials/_ad_slot.html" import ad_slot %}
 {% from "partials/_benefit_table.html" import benefit_table %}
 {% from "partials/_finance_table.html" import finance_section %}
 {% from "partials/_metrics.html" import metrics_section %}
+{% from "partials/_stat_card.html" import stat_card, finance_strip %}
 {% block jsonld %}{% include "partials/_jsonld_org.html" %}{% endblock %}
 {% block main %}
 <article class="company-page">
-  <h1>{{ comp_nm }}</h1>
-  <section class="company-info">
-    {% if industry_nm %}<p class="industry">{{ industry_nm }}</p>{% endif %}
-    {% if comp_tp_nm %}<p class="company-type">{{ comp_tp_nm }}</p>{% endif %}
-  </section>
-  {% if work_style %}
-  <section class="work-style">
-    <h2>근무형태</h2>
-    <ul>
-    {% for k, v in work_style %}
-      <li>{{ k | ws_label }} 제공</li>
-    {% endfor %}
-    </ul>
-  </section>
-  {% endif %}
-  <section class="benefits">
-    <h2>복지 항목</h2>
+  <div class="company-head">
+    <div>
+      <h1>{{ comp_nm }}</h1>
+      <p class="company-sub">
+        {%- set bits = [] -%}
+        {%- if industry_nm %}{% set _ = bits.append(industry_nm) %}{% endif -%}
+        {%- if comp_tp_nm %}{% set _ = bits.append(comp_tp_nm) %}{% endif -%}
+        {%- set _ = bits.append('복지 ' ~ card.counts.total ~ '항목') -%}
+        {%- if card.amount_text %}{% set _ = bits.append('금액 합계 연 ' ~ card.amount_text ~ ('(추정 포함)' if card.counts.est else '')) %}{% endif -%}
+        {{ bits | join(' · ') }}
+      </p>
+    </div>
+    <p class="cta cta-inline"><a href="{{ compare_href }}">이 회사로 비교하기</a></p>
+  </div>
+
+  {{ stat_card(card, comp_tp_nm, industry_nm, work_style, metrics) }}
+  {{ finance_strip(metrics) }}
+
+  <section class="benefits" id="benefit-ledger">
+    <h2>복지 상세 <span class="h2-sub">— 원장</span></h2>
+    <p class="ledger-lead">카드의 항목마다 설명·환산 근거·출처를 그대로 싣습니다. 회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}. 이 회사 재직 인증을 마친 분은 항목별로 금액을 수정하거나 추가할 수 있습니다.</p>
     {{ benefit_table(benefit_groups) }}
   </section>
-  {#- 실적(SP-FIN-5, 2026-08-27): 복지표 **뒤**, CTA 앞 — 복지가 이 사이트의 본체다. `finance` 는
+  {#- 실적(SP-FIN-5, 2026-08-27): 복지 **뒤**, CTA 앞 — 복지가 이 사이트의 본체다. `finance` 는
       재무가 빌드에 실렸을 때만 dict 이고(없으면 None → 섹션 자체가 없다 = 기존 페이지 그대로),
       실렸는데 이 회사 몫이 없으면 "공시 데이터 없음"을 말한다. -#}
   {% if finance %}

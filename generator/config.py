@@ -88,6 +88,10 @@ class GenConfig:
     # 테스트·CI 가 실 검색엔진을 두드리지 않는 경계다(`build.run` 은 out_dir 도 함께 본다).
     indexnow_key: str = os.environ.get("INDEXNOW_KEY", "")
     compare_path: str = "/compare"  # CTA 진입 경로(SP-FE 셸)
+    # 복지 편집 진입(SC14 셸 web/edit.html). 회사 페이지 원장의 각 행이 `?comp=&benefit=` 로
+    # **그 항목을 지목**해 보낸다 — 실제 편집은 재직 인증 게이트 뒤이고(서버 강제), 인증 전이면
+    # 셸이 로그인·인증 안내를 보여 준다.
+    edit_path: str = "/edit"
     site_name: str = "jobcho.wiki"
     lang: str = "ko"
     desc_max: int = 155  # meta description 절단 상한
