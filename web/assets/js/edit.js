@@ -102,7 +102,7 @@ export function pickCompany(verifications, compParamId) {
 
 // ── 순수: `?benefit=<코드>` 로 지목된 복지 고르기 ────────────────────────────
 // 회사 페이지 복지 원장의 각 행이 `/edit?comp=&benefit=` 로 **그 항목을 지목**해 보낸다
-// (SP-GEN-5.4). 코드는 회사 안에서 UNIQUE 라 하나만 맞는다. 없으면 null — 목록만 보여 준다
+// (SP-GEN-5.6). 코드는 회사 안에서 UNIQUE 라 하나만 맞는다. 없으면 null — 목록만 보여 준다
 // (남의 회사 코드·오타·삭제된 항목 어느 쪽이든 화면이 죽지 않는다).
 export function pickBenefit(benefits, cd) {
   const want = String(cd || '').trim().toLowerCase();

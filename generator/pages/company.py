@@ -63,7 +63,7 @@ def _truncate(text: str, max_len: int) -> str:
 
 
 def benefit_anchor(cd, name: str = "") -> str:
-    """복지 한 건의 페이지 내 주소 `b-{코드}` (SP-GEN-5.4).
+    """복지 한 건의 페이지 내 주소 `b-{코드}` (SP-GEN-5.6).
 
     **이 함수가 앵커 규칙의 유일한 자리다.** 회사 페이지(원장 행 id·카드 행 링크)와 히트맵 타일
     링크가 같은 문자열을 만들어야 타일에서 그 행으로 정확히 떨어진다 — 규칙이 두 곳에 있으면
@@ -159,7 +159,7 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> li
             "verified": iso_date(b.get("verified_dtm")),
             "expires": iso_date(b.get("expires_dtm")),
             "sort": b.get("sort_order_no") or 0,
-            # ── 스탯 카드·원장(SP-GEN-5.4) ──
+            # ── 스탯 카드·원장(SP-GEN-5.6) ──
             "anchor": anchor,
             "amt_kind": kind,
             "est": kind == "estimated",
@@ -181,7 +181,7 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> li
 
 
 def _card_view(c: dict, groups, corpus) -> dict:
-    """스탯 카드 뷰모델 (SP-GEN-5.4) — 레이더·카테고리 요약·신뢰도 원장·순위.
+    """스탯 카드 뷰모델 (SP-GEN-5.6) — 레이더·카테고리 요약·신뢰도 원장·순위.
 
     **여기서 새 사실을 만들지 않는다.** 카드가 보여 주는 것은 아래 원장과 같은 27행이고, 카드는
     그 목차다(행을 누르면 `#b-{코드}` 로 원장의 같은 항목으로 간다). 텍스트의 집이 두 곳이면
@@ -463,7 +463,7 @@ def render_all(env, ctx, combo_pairs=None) -> list[Page]:
     """
     now = ctx.build_now
     tpl = env.get_template("company.html")
-    # 비교 기준은 **빌드당 한 번**만 만든다(SP-GEN-5.4). 회사마다 계산하면 O(n²)이고, 더 나쁘게는
+    # 비교 기준은 **빌드당 한 번**만 만든다(SP-GEN-5.6). 회사마다 계산하면 O(n²)이고, 더 나쁘게는
     # 페이지마다 다른 평균이 섞일 여지가 생긴다. ⚠ 회사가 하나 늘면 전 회사 페이지의 평균·순위가
     # 함께 움직인다 — 정적 재생성이 전량인 이유가 여기에도 하나 더 있다.
     corpus = corpus_mod.build(ctx.companies, CATEGORY_ORDER)

@@ -27,7 +27,7 @@
 
   /* ── 1c) jobcho.wiki 브랜드색(풀잎 연두 + 진초록) + 서피스 ── */
   --grass:#8bc34a; --brand:#2f7d43; --brand-active:#266336; --brand-tint:#e9f4ec;
-  /* 스탯 카드(SP-GEN-5.4) — 레이더 면(반투명이라 눈금 고리가 비쳐야 한다)·앵커 도착 강조.
+  /* 스탯 카드(SP-GEN-5.6) — 레이더 면(반투명이라 눈금 고리가 비쳐야 한다)·앵커 도착 강조.
      `--brand-tint` 는 불투명이라 면으로 쓰면 고리를 덮는다. */
   --radar-fill:rgb(47 125 67 / .18); --band-hit:#dcefe2;
   --brand-bar:var(--brand); --on-brand:#ffffff; --on-brand-soft:rgb(255 255 255 / .85);
@@ -603,7 +603,7 @@ main p { margin-top:var(--sp-3); }
 .mchart .ar-pos { fill:var(--pos); opacity:.12; }
 .mchart .ar-neg { fill:var(--neg); opacity:.12; }
 
-/* ═══════════════════════════════ 복지 스탯 카드 + 원장(회사 상세, SP-GEN-5.4) ══ */
+/* ═══════════════════════════════ 복지 스탯 카드 + 원장(회사 상세, SP-GEN-5.6) ══ */
 /* 2026-09-03 채택 시안. 카드는 **목차**, 아래 원장이 본문이다. 행 → 원장 이동은 앵커 + `:target`
    이라 **JS 0**(NFR24) — 스크립트가 없어도·죽어도 이동과 강조가 그대로 동작한다.
    레이더는 `generator/radar.py` 가 빌드 시점에 좌표까지 계산해 박아 둔 SVG 라, 여기서 하는 일은

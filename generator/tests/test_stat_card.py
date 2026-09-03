@@ -1,4 +1,4 @@
-"""generator/tests/test_stat_card.py — 복지 스탯 카드 + 원장 (SP-GEN-5.4, 2026-09-03 채택).
+"""generator/tests/test_stat_card.py — 복지 스탯 카드 + 원장 (SP-GEN-5.6, 2026-09-03 채택).
 
 계약 셋을 잡는다:
   ① **카드는 목차, 원장이 본문** — 카드 행의 `#앵커` 가 원장 행 `id` 와 1:1이고, 설명 전문은
