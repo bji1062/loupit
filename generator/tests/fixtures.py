@@ -159,6 +159,7 @@ COMPANIES = [
         "aliases": ["네이버", "NAVER"],
         "benefits": [
             {
+                "benefit_cd": "parenting",
                 "benefit_nm": "육아휴직 지원",
                 "benefit_amt": None,
                 "benefit_ctgr_cd": "family",
@@ -174,6 +175,7 @@ COMPANIES = [
                 "sort_order_no": 0,
             },
             {
+                "benefit_cd": "self_development",
                 "benefit_nm": "자기계발비 지원",
                 "benefit_amt": 100,
                 "benefit_ctgr_cd": "growth",

@@ -36,7 +36,7 @@
 
   <section class="benefits" id="benefit-ledger">
     <h2>복지 상세 <span class="h2-sub">— 원장</span></h2>
-    <p class="ledger-lead">카드의 항목마다 설명·환산 근거·출처를 그대로 싣습니다. 회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}. 이 회사 재직 인증을 마친 분은 항목별로 금액을 수정하거나 추가할 수 있습니다.</p>
+    <p class="ledger-lead">카드의 항목마다 설명·환산 근거·출처를 그대로 싣습니다. 회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}{% if card.counts.blank %} · 금액 미기재 {{ card.counts.blank }}{% endif %}. 이 회사 재직 인증을 마친 분은 항목별로 금액을 수정하거나 추가할 수 있습니다.</p>
     {{ benefit_table(benefit_groups) }}
   </section>
   {#- 실적(SP-FIN-5, 2026-08-27): 복지 **뒤**, CTA 앞 — 복지가 이 사이트의 본체다. `finance` 는

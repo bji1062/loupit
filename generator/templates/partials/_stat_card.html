@@ -57,7 +57,9 @@
         {% for item in cat.rows %}
           <li><a class="sc-row{% if item.amt %} has-amt{% endif %}" href="#{{ item.anchor }}">
             <span class="sc-nm">{{ item.name }}</span>
-            {% if item.qual or item.amt is none %}<span class="sc-qual">정성</span>
+            {#- 숫자 대신 무엇을 말할지는 뷰모델이 정한다(`no_amt_label`) — 템플릿이 스스로 판정하면
+                금액 신뢰도 판정이 한 곳 더 생기고, 정성과 '금액 미기재'가 뭉개진다. -#}
+            {% if item.no_amt_label %}<span class="sc-qual">{{ item.no_amt_label }}</span>
             {% else %}<span class="sc-amt sc-{{ item.tier }}{% if item.est %} sc-est{% endif %}">{% if item.est %}<i>추정</i>{% endif %}{{ item.amt }}</span>{% endif %}
           </a></li>
         {% endfor %}
@@ -84,7 +86,8 @@
         <div><dt>금액 환산</dt><dd>{{ card.counts.amount }}</dd></div>
         <div class="sub"><dt>회사 공식 수치<span>밴드 ±5%</span></dt><dd>{{ card.counts.stated }}</dd></div>
         <div class="sub"><dt>추정치<span>밴드 ±20%</span></dt><dd>{{ card.counts.est }}</dd></div>
-        <div><dt>정성 항목<span>금액 환산 없음</span></dt><dd>{{ card.counts.qual }}</dd></div>
+        <div><dt>정성 항목<span>금액 환산 불가</span></dt><dd>{{ card.counts.qual }}</dd></div>
+        {% if card.counts.blank %}<div><dt>금액 미기재<span>환산 가능·값 모름</span></dt><dd>{{ card.counts.blank }}</dd></div>{% endif %}
         <div><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
         <div><dt>만료·재확인 필요<span>밴드 +15%</span></dt><dd>{{ card.counts.expired }}</dd></div>
       </dl>

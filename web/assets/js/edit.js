@@ -190,10 +190,15 @@ export function initEditPage() {
       emptyEl.hidden = benefits.length > 0;
       // 지목된 항목이 있으면 그 수정 폼을 **첫 로드에 한 번만** 연다. 저장 후 재로드에서도 열면
       // 방금 닫은 폼이 되살아난다(사용자가 끝냈다고 말한 것을 되돌리는 셈이다).
+      // ⚠ `?comp` 이 **지금 선택된 회사와 같을 때만** 연다. 다르면(내 인증 회사가 하나뿐이라
+      // 폴백된 경우 등) 남의 회사 링크가 내 회사의 같은 코드 항목 수정 폼을 열어 버린다 —
+      // `meal`·`health_check` 처럼 거의 모든 회사가 쓰는 코드라 오작동이 상시 발생한다.
       if (!state.prefillDone) {
         state.prefillDone = true;
-        const target = pickBenefit(benefits, benefitParam());
-        if (target) openForm('update', target);
+        if (compParam() === state.comp_id) {
+          const target = pickBenefit(benefits, benefitParam());
+          if (target) openForm('update', target);
+        }
       }
     } catch (err) {
       if (err instanceof ApiError && err.status === 401) { location.href = '/login'; return; }

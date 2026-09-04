@@ -14,7 +14,7 @@ from generator.context import Page
 from generator.employ import company_metrics
 from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
-from generator.format import badge_state, iso_date, krw_manwon
+from generator.format import amount_kind, badge_state, iso_date, krw_manwon
 from generator.radar import radar_svg
 from generator.slug import combo_slug
 
@@ -71,7 +71,13 @@ def benefit_anchor(cd, name: str = "") -> str:
 
     `BENEFIT_CD` 는 NOT NULL 이고 회사 안에서 UNIQUE(`uq_comp_benefit`)라 그대로 쓰면 충돌이 없다.
     """
-    return "b-" + (re.sub(r"[^a-z0-9_-]+", "-", str(cd or name).strip().lower()).strip("-") or "b")
+    key = re.sub(r"[^a-z0-9_-]+", "-", str(cd or "").strip().lower()).strip("-")
+    if not key:
+        # 코드 없는 행은 **조용히 폴백하지 않는다**. 이름으로 만들면 한글 이름이 전부 같은 문자열로
+        # 뭉개져(`b-b`) 히트맵 칸이 남의 행으로 떨어진다 — 에러 없이 틀린 링크가 이 저장소의 함정이다.
+        # `BENEFIT_CD` 는 NOT NULL 이고 번들 모델(`models/reference.Benefit`)도 필수라 정상 데이터엔 없다.
+        raise ValueError(f"benefit_anchor: BENEFIT_CD 가 없다 (benefit_nm={name!r})")
+    return "b-" + key
 
 
 def _anchor(cd, name: str, seen: set) -> str:
@@ -84,17 +90,6 @@ def _anchor(cd, name: str, seen: set) -> str:
         key, n = f"{base}-{n}", n + 1
     seen.add(key)
     return key
-
-
-def _amount_kind(b: dict) -> str:
-    """금액 신뢰도 축(`AMT_SOURCE_CD`) — 배지(출처 계보)와 **독립**이다(DEC-2, SP-DB-5).
-
-    ⚠ 배지가 '공식'이어도 금액은 추정치일 수 있다(SK텔레콤 실측: 금액 11건 중 8건이 추정).
-    화면이 이 둘을 한 축으로 합치면 추정 상수가 회사 공식 수치인 것처럼 읽힌다.
-    """
-    if b.get("qual_yn") or b.get("benefit_amt") is None:
-        return "none"
-    return "stated" if b.get("amt_source") == "stated" else "estimated"
 
 
 # 금액 신뢰도 → 원장 한 줄. 밴드 계수는 정책 D-4(비교 리포트가 금액에 두는 불확실성 폭)와 같은 값이다.
@@ -143,7 +138,7 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> li
     buckets: dict[str, list[dict]] = {k: [] for k in CATEGORY_ORDER}
     seen: set = set()
     for b in benefits:
-        kind = _amount_kind(b)
+        kind = amount_kind(b)
         badge = badge_state(b, now)
         anchor = _anchor(b.get("benefit_cd"), b["benefit_nm"], seen)
         item = {
@@ -164,6 +159,8 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> li
             "amt_kind": kind,
             "est": kind == "estimated",
             "tier": _amount_tier(None if b["qual_yn"] else b.get("benefit_amt")),
+            # 카드에서 숫자 대신 보여 줄 말. 정성과 "금액을 모르는 행"은 다른 사실이다.
+            "no_amt_label": ("정성" if b["qual_yn"] else ("금액 미기재" if kind == "none" else "")),
             "src_text": AMOUNT_SOURCE_TEXT[kind],
             "ask_q": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[0],
             "ask_a": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[1],
@@ -206,7 +203,10 @@ def _card_view(c: dict, groups, corpus) -> dict:
         "amount": sum(1 for i in flat if i["amt_kind"] != "none"),
         "stated": sum(1 for i in flat if i["amt_kind"] == "stated"),
         "est": sum(1 for i in flat if i["amt_kind"] == "estimated"),
-        "qual": sum(1 for i in flat if i["amt_kind"] == "none"),
+        # 정성(금액 환산이 **불가능**)과 금액 미기재(환산 가능하지만 **모른다**)는 다른 사실이다.
+        # 한 줄로 합치면 "정성 항목 16" 안에 아직 안 채운 값이 섞여 재직자 편집의 표적이 흐려진다.
+        "qual": sum(1 for i in flat if i["qual"]),
+        "blank": sum(1 for i in flat if i["amt_kind"] == "none" and not i["qual"]),
         # 배지 계보 두 종(재직자 등록·공식·재직자 수정)을 한 줄로 센다 — 화면이 묻는 것은
         # "사람 손이 닿았는가"이고, 어느 쪽인지는 행의 배지가 말한다.
         "edited": sum(1 for i in flat if i["badge"]["code"] in ("member", "edited")),
@@ -228,12 +228,15 @@ def _card_view(c: dict, groups, corpus) -> dict:
               for i in range(len(CATEGORY_ORDER)) if counts_list[i]]
     ratios.sort(key=lambda t: -t[3])
     above = [t for t in ratios if t[3] > 1]
+    amount_total = corpus.amounts.get(c["comp_id"], 0)
     return {
         "radar": radar_svg(counts_list, avgs, labels, corpus.rmax, c["comp_nm"]),
         "categories": cats,
         "counts": counts,
         "rank": corpus.rank_of(c["comp_id"]),
-        "amount_text": krw_manwon(corpus.amounts.get(c["comp_id"], 0)),
+        # 합계 0 은 "0만원"이 아니라 **금액 환산 항목이 없다**는 뜻이다 — `krw_manwon(0)` 이
+        # "0만원"(truthy)이라 폴백이 안 걸리고 부제에 "금액 합계 연 0만원"이 찍혔다(11개사).
+        "amount_text": krw_manwon(amount_total) if amount_total else "",
         "top_ratio": [{"label": lb, "count": n, "avg": f"{a:.1f}"} for lb, n, a, _ in ratios[:3]],
         "above_all": len(above) == len(ratios) and len(ratios) == len(CATEGORY_ORDER),
         "above_count": len(above),

@@ -15,6 +15,7 @@ import pytest
 
 from generator import corpus as corpus_mod
 from generator.context import build_context
+from generator.format import amount_kind
 from generator.pages import company
 from generator.radar import radar_svg
 from generator.render import make_env
@@ -88,16 +89,88 @@ def test_stated_amount_is_not_marked_as_estimate(fake_bundle, fake_now):
     assert "회사 공식 수치" in row and "추정치" not in row
 
 
-def test_amount_tally_adds_up_to_the_item_count(fake_bundle, fake_now):
-    """사이드 원장의 숫자는 서로 맞아야 한다(공식 + 추정 + 정성 = 전체)."""
-    env = make_env()
+def test_amount_tally_matches_the_source_rows(fake_bundle, fake_now):
+    """사이드 '항목 구성' 의 숫자는 **원본 복지 행에서 직접 센 값**과 같아야 한다.
+
+    (합이 맞는지만 보면 `stated+est+qual == total` 은 분할의 정의라 항상 참이라 아무것도 못 잡는다.)
+    """
     ctx = build_context(fake_bundle, now=fake_now)
     corpus = corpus_mod.build(ctx.companies, company.CATEGORY_ORDER)
     for c in ctx.companies:
-        groups = company._group_benefits(c["benefits"], fake_now, comp_id=c["comp_id"])
+        raw = c["benefits"]
+        groups = company._group_benefits(raw, fake_now, comp_id=c["comp_id"])
         counts = company._card_view(c, groups, corpus)["counts"]
-        assert counts["stated"] + counts["est"] + counts["qual"] == counts["total"]
+        assert counts["total"] == len(raw)
+        assert counts["stated"] == sum(1 for b in raw if amount_kind(b) == "stated")
+        assert counts["est"] == sum(1 for b in raw if amount_kind(b) == "estimated")
+        assert counts["qual"] == sum(1 for b in raw if b["qual_yn"])
+        assert counts["blank"] == sum(1 for b in raw if amount_kind(b) == "none" and not b["qual_yn"])
+        assert counts["stated"] + counts["est"] + counts["qual"] + counts["blank"] == counts["total"]
         assert counts["amount"] == counts["stated"] + counts["est"]
+
+
+def test_anchor_ids_are_unique_not_just_matching(fake_bundle, fake_now):
+    """집합 비교는 같은 id 가 두 번 있어도 통과한다 — 개수까지 본다."""
+    for p in _render(fake_bundle, fake_now).values():
+        ids = re.findall(r'<article class="led-row" id="(b-[^"]+)"', p.html)
+        assert len(ids) == len(set(ids)), f"{p.path}: 중복 앵커 {ids}"
+
+
+def test_company_with_no_convertible_amount_never_says_zero(fake_now):
+    """정량 금액이 하나도 없는 회사(실데이터 11곳: KB금융·LG CNS 등)에 '0만원' 을 찍지 않는다.
+
+    `krw_manwon(0)` 이 "0만원"(truthy)이라 폴백이 안 걸렸다 — 없는 값을 0 으로 **표시**하는 것은
+    0 으로 **더하는** 것과 다르다(corpus 주석과 같은 규칙)."""
+    bundle = {
+        "company_types": [], "benefit_presets": {},
+        "companies": [{
+            "comp_id": 7, "comp_eng_nm": "qualonly", "comp_nm": "정성전용사", "comp_tp_cd": "none",
+            "industry_nm": "IT", "logo_nm": "Q", "work_style_val": {}, "aliases": [],
+            "benefits": [{
+                "benefit_cd": "lounge", "benefit_nm": "라운지", "benefit_amt": None,
+                "benefit_ctgr_cd": "work_env", "badge_cd": "official", "amt_source": "none",
+                "qual_yn": True, "qual_desc_ctnt": "휴게공간 운영",
+                "verified_dtm": "2026-01-01", "expires_dtm": "2099-12-31",
+            }],
+        }],
+    }
+    env = make_env()
+    ctx = build_context(bundle, now=fake_now)
+    html = company.render_all(env, ctx)[0].html
+    assert "0만원" not in html
+    assert "금액 합계 연" not in html  # 부제에서도 빠진다
+
+
+def test_row_with_no_amount_but_not_qualitative_is_named_consistently(fake_now):
+    """`qual_yn=False` 인데 금액이 빈 행 — 재직자가 금액을 비운 채 저장하면 실제로 생긴다
+    (`services/benefit_edit.py` 가 `amt_source='none'` 으로 만든다).
+
+    카드·원장·히트맵이 이 행을 **같은 축으로** 부르는지 본다. 예전에는 히트맵만 '추정치' 로
+    분류해 한 복지가 화면마다 다른 출처를 갖고 있었다."""
+    from generator.pages import heatmap
+
+    b = {
+        "benefit_cd": "meal", "benefit_nm": "식대", "benefit_amt": None,
+        "benefit_ctgr_cd": "perks", "badge_cd": "official", "amt_source": "none",
+        "qual_yn": False, "verified_dtm": "2026-01-01", "expires_dtm": "2099-12-31",
+    }
+    assert amount_kind(b) == "none"
+    assert heatmap._source_of(b) == "qual"  # 추정치로 색칠하지 않는다
+    bundle = {
+        "company_types": [], "benefit_presets": {},
+        "companies": [{
+            "comp_id": 8, "comp_eng_nm": "blankamt", "comp_nm": "금액미기재사", "comp_tp_cd": "none",
+            "industry_nm": "IT", "logo_nm": "B", "work_style_val": {}, "aliases": [], "benefits": [b],
+        }],
+    }
+    env = make_env()
+    ctx = build_context(bundle, now=fake_now)
+    html = company.render_all(env, ctx)[0].html
+    assert "금액 미기재" in html          # 카드: 정성과 구분되는 말
+    assert "금액 환산 없음" in html        # 원장: 금액을 모른다는 사실
+    # 사이드 집계도 갈라 센다 — '정성 항목' 0, '금액 미기재' 1
+    assert "정성 항목<span>금액 환산 불가</span></dt><dd>0</dd>" in html
+    assert "금액 미기재<span>환산 가능·값 모름</span></dt><dd>1</dd>" in html
 
 
 # ── ③ 비교 기준(코퍼스)은 사실만 ────────────────────────────────────────────
@@ -224,3 +297,43 @@ def test_combo_page_rows_carry_no_edit_link():
         datetime(2026, 7, 11),
     )
     assert groups[0][2][0]["edit_href"] is None
+
+# ── 화면 간 정합(히트맵 ↔ 회사 페이지) ─────────────────────────────────────
+
+
+def test_heatmap_category_tiles_land_on_a_real_ledger_row(fake_bundle, fake_now):
+    """히트맵 카테고리 칸의 `#b-…` 가 그 회사 원장에 **실재하는 id** 여야 한다.
+
+    앵커 문자열을 두 곳에서 만들면 어긋나도 에러가 없다 — 링크는 조용히 페이지 맨 위로 간다.
+    두 페이지를 실제로 대조하는 테스트는 이것 하나뿐이다."""
+    from generator.pages import heatmap
+
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    ledger = {}
+    for p in company.render_all(env, ctx):
+        slug = p.path[len("company/"):-len(".html")]
+        ledger[slug] = set(re.findall(r'<article class="led-row" id="(b-[^"]+)"', p.html))
+    seen = 0
+    for mode in heatmap.build_view(ctx, {})["modes"]:
+        for panel in mode["panels"]:
+            for t in panel["layouts"]["landscape"]["tiles"]:
+                if "#" not in t["href"]:
+                    continue  # 복지·실적 모드는 회사 단위라 앵커가 없다
+                slug, anchor = t["href"].split("#")
+                slug = slug[len("/company/"):]
+                assert anchor in ledger[slug], f"{slug}: 히트맵 칸 #{anchor} 가 원장에 없다"
+                seen += 1
+    assert seen, "앵커가 붙은 칸이 하나도 없다(카테고리 모드가 비었나)"
+
+
+def test_axis_scale_is_identical_across_companies(fake_bundle, fake_now):
+    """레이더 축 최댓값은 **등록 회사 전체 기준**이라 모든 페이지에서 같아야 한다.
+
+    회사마다 자기 최댓값으로 정규화하면 모양이 회사 간 비교가 아니라 자기 자랑이 된다."""
+    ends = set()
+    for p in _render(fake_bundle, fake_now).values():
+        svg = p.html[p.html.index('<svg class="rd"'):]
+        svg = svg[:svg.index("</svg>")]
+        ends.add(tuple(re.findall(r'<line class="rd-ax"[^>]*x2="([\d.]+)" y2="([\d.]+)"', svg)))
+    assert len(ends) == 1, "회사마다 축 끝점이 다르다 — 스케일이 회사별로 잡혔다"

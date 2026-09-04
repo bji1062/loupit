@@ -28,7 +28,7 @@ from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from collections import Counter
 
-from generator.format import krw_eok
+from generator.format import amount_kind, krw_eok
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, benefit_anchor
 from generator.sector import UNLISTED, load_sectors, sector_of
 from generator.treemap import nested_layout
@@ -119,10 +119,14 @@ def _finance_items(ctx, sectors):
     return items
 
 
+# 금액 신뢰도 3값 → 히트맵 색 키. **판정 자체는 `format.amount_kind` 하나가 한다** — 여기서 다시
+# 판정하면 정성이 아닌데 금액이 빈 행을 히트맵은 '추정치', 회사 페이지는 '금액 환산 없음'으로 갈라
+# 부른다(재직자가 금액을 비운 채 저장하면 실제로 생기는 행이다).
+_SRC_OF_KIND = {"stated": "stated", "estimated": "est", "none": "qual"}
+
+
 def _source_of(b: dict) -> str:
-    if b.get("qual_yn"):
-        return "qual"
-    return "stated" if b.get("amt_source") == "stated" else "est"
+    return _SRC_OF_KIND[amount_kind(b)]
 
 
 def _item_labels(ctx) -> dict[str, str]:
