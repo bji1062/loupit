@@ -28,8 +28,8 @@ from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from collections import Counter
 
-from generator.format import krw_eok
-from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
+from generator.format import amount_kind, krw_eok
+from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, benefit_anchor
 from generator.sector import UNLISTED, load_sectors, sector_of
 from generator.treemap import nested_layout
 
@@ -119,10 +119,14 @@ def _finance_items(ctx, sectors):
     return items
 
 
+# 금액 신뢰도 3값 → 히트맵 색 키. **판정 자체는 `format.amount_kind` 하나가 한다** — 여기서 다시
+# 판정하면 정성이 아닌데 금액이 빈 행을 히트맵은 '추정치', 회사 페이지는 '금액 환산 없음'으로 갈라
+# 부른다(재직자가 금액을 비운 채 저장하면 실제로 생기는 행이다).
+_SRC_OF_KIND = {"stated": "stated", "estimated": "est", "none": "qual"}
+
+
 def _source_of(b: dict) -> str:
-    if b.get("qual_yn"):
-        return "qual"
-    return "stated" if b.get("amt_source") == "stated" else "est"
+    return _SRC_OF_KIND[amount_kind(b)]
 
 
 def _item_labels(ctx) -> dict[str, str]:
@@ -157,6 +161,9 @@ def _category_items(ctx, ctgr: str, labels: dict[str, str]) -> list[dict]:
             tip += f" · {EDIT_HINT}"
         items.append({"c": c, "sector": labels.get(b.get("benefit_cd") or b["benefit_nm"], b["benefit_nm"]),
                       "weight": int(b["benefit_amt"]) if has_amt else floor, "src": src, "cls": f"s-{src}",
+                      # 칸 → 회사 페이지의 **그 복지 행**. 앵커 규칙은 company.benefit_anchor 하나가
+                      # 소유한다(문자열을 여기서 다시 만들면 언젠가 갈라져 맨 위로 떨어진다).
+                      "anchor": benefit_anchor(b.get("benefit_cd"), b["benefit_nm"]),
                       "sub": amt_text, "tip": tip})
     return items
 
@@ -204,7 +211,11 @@ def _layout(items, ctx, orientation, gkeys=None):
         "groups": [{"name": g.name, "gkey": gkeys[g.name], "count": g.count, "unlisted": g.name == UNLISTED,
                     "x": round(g.x, 3), "y": round(g.y * sy, 3), "w": round(g.w, 3), "h": round(g.h * sy, 3),
                     "narrow": g.w < 7 or g.h < 6} for g in heads],
-        "tiles": [{"nm": t.obj["c"]["comp_nm"], "href": f"/company/{ctx.slugs[t.obj['c']['comp_eng_nm']]}",
+        "tiles": [{"nm": t.obj["c"]["comp_nm"],
+                   # 카테고리 모드의 칸은 복지 한 건이라 회사 페이지의 그 행까지 데려간다.
+                   # 복지·실적 모드는 회사 단위라 앵커가 없다(회사 페이지 맨 위가 맞다).
+                   "href": (f"/company/{ctx.slugs[t.obj['c']['comp_eng_nm']]}"
+                            + (f"#{t.obj['anchor']}" if t.obj.get("anchor") else "")),
                    "industry": t.obj["c"].get("industry_nm") or "", "sector": t.obj["sector"],
                    "gkey": gkeys[t.obj["sector"]], "ckey": ctx.slugs[t.obj["c"]["comp_eng_nm"]],
                    "cls": t.obj["cls"], "size": _size_class(t.w * t.h), "sub": t.obj["sub"], "tip": t.obj["tip"],

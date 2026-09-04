@@ -8,8 +8,10 @@ FM(풋볼 매니저) 선수 스탯 화면의 문법을 회사 복지에 옮긴 �
 (Claude Design 캔버스 아티팩트. 아트보드 2장이 나란히 놓여 있고, 링크만 있으면
 어느 기기에서든 열린다. PNG·PDF 내보내기 가능.)
 
-이 디렉터리는 **시안 보관본**이다. 라이브 사이트(`web/`)에 들어간 것은 아직 없다 —
-채택 여부와 다크/라이트 선택이 정해지면 그때 `generator/` 쪽에 반영한다.
+이 디렉터리는 **시안 보관본**이다. **채택됨(2026-09-03) — 라이트 방향으로 회사 상세에 적용**:
+구현 정본은 [`docs/SPEC/07-정적-생성기.md` SP-GEN-5.6](../../SPEC/07-정적-생성기.md)이고 코드는
+`generator/pages/company.py`·`corpus.py`·`radar.py`·`templates/partials/_stat_card.html` 이다.
+여기 아트보드는 **원안 기록**으로 남긴다(다크는 채택 안 함).
 
 ## 파일
 
@@ -18,12 +20,14 @@ FM(풋볼 매니저) 선수 스탯 화면의 문법을 회사 복지에 옮긴 �
 | `gen.py` | **정본 생성기.** 데이터 표(복지 27항목·금액·카테고리·금액출처, 113개사 평균)와 팔레트 2벌을 갖고 두 아트보드를 찍어낸다. 수정은 언제나 여기서. |
 | `Main.dc.html` | 다크 스탯 카드 (기본안) — `gen.py` 산출물 |
 | `Light.dc.html` | 라이트 변형 (현재 jobcho.wiki 토큰: 그린 GNB·그레이 캔버스·흰 카드) — `gen.py` 산출물 |
-| `canvas.json` | 캔버스 배치(프레임 1440×1000 두 장 + 설명 스티커 2장) |
-| `shot-Main.png` / `shot-Light.png` | 렌더 결과 스크린샷 (링크를 안 열어도 보이도록) |
+| `Detail.dc.html` | **복지 상세 = 카드 + 실적 + 원장**(2026-09-03, 다크만 · 실적 띠는 카드 바로 아래, 원장은 그 다음 — 사용자 결정) — 기본 상태, 구내식당 행이 `:target` 된 모습. **클릭 프로토타입**(아트보드를 펼친 Play 화면에서 — `expand: fill`): 카드 행을 누르면 원장의 같은 항목으로 스크롤하고 띠가 옮겨진다(`<script data-dc-script>` 의 `componentDidMount` 가 `a[data-go]` 에 리스너를 단다 — 캔버스 전용, 실제 사이트는 앵커 + `:target` 으로 JS 0). `gen.py` 산출물 |
+| `DetailLens.dc.html` | 같은 페이지의 **출처 렌즈 '추정치' 선택 상태**(추정 행 띠, 나머지 흐림) — `gen.py` 산출물 |
+| `canvas.json` | 캔버스 배치 — 페이지 2장: 「스탯 카드」(Main·Light, 1440×1100) · 「상세 원장」(Detail·DetailLens, 1440×2880 flow, `is_interactive`, `expand: fill`) + 설명 스티커 4장 |
+| `shot-Main.png` / `shot-Light.png` / `Detail.png` / `DetailLens.png` | 렌더 결과 스크린샷 (링크를 안 열어도 보이도록) |
 
 ## 화면 구성
 
-- **좌측 패널** — 로고 약어 타일(`TCOMPANY.LOGO_NM`) + 9각형 레이더 + 기본 지표.
+- **좌측 패널** — 9각형 레이더(크게, 눈금 2·4·6·8) + 기본 지표. 로고 약어 타일은 사용자 결정(2026-09-03)으로 **뺐다** — 회사명은 헤더 h1 이 이미 말한다.
   - 9각형 축 = 복지 9카테고리 **정본 순서**(`generator/pages/company.py`
     `CATEGORY_ORDER`), 값 = **카테고리별 복지 항목 수**, 축 최대 8(= 전 회사 한
     카테고리 최댓값). 회색 점선 = 등록 113개사 평균.
@@ -34,17 +38,50 @@ FM(풋볼 매니저) 선수 스탯 화면의 문법을 회사 복지에 옮긴 �
   출처 계보 배지, 평균 대비 배율 상위 3개 카테고리.
 - **하단** — 실적 3종(매출·영업이익·순이익, 2025 연결, 전년 대비).
 
+## 복지 상세 — 「상세 원장」 페이지 (2026-09-03)
+
+사용자 질문 "이 디자인으로 하면 복지 상세정보는 어떻게 보여주면 좋을까?"에 대한 답.
+4갈래 아이디어 패널(FM 문법·정적/SEO·출처 신뢰·비교 맥락, 32안 → 14안) 의 추천 조합을
+한 페이지에 그린 것. 원칙: **정성 설명·환산 근거 텍스트의 집은 한 곳**(원장) — 카드에 넣으면
+FM 밀도가 죽고, 툴팁에 넣으면 SEO(애드센스 본문 글자 수)가 죽고, 별도 URL 로 빼면 크롤
+예산을 두 배로 먹는다.
+
+1. **카드 = 목차, 아래 원장** — 카드 행 = `<a href="#b-{BENEFIT_CD}">`, 카드 바로 아래 현행
+   `_benefit_table.html` 을 「복지 상세 — 원장」으로 승격(행 = 이름·금액·금액 출처 문장·배지·
+   확인일·만료 + 설명/환산 근거 전문). `:target` 행에 밴드, `scroll-margin-top` 으로 고정 GNB 회피.
+2. **추정 점선 + 신뢰도 원장** — `AMT_SOURCE_CD` 를 행 `data-amt` 로, 추정 숫자에 점선 밑줄.
+   사이드 '항목 구성' → '신뢰도 원장'(회사 공식 수치 3 / 앵커 추정치 8 / 정성 16 / 재직자 등록·수정 0 /
+   만료 0 + 밴드 규칙 ±5%·±20%·+15%, policy.py D-4). 전제: `company.py _group_benefits` 가
+   `amt_source` 를 안 넘긴다(히트맵만 읽음) → 한 줄 추가. NOTE 끝 "(추정)" 꼬리(SKT 6/11, 시드 483곳)는
+   빌드 시 strip 하는 것으로 시연(출처 문장이 대신 말한다).
+3. **행 앵커 전역화 + 편집 진입** — 원장 행 끝에 출처 상태별 질문(추정 → "실제 금액을 아세요?
+   재직 인증 후 수정", 정성 → "연간 환산 금액을 아시면 추가", 공식 수치 → "수정") →
+   `/edit?comp=&benefit=`(nofollow, `edit.js` 프리필 필요) · "히트맵에서 이 항목 →" 역링크.
+   히트맵 타일 href 에도 `#b-{cd}` 를 붙이면 3,940개 타일이 행으로 정확히 떨어진다.
+4. **출처 렌즈 라디오** — 패널 머리 칩 6개(전체 / 회사 공식 수치 / 추정치 / 정성 / 재직자 등록·수정 /
+   만료)를 라디오로, `_metrics.html` 의 mshape 패턴(`#k-est:checked ~ … [data-amt=estimated]`)으로
+   카드·원장을 **함께** 띠·감쇠(숨기지 않음). 사이드 숫자 = `<label for>`. ⚠ input 은 카드 래퍼의
+   앞 형제여야 한다(styles.css:543 경고). 0건 렌즈도 "(0)" 노출.
+
+지킬 규칙: ① 텍스트의 집은 하나 ② 라디오 그룹은 그리드당 하나(출처 렌즈만 — 관점 선택기
+「신입/육아기」는 판정 어휘라 보류) ③ `#b-`·`#cat-` 앵커가 hash 를 쓰므로 렌즈 상태는 `?k=` 나
+localStorage 로. 기각: 별도 '근거' 탭 URL(크롤 예산), 호버 툴팁(키보드·터치 불가), 한 줄 클램프,
+"113곳 중앙값" 비교 열(추정 앵커 상수). 다음 후보: 예외만 배지(편집 행이 생기면), 정성 = 특성
+리스트, 레이더 꼭짓점 앵커, 공식/추정 분리한 교차 회사 맥락 줄.
+
 ## 갱신 절차
 
 ```bash
 # 1) 데이터·레이아웃 수정
 vi docs/design/skt-welfare-card/gen.py
-python3 gen.py                       # Main.dc.html · Light.dc.html 재생성
+python3 gen.py                       # Main · Light · Detail · DetailLens 재생성
+# 프레임 높이(CARD_H·DETAIL_H)는 내용 높이를 재서 정한다 — 스크래치의 measure.mjs(playwright) 로 마지막 자식 bottom 을 읽었다
 
 # 2) 캔버스 재시드 (design 스킬의 헬퍼. <B> = 스킬 base directory)
 node "<B>/seed-canvas.mjs" --template "<B>/payload.template.html" \
   --out skt-welfare-card.html --title "SK텔레콤 복지 카드" \
-  --artboard Main.dc.html --artboard Light.dc.html --canvas canvas.json
+  --artboard Main.dc.html --artboard Light.dc.html \
+  --artboard Detail.dc.html --artboard DetailLens.dc.html --canvas canvas.json
 node "<B>/seed-canvas.mjs" --check skt-welfare-card.html
 
 # 3) 같은 URL 로 재게시 — Artifact 도구에 url 을 넘긴다(안 넘기면 새 URL 이 생긴다).

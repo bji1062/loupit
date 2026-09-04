@@ -93,10 +93,19 @@ def render_robots(cfg=CFG) -> Page:
         "# 공격적 SEO·데이터 스크래퍼 — 전면 차단(nginx Layer B가 실제 강제)",
         *[f"User-agent: {b}\nDisallow: /" for b in aggressive],
         "",
-        "# 그 외 전체 — API만 제외, 대량 크롤 완화",
+        "# 그 외 전체 — API·로그인 셸만 제외, 대량 크롤 완화",
         "User-agent: *",
         "Allow: /",
         "Disallow: /api/",
+        # M9(로그인) 셸은 색인 대상이 아니다. `web/*.html` 의 noindex 는 **크롤한 뒤**에야 적용돼
+        # 예산을 이미 쓴 뒤이고, 회사 페이지 원장이 회사×항목마다 `/edit?comp=&benefit=` 를 만들어
+        # 고유 URL 1,755개가 후보로 잡힌다(`rel="nofollow"` 는 2020년부터 힌트일 뿐이다).
+        # 이 사이트의 병목은 페이지 수가 아니라 **크롤 예산**이라(진짜 Googlebot 15일 18건) 값이 크다.
+        "Disallow: /edit",
+        "Disallow: /edits",
+        "Disallow: /login",
+        "Disallow: /mypage",
+        "Disallow: /verify",
         "Crawl-delay: 2",
         "",
         f"Sitemap: {cfg.site_origin}/sitemap.xml",

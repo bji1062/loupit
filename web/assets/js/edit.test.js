@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 
 import { ApiError } from './api.js';
 import {
-  CATEGORY_LABELS, parseAmount, validateForm, buildPayload, fmtAmount, benefitErrorMessage, pickCompany,
+  CATEGORY_LABELS, parseAmount, validateForm, buildPayload, fmtAmount, benefitErrorMessage, pickCompany, pickBenefit,
 } from './edit.js';
 
 describe('parseAmount', () => {
@@ -104,5 +104,23 @@ describe('pickCompany', () => {
   });
   test('빈 목록 → multi', () => {
     assert.deepEqual(pickCompany([], null), { mode: 'multi', company: null });
+  });
+});
+
+describe('pickBenefit — 회사 페이지 원장이 지목한 항목', () => {
+  const list = [
+    { benefit_id: 1, benefit_cd: 'meal', benefit_nm: '구내식당' },
+    { benefit_id: 2, benefit_cd: 'welfare_point', benefit_nm: '복지포인트' },
+  ];
+  test('코드가 맞으면 그 행', () => { assert.equal(pickBenefit(list, 'welfare_point').benefit_id, 2); });
+  test('대소문자 무시(주소창에서 대문자로 와도 찾는다)', () => { assert.equal(pickBenefit(list, 'MEAL').benefit_id, 1); });
+  test('없는 코드·빈 값·목록 없음 → null(목록만 보여 준다)', () => {
+    assert.equal(pickBenefit(list, 'nope'), null);
+    assert.equal(pickBenefit(list, ''), null);
+    assert.equal(pickBenefit(list, null), null);
+    assert.equal(pickBenefit(null, 'meal'), null);
+  });
+  test('코드 없는 행이 섞여 있어도 죽지 않는다', () => {
+    assert.equal(pickBenefit([{ benefit_id: 9 }, ...list], 'meal').benefit_id, 1);
   });
 });

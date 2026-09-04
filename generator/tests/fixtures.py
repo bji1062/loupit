@@ -36,6 +36,7 @@ COMPANIES = [
         "aliases": ["삼성전자", "삼성", "Samsung"],
         "benefits": [
             {
+                "benefit_cd": "meal",
                 "benefit_nm": "식대 지원",
                 "benefit_amt": 240,
                 "benefit_ctgr_cd": "perks",
@@ -51,6 +52,7 @@ COMPANIES = [
                 "sort_order_no": 0,
             },
             {
+                "benefit_cd": "incentive",
                 "benefit_nm": "성과급 인센티브",
                 "benefit_amt": 1200,
                 "benefit_ctgr_cd": "compensation",
@@ -67,6 +69,7 @@ COMPANIES = [
             },
             {
                 # 만료 지난 표본(GC-13 stale) + javascript: 스킴 출처(GC-14 링크 차단)
+                "benefit_cd": "health_check",
                 "benefit_nm": "건강검진 지원",
                 "benefit_amt": None,
                 "benefit_ctgr_cd": "health",
@@ -82,6 +85,7 @@ COMPANIES = [
                 "sort_order_no": 0,
             },
             {
+                "benefit_cd": "refresh_leave",
                 "benefit_nm": "리프레시 휴가",
                 "benefit_amt": None,
                 "benefit_ctgr_cd": "time_off",
@@ -109,6 +113,7 @@ COMPANIES = [
         "aliases": ["SK하이닉스", "하이닉스"],
         "benefits": [
             {
+                "benefit_cd": "housing_loan",
                 "benefit_nm": "주택자금 대출 지원",
                 "benefit_amt": 5000,
                 "benefit_ctgr_cd": "compensation",
@@ -124,6 +129,7 @@ COMPANIES = [
                 "sort_order_no": 0,
             },
             {
+                "benefit_cd": "club",
                 "benefit_nm": "동호회 지원",
                 "benefit_amt": 30,
                 "benefit_ctgr_cd": "leisure",
@@ -153,6 +159,7 @@ COMPANIES = [
         "aliases": ["네이버", "NAVER"],
         "benefits": [
             {
+                "benefit_cd": "parenting",
                 "benefit_nm": "육아휴직 지원",
                 "benefit_amt": None,
                 "benefit_ctgr_cd": "family",
@@ -168,6 +175,7 @@ COMPANIES = [
                 "sort_order_no": 0,
             },
             {
+                "benefit_cd": "self_development",
                 "benefit_nm": "자기계발비 지원",
                 "benefit_amt": 100,
                 "benefit_ctgr_cd": "growth",
@@ -265,6 +273,7 @@ def _mk_cj_enm(comp_id: int, eng: str, nm: str) -> dict:
         "aliases": [nm],
         "benefits": [
             {
+                "benefit_cd": "meal",
                 "benefit_nm": "식대 지원",
                 "benefit_amt": 200,
                 "benefit_ctgr_cd": "perks",

@@ -14,6 +14,7 @@ import { initLoginPage } from './login.js';
 import { initMypage } from './mypage.js';
 import { initVerifyPage } from './verify.js';
 import { initEditsPage, PAGE_LIMIT } from './edits.js';
+import { initEditPage } from './edit.js';
 
 // ── 화면 마운트: 실 HTML → jsdom, 전역 document·location 주입 ────────────────
 function mountPage(file, url) {
@@ -780,5 +781,48 @@ describe('edits.html + initEditsPage', () => {
     assert.equal(li.textContent, 'SK하이닉스');
     li.click();
     assert.equal(globalThis.location.href, '/edits?comp=41');
+  });
+});
+
+// ── 복지 편집 화면: 회사 페이지 원장이 지목해 보낸 `?comp=&benefit=` 프리필 ──────
+// 회사 상세의 원장 각 행이 `/edit?comp=99&benefit=meal` 로 그 항목을 지목한다(SP-GEN-5.6).
+describe('edit.html + initEditPage — 항목 지목 프리필', () => {
+  const BENEFITS = (rows) => ({ status: 200, body: { benefits: rows } });
+  const ROWS = [
+    { benefit_id: 11, benefit_cd: 'meal', benefit_nm: '구내식당', benefit_ctgr_cd: 'perks',
+      benefit_amt: 432, qual_yn: false, note_ctnt: '', base_dtm: '2026-09-01T00:00:00' },
+    { benefit_id: 12, benefit_cd: 'club', benefit_nm: '동호회', benefit_ctgr_cd: 'leisure',
+      benefit_amt: 24, qual_yn: false, note_ctnt: '', base_dtm: '2026-09-01T00:00:00' },
+  ];
+
+  async function run(search, verifications) {
+    const dom = mountPage('edit.html', 'http://x/edit' + search);
+    globalThis.location.search = search;
+    mockApi([
+      ['GET', '/members/me', { status: 200, body: { nickname: '직장인-1', verifications } }],
+      ['GET', '/benefits', BENEFITS(ROWS)],
+    ]);
+    initEditPage();
+    await tick(30);
+    return dom;
+  }
+
+  test('지목한 항목의 수정 폼이 열린다', async () => {
+    await run('?comp=40&benefit=club', [{ comp_id: 40, comp_nm: '테스트사' }]);
+    assert.equal($('benefit-form').hidden, false);
+    assert.equal($('form-title').textContent, '복지 수정');
+    assert.equal($('f-name').value, '동호회');
+  });
+
+  test('없는 코드면 목록만 — 폼은 닫힌 채', async () => {
+    await run('?comp=40&benefit=nope', [{ comp_id: 40, comp_nm: '테스트사' }]);
+    assert.equal($('benefit-form').hidden, true);
+  });
+
+  test('⚠ 남의 회사 링크로 들어오면 내 회사의 같은 코드 항목을 열지 않는다', async () => {
+    // 삼성전자 페이지의 `?comp=1&benefit=meal` 을 40번 회사 재직자가 누른 상황.
+    // pickCompany 가 유일 인증 회사(40)로 폴백하므로 회사는 40 이 되지만, 지목은 남의 것이다.
+    await run('?comp=1&benefit=meal', [{ comp_id: 40, comp_nm: '테스트사' }]);
+    assert.equal($('benefit-form').hidden, true, 'meal 은 거의 모든 회사에 있어 상시 오작동이 된다');
   });
 });

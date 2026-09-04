@@ -5,7 +5,7 @@ import test, { describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { ApiError } from './api.js';
-import { authStateFrom, navTargetFor, applyAuthNav, initAuthNav, OFF_CACHE_KEY } from './authnav.js';
+import { authStateFrom, navTargetFor, applyAuthNav, applyEditLinks, initAuthNav, OFF_CACHE_KEY } from './authnav.js';
 
 // ── 최소 DOM 스텁(jsdom 불필요) ──────────────────────────────────────────────
 function stubDoc({ withSlot = true, withLabel = true } = {}) {
@@ -57,6 +57,42 @@ describe('navTargetFor', () => {
   test('off·null → 노출 안 함', () => {
     assert.equal(navTargetFor('off'), null);
     assert.equal(navTargetFor(null), null);
+  });
+});
+
+describe('applyEditLinks — 복지 원장 편집 진입(회사 페이지)', () => {
+  const stubEditDoc = (n = 3) => {
+    const links = Array.from({ length: n }, () => ({ hidden: true }));
+    return {
+      _links: links,
+      querySelector: () => null,
+      querySelectorAll: (sel) => (sel === '[data-authnav-edit]' ? links : []),
+    };
+  };
+  test('anon·member 면 링크를 연다', () => {
+    for (const st of ['anon', 'member']) {
+      const doc = stubEditDoc();
+      assert.equal(applyEditLinks(doc, st), 3);
+      assert.ok(doc._links.every((l) => l.hidden === false), st);
+    }
+  });
+  test('off·판단 보류면 숨긴 채 둔다 — M9 꺼진 prod 에서 /edit 은 404 다', () => {
+    for (const st of ['off', null]) {
+      const doc = stubEditDoc();
+      applyEditLinks(doc, st);
+      assert.ok(doc._links.every((l) => l.hidden === true), String(st));
+    }
+  });
+  test('링크가 없는 페이지·doc 없음에서도 죽지 않는다', () => {
+    assert.equal(applyEditLinks(stubEditDoc(0), 'anon'), 0);
+    assert.equal(applyEditLinks(null, 'anon'), 0);
+  });
+  test('applyAuthNav 가 같은 프로브 결과로 함께 연다(판정 자리는 하나)', () => {
+    const doc = stubDoc();
+    const links = [{ hidden: true }];
+    doc.querySelectorAll = (sel) => (sel === '[data-authnav-edit]' ? links : []);
+    applyAuthNav(doc, 'anon');
+    assert.equal(links[0].hidden, false);
   });
 });
 

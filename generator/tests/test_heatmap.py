@@ -218,11 +218,14 @@ def test_tiles_and_groups_share_group_keys_within_a_panel():
 
 
 def test_tiles_carry_company_key_for_peer_highlight():
-    """같은 회사의 다른 칸을 찾으려면 `ckey`(회사 slug)가 필요하다 — href 와 같은 값."""
+    """같은 회사의 다른 칸을 찾으려면 `ckey`(회사 slug)가 필요하다 — href 의 **경로 부분**과 같은 값.
+
+    카테고리 모드의 칸은 복지 한 건이라 `#b-{코드}` 앵커가 붙는다(회사 페이지의 그 행으로 간다).
+    앵커는 경로가 아니므로 회사 판정은 여전히 `ckey` 하나로 한다."""
     for m in heatmap.build_view(_ctx(), SECTORS)["modes"]:
         for p in m["panels"]:
             for t in p["layouts"]["landscape"]["tiles"]:
-                assert t["ckey"] and t["href"] == f"/company/{t['ckey']}"
+                assert t["ckey"] and t["href"].split("#")[0] == f"/company/{t['ckey']}"
 
 
 def test_page_emits_highlight_attributes_and_readout():

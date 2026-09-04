@@ -36,6 +36,23 @@ def _to_dt(v) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d")
 
 
+def amount_kind(benefit: dict) -> str:
+    """금액 신뢰도 축(`AMT_SOURCE_CD`) → `stated` | `estimated` | `none` (DEC-2, SP-DB-5).
+
+    **배지(출처 계보)와 독립축이다.** 배지가 '공식'이어도 금액은 추정치일 수 있다(SK텔레콤 실측:
+    금액 11건 중 8건). 화면이 둘을 한 축으로 합치면 추정 상수가 회사 공식 수치인 것처럼 읽힌다.
+
+    🚨 **판정은 여기 하나뿐이다.** 회사 페이지(카드·원장)와 히트맵이 같은 함수를 부른다 — 판정을
+    복사하면 같은 복지가 화면마다 다른 분류를 갖는다(배지 함정, 2026-07-31). 특히 **정성이 아닌데
+    금액이 비어 있는 행**(`qual_yn=False`·`benefit_amt=None`)이 갈림길이다: 재직자가 금액을 비운 채
+    저장하면 서버가 `amt_source='none'` 으로 만들고(`services/benefit_edit.py`), 그 행은 '추정치'가
+    아니라 **금액을 모르는 행**이다.
+    """
+    if benefit.get("qual_yn") or benefit.get("benefit_amt") is None:
+        return "none"
+    return "stated" if benefit.get("amt_source") == "stated" else "estimated"
+
+
 def badge_state(benefit: dict, now: datetime) -> dict:
     """배지 파생 (FR-54·FR-05). **밴드 계수(DEC-2)는 산출하지 않는다**(SP-CALC 소유, INV-5).
 

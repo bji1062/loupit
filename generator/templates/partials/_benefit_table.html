@@ -1,5 +1,11 @@
-{# _benefit_table.html — 카테고리별 복지표 (SP-GEN-5.3). 정량은 만원 표기,
-   정성(qual_yn)은 금액 대신 qual_desc.
+{# _benefit_table.html — 「복지 상세 — 원장」 (SP-GEN-5.3 → 5.4 승격, 2026-09-03).
+
+   위 스탯 카드가 목차라면 여기가 본문이다. 카드 행의 `<a href="#b-{코드}">` 가 이 블록의 같은
+   id 로 오고, 도착한 행은 `:target` 으로 강조된다 — **JS 0**(NFR24).
+
+   **이 페이지에서 복지 설명·환산 근거의 집은 여기 하나다.** 카드에는 이름과 금액 토큰만 두고
+   정성 설명(`QUAL_DESC_CTNT`)·비고(`NOTE_CTNT`) 전문은 여기 있다. 두 곳에 두면 같은 문장이 두 번
+   실리거나(중복) 한쪽만 갱신된다.
 
    ⚠ 출처 아웃링크는 **의도적으로 렌더하지 않는다**(2026-07-30 사용자 결정). URL 은 DB 에
    남지만 화면에는 내지 않는다. 계기: 링크 전수 감사에서 살아 있던 12개 출처 중 3개가
@@ -7,27 +13,39 @@
    없는 것보다 나쁘다** — 배지 옆에서 검증을 약속해 놓고 못 지키기 때문이다. 게다가 102개사
    중 90개사는 애초에 이 값이 없어 '링크 없음'이 이미 규범이었다.
    부수 이득: 링크를 만들지 않으므로 **URL 스킴 화이트리스트가 필요 없다**(javascript: 주입
-   경로 자체가 사라진다 — 구 GC-14 가 막던 것). #}
+   경로 자체가 사라진다 — 구 GC-14 가 막던 것).
+
+   ⚠ 금액 옆 한 줄(`ben-src`)은 **금액 신뢰도**이고 배지는 **출처 계보**다. 둘은 독립 축이라
+   (DEC-2) 한 칸에 합치면 "공식 배지 = 공식 금액"이라는 없는 사실이 만들어진다. #}
 {% from "partials/_badge.html" import badge %}
 {% macro benefit_table(benefit_groups) -%}
 <div class="benefit-table">
 {% for key, label, items in benefit_groups %}
-  <section class="benefit-group" data-category="{{ key }}">
+  <section class="benefit-group" id="cat-{{ key }}" data-category="{{ key }}">
     <h3>{{ label }}</h3>
-    <table>
-      <tbody>
-      {% for item in items %}
-        <tr>
-          <td class="benefit-name">{{ item.name }}</td>
-          <td class="benefit-amount">{% if item.qual %}{{ item.qual_desc or '' }}{% else %}{{ item.amount }}{% endif %}</td>
-          <td class="benefit-badge">{{ badge(item.badge) }}</td>
-          <td class="benefit-verified">{% if item.verified %}확인일 {{ item.verified }}{% endif %}</td>
-          <td class="benefit-expires">{% if item.expires %}만료 {{ item.expires }}{% endif %}</td>
-        </tr>
-        {% if item.note %}<tr class="benefit-note"><td colspan="5">{{ item.note }}</td></tr>{% endif %}
-      {% endfor %}
-      </tbody>
-    </table>
+    {% for item in items %}
+    <article class="led-row" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}">
+      <div class="led-head">
+        <h4 class="benefit-name">{{ item.name }}</h4>
+        {% if item.amount %}<span class="benefit-amount{% if item.est %} est{% endif %}">{{ item.amount }}</span>{% endif %}
+        <span class="led-src">{{ item.src_text }}</span>
+        <span class="led-badges">{{ badge(item.badge) }}{% if item.verified %}<span class="benefit-verified">확인일 {{ item.verified }}</span>{% endif %}{% if item.expires %}<span class="benefit-expires">만료 {{ item.expires }}</span>{% endif %}</span>
+      </div>
+      {#- 정성 설명과 비고는 **다른 필드**다 — `or` 로 묶으면 둘 다 있는 행에서 비고가 사라진다
+          (실측 6행: 케어젠 '휴가비 지원', 텔레칩스 'Productivity Incentive: 최대 연봉의 30%' 등). -#}
+      {% if item.qual_desc %}<p class="benefit-note">{{ item.qual_desc }}</p>{% endif %}
+      {% if item.note and item.note != item.qual_desc %}<p class="benefit-note">{{ item.note }}</p>{% endif %}
+      {#- 출처 상태에서 파생된 **사실 질문**이 재직자 편집(SC14)의 유입구다. 모르는 값일수록 물음이
+          커진다: 추정 → "실제 금액을 아세요?", 정성 → "환산 금액을 아시나요?", 만료 → "재확인".
+
+          🚨 질문까지 **링크 안에** 둔다. `/edit` 은 M9 게이트 뒤이고 prod·beta 가 같은 바이트를
+          서빙하므로(authnav.js 머리말) 켜진 호스트에서만 `authnav.js` 가 드러내는데, 질문을 본문
+          텍스트로 빼 두면 27행에 같은 문장이 반복돼 남는다(정성 16행이면 똑같은 한 줄이 16번).
+          편집이 가능하다는 사실은 원장 머리 한 줄이 말하고, 행마다의 물음은 누를 수 있을 때만 뜬다.
+          `rel="nofollow"` — 편집 셸은 색인 대상이 아니고, 회사×항목 수만큼 링크가 늘어난다. -#}
+      {% if item.edit_href %}<p class="led-ask"><a class="led-ask-go" data-authnav-edit hidden href="{{ item.edit_href }}" rel="nofollow">{{ (item.ask_q ~ ' ' ~ item.ask_a) | trim }} →</a></p>{% endif %}
+    </article>
+    {% endfor %}
   </section>
 {% endfor %}
 </div>

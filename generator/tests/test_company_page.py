@@ -85,7 +85,7 @@ def test_gc12_work_style_section_omitted_when_no_true_keys():
                 "aliases": [],
                 "benefits": [
                     {
-                        "benefit_nm": "테스트 복지",
+                        "benefit_cd": "test_benefit", "benefit_nm": "테스트 복지",
                         "benefit_amt": 10,
                         "benefit_ctgr_cd": "perks",
                         "badge_cd": "official",
@@ -245,7 +245,7 @@ def test_M2_qualitative_benefit_null_desc_no_none_token():
                 "work_style_val": {}, "aliases": [],
                 "benefits": [
                     {
-                        "benefit_nm": "보건관리자 상주", "benefit_amt": None,
+                        "benefit_cd": "clinic", "benefit_nm": "보건관리자 상주", "benefit_amt": None,
                         "benefit_ctgr_cd": "health", "badge_cd": "official",
                         "amt_source": "none", "qual_yn": True,
                         # qual_desc_ctnt 없음 → None (버그 조건 재현)
@@ -384,7 +384,7 @@ def _mk_company(eng, nm, industry):
         "aliases": [],
         "benefits": [
             {
-                "benefit_nm": "복지",
+                "benefit_cd": "generic", "benefit_nm": "복지",
                 "benefit_amt": 10,
                 "benefit_ctgr_cd": "perks",
                 "badge_cd": "official",
