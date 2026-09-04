@@ -100,14 +100,15 @@ AMOUNT_SOURCE_TEXT = {
 }
 # 출처 상태 → 재직자에게 던지는 **사실 질문**(q) + 행동(a). 모르는 값일수록 물음이 커진다(SC14 유입구).
 #
-# 🚨 질문은 **본문 텍스트**이고 행동만 링크다. `/edit` 은 M9(로그인 기능) 게이트 뒤이고 prod·beta 가
-#    같은 산출물을 서빙하므로(authnav.js 머리말), 링크는 `data-authnav-edit hidden` 슬롯으로 내보내
-#    `authnav.js` 의 `/members/me` 프로브가 켜진 호스트에서만 드러낸다. 텍스트를 링크 안에 넣으면
-#    M9 가 꺼진 곳에서 그 문장까지 사라진다 — 본문은 JS 와 무관해야 한다(NFR24).
+# 🚨 질문과 행동은 **함께 링크 안에** 들어간다(`_benefit_table.html`). `/edit` 은 M9 게이트 뒤이고
+#    prod·beta 가 같은 산출물을 서빙하므로(authnav.js 머리말) 링크는 `data-authnav-edit hidden` 이고
+#    `authnav.js` 의 `/members/me` 프로브가 켜진 호스트에서만 드러난다. 질문을 본문 텍스트로 빼면
+#    27행에 같은 문장이 반복돼 남는다(정성 16행이면 한 줄이 16번) — 편집이 가능하다는 사실은
+#    원장 머리 한 줄이 말한다.
 EDIT_ASK = {
     "stale": ("아직 유효한가요?", "재직 인증 후 재확인"),
     "none": ("연간 환산 금액을 아시나요?", "재직 인증 후 추가"),
-    "estimated": ("실제 금액을 아세요?", "재직 인증 후 수정"),
+    "estimated": ("실제 금액을 아시나요?", "재직 인증 후 수정"),
     "stated": ("", "수정"),
 }
 # 카드 금액의 색 구간(만원). 색은 **구간**이지 등급이 아니다 — 문구도 구간으로만 적는다(DEC-B).
@@ -227,7 +228,7 @@ def _card_view(c: dict, groups, corpus) -> dict:
     ratios = [(labels[i], counts_list[i], avgs[i], (counts_list[i] / avgs[i]) if avgs[i] else 0.0)
               for i in range(len(CATEGORY_ORDER)) if counts_list[i]]
     ratios.sort(key=lambda t: -t[3])
-    above = [t for t in ratios if t[3] > 1]
+    above = [t for t in ratios if t[3] > 1]  # 화면 문구도 '많습니다'(초과)로 적는다 — '이상'이면 == 1 이 빠진다
     amount_total = corpus.amounts.get(c["comp_id"], 0)
     return {
         "radar": radar_svg(counts_list, avgs, labels, corpus.rmax, c["comp_nm"]),
@@ -238,6 +239,8 @@ def _card_view(c: dict, groups, corpus) -> dict:
         # "0만원"(truthy)이라 폴백이 안 걸리고 부제에 "금액 합계 연 0만원"이 찍혔다(11개사).
         "amount_text": krw_manwon(amount_total) if amount_total else "",
         "top_ratio": [{"label": lb, "count": n, "avg": f"{a:.1f}"} for lb, n, a, _ in ratios[:3]],
+        # 합계가 전액 추정인 회사가 65/113 이다 — "(추정 포함)" 만으로는 과소 진술이다.
+        "all_est": counts["stated"] == 0 and counts["est"] > 0,
         "above_all": len(above) == len(ratios) and len(ratios) == len(CATEGORY_ORDER),
         "above_count": len(above),
     }

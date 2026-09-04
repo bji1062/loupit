@@ -337,3 +337,66 @@ def test_axis_scale_is_identical_across_companies(fake_bundle, fake_now):
         svg = svg[:svg.index("</svg>")]
         ends.add(tuple(re.findall(r'<line class="rd-ax"[^>]*x2="([\d.]+)" y2="([\d.]+)"', svg)))
     assert len(ends) == 1, "회사마다 축 끝점이 다르다 — 스케일이 회사별로 잡혔다"
+
+# ── 리뷰 반영 회귀(2026-09-04) ──────────────────────────────────────────────
+
+
+def test_note_and_qual_desc_are_both_kept(fake_now):
+    """정성 설명과 비고는 다른 필드다 — `or` 로 묶으면 둘 다 있는 행에서 비고가 사라진다
+    (라이브 6행: 케어젠 '휴가비 지원', 텔레칩스 'Productivity Incentive…')."""
+    bundle = {
+        "company_types": [], "benefit_presets": {},
+        "companies": [{
+            "comp_id": 9, "comp_eng_nm": "bothtext", "comp_nm": "둘다사", "comp_tp_cd": "none",
+            "industry_nm": "IT", "logo_nm": "B", "work_style_val": {}, "aliases": [],
+            "benefits": [{
+                "benefit_cd": "leave", "benefit_nm": "연차/반차", "benefit_amt": None,
+                "benefit_ctgr_cd": "time_off", "badge_cd": "official", "amt_source": "none",
+                "qual_yn": True, "qual_desc_ctnt": "연차, 반차, 경조휴가", "note_ctnt": "휴가비 지원",
+                "verified_dtm": "2026-01-01", "expires_dtm": "2099-12-31",
+            }],
+        }],
+    }
+    html = company.render_all(make_env(), build_context(bundle, now=fake_now))[0].html
+    assert "연차, 반차, 경조휴가" in html and "휴가비 지원" in html
+
+
+def test_amount_total_carries_no_rank_and_no_annual_claim(fake_bundle, fake_now):
+    """등록 금액에는 대출 한도·일회성 포상 같은 **연간 환산이 아닌 값**이 섞여 있다
+    (CJ ENM 커머스 1억 600만원 중 1억 = 주택자금 대출 한도). 그런 합계에 '연' 과 순위를 붙이면
+    "이 회사가 1번째" 라는 없는 사실이 된다(D-6)."""
+    html = _samsung(fake_bundle, fake_now)
+    assert "금액 합계 연" not in html
+    assert "등록 금액 합" in html
+    rank_block = html[html.index('class="sc-rank"'):html.index("</dl>", html.index('class="sc-rank"'))]
+    assert "번째" in rank_block  # 항목 수 순위는 남는다(우리가 센 사실이다)
+    assert rank_block.count("번째") == 1, "금액 순위가 아직 있다"
+
+
+def test_all_estimated_company_says_so(fake_now):
+    """공식 수치가 하나도 없는 회사가 65/113 이다 — 그 합계를 '(추정 포함)' 이라 부르면 과소 진술이다."""
+    row = lambda cd, amt: {
+        "benefit_cd": cd, "benefit_nm": cd, "benefit_amt": amt, "benefit_ctgr_cd": "perks",
+        "badge_cd": "official", "amt_source": "estimated", "qual_yn": False,
+        "verified_dtm": "2026-01-01", "expires_dtm": "2099-12-31",
+    }
+    bundle = {
+        "company_types": [], "benefit_presets": {},
+        "companies": [{
+            "comp_id": 10, "comp_eng_nm": "allest", "comp_nm": "전부추정사", "comp_tp_cd": "none",
+            "industry_nm": "IT", "logo_nm": "A", "work_style_val": {}, "aliases": [],
+            "benefits": [row("meal", 300), row("club", 24)],
+        }],
+    }
+    html = company.render_all(make_env(), build_context(bundle, now=fake_now))[0].html
+    assert "(전부 추정)" in html and "(추정 포함)" not in html
+
+
+def test_robots_keeps_the_login_shell_out_of_the_crawl_budget():
+    """원장이 회사×항목마다 `/edit?comp=&benefit=` 를 만든다(라이브 1,755 고유 URL).
+    `noindex` 는 크롤한 **뒤에** 적용되므로 예산은 이미 쓰인 뒤다 — 이 사이트의 병목이 거기다."""
+    from generator.pages import sitemap as sitemap_page
+
+    txt = sitemap_page.render_robots().html
+    for path in ("/edit", "/edits", "/login", "/mypage", "/verify"):
+        assert f"Disallow: {path}" in txt, path

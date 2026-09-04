@@ -24,7 +24,7 @@
         {%- if industry_nm %}{% set _ = bits.append(industry_nm) %}{% endif -%}
         {%- if comp_tp_nm %}{% set _ = bits.append(comp_tp_nm) %}{% endif -%}
         {%- set _ = bits.append('복지 ' ~ card.counts.total ~ '항목') -%}
-        {%- if card.amount_text %}{% set _ = bits.append('금액 합계 연 ' ~ card.amount_text ~ ('(추정 포함)' if card.counts.est else '')) %}{% endif -%}
+        {%- if card.amount_text %}{% set _ = bits.append('등록 금액 합 ' ~ card.amount_text ~ ('(전부 추정)' if card.all_est else ('(추정 포함)' if card.counts.est else ''))) %}{% endif -%}
         {{ bits | join(' · ') }}
       </p>
     </div>
@@ -35,8 +35,8 @@
   {{ finance_strip(metrics) }}
 
   <section class="benefits" id="benefit-ledger">
-    <h2>복지 상세 <span class="h2-sub">— 원장</span></h2>
-    <p class="ledger-lead">카드의 항목마다 설명·환산 근거·출처를 그대로 싣습니다. 회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}{% if card.counts.blank %} · 금액 미기재 {{ card.counts.blank }}{% endif %}. 이 회사 재직 인증을 마친 분은 항목별로 금액을 수정하거나 추가할 수 있습니다.</p>
+    <h2>복지 상세 <span class="h2-sub">— 항목별 설명·근거</span></h2>
+    <p class="ledger-lead">항목마다 설명과 금액의 성격(회사 공식 수치 / 추정치)·출처 배지·확인일을 싣습니다. 회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}{% if card.counts.blank %} · 금액 미기재 {{ card.counts.blank }}{% endif %}. 이 회사 재직 인증을 마친 분은 항목별로 금액을 수정하거나 추가할 수 있습니다.</p>
     {{ benefit_table(benefit_groups) }}
   </section>
   {#- 실적(SP-FIN-5, 2026-08-27): 복지 **뒤**, CTA 앞 — 복지가 이 사이트의 본체다. `finance` 는

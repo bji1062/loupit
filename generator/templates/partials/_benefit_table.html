@@ -31,7 +31,10 @@
         <span class="led-src">{{ item.src_text }}</span>
         <span class="led-badges">{{ badge(item.badge) }}{% if item.verified %}<span class="benefit-verified">확인일 {{ item.verified }}</span>{% endif %}{% if item.expires %}<span class="benefit-expires">만료 {{ item.expires }}</span>{% endif %}</span>
       </div>
-      {% if item.qual_desc or item.note %}<p class="benefit-note">{{ item.qual_desc or item.note }}</p>{% endif %}
+      {#- 정성 설명과 비고는 **다른 필드**다 — `or` 로 묶으면 둘 다 있는 행에서 비고가 사라진다
+          (실측 6행: 케어젠 '휴가비 지원', 텔레칩스 'Productivity Incentive: 최대 연봉의 30%' 등). -#}
+      {% if item.qual_desc %}<p class="benefit-note">{{ item.qual_desc }}</p>{% endif %}
+      {% if item.note and item.note != item.qual_desc %}<p class="benefit-note">{{ item.note }}</p>{% endif %}
       {#- 출처 상태에서 파생된 **사실 질문**이 재직자 편집(SC14)의 유입구다. 모르는 값일수록 물음이
           커진다: 추정 → "실제 금액을 아세요?", 정성 → "환산 금액을 아시나요?", 만료 → "재확인".
 

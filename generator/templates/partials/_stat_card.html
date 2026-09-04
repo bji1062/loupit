@@ -41,8 +41,8 @@
     <dl class="sc-rank">
       <div><dt>등록 복지 항목</dt><dd><strong>{{ card.rank.item_count }}</strong>
         <span>· {{ card.rank.total }}개사 중 {% if card.rank.items_tied %}공동 {% endif %}{{ card.rank.items_rank }}번째</span></dd></div>
-      <div><dt>금액 합계(연{% if card.counts.est %}, 추정 포함{% endif %})</dt><dd><strong>{{ card.amount_text or '—' }}</strong>
-        {% if card.rank.amount %}<span>· {% if card.rank.amount_tied %}공동 {% endif %}{{ card.rank.amount_rank }}번째</span>{% endif %}</dd></div>
+      <div><dt>등록 금액 합 {% if card.all_est %}<span>전부 추정</span>{% elif card.counts.est %}<span>추정 포함</span>{% endif %}</dt>
+        <dd><strong>{{ card.amount_text or '—' }}</strong></dd></div>
     </dl>
   </div>
 
@@ -52,7 +52,7 @@
     <div class="sc-cats">
     {% for cat in card.categories %}
       <section class="sc-cat">
-        <h3>{{ cat.label }}<span class="sc-cat-sub">{{ cat.count }}항목 · {{ cat.amount_text or '금액 환산 항목 없음' }}</span></h3>
+        <h3>{{ cat.label }} <span class="sc-cat-sub">{{ cat.count }}항목 · {{ cat.amount_text or '금액 환산 항목 없음' }}</span></h3>
         <ul>
         {% for item in cat.rows %}
           <li><a class="sc-row{% if item.amt %} has-amt{% endif %}" href="#{{ item.anchor }}">
@@ -60,7 +60,7 @@
             {#- 숫자 대신 무엇을 말할지는 뷰모델이 정한다(`no_amt_label`) — 템플릿이 스스로 판정하면
                 금액 신뢰도 판정이 한 곳 더 생기고, 정성과 '금액 미기재'가 뭉개진다. -#}
             {% if item.no_amt_label %}<span class="sc-qual">{{ item.no_amt_label }}</span>
-            {% else %}<span class="sc-amt sc-{{ item.tier }}{% if item.est %} sc-est{% endif %}">{% if item.est %}<i>추정</i>{% endif %}{{ item.amt }}</span>{% endif %}
+            {% else %}<span class="sc-amt sc-{{ item.tier }}{% if item.est %} sc-est{% endif %}">{% if item.est %}<i>추정</i>{% endif %}{{ "{:,}".format(item.amt) }}</span>{% endif %}
           </a></li>
         {% endfor %}
         </ul>
@@ -72,7 +72,7 @@
   <aside class="sc-side">
     {% if work_style %}
     <div class="sc-block">
-      <h3>근무형태</h3>
+      <h2>근무형태</h2>
       <ul class="sc-ws">
       {% for k, v in work_style %}<li>{{ k | ws_label }} 제공</li>{% endfor %}
       </ul>
@@ -81,7 +81,7 @@
     {#- 신뢰도 원장 — **배지(출처 계보)와 금액 신뢰도는 별개 축**이다(DEC-2). 배지가 '공식'이어도
         금액은 추정치일 수 있어서, 그 사실을 숫자로 갈라 둔다(SK텔레콤 실측 3 / 8). -#}
     <div class="sc-block">
-      <h3>항목 구성</h3>
+      <h2>항목 구성</h2>
       <dl class="sc-tally">
         <div><dt>금액 환산</dt><dd>{{ card.counts.amount }}</dd></div>
         <div class="sub"><dt>회사 공식 수치<span>밴드 ±5%</span></dt><dd>{{ card.counts.stated }}</dd></div>
@@ -89,17 +89,17 @@
         <div><dt>정성 항목<span>금액 환산 불가</span></dt><dd>{{ card.counts.qual }}</dd></div>
         {% if card.counts.blank %}<div><dt>금액 미기재<span>환산 가능·값 모름</span></dt><dd>{{ card.counts.blank }}</dd></div>{% endif %}
         <div><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
-        <div><dt>만료·재확인 필요<span>밴드 +15%</span></dt><dd>{{ card.counts.expired }}</dd></div>
+        <div><dt>만료·재확인 필요<span>밴드 +15%p 가산</span></dt><dd>{{ card.counts.expired }}</dd></div>
       </dl>
       <p class="sc-note">밴드는 비교 리포트가 금액에 두는 불확실성 폭입니다. 출처 배지가 공식이어도 금액이 추정치이면 ±20%가 유지됩니다.</p>
     </div>
     {% if card.top_ratio %}
     <div class="sc-block">
-      <h3>평균 대비 배율 상위 {{ card.top_ratio | length }}개 카테고리</h3>
+      <h2>평균 대비 배율 상위 {{ card.top_ratio | length }}개 카테고리 <span class="sc-h2-sub">항목 수 / 평균</span></h2>
       <ul class="sc-chips">
       {% for t in card.top_ratio %}<li>{{ t.label }} {{ t.count }}<span>/ {{ t.avg }}</span></li>{% endfor %}
       </ul>
-      <p class="sc-note">{% if card.above_all %}{{ card.counts.category_total }}개 카테고리 모두{% else %}{{ card.above_count }}개 카테고리가{% endif %} 등록 {{ card.rank.total }}개사 평균 이상입니다 · 항목 수 / 평균</p>
+      <p class="sc-note">{% if card.above_all %}{{ card.counts.category_total }}개 카테고리 모두 등록 {{ card.rank.total }}개사 평균보다 많습니다.{% elif card.above_count %}{{ card.above_count }}개 카테고리가 등록 {{ card.rank.total }}개사 평균보다 많습니다.{% else %}등록 {{ card.rank.total }}개사 평균보다 많은 카테고리는 없습니다.{% endif %}</p>
     </div>
     {% endif %}
   </aside>
@@ -113,7 +113,7 @@
 {% if m %}
 <section class="fin-strip" aria-label="최근 실적">
   <div class="fs-head">
-    <h2>실적 {{ m.years | last }}{% if m.basis %} <span class="badge finance-basis">{{ m.basis }}</span>{% endif %}</h2>
+    <h2>최근 실적 {{ m.years | last }}{% if m.basis %} <span class="badge finance-basis">{{ m.basis }}</span>{% endif %}</h2>
     <p>출처: 금융감독원 전자공시(DART) 사업보고서 · 공시 수치이며 평가가 아닙니다</p>
   </div>
   <dl class="fs-cells">

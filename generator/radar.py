@@ -78,13 +78,17 @@ def radar_svg(counts: list[int], avgs: list[float], labels: list[str], rmax: flo
     )
     # 스크린리더·이미지 검색이 읽는 설명. 숫자를 그대로 적는다 — 그림을 못 보는 사람에게 "그래프"
     # 라고만 말하는 것은 아무것도 말하지 않는 것이다.
-    desc = " · ".join(f"{escape(lb)} {c}" for lb, c in zip(labels, counts))
+    # 그림을 못 보는 사람에게도 **점선의 뜻**까지 준다 — 값만 읽어 주면 "많은지 적은지"를 여전히
+    # 모른다(그 판단이 이 그래프의 존재 이유다).
+    desc = " · ".join(f"{escape(lb)} {c}(평균 {a:.1f})" for lb, c, a in zip(labels, counts, avgs))
     who = f"{escape(comp_nm)} " if comp_nm else ""
     return (
         f'<svg class="rd" viewBox="{VIEWBOX}" role="img" '
         f'aria-label="{who}카테고리별 복지 항목 수 — {escape(desc)}">'
         f"{rings}{axes}{ticks}"
-        f'<polygon class="rd-avg" points="{_poly(avgs, rmax)}"></polygon>'
+        # 평균 점선을 **회사 도형 뒤에** 그린다. 앞서 그리면 18% 채움 아래로 들어가 대비가 2.7:1 로
+        # 떨어지고(WCAG 1.4.11 은 3:1), 하필 평균을 넘는 회사일수록 점선이 통째로 채움 안에 잠긴다.
         f'<polygon class="rd-you" points="{_poly(counts, rmax)}"></polygon>'
+        f'<polygon class="rd-avg" points="{_poly(avgs, rmax)}"></polygon>'
         f"{dots}{lbs}</svg>"
     )
