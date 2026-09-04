@@ -180,7 +180,8 @@ def test_MET9_svg_never_carries_css_variables_in_presentation_attributes(fake_bu
 
     색은 클래스로만 준다 — 그 클래스 목록도 `charts.py` 가 정한 것뿐이어야 CSS 가 전부 입힌다.
     """
-    allowed = {"ax", "gl", "yt", "yr", "yr last", "lp", "ar-pos", "ar-neg", "bar pos", "bar neg"}
+    allowed = {"ax", "gl", "yt", "yr", "yr last", "lp", "ar-pos", "ar-neg", "bar pos", "bar neg",
+               "hc", "hv"}  # 호버 칸·즉시 라벨(2026-09-04)
     for html in _pages(fake_bundle, fake_finance, fake_employ, fake_now).values():
         if 'class="metrics"' not in html:
             continue

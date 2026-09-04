@@ -344,3 +344,16 @@ def test_line_zero_label_survives_when_it_is_far_from_the_extremes():
     svg = line_svg([100, -100], [2024, 2025], FMT, "u1")
     assert "0" in _texts(svg, "yt")
     assert len(_els(svg, cls="yt", tag="text")) == 3  # 최대·최소·0
+
+
+@pytest.mark.parametrize("fn", [bar_svg, line_svg])
+def test_hover_columns_also_draw_an_instant_css_label(fn):
+    """네이티브 <title> 만으로는 부족했다(2026-09-04 실사용 보고: 1초 지연·터치 불가) — 같은 문구를
+    칸 호버에 즉시 그리는 `hv` 라벨이 **칸마다 하나**, **title 과 같은 글자**로 있어야 한다.
+    글자가 두 곳에서 따로 만들어지면 언젠가 한쪽만 고쳐진다."""
+    svg = fn([10, None, 30], [2023, 2024, 2025], FMT, "u1")
+    cols = re.findall(r'<g class="hc"><rect [^>]*><title>([^<]*)</title></rect>'
+                      r'<text class="hv" x="([\d.]+)" y="10" text-anchor="middle">([^<]*)</text></g>', svg)
+    assert [c[0] for c in cols] == ["2023년 10억원", "2024년 값 없음", "2025년 30억원"]
+    assert all(c[0] == c[2] for c in cols), "호버 라벨과 title 문구가 다르다"
+    assert "pointer-events" not in svg and "style=" not in svg  # 표현은 CSS 가(클래스 목록 규칙)
