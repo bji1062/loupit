@@ -67,9 +67,14 @@
         {% for l in card.lens %}<li><button class="sc-lens-chip" type="button" data-lens-key="{{ l.key }}" aria-pressed="false">{{ l.label }} <b>{{ l.count }}</b></button></li>
         {% endfor %}
       </ul>
-      {#- 설명 띠는 고른 통의 것만 CSS 가 드러낸다(JS 는 최상위 `data-lens-on` 한 글자만 세팅). -#}
+      {#- 설명 띠는 고른 통의 것만 CSS 가 드러낸다(JS 는 최상위 `data-lens-on` 한 글자만 세팅).
+          `aria-live` 는 **보이는 변화가 소리로도 가야** 하기 때문이다 — 스크린리더는 칩의
+          `aria-pressed` 변화만 듣고, "나머지 19항목은 흐려질 뿐 사라지지 않습니다"라는 정작
+          중요한 사실은 못 듣는다(리뷰 지적 2026-09-04). -#}
+      <div class="sc-lens-bars" aria-live="polite">
       {% for l in card.lens %}<p class="sc-lens-bar" data-lens-for="{{ l.key }}">{{ l.bar }}</p>
       {% endfor %}
+      </div>
     </div>
     {% endif %}
     <div class="sc-cats">

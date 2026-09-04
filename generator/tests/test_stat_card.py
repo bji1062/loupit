@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
@@ -535,6 +536,22 @@ def test_lens_bar_says_the_same_number_as_its_chip(fake_bundle, fake_now):
     for key, text in bars.items():
         assert f"{chips[key]}항목" in text, text
         assert "사라지지 않습니다" in text, text
+
+
+def test_every_lens_bucket_is_wired_in_the_js_whitelist_and_the_css(fake_bundle, fake_now):
+    """🚨 통 목록은 **세 파일**에 있다: `company.py::LENS_BUCKETS`(정본) · `lens.js::LENS_KEYS`
+    (화이트리스트) · `styles.css`(띠·감쇠 규칙). 통을 하나 더하고 파이썬만 고치면 파이썬 테스트는
+    전부 통과하는데 화면에서는 **눌러도 아무 일 없는 죽은 칩**이 된다(JS 가 목록 밖 키를 무시하고
+    CSS 에 규칙이 없다). 에러 없이 틀린 동작 — 이 저장소가 가장 자주 밟은 함정이라 세 파일을
+    여기서 잇는다."""
+    root = Path(__file__).resolve().parents[2]
+    js = (root / "web" / "assets" / "js" / "lens.js").read_text(encoding="utf-8")
+    css = (root / "web" / "assets" / "css" / "styles.css").read_text(encoding="utf-8")
+    for key, label, note in company.LENS_BUCKETS:
+        assert f"'{key}'" in js, f"lens.js LENS_KEYS 에 {key} 없음 — 칩이 죽은 컨트롤이 된다"
+        assert f'[data-lens-on="{key}"]' in css, f"styles.css 에 {key} 렌즈 상태 규칙 없음"
+        assert f'[data-lens~="{key}"]' in css, f"styles.css 에 {key} 행 선택자 없음"
+        assert label and note, f"{key}: 라벨·설명 문장이 비어 있다"
 
 
 # ── ① 모바일에서 카드 행을 접는다 ───────────────────────────────────────────

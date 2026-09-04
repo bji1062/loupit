@@ -114,14 +114,19 @@ LENS_BUCKETS = (
     ("edited", "재직자 등록·수정", "재직 인증을 통과한 사람이 넣거나 고친 항목입니다."),
     ("expired", "만료", "확인일이 지나 재확인이 필요한 항목입니다. 비교 리포트 밴드 +15%p."),
 )
-LENS_LABEL = {k: lb for k, lb, _ in LENS_BUCKETS}
 
-
-def lens_keys(kind: str, qual: bool, badge_cd: str) -> list[str]:
+def lens_keys(kind: str, qual: bool, badge_code: str) -> list[str]:
     """한 행이 속하는 렌즈 통들 — 금액 축에서 하나, 계보 축에서 0~1개.
 
     한 행이 두 통에 드는 것은 정상이다(예: 추정치이면서 만료). 통이 겹치니 칩의 합은 전체보다
     클 수 있고, 그래서 **칩은 필터가 아니라 강조**다 — 어느 칩에서도 행이 사라지지 않는다.
+
+    ⚠ `badge_code` 는 `badge_state()["code"]`(`official`/`est`/`edited`/`member`/`stale`)이지
+      DB 의 `BADGE_CD`(`official`/`est`)가 **아니다.** DB 값을 넘기면 예외 없이 `edited`·`expired`
+      가 영원히 0 이 된다 — 이 저장소에서 가장 비싼 고장은 언제나 조용한 고장이었다.
+    ⚠ 만료된 재직자 수정 행은 `expired` 에만 든다. `badge_state` 가 신선도를 최우선으로 두는
+      **선형 우선순위**라 그렇고(만료 > 재직자 > 공식), 칩·띠·사이드 집계가 모두 같은 코드를 읽어
+      셋은 언제나 일치한다. '재직자 등록·수정' 칩이 그 행을 안 세는 것은 그 결정의 결과다.
     """
     keys = []
     if kind == "stated":
@@ -133,9 +138,9 @@ def lens_keys(kind: str, qual: bool, badge_cd: str) -> list[str]:
         keys.append("qual")
     elif kind == "none":
         keys.append("blank")
-    if badge_cd in ("member", "edited"):
+    if badge_code in ("member", "edited"):
         keys.append("edited")
-    elif badge_cd == "stale":
+    elif badge_code == "stale":
         keys.append("expired")
     return keys
 
@@ -281,7 +286,8 @@ def _card_view(c: dict, groups, corpus) -> dict:
             # ⚠ "카드·원장에서" 라고 쓰지 않는다 — 폰에서는 카드 행이 접혀 있어 띠가 원장에만
             #   보인다. 어느 화면에서는 거짓인 문장은 안 쓰는 편이 낫다.
             "bar": f"{lb} {per_key[k]}항목에 띠를 표시했습니다. {note} "
-                   f"나머지 {len(flat) - per_key[k]}항목은 흐려질 뿐 사라지지 않습니다.",
+                   + (f"나머지 {len(flat) - per_key[k]}항목은 흐려질 뿐 사라지지 않습니다."
+                      if len(flat) - per_key[k] else "이 회사의 등록 항목이 전부 여기 해당합니다."),
         }
         for k, lb, note in LENS_BUCKETS if per_key[k]
     ]

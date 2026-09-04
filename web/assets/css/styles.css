@@ -688,11 +688,16 @@ main p { margin-top:var(--sp-3); }
      배포 순서다: `/assets/v2/` 는 작업트리를 그대로 서빙해 **CSS 는 머지 즉시** 라이브가 되지만
      HTML 은 `release.sh` 를 돌려야 바뀐다. 그 사이 구 HTML(링크 없는 h3)이 레이아웃을 잃지
      않아야 한다 — 아래 `.sc-rows` 접기가 새 클래스에만 걸리는 것도 같은 이유다. */
-.sc-cat-go { display:flex; flex:1; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
-  gap:var(--sp-2); color:inherit; }
+.sc-cat-go { display:flex; flex:1; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:var(--sp-2); min-height:var(--tap-min); color:inherit; }
 .sc-cat-go:hover { color:var(--brand-active); }
 .sc-cat-sub { color:var(--t3); font-weight:var(--fw-regular); }
-/* 🚨 폰(1열)에서는 행 목록을 **접는다**. 카드가 27줄을 늘어놓고 바로 아래 원장이 같은 27개를
+/* 🚨 머리 링크는 접힌 폭에서 `.sc-row` 의 역할을 **이어받는다** — 그래서 행에 준 것과 같은 탭
+   타깃(`--tap-min` 44px)을 준다. 1차에서 "이름만 링크면 손가락으로 누를 것이 이름 폭뿐"이라
+   행 전체를 링크로 만든 그 이유가, 행이 접히면 이 링크로 옮겨 온다(리뷰 지적 2026-09-04:
+   손대기 전 실측 292×14px). 행이 펴지는 768 에서는 이동 수단이 다시 행이므로 제 크기로 돌린다.
+
+   🚨 폰(1열)에서는 행 목록을 **접는다**. 카드가 27줄을 늘어놓고 바로 아래 원장이 같은 27개를
    전문과 함께 다시 보여 주던 화면을 카테고리 머리 9줄로 줄인다. 본문 손실은 0 이다 — 카드 행은
    이름·금액 토큰뿐이고 설명·환산 근거·출처 전문의 집은 처음부터 원장 하나다.
    `max-width` 분기를 새로 만들지 않는다: 이 디자인 시스템의 분기는 `min-width:768px` 하나이고
@@ -703,8 +708,14 @@ main p { margin-top:var(--sp-3); }
 .sc-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2);
   min-height:var(--tap-min); padding:0 var(--sp-2); border-radius:var(--r-xs); color:var(--t1); font-size:var(--fs-sm); }
 .sc-row.has-amt { background:var(--surface-soft); }
-/* 금액 행은 이미 옅은 배경이라 hover 색만 바꾸면 대비 1.03:1 로 거의 안 보인다 — 테두리를 준다. */
-.sc-row:hover, .sc-row:focus-visible { background:var(--brand-tint); box-shadow:inset 0 0 0 1px var(--brand); text-decoration:none; }
+/* 금액 행은 이미 옅은 배경이라 hover 색만 바꾸면 대비 1.03:1 로 거의 안 보인다 — 테두리를 준다.
+   테두리를 `box-shadow` 가 아니라 `outline` 으로 그리는 이유: 렌즈 띠가 `box-shadow` 를 쓰는데
+   그 규칙이 더 명시적이라 호버 링을 통째로 덮어 버린다(리뷰 지적 2026-09-04). 두 신호는 다른
+   사실이라 함께 보여야 한다 — 띠 = "이 통에 든다", 링 = "지금 가리키고 있다".
+   포커스 링은 건드리지 않는다(전역 `:focus-visible` 이 2px 로 그린다 — 여기서 1px 로 덮으면
+   포커스 표시가 오히려 약해진다). */
+.sc-row:hover { background:var(--brand-tint); outline:1px solid var(--brand); outline-offset:-1px; text-decoration:none; }
+.sc-row:focus-visible { background:var(--brand-tint); text-decoration:none; }
 .sc-nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .sc-amt, .sc-qual { flex:none; white-space:nowrap; }
 .sc-amt { font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
@@ -726,7 +737,9 @@ main p { margin-top:var(--sp-3); }
      스크립트가 없거나 죽으면 칩이 `hidden` 인 채로 남고 화면은 기본 상태 그대로다(NFR24). */
 .sc-lens { margin-top:var(--sp-3); }
 .sc-lens-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
-.sc-lens-chip { display:inline-flex; align-items:center; gap:var(--sp-1); min-height:28px; padding:0 var(--sp-3);
+/* 폰에서는 행이 접혀 **칩이 카드에서 가장 자주 누르는 컨트롤**이 된다 — `--tap-min` 을 준다.
+   행이 펴지는 768 에서는 칩이 목록 위 보조 컨트롤이라 28px 로 돌아간다(아래 분기). */
+.sc-lens-chip { display:inline-flex; align-items:center; gap:var(--sp-1); min-height:var(--tap-min); padding:0 var(--sp-3);
   background:var(--bg-2); color:var(--t2); border:var(--bw) solid var(--border); border-radius:var(--r-pill);
   font-family:var(--font-sans); font-size:var(--fs-xs); line-height:var(--lh-snug); cursor:pointer; }
 .sc-lens-chip b { font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
@@ -736,28 +749,56 @@ main p { margin-top:var(--sp-3); }
 .sc-lens-bar { display:none; margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3);
   background:var(--brand-tint); border-radius:var(--r-sm); color:var(--t2); font-size:var(--fs-xs); line-height:var(--lh-snug); }
 
-/* 상태 규칙 — 통마다 세 줄(설명 띠 노출 · 맞는 행에 띠 · 나머지 감쇠). 선택자에는 변수를 못 쓰니
+/* 감쇠는 **0.8** 이다. 착수 문서의 시안 값은 0.45 였는데, 흐려진 행 안의 텍스트 대비를 전부
+   재 보고 정했다(흰 배경 `--bg-1` 위 합성, sRGB). 이 저장소는 본문에 `--t4`(3.39:1)를 **금지**
+   하고 있으므로(UT-CONTRAST-T4), 기준을 "흐려진 상태의 어떤 텍스트도 그 선 아래로 내려가지
+   않는다"로 잡았다 — 0.8 이 그 하한이다.
+
+     토큰            원본     .45    .65    .75    .80  ← 흐려진 행에서 그 색을 쓰는 곳
+     --t1           15.80    2.75   4.98   6.93   8.23   복지 이름
+     --t2           10.59    2.36   3.85   5.04   5.85   원장 설명문(.benefit-note) = 이 페이지 본문
+     --t3            5.96    1.97   2.82   3.43   3.81   출처 한 줄·확인일·'정성'·'추정' 접두
+     --brand         5.08    1.91   2.66   3.15   3.47   .sc-mid 금액(14px semibold)
+     --brand-active  7.19    2.12   3.17   3.97   4.46   .sc-hi 금액
+
+   감쇠가 약해진 만큼 **띠와 틴트**가 강조를 진다: 맞는 행에 3px 왼쪽 띠, 카드 행에는 배경 틴트도
+   더한다(카드가 훑는 자리다). 원장 행에는 틴트를 주지 않는다 — 거기 배경은 `:target`(방금 눌러
+   도착한 행)의 것이라, 덮으면 어디로 왔는지가 사라진다.
+
+   0.45 에서는 본문이 2.36:1 까지 떨어진다 — "나머지는 흐려질 뿐 사라지지 않습니다"라고 써 놓고
+   읽을 수 없게 만들면 그 문장이 거짓이 된다. 0.8 에서 이름 8.23·본문 5.85 로 AA(4.5)를 지키고,
+   AA 에 못 미치는 보조 색(t3 3.81 · brand 3.47)도 금지선 위에 남는다. 금액 색은 원본이 5.08 이라
+   **어떤 감쇠에서도 AA 를 지킬 수 없다** — 그래서 감쇠가 아니라 **띠**가 강조의 본체다.
+   ⚠ 이 값을 더 내리고 싶으면 위 표를 다시 보고 정할 것. 눈대중으로 내리지 말 것.
+
+   상태 규칙 — 통마다 세 줄(설명 띠 노출 · 맞는 행에 띠 · 나머지 감쇠). 선택자에는 변수를 못 쓰니
    6통 × 3 줄을 그대로 적는다. `[data-lens~=]` 는 공백 목록 매칭이라 "est expired" 처럼 두 통에
    드는 행도 양쪽에서 잡힌다 — 통은 서로 배타적이지 않다(그래서 필터가 아니라 강조다).
    카드 행과 원장 행이 같은 속성을 쓰므로 한 규칙이 두 화면을 함께 칠한다. */
 [data-lens-on="stated"] .sc-lens-bar[data-lens-for="stated"] { display:block; }
 [data-lens-on="stated"] [data-lens~="stated"] { box-shadow:inset 3px 0 0 0 var(--brand); }
-[data-lens-on="stated"] [data-lens]:not([data-lens~="stated"]) { opacity:.45; }
+[data-lens-on="stated"] .sc-row[data-lens~="stated"] { background:var(--brand-tint); }
+[data-lens-on="stated"] [data-lens]:not([data-lens~="stated"]) { opacity:.8; }
 [data-lens-on="est"] .sc-lens-bar[data-lens-for="est"] { display:block; }
 [data-lens-on="est"] [data-lens~="est"] { box-shadow:inset 3px 0 0 0 var(--brand); }
-[data-lens-on="est"] [data-lens]:not([data-lens~="est"]) { opacity:.45; }
+[data-lens-on="est"] .sc-row[data-lens~="est"] { background:var(--brand-tint); }
+[data-lens-on="est"] [data-lens]:not([data-lens~="est"]) { opacity:.8; }
 [data-lens-on="qual"] .sc-lens-bar[data-lens-for="qual"] { display:block; }
 [data-lens-on="qual"] [data-lens~="qual"] { box-shadow:inset 3px 0 0 0 var(--brand); }
-[data-lens-on="qual"] [data-lens]:not([data-lens~="qual"]) { opacity:.45; }
+[data-lens-on="qual"] .sc-row[data-lens~="qual"] { background:var(--brand-tint); }
+[data-lens-on="qual"] [data-lens]:not([data-lens~="qual"]) { opacity:.8; }
 [data-lens-on="blank"] .sc-lens-bar[data-lens-for="blank"] { display:block; }
 [data-lens-on="blank"] [data-lens~="blank"] { box-shadow:inset 3px 0 0 0 var(--brand); }
-[data-lens-on="blank"] [data-lens]:not([data-lens~="blank"]) { opacity:.45; }
+[data-lens-on="blank"] .sc-row[data-lens~="blank"] { background:var(--brand-tint); }
+[data-lens-on="blank"] [data-lens]:not([data-lens~="blank"]) { opacity:.8; }
 [data-lens-on="edited"] .sc-lens-bar[data-lens-for="edited"] { display:block; }
 [data-lens-on="edited"] [data-lens~="edited"] { box-shadow:inset 3px 0 0 0 var(--brand); }
-[data-lens-on="edited"] [data-lens]:not([data-lens~="edited"]) { opacity:.45; }
+[data-lens-on="edited"] .sc-row[data-lens~="edited"] { background:var(--brand-tint); }
+[data-lens-on="edited"] [data-lens]:not([data-lens~="edited"]) { opacity:.8; }
 [data-lens-on="expired"] .sc-lens-bar[data-lens-for="expired"] { display:block; }
 [data-lens-on="expired"] [data-lens~="expired"] { box-shadow:inset 3px 0 0 0 var(--brand); }
-[data-lens-on="expired"] [data-lens]:not([data-lens~="expired"]) { opacity:.45; }
+[data-lens-on="expired"] .sc-row[data-lens~="expired"] { background:var(--brand-tint); }
+[data-lens-on="expired"] [data-lens]:not([data-lens~="expired"]) { opacity:.8; }
 /* 사이드 「항목 구성」의 같은 줄도 함께 밝힌다 — 칩과 집계가 **같은 숫자**임을 화면이 말한다. */
 [data-lens-on="stated"] .sc-tally > div[data-lens-row="stated"],
 [data-lens-on="est"] .sc-tally > div[data-lens-row="est"],
@@ -880,8 +921,11 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .rd { max-width:380px; margin-inline:auto; }
   .sc-cats { grid-template-columns:repeat(auto-fit, minmax(max(30%, 190px), 1fr)); }
   .sc-row { min-height:32px; }
-  /* 폰에서 접어 둔 행 목록을 편다 + 힌트 문장을 펼친 폭의 것으로 바꾼다. */
+  /* 폰에서 접어 둔 행 목록을 편다 + 힌트 문장을 펼친 폭의 것으로 바꾼다. 이동 수단이 다시
+     행이므로 카테고리 머리는 제 크기(한 줄)로 돌아간다. */
   .sc-rows { display:block; }
+  .sc-cat-go { min-height:0; align-items:baseline; }
+  .sc-lens-chip { min-height:28px; }
   .sc-hint-narrow { display:none; }
   .sc-hint-wide { display:inline; }
   .fs-cells { grid-template-columns:repeat(3, minmax(0, 1fr)); }
