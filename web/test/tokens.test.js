@@ -357,6 +357,62 @@ describe('UT-BP', () => {
     const offBreakpoints = matches.filter((px) => px !== 768);
     assert.deepEqual(offBreakpoints, [], `768 아닌 min-width 분기 발견: ${offBreakpoints.join(', ')}`);
   });
+
+  // 분기가 하나라는 말은 **방향도 하나**라는 뜻이다. `max-width` 를 한 줄 섞으면 같은 폭이
+  // 두 규칙에 걸려(768 정확히) 어느 쪽이 이기는지를 파일 순서가 정하게 된다 — 그때부터
+  // "모바일 우선"이라는 규약은 읽는 사람의 기억에만 남는다.
+  test('max-width 미디어쿼리 0건 — 접고 펴는 방향은 언제나 모바일 기본 → 768 확장', () => {
+    const stripped = stripComments(cssText);
+    // 프렐류드 안의 `max-width` 만 본다 — `.sc-left { max-width:520px }` 같은 **속성**은
+    // 분기가 아니다(이 구분을 안 하면 테스트가 정상 레이아웃을 잡는다).
+    const found = [...stripped.matchAll(/@media[^{]*max-width[^{]*/g)].map((m) => m[0].trim());
+    assert.deepEqual(found, [], `max-width 분기 발견: ${found.join(', ')}`);
+  });
+});
+
+// ── UT-SC-LENS (2026-09-04, SP-GEN-5.7) ─────────────────────────────────────
+// 카드 접기와 출처 렌즈의 **CSS 쪽 계약**. 둘 다 JS 가 죽어도 화면이 성립해야 하고,
+// 렌즈는 어떤 상태에서도 행을 **숨기지 않아야** 한다(숨기면 본문이 DOM 에서 빠진다).
+describe('UT-SC-LENS', () => {
+  const blocks = splitTopLevelBlocks(cssText);
+  const desktop = blocks.find((b) => /@media\s*\(\s*min-width\s*:\s*768px\s*\)/.test(b.selector));
+
+  test('카드 행 목록은 기본(모바일)에서 접히고 768 분기에서 펴진다', () => {
+    // 접기는 `.sc-rows`(카드 행 목록 전용 클래스)에만 건다 — `/assets/v2/` 가 작업트리를
+    // 그대로 서빙해 CSS 가 HTML 보다 먼저 라이브가 되는 저장소라, 구 마크업이 새 규칙에
+    // 걸리면 배포 사이 구간에서 화면이 깨진다.
+    const base = blocks.find((b) => b.selector === '.sc-rows');
+    assert.ok(base, '.sc-rows 규칙이 없다');
+    assert.match(base.body, /display\s*:\s*none/);
+    assert.ok(desktop, '768 분기 블록이 없다');
+    assert.match(desktop.body, /\.sc-rows\s*\{[^}]*display\s*:\s*block/);
+  });
+
+  test('접힌 폭의 힌트 문장과 펼친 폭의 힌트 문장이 서로 배타적으로 뜬다', () => {
+    const wide = blocks.find((b) => b.selector === '.sc-hint-wide');
+    assert.ok(wide && /display\s*:\s*none/.test(wide.body), '.sc-hint-wide 기본 숨김이 없다');
+    assert.match(desktop.body, /\.sc-hint-narrow\s*\{[^}]*display\s*:\s*none/);
+    assert.match(desktop.body, /\.sc-hint-wide\s*\{[^}]*display\s*:\s*inline/);
+  });
+
+  test('🚨 렌즈는 어떤 상태에서도 행을 숨기지 않는다 — 감쇠(opacity)와 띠만 쓴다', () => {
+    const lensRules = splitTopLevelBlocks(cssText).filter((b) => b.selector.includes('[data-lens-on'));
+    assert.ok(lensRules.length >= 6, `렌즈 상태 규칙이 너무 적다(${lensRules.length})`);
+    for (const r of lensRules) {
+      if (/\[data-lens[~\]]/.test(r.selector)) {
+        assert.doesNotMatch(r.body, /display\s*:\s*none|visibility\s*:\s*hidden/,
+          `행을 숨기는 렌즈 규칙: ${r.selector}`);
+      }
+    }
+  });
+
+  test('렌즈 상태 규칙은 생성기의 통 6종을 모두 덮는다(company.py::LENS_BUCKETS)', () => {
+    const stripped = stripComments(cssText);
+    for (const key of ['stated', 'est', 'qual', 'blank', 'edited', 'expired']) {
+      assert.ok(stripped.includes(`[data-lens-on="${key}"]`), `${key} 렌즈 규칙이 없다`);
+      assert.ok(stripped.includes(`[data-lens~="${key}"]`), `${key} 행 선택자가 없다`);
+    }
+  });
 });
 
 // ── UT-REDUCED-MOTION (T-10.8.2) ────────────────────────────────────────────

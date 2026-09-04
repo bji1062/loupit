@@ -10,12 +10,13 @@ from __future__ import annotations
 
 import re
 from datetime import datetime
+from pathlib import Path
 
 import pytest
 
 from generator import corpus as corpus_mod
 from generator.context import build_context
-from generator.format import amount_kind
+from generator.format import amount_kind, badge_state
 from generator.pages import company
 from generator.radar import radar_svg
 from generator.render import make_env
@@ -60,11 +61,16 @@ def test_benefit_description_lives_only_in_the_ledger(fake_bundle, fake_now):
 
 
 def test_ledger_row_can_be_targeted_without_js(fake_bundle, fake_now):
-    """이동·강조가 앵커와 CSS 만으로 된다 — 회사 페이지의 유일한 <script> 는 그래프 모양 기억뿐."""
+    """이동·강조가 앵커와 CSS 만으로 된다 — 회사 페이지의 <script> 는 전부 **인핸스먼트**다.
+
+    허용 목록으로 잡아 두는 이유: 본문 표시·이동에 필요한 스크립트가 하나라도 늘면 그 순간
+    "JS 없이 완성"(NFR24)이 깨진다. 목록의 넷은 모두 죽어도 화면이 성립한다 — 모양 기억
+    (metricshape) · 광고(static-ads) · 로그인 메뉴(authnav) · 출처 렌즈 강조(lens)."""
     html = _samsung(fake_bundle, fake_now)
     assert 'href="#b-meal"' in html and 'id="b-meal"' in html
     scripts = re.findall(r'<script[^>]*src="([^"]+)"', html)
-    assert all("metricshape" in s or "static-ads" in s or "authnav" in s for s in scripts), scripts
+    allowed = ("metricshape", "static-ads", "authnav", "lens.js")
+    assert all(any(a in s for a in allowed) for s in scripts), scripts
 
 
 # ── ② 금액 신뢰도 ≠ 배지 ────────────────────────────────────────────────────
@@ -414,3 +420,156 @@ def test_radar_vertices_have_hover_hit_areas_with_labels(fake_bundle, fake_now):
     assert "<title>" not in svg  # role="img" 아래 title 은 안 읽히고, SEO <title> 카운트만 흐린다
     # 히트 원이 마지막에 그려져야 포인터를 받는다(최상단 페인트)
     assert svg.rindex('class="rd-hit"') > svg.rindex('class="rd-lb"')
+
+
+# ── ④ 모바일 접기 · 출처 렌즈 (SP-GEN-5.7, 2026-09-04) ──────────────────────
+#
+# 렌즈의 계약은 한 문장이다: **칩이 말한 수 = 띠가 깔리는 행 수 = 사이드 집계**. 셋이 갈리는
+# 순간 렌즈는 거짓말이 된다. 그리고 어느 렌즈에서도 **행이 사라지지 않는다** — 숨기면 본문이
+# DOM 에서 빠져 색인이 깎이고 "복지가 8개뿐"으로 읽힌다.
+
+CARD_ROW_RE = re.compile(r'class="sc-row[^"]*" href="#(b-[^"]+)" data-lens="([^"]*)"')
+LED_ROW_RE = re.compile(r'<article class="led-row" id="(b-[^"]+)" data-amt="[^"]*" data-lens="([^"]*)"')
+CHIP_RE = re.compile(r'data-lens-key="([a-z]+)"[^>]*>([^<]*)<b>(\d+)</b>')
+
+
+def _chips(html: str) -> dict:
+    return {k: int(n) for k, _, n in CHIP_RE.findall(html)}
+
+
+def _card_rows(html: str) -> dict:
+    return {a: set(lens.split()) for a, lens in CARD_ROW_RE.findall(html)}
+
+
+def test_lens_chip_number_equals_the_rows_it_highlights(fake_bundle, fake_now):
+    """칩의 숫자와 그 칩이 띠를 까는 행 수가 같다. 판정을 복사하면 여기서 갈린다."""
+    for p in _render(fake_bundle, fake_now).values():
+        chips = _chips(p.html)
+        if not chips:
+            continue
+        rows = _card_rows(p.html)
+        assert chips["all"] == len(rows), f"{p.path}: 전체 칩 {chips['all']} ≠ 행 {len(rows)}"
+        for key, n in chips.items():
+            if key == "all":
+                continue
+            hit = sum(1 for keys in rows.values() if key in keys)
+            assert hit == n, f"{p.path}: 칩 {key}={n} 인데 그 키를 가진 행은 {hit}"
+
+
+def test_ledger_row_carries_the_same_lens_keys_as_the_card_row(fake_bundle, fake_now):
+    """카드와 원장은 같은 27행이다 — 렌즈 키가 어긋나면 한 화면만 띠가 깔린다."""
+    for p in _render(fake_bundle, fake_now).values():
+        card = _card_rows(p.html)
+        ledger = {a: set(lens.split()) for a, lens in LED_ROW_RE.findall(p.html)}
+        assert card, f"{p.path}: 카드 행이 없다"
+        assert card == ledger, f"{p.path}: 카드↔원장 렌즈 키 불일치"
+
+
+def test_lens_chips_are_hidden_until_js_wakes_them(fake_bundle, fake_now):
+    """JS 가 죽거나 늦게 와도 **죽은 컨트롤이 남지 않는다**(`data-authnav-edit` 와 같은 규약).
+    렌즈는 본문이 아니라 강조라, 없으면 지금 배포된 화면 그대로다(NFR24)."""
+    html = _samsung(fake_bundle, fake_now)
+    assert '<div class="sc-lens" hidden data-lens-chips>' in html
+    assert html.count("data-lens-key=") >= 2
+
+
+def test_lens_omits_buckets_that_have_no_rows(fake_bundle, fake_now):
+    """0건 칩은 눌러도 27행이 전부 흐려지기만 하는 컨트롤이다 — 내보내지 않는다.
+    숫자로서의 0 은 사이드 「항목 구성」이 이미 말한다."""
+    html = _samsung(fake_bundle, fake_now)
+    chips = _chips(html)
+    assert chips == {"all": 4, "stated": 1, "est": 1, "qual": 2, "expired": 1}, chips
+    assert "재직자 등록·수정 <b>" not in html  # 편집 이력 0 인 회사
+
+
+def test_lens_disappears_when_there_is_only_one_bucket(fake_now):
+    """모든 행이 같은 통에 들어가면 렌즈는 '전체'와 같은 말을 두 번 하는 것이다 — 안 낸다."""
+    bundle = {
+        "company_types": [], "benefit_presets": {},
+        "companies": [{
+            "comp_id": 9, "comp_eng_nm": "qualonly2", "comp_nm": "정성만사", "comp_tp_cd": "none",
+            "industry_nm": "IT", "logo_nm": "Q", "work_style_val": {}, "aliases": [],
+            "benefits": [{
+                "benefit_cd": f"q{i}", "benefit_nm": f"정성{i}", "benefit_amt": None,
+                "benefit_ctgr_cd": "work_env", "badge_cd": "official", "amt_source": "none",
+                "qual_yn": True, "qual_desc_ctnt": "설명", "verified_dtm": "2026-01-01",
+                "expires_dtm": "2099-12-31",
+            } for i in range(3)],
+        }],
+    }
+    env = make_env()
+    ctx = build_context(bundle, now=fake_now)
+    html = company.render_all(env, ctx)[0].html
+    assert "data-lens-chips" not in html
+    assert 'data-lens="qual"' in html  # 행의 키는 그대로 있다(원장·카드 정합)
+
+
+def test_lens_keys_are_a_projection_of_the_two_existing_judgments(fake_now):
+    """🚨 렌즈는 **새 판정을 만들지 않는다.** 금액 축은 `format.amount_kind`, 계보 축은
+    `format.badge_state` 가 이미 정한 것을 투영만 한다. 두 축은 독립이라(DEC-2) '공식' 배지가
+    붙은 추정 금액은 `stated` 가 아니라 `est` 다."""
+    cases = [
+        ({"benefit_amt": 100, "amt_source": "stated", "qual_yn": False, "badge_cd": "official"}, {"stated"}),
+        ({"benefit_amt": 100, "amt_source": "estimated", "qual_yn": False, "badge_cd": "official"}, {"est"}),
+        ({"benefit_amt": None, "amt_source": "none", "qual_yn": True, "badge_cd": "official"}, {"qual"}),
+        ({"benefit_amt": None, "amt_source": "none", "qual_yn": False, "badge_cd": "official"}, {"blank"}),
+        ({"benefit_amt": 100, "amt_source": "stated", "qual_yn": False, "badge_cd": "official",
+          "edit_origin": "member"}, {"stated", "edited"}),
+        ({"benefit_amt": 100, "amt_source": "stated", "qual_yn": False, "badge_cd": "official",
+          "edit_origin": "edited"}, {"stated", "edited"}),
+        ({"benefit_amt": 100, "amt_source": "estimated", "qual_yn": False, "badge_cd": "official",
+          "expires_dtm": "2020-01-01"}, {"est", "expired"}),
+    ]
+    for b, expected in cases:
+        keys = set(company.lens_keys(amount_kind(b), bool(b["qual_yn"]),
+                                     badge_state(b, fake_now)["code"]))
+        assert keys == expected, f"{b} → {keys}"
+
+
+def test_lens_bar_says_the_same_number_as_its_chip(fake_bundle, fake_now):
+    """띠 설명은 **행이 사라진 게 아니라 흐려졌을 뿐**이라고 말해야 한다 — 그 말이 없으면
+    사용자는 '복지가 1개뿐'으로 읽는다. 숫자는 칩과 같은 곳에서 나온다."""
+    html = _samsung(fake_bundle, fake_now)
+    bars = dict(re.findall(r'data-lens-for="([a-z]+)">([^<]+)<', html))
+    chips = _chips(html)
+    assert set(bars) == set(chips) - {"all"}, bars
+    for key, text in bars.items():
+        assert f"{chips[key]}항목" in text, text
+        assert "사라지지 않습니다" in text, text
+
+
+def test_every_lens_bucket_is_wired_in_the_js_whitelist_and_the_css(fake_bundle, fake_now):
+    """🚨 통 목록은 **세 파일**에 있다: `company.py::LENS_BUCKETS`(정본) · `lens.js::LENS_KEYS`
+    (화이트리스트) · `styles.css`(띠·감쇠 규칙). 통을 하나 더하고 파이썬만 고치면 파이썬 테스트는
+    전부 통과하는데 화면에서는 **눌러도 아무 일 없는 죽은 칩**이 된다(JS 가 목록 밖 키를 무시하고
+    CSS 에 규칙이 없다). 에러 없이 틀린 동작 — 이 저장소가 가장 자주 밟은 함정이라 세 파일을
+    여기서 잇는다."""
+    root = Path(__file__).resolve().parents[2]
+    js = (root / "web" / "assets" / "js" / "lens.js").read_text(encoding="utf-8")
+    css = (root / "web" / "assets" / "css" / "styles.css").read_text(encoding="utf-8")
+    for key, label, note in company.LENS_BUCKETS:
+        assert f"'{key}'" in js, f"lens.js LENS_KEYS 에 {key} 없음 — 칩이 죽은 컨트롤이 된다"
+        assert f'[data-lens-on="{key}"]' in css, f"styles.css 에 {key} 렌즈 상태 규칙 없음"
+        assert f'[data-lens~="{key}"]' in css, f"styles.css 에 {key} 행 선택자 없음"
+        assert label and note, f"{key}: 라벨·설명 문장이 비어 있다"
+
+
+# ── ① 모바일에서 카드 행을 접는다 ───────────────────────────────────────────
+
+
+def test_card_category_header_links_to_its_ledger_category(fake_bundle, fake_now):
+    """모바일에서 행 목록을 접으면 카테고리 머리가 유일한 이동 수단이 된다 — 원장의 그
+    카테고리로 정확히 떨어져야 한다(`scroll-margin-top` 은 이미 있다)."""
+    for p in _render(fake_bundle, fake_now).values():
+        heads = set(re.findall(r'<a class="sc-cat-go" href="#(cat-[a-z_]+)"', p.html))
+        groups = set(re.findall(r'<section class="benefit-group" id="(cat-[a-z_]+)"', p.html))
+        assert heads, f"{p.path}: 카테고리 머리 링크가 없다"
+        assert heads == groups, f"{p.path}: 카드↔원장 카테고리 앵커 불일치 {heads ^ groups}"
+
+
+def test_card_hint_tells_the_truth_on_both_widths(fake_bundle, fake_now):
+    """폰에서는 누를 행이 없다 — "항목을 누르면" 은 그 화면에서 거짓이다. 두 문장을 함께
+    내보내고 CSS 가 폭에 따라 하나만 보여 준다(JS 0)."""
+    html = _samsung(fake_bundle, fake_now)
+    assert '<span class="sc-hint-wide">' in html and "항목을 누르면" in html
+    assert '<span class="sc-hint-narrow">' in html and "카테고리를 누르면" in html

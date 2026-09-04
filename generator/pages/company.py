@@ -98,6 +98,53 @@ AMOUNT_SOURCE_TEXT = {
     "estimated": "추정치 · 밴드 ±20%",
     "none": "금액 환산 없음",
 }
+# ── 출처 렌즈(SP-GEN-5.7) ────────────────────────────────────────────────────
+# 칩 하나 = 행 집합 하나. 키·라벨·설명이 여기 한 곳에 있고 카드 칩·설명 띠·행 속성이 모두
+# 이 표에서 나온다 — 라벨을 템플릿에 적으면 칩과 띠가 다른 말을 하기 시작한다.
+#
+# 🚨 **여기서 새 판정을 만들지 않는다.** 금액 축은 `format.amount_kind`, 계보 축은
+#    `format.badge_state` 가 이미 정했고 `lens_keys` 는 그 둘을 **투영만** 한다(DEC-2: 두 축은
+#    독립이라 '공식' 배지가 붙은 추정 금액은 `stated` 가 아니라 `est` 다). 판정을 복사하면
+#    같은 복지가 화면마다 다른 통에 들어간다(배지 함정, 2026-07-31).
+LENS_BUCKETS = (
+    ("stated", "회사 공식 수치", "회사가 공개한 값 그대로입니다. 비교 리포트 밴드 ±5%."),
+    ("est", "추정치", "회사 공식 수치가 아니라 공개 정보로 환산한 값입니다. 비교 리포트 밴드 ±20%."),
+    ("qual", "정성", "금액으로 환산할 수 없는 항목입니다."),
+    ("blank", "금액 미기재", "환산은 가능하지만 아직 값을 모르는 항목입니다."),
+    ("edited", "재직자 등록·수정", "재직 인증을 통과한 사람이 넣거나 고친 항목입니다."),
+    ("expired", "만료", "확인일이 지나 재확인이 필요한 항목입니다. 비교 리포트 밴드 +15%p."),
+)
+
+def lens_keys(kind: str, qual: bool, badge_code: str) -> list[str]:
+    """한 행이 속하는 렌즈 통들 — 금액 축에서 하나, 계보 축에서 0~1개.
+
+    한 행이 두 통에 드는 것은 정상이다(예: 추정치이면서 만료). 통이 겹치니 칩의 합은 전체보다
+    클 수 있고, 그래서 **칩은 필터가 아니라 강조**다 — 어느 칩에서도 행이 사라지지 않는다.
+
+    ⚠ `badge_code` 는 `badge_state()["code"]`(`official`/`est`/`edited`/`member`/`stale`)이지
+      DB 의 `BADGE_CD`(`official`/`est`)가 **아니다.** DB 값을 넘기면 예외 없이 `edited`·`expired`
+      가 영원히 0 이 된다 — 이 저장소에서 가장 비싼 고장은 언제나 조용한 고장이었다.
+    ⚠ 만료된 재직자 수정 행은 `expired` 에만 든다. `badge_state` 가 신선도를 최우선으로 두는
+      **선형 우선순위**라 그렇고(만료 > 재직자 > 공식), 칩·띠·사이드 집계가 모두 같은 코드를 읽어
+      셋은 언제나 일치한다. '재직자 등록·수정' 칩이 그 행을 안 세는 것은 그 결정의 결과다.
+    """
+    keys = []
+    if kind == "stated":
+        keys.append("stated")
+    elif kind == "estimated":
+        keys.append("est")
+    # 정성(환산 **불가**)과 금액 미기재(환산 가능하지만 **모른다**)는 다른 사실이다(DEC-B).
+    if qual:
+        keys.append("qual")
+    elif kind == "none":
+        keys.append("blank")
+    if badge_code in ("member", "edited"):
+        keys.append("edited")
+    elif badge_code == "stale":
+        keys.append("expired")
+    return keys
+
+
 # 출처 상태 → 재직자에게 던지는 **사실 질문**(q) + 행동(a). 모르는 값일수록 물음이 커진다(SC14 유입구).
 #
 # 🚨 질문과 행동은 **함께 링크 안에** 들어간다(`_benefit_table.html`). `/edit` 은 M9 게이트 뒤이고
@@ -162,6 +209,8 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> li
             "tier": _amount_tier(None if b["qual_yn"] else b.get("benefit_amt")),
             # 카드에서 숫자 대신 보여 줄 말. 정성과 "금액을 모르는 행"은 다른 사실이다.
             "no_amt_label": ("정성" if b["qual_yn"] else ("금액 미기재" if kind == "none" else "")),
+            # 렌즈 키 — 카드 행과 원장 행이 **같은 문자열**을 갖는다(둘이 갈리면 한 화면만 띠가 깔린다).
+            "lens": " ".join(lens_keys(kind, bool(b["qual_yn"]), badge["code"])),
             "src_text": AMOUNT_SOURCE_TEXT[kind],
             "ask_q": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[0],
             "ask_a": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[1],
@@ -199,21 +248,16 @@ def _card_view(c: dict, groups, corpus) -> dict:
             "stated": stated, "est": est,
         })
     flat = [i for _, _, items in groups for i in items]
+    # 사이드 「항목 구성」의 숫자와 렌즈 칩의 숫자는 **같은 곳에서 나온다** — 행이 지닌 렌즈 키를
+    # 셀 뿐이다. 두 곳에서 따로 세면 칩이 "추정치 8" 이라 말하고 띠는 7행에만 깔리는 날이 온다.
+    # (정성 = 환산 **불가**, 금액 미기재 = 환산 가능하지만 **모른다** — 갈라 센다, DEC-B.)
+    per_key = {k: sum(1 for i in flat if k in i["lens"].split()) for k, _, _ in LENS_BUCKETS}
     counts = {
         "total": len(flat),
         "amount": sum(1 for i in flat if i["amt_kind"] != "none"),
-        "stated": sum(1 for i in flat if i["amt_kind"] == "stated"),
-        "est": sum(1 for i in flat if i["amt_kind"] == "estimated"),
-        # 정성(금액 환산이 **불가능**)과 금액 미기재(환산 가능하지만 **모른다**)는 다른 사실이다.
-        # 한 줄로 합치면 "정성 항목 16" 안에 아직 안 채운 값이 섞여 재직자 편집의 표적이 흐려진다.
-        "qual": sum(1 for i in flat if i["qual"]),
-        "blank": sum(1 for i in flat if i["amt_kind"] == "none" and not i["qual"]),
-        # 배지 계보 두 종(재직자 등록·공식·재직자 수정)을 한 줄로 센다 — 화면이 묻는 것은
-        # "사람 손이 닿았는가"이고, 어느 쪽인지는 행의 배지가 말한다.
-        "edited": sum(1 for i in flat if i["badge"]["code"] in ("member", "edited")),
-        "expired": sum(1 for i in flat if i["badge"]["code"] == "stale"),
         "categories": len(used),
         "category_total": len(CATEGORY_ORDER),
+        **per_key,
     }
     # 레이더: 카테고리 정본 순서로 항목 수 / 등록 회사 평균. 빈 카테고리는 0 이다(빼지 않는다 —
     # 없는 축은 "모른다"가 아니라 "없다"이고, 그 사실이 모양의 절반을 만든다).
@@ -230,6 +274,25 @@ def _card_view(c: dict, groups, corpus) -> dict:
     ratios.sort(key=lambda t: -t[3])
     above = [t for t in ratios if t[3] > 1]  # 화면 문구도 '많습니다'(초과)로 적는다 — '이상'이면 == 1 이 빠진다
     amount_total = corpus.amounts.get(c["comp_id"], 0)
+    # 렌즈 칩 — **비어 있는 통은 내보내지 않는다.** 0건 칩은 눌러도 27행이 전부 흐려지기만 하는
+    # 컨트롤이고, 숫자로서의 0 은 사이드 「항목 구성」이 이미 말한다. 통이 하나뿐이면(예: 전 행이
+    # 정성) 렌즈 자체를 내지 않는다 — '전체'와 같은 말을 두 번 하는 것이기 때문이다.
+    lens = [
+        {
+            "key": k, "label": lb, "count": per_key[k],
+            # 설명 띠는 **행이 사라진 게 아니라 흐려졌을 뿐**이라고 말한다. 이 문장이 없으면
+            # 사용자는 흐려진 화면을 "복지가 8개뿐"으로 읽는다(렌즈를 CSS 숨김으로 만들지 않은
+            # 이유와 같은 이야기다).
+            # ⚠ "카드·원장에서" 라고 쓰지 않는다 — 폰에서는 카드 행이 접혀 있어 띠가 원장에만
+            #   보인다. 어느 화면에서는 거짓인 문장은 안 쓰는 편이 낫다.
+            "bar": f"{lb} {per_key[k]}항목에 띠를 표시했습니다. {note} "
+                   + (f"나머지 {len(flat) - per_key[k]}항목은 흐려질 뿐 사라지지 않습니다."
+                      if len(flat) - per_key[k] else "이 회사의 등록 항목이 전부 여기 해당합니다."),
+        }
+        for k, lb, note in LENS_BUCKETS if per_key[k]
+    ]
+    if len(lens) < 2:
+        lens = []
     return {
         "radar": radar_svg(counts_list, avgs, labels, corpus.rmax, c["comp_nm"]),
         "categories": cats,
@@ -243,6 +306,7 @@ def _card_view(c: dict, groups, corpus) -> dict:
         "all_est": counts["stated"] == 0 and counts["est"] > 0,
         "above_all": len(above) == len(ratios) and len(ratios) == len(CATEGORY_ORDER),
         "above_count": len(above),
+        "lens": lens,
     }
 
 
