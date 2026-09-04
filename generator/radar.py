@@ -11,7 +11,7 @@
 회색 점선은 **등록 회사 평균**이다. 이 선이 있어야 "6항목"이 많은지 적은지를 말할 수 있다 —
 없으면 모든 회사가 자기 모양만 보여 주고 끝난다.
 
-색·치수는 **CSS 클래스로만** 준다(`rd-*`, `web/assets/css/styles.css` 소유):
+색·치수는 **CSS 클래스로만** 준다(`rd-*`, `web/assets/css/styles.css` 소유 — `rd-hit`·`rd-hitc`·`rd-hv` 는 호버 라벨):
 ⚠ SVG 프레젠테이션 속성에 `var(--x)` 를 쓰면 브라우저에 따라 조용히 무시된다(charts.py 실측).
 """
 from __future__ import annotations
@@ -76,6 +76,17 @@ def radar_svg(counts: list[int], avgs: list[float], labels: list[str], rmax: flo
         f'<circle class="rd-dot" cx="{_pt(i, v, n, rmax)[0]:.1f}" cy="{_pt(i, v, n, rmax)[1]:.1f}" r="4"></circle>'
         for i, v in enumerate(counts)
     )
+    # 꼭짓점 호버: 지름 4 짜리 점은 마우스를 올리기 어렵다 — 투명 r=14 히트 원을 얹고, 그 위에
+    # 즉시 뜨는 CSS 라벨(`rd-hit:hover .rd-hv`)을 둔다. JS 0.
+    # 마지막에 그려 최상단에서 포인터를 받는다(SVG 호버는 최상단 페인트 요소가 받는다).
+    hits = ""
+    for i, (v, lb, a) in enumerate(zip(counts, labels, avgs)):
+        px, py = _pt(i, v, n, rmax)
+        text = f"{escape(lb)} {v}항목 · 평균 {a:.1f}"
+        # <title> 은 두지 않는다 — `role="img"` 아래라 보조기기에 안 읽히고(값은 aria-label 이 이미
+        # 전부 말한다), 네이티브 툴팁의 1초 지연이 "안 되는 것"으로 보고된 그 경험을 되풀이한다.
+        hits += (f'<g class="rd-hit"><circle class="rd-hitc" cx="{px:.1f}" cy="{py:.1f}" r="14"></circle>'
+                 f'<text class="rd-hv" x="{px:.1f}" y="{py - 12:.1f}" text-anchor="middle">{text}</text></g>')
     # 스크린리더·이미지 검색이 읽는 설명. 숫자를 그대로 적는다 — 그림을 못 보는 사람에게 "그래프"
     # 라고만 말하는 것은 아무것도 말하지 않는 것이다.
     # 그림을 못 보는 사람에게도 **점선의 뜻**까지 준다 — 값만 읽어 주면 "많은지 적은지"를 여전히
@@ -90,5 +101,5 @@ def radar_svg(counts: list[int], avgs: list[float], labels: list[str], rmax: flo
         # 떨어지고(WCAG 1.4.11 은 3:1), 하필 평균을 넘는 회사일수록 점선이 통째로 채움 안에 잠긴다.
         f'<polygon class="rd-you" points="{_poly(counts, rmax)}"></polygon>'
         f'<polygon class="rd-avg" points="{_poly(avgs, rmax)}"></polygon>'
-        f"{dots}{lbs}</svg>"
+        f"{dots}{lbs}{hits}</svg>"
     )

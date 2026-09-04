@@ -13,7 +13,7 @@
 **결측(None)은 잇지 않는다.** 선은 구간을 끊고 막대는 자리를 비운다. 0 으로 그리면 "그 해 매출 0원"
 이라는 없는 사실을 그리는 것이다(금융업은 매출 계정 자체가 없다 — SP-MET-2).
 
-색·치수는 **CSS 클래스로만** 준다: `bar pos`·`bar neg`·`lp`·`ar-pos`·`ar-neg`·`ax`·`gl`·`yt`·`yr`.
+색·치수는 **CSS 클래스로만** 준다: `bar pos`·`bar neg`·`lp`·`ar-pos`·`ar-neg`·`ax`·`gl`·`yt`·`yr`·`hc`·`hv`(호버 칸·라벨).
 ⚠ SVG 프레젠테이션 속성(fill·stroke·opacity)에 `var(--x)` 를 쓰지 마라 — 브라우저에 따라 **조용히
 무시**되어 검은 도형만 남는다(실측). ⚠ 여기서 새 클래스를 만들지도 마라: CSS 는 `web/assets/css`
 소유라 목록 밖 클래스는 스타일 없이 나가고, 다크 테마에서 검은 글자는 곧 안 보이는 글자다.
@@ -116,9 +116,17 @@ def _hover_col(x: float, w: float, year, v, fmt: Callable[[float], str]) -> str:
     SVG 호버는 최상단 페인트 요소가 받는다. 결측 해는 "값 없음"이라고 **말한다**.
     """
     label = f"{escape(str(year), quote=False)}년 " + ("값 없음" if v is None else _label(fmt, v))
+    # 네이티브 `<title>` 만으로는 부족했다(2026-09-04 실사용 보고): 마우스를 1초 가까이 멈춰야 뜨고,
+    # 트랙패드로 훑는 동안·터치에서는 안 뜨며, 모양도 브라우저 기본이라 "안 되는 것"으로 읽힌다.
+    # 그래서 같은 문구를 **CSS 호버 라벨**(`hc:hover .hv`)로도 그린다 — 즉시 뜨고 우리 토큰으로
+    # 칠해지며 여전히 JS 0 이다. `<title>` 은 스크린리더·폴백으로 남긴다. 라벨은 위 여백(PAD_T)
+    # 줄에 두고 CSS 가 흰 테두리(paint-order)를 둘러 막대·선 위에서도 읽히게 한다.
     return (
+        f'<g class="hc">'
         f'<rect x="{_n(x)}" y="0" width="{_n(w)}" height="{H}" fill="transparent">'
         f"<title>{label}</title></rect>"
+        f'<text class="hv" x="{_n(x + w / 2)}" y="10" text-anchor="middle">{label}</text>'
+        f"</g>"
     )
 
 
