@@ -48,14 +48,39 @@
 
   <div class="sc-main">
     <h2>복지 항목 <span>— {{ card.counts.categories }}개 카테고리 · {{ card.counts.total }}항목</span></h2>
-    <p class="sc-hint">숫자 = 연간 환산 금액(만원) · <span class="sc-est-key">점선</span> = 추정치(회사 공식 수치 아님) · 정성 = 금액 환산 없음 · 항목을 누르면 아래 <a href="#benefit-ledger">복지 상세</a>로 갑니다</p>
+    {#- 폰(1열)에서는 행 목록을 접고 카테고리 머리 9줄만 남긴다(styles.css 의 768 분기) — 그
+        화면에서 "항목을 누르면"은 **거짓**이다. 두 문장을 함께 내보내고 CSS 가 폭에 따라 하나만
+        보여 준다. `max-width` 분기를 새로 만들지 않는다(min-width:768 단일 분기, UT-BP). -#}
+    <p class="sc-hint">숫자 = 연간 환산 금액(만원) · <span class="sc-est-key">점선</span> = 추정치(회사 공식 수치 아님) · 정성 = 금액 환산 없음 · <span class="sc-hint-narrow">카테고리를 누르면</span><span class="sc-hint-wide">항목을 누르면</span> 아래 <a href="#benefit-ledger">복지 상세</a>로 갑니다</p>
+    {#- 출처 렌즈 — **강조 스위치이지 필터가 아니다.** 고른 통에 띠가 깔리고 나머지는 흐려질 뿐,
+        어떤 행도 DOM 에서 사라지지 않는다(숨기면 본문이 빠져 색인이 깎이고 "복지가 8개뿐"으로
+        읽힌다).
+
+        🚨 칩은 `hidden` 으로 나가고 `lens.js` 가 벗긴다 — JS 가 없거나 죽으면 **지금 배포된 화면
+           그대로**이고, 눌러도 아무 일 없는 죽은 컨트롤이 남지 않는다(`data-authnav-edit` 규약).
+        🚨 라벨·숫자·설명 문장은 전부 `company.py::LENS_BUCKETS` 한 곳에서 온다. 여기에 라벨을
+           적는 순간 칩과 설명 띠가 다른 말을 하기 시작한다. -#}
+    {% if card.lens %}
+    <div class="sc-lens" hidden data-lens-chips>
+      <ul class="sc-lens-chips" aria-label="출처 렌즈">
+        <li><button class="sc-lens-chip" type="button" data-lens-key="all" aria-pressed="true">전체 <b>{{ card.counts.total }}</b></button></li>
+        {% for l in card.lens %}<li><button class="sc-lens-chip" type="button" data-lens-key="{{ l.key }}" aria-pressed="false">{{ l.label }} <b>{{ l.count }}</b></button></li>
+        {% endfor %}
+      </ul>
+      {#- 설명 띠는 고른 통의 것만 CSS 가 드러낸다(JS 는 최상위 `data-lens-on` 한 글자만 세팅). -#}
+      {% for l in card.lens %}<p class="sc-lens-bar" data-lens-for="{{ l.key }}">{{ l.bar }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
     <div class="sc-cats">
     {% for cat in card.categories %}
       <section class="sc-cat">
-        <h3>{{ cat.label }} <span class="sc-cat-sub">{{ cat.count }}항목 · {{ cat.amount_text or '금액 환산 항목 없음' }}</span></h3>
-        <ul>
+        {#- 접힌 폭에서는 이 머리가 **유일한 이동 수단**이다 — 원장의 같은 카테고리로 간다.
+            펼친 폭에서도 링크로 두는 편이 낫다(행이 27개면 카테고리 단위 이동이 더 빠르다). -#}
+        <h3><a class="sc-cat-go" href="#cat-{{ cat.key }}">{{ cat.label }} <span class="sc-cat-sub">{{ cat.count }}항목 · {{ cat.amount_text or '금액 환산 항목 없음' }}</span></a></h3>
+        <ul class="sc-rows">
         {% for item in cat.rows %}
-          <li><a class="sc-row{% if item.amt %} has-amt{% endif %}" href="#{{ item.anchor }}">
+          <li><a class="sc-row{% if item.amt %} has-amt{% endif %}" href="#{{ item.anchor }}" data-lens="{{ item.lens }}">
             <span class="sc-nm">{{ item.name }}</span>
             {#- 숫자 대신 무엇을 말할지는 뷰모델이 정한다(`no_amt_label`) — 템플릿이 스스로 판정하면
                 금액 신뢰도 판정이 한 곳 더 생기고, 정성과 '금액 미기재'가 뭉개진다. -#}
@@ -84,12 +109,12 @@
       <h2>항목 구성</h2>
       <dl class="sc-tally">
         <div><dt>금액 환산</dt><dd>{{ card.counts.amount }}</dd></div>
-        <div class="sub"><dt>회사 공식 수치<span>밴드 ±5%</span></dt><dd>{{ card.counts.stated }}</dd></div>
-        <div class="sub"><dt>추정치<span>밴드 ±20%</span></dt><dd>{{ card.counts.est }}</dd></div>
-        <div><dt>정성 항목<span>금액 환산 불가</span></dt><dd>{{ card.counts.qual }}</dd></div>
-        {% if card.counts.blank %}<div><dt>금액 미기재<span>환산 가능·값 모름</span></dt><dd>{{ card.counts.blank }}</dd></div>{% endif %}
-        <div><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
-        <div><dt>만료·재확인 필요<span>밴드 +15%p 가산</span></dt><dd>{{ card.counts.expired }}</dd></div>
+        <div class="sub" data-lens-row="stated"><dt>회사 공식 수치<span>밴드 ±5%</span></dt><dd>{{ card.counts.stated }}</dd></div>
+        <div class="sub" data-lens-row="est"><dt>추정치<span>밴드 ±20%</span></dt><dd>{{ card.counts.est }}</dd></div>
+        <div data-lens-row="qual"><dt>정성 항목<span>금액 환산 불가</span></dt><dd>{{ card.counts.qual }}</dd></div>
+        {% if card.counts.blank %}<div data-lens-row="blank"><dt>금액 미기재<span>환산 가능·값 모름</span></dt><dd>{{ card.counts.blank }}</dd></div>{% endif %}
+        <div data-lens-row="edited"><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
+        <div data-lens-row="expired"><dt>만료·재확인 필요<span>밴드 +15%p 가산</span></dt><dd>{{ card.counts.expired }}</dd></div>
       </dl>
       <p class="sc-note">밴드는 비교 리포트가 금액에 두는 불확실성 폭입니다. 출처 배지가 공식이어도 금액이 추정치이면 ±20%가 유지됩니다.</p>
     </div>

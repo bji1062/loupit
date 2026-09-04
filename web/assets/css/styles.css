@@ -673,14 +673,32 @@ main p { margin-top:var(--sp-3); }
 .sc-main h2 { font-family:var(--font-sans); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
 .sc-main h2 span { color:var(--t3); font-weight:var(--fw-regular); font-size:var(--fs-sm); }
 .sc-hint { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-snug); }
+/* 힌트는 폭마다 **다른 사실**을 말한다: 접힌 폭에서 누를 수 있는 것은 카테고리 머리뿐이다.
+   두 문장을 함께 내보내고 여기서 하나만 보여 준다(JS 0, 아래 768 분기에서 뒤바뀐다). */
+.sc-hint-wide { display:none; }
 .sc-est-key { border-bottom:1px dotted var(--t3); }
 .sc-cats { display:grid; grid-template-columns:1fr; gap:var(--sp-4); margin-top:var(--sp-4); }
 .sc-cat { min-width:0; }
 .sc-cat h3 { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:var(--sp-2);
   margin:0; padding-bottom:var(--sp-1); border-bottom:var(--bw) solid var(--border-strong);
   color:var(--brand); font-family:var(--font-sans); font-size:var(--fs-xs); font-weight:var(--fw-bold); }
+/* 머리 **전체**가 원장의 그 카테고리로 가는 링크다 — 행이 접힌 폭에서는 이것이 유일한 이동
+   수단이고, 펼친 폭에서도 27행을 지나 카테고리 단위로 뛰는 길이 된다.
+   ⓘ h3 의 규칙은 그대로 두고 링크가 그 안에서 늘어나게 했다(`flex:1`·`color:inherit`). 이유는
+     배포 순서다: `/assets/v2/` 는 작업트리를 그대로 서빙해 **CSS 는 머지 즉시** 라이브가 되지만
+     HTML 은 `release.sh` 를 돌려야 바뀐다. 그 사이 구 HTML(링크 없는 h3)이 레이아웃을 잃지
+     않아야 한다 — 아래 `.sc-rows` 접기가 새 클래스에만 걸리는 것도 같은 이유다. */
+.sc-cat-go { display:flex; flex:1; flex-wrap:wrap; align-items:baseline; justify-content:space-between;
+  gap:var(--sp-2); color:inherit; }
+.sc-cat-go:hover { color:var(--brand-active); }
 .sc-cat-sub { color:var(--t3); font-weight:var(--fw-regular); }
+/* 🚨 폰(1열)에서는 행 목록을 **접는다**. 카드가 27줄을 늘어놓고 바로 아래 원장이 같은 27개를
+   전문과 함께 다시 보여 주던 화면을 카테고리 머리 9줄로 줄인다. 본문 손실은 0 이다 — 카드 행은
+   이름·금액 토큰뿐이고 설명·환산 근거·출처 전문의 집은 처음부터 원장 하나다.
+   `max-width` 분기를 새로 만들지 않는다: 이 디자인 시스템의 분기는 `min-width:768px` 하나이고
+   (UT-BP) 방향은 언제나 "모바일 기본 → 768 확장"이다. */
 .sc-cat ul { margin-top:var(--sp-1); }
+.sc-rows { display:none; }
 /* 행 전체가 링크다 — 이름만 링크면 손가락으로 누를 것이 이름 폭뿐이 된다. */
 .sc-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-2);
   min-height:var(--tap-min); padding:0 var(--sp-2); border-radius:var(--r-xs); color:var(--t1); font-size:var(--fs-sm); }
@@ -695,6 +713,58 @@ main p { margin-top:var(--sp-3); }
 .sc-est { border-bottom:1px dotted var(--t3); }
 .sc-est i { margin-right:2px; color:var(--t3); font-size:var(--fs-ad); font-style:normal; font-weight:var(--fw-medium); }
 .sc-qual { color:var(--t3); font-size:var(--fs-ad); }
+
+/* ── 출처 렌즈 ────────────────────────────────────────────────────────────────
+   칩을 고르면 그 통의 행에 띠가 깔리고 나머지는 흐려진다. **행을 숨기지 않는다** — 숨기면
+   본문이 DOM 에서 빠져 색인이 깎이고, 남은 8행이 "이 회사 복지는 8개"라는 없는 사실로 읽힌다.
+   그 오해를 설명 띠(`.sc-lens-bar`)가 한 줄로 막는다.
+
+   ⓘ 띠를 **배경이 아니라 inset box-shadow** 로 그린다. `:target`(원장에서 방금 눌러 도착한 행)과
+     `.sc-row.has-amt`(금액 행 옅은 배경)가 이미 배경을 쓰고 있어서, 렌즈가 배경을 덮으면 어디로
+     왔는지가 사라진다. 축이 다르면 인코딩도 달라야 두 사실이 겹쳐 읽힌다.
+   ⓘ JS 가 하는 일은 최상위 `data-lens-on` 한 글자와 칩의 `aria-pressed` 뿐이다(lens.js).
+     스크립트가 없거나 죽으면 칩이 `hidden` 인 채로 남고 화면은 기본 상태 그대로다(NFR24). */
+.sc-lens { margin-top:var(--sp-3); }
+.sc-lens-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+.sc-lens-chip { display:inline-flex; align-items:center; gap:var(--sp-1); min-height:28px; padding:0 var(--sp-3);
+  background:var(--bg-2); color:var(--t2); border:var(--bw) solid var(--border); border-radius:var(--r-pill);
+  font-family:var(--font-sans); font-size:var(--fs-xs); line-height:var(--lh-snug); cursor:pointer; }
+.sc-lens-chip b { font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
+.sc-lens-chip:hover { border-color:var(--brand); color:var(--t1); }
+.sc-lens-chip[aria-pressed="true"] { background:var(--brand); border-color:var(--brand); color:var(--on-brand); font-weight:var(--fw-semibold); }
+/* 설명 띠 — 고른 통의 것 하나만 드러난다. 문장은 `company.py::LENS_BUCKETS` 가 만든다. */
+.sc-lens-bar { display:none; margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3);
+  background:var(--brand-tint); border-radius:var(--r-sm); color:var(--t2); font-size:var(--fs-xs); line-height:var(--lh-snug); }
+
+/* 상태 규칙 — 통마다 세 줄(설명 띠 노출 · 맞는 행에 띠 · 나머지 감쇠). 선택자에는 변수를 못 쓰니
+   6통 × 3 줄을 그대로 적는다. `[data-lens~=]` 는 공백 목록 매칭이라 "est expired" 처럼 두 통에
+   드는 행도 양쪽에서 잡힌다 — 통은 서로 배타적이지 않다(그래서 필터가 아니라 강조다).
+   카드 행과 원장 행이 같은 속성을 쓰므로 한 규칙이 두 화면을 함께 칠한다. */
+[data-lens-on="stated"] .sc-lens-bar[data-lens-for="stated"] { display:block; }
+[data-lens-on="stated"] [data-lens~="stated"] { box-shadow:inset 3px 0 0 0 var(--brand); }
+[data-lens-on="stated"] [data-lens]:not([data-lens~="stated"]) { opacity:.45; }
+[data-lens-on="est"] .sc-lens-bar[data-lens-for="est"] { display:block; }
+[data-lens-on="est"] [data-lens~="est"] { box-shadow:inset 3px 0 0 0 var(--brand); }
+[data-lens-on="est"] [data-lens]:not([data-lens~="est"]) { opacity:.45; }
+[data-lens-on="qual"] .sc-lens-bar[data-lens-for="qual"] { display:block; }
+[data-lens-on="qual"] [data-lens~="qual"] { box-shadow:inset 3px 0 0 0 var(--brand); }
+[data-lens-on="qual"] [data-lens]:not([data-lens~="qual"]) { opacity:.45; }
+[data-lens-on="blank"] .sc-lens-bar[data-lens-for="blank"] { display:block; }
+[data-lens-on="blank"] [data-lens~="blank"] { box-shadow:inset 3px 0 0 0 var(--brand); }
+[data-lens-on="blank"] [data-lens]:not([data-lens~="blank"]) { opacity:.45; }
+[data-lens-on="edited"] .sc-lens-bar[data-lens-for="edited"] { display:block; }
+[data-lens-on="edited"] [data-lens~="edited"] { box-shadow:inset 3px 0 0 0 var(--brand); }
+[data-lens-on="edited"] [data-lens]:not([data-lens~="edited"]) { opacity:.45; }
+[data-lens-on="expired"] .sc-lens-bar[data-lens-for="expired"] { display:block; }
+[data-lens-on="expired"] [data-lens~="expired"] { box-shadow:inset 3px 0 0 0 var(--brand); }
+[data-lens-on="expired"] [data-lens]:not([data-lens~="expired"]) { opacity:.45; }
+/* 사이드 「항목 구성」의 같은 줄도 함께 밝힌다 — 칩과 집계가 **같은 숫자**임을 화면이 말한다. */
+[data-lens-on="stated"] .sc-tally > div[data-lens-row="stated"],
+[data-lens-on="est"] .sc-tally > div[data-lens-row="est"],
+[data-lens-on="qual"] .sc-tally > div[data-lens-row="qual"],
+[data-lens-on="blank"] .sc-tally > div[data-lens-row="blank"],
+[data-lens-on="edited"] .sc-tally > div[data-lens-row="edited"],
+[data-lens-on="expired"] .sc-tally > div[data-lens-row="expired"] { background:var(--brand-tint); border-radius:var(--r-xs); }
 
 .sc-block h2, .sc-block h3 { margin:0 0 var(--sp-2); color:var(--t3); font-family:var(--font-sans); font-size:var(--fs-xs); font-weight:var(--fw-medium); letter-spacing:normal; line-height:var(--lh-snug); }
 .sc-h2-sub { color:var(--t4); font-weight:var(--fw-regular); }
@@ -810,6 +880,10 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .rd { max-width:380px; margin-inline:auto; }
   .sc-cats { grid-template-columns:repeat(auto-fit, minmax(max(30%, 190px), 1fr)); }
   .sc-row { min-height:32px; }
+  /* 폰에서 접어 둔 행 목록을 편다 + 힌트 문장을 펼친 폭의 것으로 바꾼다. */
+  .sc-rows { display:block; }
+  .sc-hint-narrow { display:none; }
+  .sc-hint-wide { display:inline; }
   .fs-cells { grid-template-columns:repeat(3, minmax(0, 1fr)); }
   div.benefit-table { columns:2; }
   /* 추이 카드: 분기 하나로 2열(태블릿)과 3열(넓은 화면)을 함께 얻는다. 최소 폭이 `max(29%,240px)`

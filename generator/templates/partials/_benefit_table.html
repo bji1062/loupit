@@ -24,7 +24,7 @@
   <section class="benefit-group" id="cat-{{ key }}" data-category="{{ key }}">
     <h3>{{ label }}</h3>
     {% for item in items %}
-    <article class="led-row" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}">
+    <article class="led-row" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}" data-lens="{{ item.lens }}">
       <div class="led-head">
         <h4 class="benefit-name">{{ item.name }}</h4>
         {% if item.amount %}<span class="benefit-amount{% if item.est %} est{% endif %}">{{ item.amount }}</span>{% endif %}

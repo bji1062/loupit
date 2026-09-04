@@ -80,4 +80,6 @@
     하므로 이 스크립트가 없어도·죽어도 그래프는 그대로 보인다(NFR24). ⚠ 이 저장값에 "어떤 화면을
     보여줄지"를 맡기지 마라 — 상태 복원 장치에 화면 결정권을 준 대문 사고(2026-07-31) 재발 방지. -#}
 {% if metrics %}<script type="module" src="/assets/v2/js/metricshape.js" defer></script>{% endif %}
+{#- 출처 렌즈 — 강조 스위치. 없으면 칩이 `hidden` 인 채 남고 화면은 기본 상태 그대로다(NFR24). -#}
+{% if card.lens %}<script type="module" src="/assets/v2/js/lens.js" defer></script>{% endif %}
 {% endblock %}
