@@ -63,8 +63,8 @@ VALUES
    'est', '年 100만원 상당 현금성 복지포인트', FALSE, NULL, 70),
   (@comp_id, 'discount', 'CJ 계열사 할인', NULL, 'perks',
    'est', NULL, TRUE, 'CJ 계열사 40% 할인(뚜레쥬르·VIPS·올리브영·투썸·차이나팩토리·CJ더마켓 등), CJ온스타일 15% 할인, CJ Mall 임직원 특가', 71),
-  (@comp_id, 'housing_loan', '주택자금 대출', 2000, 'perks',
-   'est', '무이자 2천만원 주택자금 대출 (한도는 계열사별로 다름)', FALSE, NULL, 72),
+  (@comp_id, 'housing_loan', '주택자금 대출', NULL, 'perks',
+   'est', NULL, TRUE, '무이자 2천만원 주택자금 대출 — 한도는 계열사별로 다름', 72),
   (@comp_id, 'commute_subsidy', '출퇴근 지원', NULL, 'perks',
    'est', NULL, TRUE, '출근 셔틀버스, 야근 택시비 지원', 73)
 ON DUPLICATE KEY UPDATE
