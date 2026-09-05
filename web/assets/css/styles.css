@@ -140,8 +140,11 @@ header, header[data-global] {
   position:sticky; top:0; z-index:40;
   background:var(--brand-bar); border-bottom:var(--bw) solid var(--brand-active);
 }
+/* ⚠ 모바일 기본값이다 — gap 과 flex-wrap 은 768 분기에서 되돌린다(아래 RESPONSIVE 참조).
+   `flex-wrap:wrap` 은 **안전판**이지 레이아웃이 아니다: 좁은 폭에서 항목이 다 안 들어가면
+   항목 단위로 줄을 바꾼다(글자 단위로 꺾이는 것과 다르다 — 아래 '좁은 폭의 GNB' 참조). */
 header:not([data-global]), header[data-global] nav {
-  display:flex; align-items:center; gap:var(--sp-4); min-height:56px;
+  display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-2); min-height:56px;
   padding-block:var(--sp-2);
   padding-inline:max(var(--gutter-mobile), calc((100% - var(--container-max)) / 2));
 }
@@ -149,7 +152,7 @@ header:not([data-global]) .site-logo, header[data-global] .brand { margin-right:
 header:not([data-global]) nav { display:flex; align-items:center; gap:var(--sp-4); }
 .brand, .site-logo {
   display:inline-flex; align-items:center; /* gap 제거: 텍스트 조각(jobcho/./wiki)이 flex 아이템이라 gap이 자간처럼 벌어짐 — 간격은 로고 img margin으로만 */
-  font-family:var(--font-sans); font-size:var(--fs-lg); font-weight:var(--fw-bold);
+  font-family:var(--font-sans); font-size:0; font-weight:var(--fw-bold);
   color:var(--on-brand); letter-spacing:-0.01em;
 }
 .brand:hover, .site-logo:hover { text-decoration:none; }
@@ -164,6 +167,23 @@ header nav a[aria-current="page"] {
   text-decoration-thickness:2px; text-underline-offset:.4em;
 }
 header nav a[aria-current="page"]:hover { text-decoration:underline; }
+/* ── 좁은 폭의 GNB(2026-09-05): 라벨을 **글자 단위로 꺾지 않는다** ─────────────
+   실측(프로덕션, iPhone Safari UA): 320px 에서 '커뮤니티'·'회사정보'가 한 글자씩 **4줄**로
+   서고 헤더가 107px 까지 자랐다(360px 히트맵 3줄·84px, 390px 2줄·62px). 가로로 넘친 게
+   아니라(header scrollWidth == 뷰포트) **세로로 꺾인** 것이라 스크롤 상자로는 안 고쳐진다.
+   원인이 둘 겹쳤다 — 하나만 고치면 안 낫는다:
+     (ⅰ) 링크에 white-space 가 없어 CJK 는 글자와 글자 사이 어디서나 꺾인다(영문과 다르다).
+     (ⅱ) flex 기본 shrink:1 이 링크를 **한 글자 폭까지** 줄여 그 꺾임을 강제한다.
+   그래서 nowrap 과 축소 금지를 함께 건다. 남는 문제(총 필요 폭 > 뷰포트)는 위 nav 규칙의
+   `flex-wrap:wrap` 이 항목 단위 줄바꿈으로 받는다. 가로 스크롤 상자(overflow-x)를 쓰지
+   않은 이유: 헤더는 잘리면 안 되고(로그인 진입점이 스크롤 뒤로 숨는다), overflow 컨테이너는
+   포커스 링까지 잘라 먹는다.
+   워드마크는 좁은 폭에서 **접는다**(위 `.brand{font-size:0}`) — 지우는 게 아니다. 로고 마크
+   34px 만 남기고 텍스트 노드는 DOM 에 그대로 두므로 브랜드 링크의 접근성 이름은
+   "jobcho.wiki" 그대로다. 140px 짜리 워드마크를 두면 320~390px 에서 탭 4개 + 로그인
+   진입점(prod M9 ON)이 한 줄에 못 들어간다 — 2026-09-01 '모든 페이지에 로고 마크' 결정의
+   대상도 텍스트가 아니라 이 이미지였다. 768 에서 워드마크·gap 모두 되돌린다. */
+header nav > a { flex:0 0 auto; white-space:nowrap; }
 /* GNB 검색은 은퇴했다(2026-09-01) — 상단을 페이지마다 다르게 만든 유일한 조각이었다.
    되살릴 땐 마크업·ui.js 배선과 함께 이 자리에 규칙을 다시 놓아라. */
 
@@ -912,6 +932,11 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 
 /* ══════════════════════════════════════════════════ RESPONSIVE(768) ══ */
 @media (min-width: 768px) {
+  /* GNB 원복 — 여기부터는 워드마크와 넉넉한 gap 이 다 들어간다(768px 실측: 필요 폭 435px).
+     `flex-wrap:nowrap` 을 되돌려 두는 건 안전판을 끄는 게 아니라, 이 폭에서 줄이 바뀌면
+     그건 레이아웃이 아니라 버그라는 선언이다 — 접히면 눈에 띈다. */
+  header:not([data-global]), header[data-global] nav { flex-wrap:nowrap; gap:var(--sp-4); }
+  .brand, .site-logo { font-size:var(--fs-lg); }
   main, .company-page, .policy-page, body > main { padding-inline:var(--gutter-desktop); }
   footer > *, footer[data-global] > * { padding-inline:var(--gutter-desktop); }
   main h1, .company-page h1, .policy-page h1 { font-size:var(--fs-display); }

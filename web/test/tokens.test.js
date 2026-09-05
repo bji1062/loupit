@@ -446,6 +446,63 @@ describe('UT-TABLE-SCROLL', () => {
   });
 });
 
+// ── UT-GNB-NOWRAP (2026-09-05, SPEC 10 MD-4 / NFR13) ────────────────────────
+// 전역 헤더는 **모든 페이지**에 있고 CSS 는 머지 즉시 라이브다 — 여기가 무너지면 사이트
+// 전체의 첫 화면이 무너진다. 실측(프로덕션, iPhone Safari UA): 320px 에서 '커뮤니티'·
+// '회사정보'가 한 글자씩 4줄로 서고 헤더가 107px(360px 84px · 390px 62px). 가로로 넘친 게
+// 아니라 세로로 꺾인 것이었다 — CJK 는 글자 사이 어디서나 꺾이고, flex 기본 shrink:1 이
+// 링크를 한 글자 폭까지 줄여 그 꺾임을 강제한다. **둘 다** 막아야 낫는다.
+describe('UT-GNB-NOWRAP', () => {
+  const blocks = splitTopLevelBlocks(cssText);
+  const desktop = blocks.find((b) => /^@media/.test(b.selector) && /min-width/.test(b.selector));
+  const navSel = /header\[data-global\]\s*nav/;
+
+  test('GNB 링크는 nowrap 이면서 축소되지 않는다 — 한쪽만으로는 꺾임이 안 멈춘다', () => {
+    // white-space 만 걸면 flex 가 링크를 1글자 폭으로 줄여 놓고 nowrap 이 넘치게 만들고,
+    // 축소만 막으면 CJK 가 여전히 글자 사이에서 꺾인다. 그래서 한 규칙에서 둘을 함께 본다.
+    const rule = blocks.find((b) => /^header\s+nav\s*>\s*a$/.test(b.selector.trim()));
+    assert.ok(rule, 'header nav > a 규칙이 없다 — GNB 라벨 꺾임 방어가 통째로 빠졌다');
+    assert.match(rule.body, /white-space\s*:\s*nowrap/);
+    assert.match(rule.body, /flex\s*:\s*0\s+0\s+auto/, 'flex-shrink 를 0 으로 묶지 않았다');
+  });
+
+  test('모바일 기본의 GNB 는 항목 단위로 줄을 바꾼다(안전판) — 768 에서 한 줄로 되돌린다', () => {
+    // 안전판이 없으면 총 필요 폭이 뷰포트를 넘는 순간(320px + 로그인 진입점) 링크가 겹치거나
+    // 잘린다. 반대로 768 이상에서 줄이 바뀌면 그건 레이아웃이 아니라 버그라 nowrap 으로 못박는다.
+    const base = blocks.find((b) => navSel.test(b.selector) && /display\s*:\s*flex/.test(b.body));
+    assert.ok(base, 'GNB nav 의 flex 컨테이너 규칙을 못 찾았다');
+    assert.match(base.body, /flex-wrap\s*:\s*wrap/);
+    assert.ok(desktop, '768 분기 블록이 없다');
+    const restored = [...desktop.body.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .find(([, sel]) => navSel.test(sel));
+    assert.ok(restored, '768 에서 GNB nav 를 되돌리는 규칙이 없다');
+    assert.match(restored[2], /flex-wrap\s*:\s*nowrap/);
+  });
+
+  test('워드마크는 좁은 폭에서 접히고 768 에서 되돌아온다 — 영영 사라지면 안 된다', () => {
+    // 로고 마크(img)와 접근성 이름(텍스트 노드)은 그대로 두고 **글자만** 접는 방식이라,
+    // 되돌리는 쪽을 빠뜨리면 데스크톱에서도 브랜드가 사라진 채로 배포된다.
+    const brand = blocks.find((b) => /(^|,)\s*\.brand\s*(,|$)/.test(b.selector) && /font-size/.test(b.body));
+    assert.ok(brand, '.brand 규칙을 못 찾았다');
+    assert.match(brand.body, /font-size\s*:\s*0\b/);
+    const restored = [...desktop.body.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .find(([, sel]) => /(^|,)\s*\.brand\s*(,|$)/.test(sel));
+    assert.ok(restored, '768 에서 .brand 글자 크기를 되돌리는 규칙이 없다');
+    assert.match(restored[2], /font-size\s*:\s*var\(--fs-/);
+  });
+
+  test('🚨 GNB 를 가로 스크롤/클리핑 상자로 만들지 않는다 — 로그인 진입점과 포커스 링이 잘린다', () => {
+    // 표(UT-TABLE-SCROLL)와 반대 결론이다: 표는 넘침을 자기 상자에 가두는 게 맞지만, 헤더는
+    // 항상 통째로 보여야 하는 것이라 넘치면 **줄을 바꿔야** 한다. overflow 상자는 덤으로
+    // 포커스 링(outline-offset 2px)까지 잘라 키보드 사용자에게서 현재 위치를 뺏는다.
+    for (const b of blocks) {
+      if (!navSel.test(b.selector) && !/^header\b/.test(b.selector.trim())) continue;
+      assert.doesNotMatch(b.body, /overflow(-x|-y)?\s*:\s*(auto|scroll|hidden|clip)/,
+        `헤더 규칙에 넘침 상자: ${b.selector} { ${b.body.trim()} }`);
+    }
+  });
+});
+
 // ── UT-REDUCED-MOTION (T-10.8.2) ────────────────────────────────────────────
 describe('UT-REDUCED-MOTION', () => {
   test('@media (prefers-reduced-motion: reduce) 블록 존재', () => {
