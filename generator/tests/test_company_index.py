@@ -106,7 +106,7 @@ def test_FN7_index_rows_carry_latest_year_figures_and_basis(fake_bundle, fake_fi
     general = _section_html(p.html, "general")
     for th in ("회사", "업종", "연도", "매출(억원)", "영업이익(억원)", "순이익(억원)", "기준"):
         assert f'<th scope="col">{th}</th>' in general, th
-    assert "<caption>" in general
+    assert "<caption" in general  # 속성(id)이 붙을 수 있다 — 여는 태그로 본다
     samsung = re.search(r"<tr>(?:(?!</tr>).)*?삼성전자.*?</tr>", general, re.S).group(0)
     for cell in ("2025", "3,300,000", "400,000", "350,000", "연결"):
         assert cell in samsung, cell
@@ -183,6 +183,10 @@ def test_FN7_index_tables_scroll_inside_their_own_containers_not_the_page(fake_b
             sec, re.S,
         )
         assert wrap, acct_set
-        assert "<caption>" in wrap.group(2), "caption 은 표 안에 남는다"
+        assert "<caption" in wrap.group(2), "caption 은 표 안에 남는다"
         assert 'tabindex="0"' in wrap.group(1) and 'role="group"' in wrap.group(1), acct_set
-        assert re.search(r'aria-label="[^"]*가로[^"]*"', wrap.group(1)), acct_set
+        # 이름은 caption 을 가리킨다(이유는 test_finance_page 의 같은 테스트 주석). 표가 둘이라
+        # id 가 겹치면 두 그룹이 한 표의 이름을 쓴다 — 섹션별로 다른 id 인지까지 본다.
+        ref = re.search(r'aria-labelledby="([^"]+)"', wrap.group(1))
+        assert ref and ref.group(1).endswith(acct_set), f"{acct_set}: 섹션별 이름이 아니다"
+        assert f'<caption id="{ref.group(1)}">' in wrap.group(2), acct_set

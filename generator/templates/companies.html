@@ -11,15 +11,18 @@
       회사 상세의 표·카드와 갈라진다. 섹션 안은 가나다순(GC-27). 안 실렸으면 아래 목록 그대로.
       🚨 표는 `.table-scroll` 안에서만 스크롤한다(2026-09-05, SPEC 10 MD-4) — 7열이 390px 를
       63px 넘겨 **페이지 전체가** 가로로 팬 상태였다. 섹션이 둘이니 래퍼도 둘이다: 한쪽만
-      감싸면 나머지 표가 그대로 페이지를 민다(넘침은 가장 넓은 자식 하나로 정해진다). #}
+      감싸면 나머지 표가 그대로 페이지를 민다(넘침은 가장 넓은 자식 하나로 정해진다).
+      래퍼의 이름은 caption 을 가리킨다 — 이유는 `partials/_finance_table.html` 주석 참조
+      (요약: `tabindex` 가 늘 붙어 있어 "가로로 스크롤할 수 있습니다"는 넓은 폭에서 거짓이고,
+      따로 이름을 적으면 같은 표가 두 번 소개된다). id 는 섹션 키로 갈라 둘이 안 겹치게 한다. #}
   {% if finance_sections %}
   {% for sec in finance_sections %}
   <section class="company-index-section" data-acct-set="{{ sec.key }}">
     <h2>{{ sec.label }}</h2>
     {% if sec.financial %}<p class="index-lead">금융업은 단일 매출 계정을 공시하지 않아 그 자리에 자산총계를 싣습니다.</p>{% endif %}
-    <div class="table-scroll" tabindex="0" role="group" aria-label="{{ sec.label }} 회사 실적 표 — 가로로 스크롤할 수 있습니다">
+    <div class="table-scroll" tabindex="0" role="group" aria-labelledby="idx-cap-{{ sec.key }}">
     <table class="benefit-table company-index-table">
-      <caption>{{ sec.label }} 회사 {{ sec.rows | length }}곳 — 최신 사업연도 실적(억원)</caption>
+      <caption id="idx-cap-{{ sec.key }}">{{ sec.label }} 회사 {{ sec.rows | length }}곳 — 최신 사업연도 실적(억원)</caption>
       <thead>
         <tr><th scope="col">회사</th><th scope="col">업종</th><th scope="col">연도</th>{% for c in sec.columns %}<th scope="col">{{ c.name }}(억원)</th>{% endfor %}<th scope="col">기준</th></tr>
       </thead>

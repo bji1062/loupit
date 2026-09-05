@@ -16,7 +16,7 @@ import pytest
 
 from generator import corpus as corpus_mod
 from generator.context import build_context
-from generator.format import amount_kind, badge_state
+from generator.format import amount_kind, badge_state, krw_manwon
 from generator.pages import company
 from generator.radar import radar_svg
 from generator.render import make_env
@@ -389,15 +389,18 @@ def test_note_and_qual_desc_are_both_kept(fake_now):
 def _sc_rank_rows(html: str) -> list[tuple[str, str]]:
     """카드 순위 블록의 행 전부를 (머리 텍스트, 행 HTML) 로 낸다.
 
-    ⚠ 두 가지를 일부러 다르게 한다.
+    ⚠ 세 가지를 일부러 다르게 한다.
       · "등록 금액 합" 은 페이지 **부제**(`company-sub`)에도 있다 — `html.index` 로 바로 자르면
         카드가 아니라 앞쪽 부제가 잡힌다. 그래서 `.sc-rank` 블록 안에서만 자른다.
       · `<dl class="sc-rank">` **전부**를 훑는다. 첫 블록만 보면 순위를 둘째 `<dl>` 에 옮기는
         것만으로 가드를 빠져나간다(실측: 이전 가드가 그 뮤테이션을 통과시켰다).
+      · 행 `<div>` 에 **속성이 붙어도 잡는다**. `<div>` 정확 일치로 찾으면 클래스를 하나 다는
+        정상 변경에 가드가 조용히 빈 목록을 내는 게 아니라 크게 실패했다 — 어느 쪽이든 행을
+        찾는 일에 클래스 유무가 끼어들 이유가 없다.
     """
     rows = []
     for block in re.findall(r'<dl class="sc-rank">(.*?)</dl>', html, re.S):
-        for row in re.findall(r"<div>(.*?)</div>", block, re.S):
+        for row in re.findall(r"<div\b[^>]*>(.*?)</div>", block, re.S):
             head = re.sub(r"<[^>]+>", "", row[:row.index("</dt>")])
             rows.append((head.strip(), row))
     return rows
@@ -408,23 +411,36 @@ def test_amount_total_carries_no_rank_and_no_annual_claim(fake_bundle, fake_now)
     (CJ ENM 커머스 1억 600만원 중 1억 = 주택자금 대출 한도). 그런 합계에 '연' 과 순위를 붙이면
     "이 회사가 1번째" 라는 없는 사실이 된다(D-6).
 
-    열쇠를 '번째' 세기에서 **모집단 문구**로 바꿨다. 이 저장소는 순위든 몫이든 모집단을 떼고
-    말하지 않으므로(`113개사 중 …`), 규약을 지키는 금액 순위라면 반드시 '개사 중' 을 달고
-    온다 — 낱말 목록을 쫓는 대신 규약에서 도출한 하나를 본다. 셈 대신 **행**으로 자르므로
-    금액 순위를 어느 자리에 끼워 넣든(둘째 `<dl>` 포함) 항목 수 행의 문구 변경에는 침묵한다.
+    가드를 **낱말에서 형태로** 옮겼다. 이전 판은 '금액' 으로 행을 고르고 '개사 중' 으로 순위를
+    판별해서, 금액 순위를 넣는 방법 8가지 중 4가지가 초록으로 지나갔다(실측):
+      · 머리(`<dt>`)에 '상위 33%' 를 넣기          · '금액 순위' 행을 하나 더 만들기
+      · '금액' 낱말이 없는 '합계 순위' 행 만들기   · 합계 옆에 '· 3번째' 를 붙이기
+    셋을 형태로 못박아 넷 다 잡는다.
+      ① 순위 블록은 `<dl class="sc-rank">` **하나**이고 행은 **정확히 둘**이다 → 행을 더하는
+         모든 변이가 여기서 죽는다(둘째 `<dl>` 포함).
+      ② 금액 행의 값 칸은 **합계 문자열과 글자 하나까지 같다** → 값 칸에 무엇을 덧붙여도 죽는다.
+         기대값은 화면이 아니라 `corpus.amounts` + `krw_manwon` 에서 온다(카드가 쓰는 그 경로).
+      ③ 금액 행 머리에는 **숫자가 없다** → 등수든 몫이든 숫자를 데려오므로 머리에 끼워도 죽는다.
+    행 선택만 낱말('금액')에 남는데, 그건 판별이 아니라 **가드가 제 행을 보고 있는지**를 확인하는
+    용도이고 어긋나면 조용히 통과하는 게 아니라 실패한다.
     """
     html = _samsung(fake_bundle, fake_now)
     assert "금액 합계 연" not in html
-    money = [(k, v) for k, v in _sc_rank_rows(html) if "금액" in k]
-    assert money, "카드 순위 블록에서 금액 행을 못 찾았다 — 가드가 헛돌고 있다"
-    for head, row in money:
-        dd = row[row.index("<dd>"):].strip()
-        # ① 구조: 금액 행의 값 칸은 **합계 하나**다. 순위든 몫이든 무엇이 붙어도 여기서 깨진다.
-        assert re.fullmatch(r"<dd><strong>[^<]*</strong></dd>", dd), \
-            f"금액 행 '{head}' 의 값 칸에 합계 말고 다른 것이 붙었다(D-6): {dd}"
-        # ② 규약: 이 저장소는 모집단 없는 순위를 쓰지 않으므로, 규약을 지킨 금액 순위라면
-        #    반드시 '개사 중' 을 달고 온다. 값 칸 밖(머리 등)에 끼워도 잡힌다.
-        assert "개사 중" not in row, f"금액 행 '{head}' 에 모집단을 낀 순위/몫이 붙었다(D-6)"
+
+    blocks = re.findall(r'<dl class="sc-rank">(.*?)</dl>', html, re.S)
+    assert len(blocks) == 1, f"순위 블록이 {len(blocks)}개다 — 금액 순위를 담을 자리가 새로 생겼다(D-6)"
+    rows = _sc_rank_rows(html)
+    assert len(rows) == 2, f"순위 행이 {len(rows)}개다({[k for k, _ in rows]}) — 항목 수·금액 합 둘뿐이어야 한다(D-6)"
+
+    head, row = rows[1]
+    assert "금액" in head, f"둘째 행이 금액 행이 아니다({head!r}) — 가드가 헛돌고 있다"
+    corpus = corpus_mod.build(fake_bundle["companies"], company.CATEGORY_ORDER)
+    total = corpus.amounts.get(1, 0)
+    expected = f"<dd><strong>{krw_manwon(total) if total else '—'}</strong></dd>"
+    assert row[row.index("<dd>"):].strip() == expected, \
+        f"금액 행의 값 칸이 합계 하나가 아니다(D-6): {row[row.index('<dd>'):].strip()}"
+    dt_text = re.sub(r"<[^>]+>", "", row[:row.index("</dt>")])
+    assert not re.search(r"\d", dt_text), f"금액 행 머리에 숫자가 붙었다 — 등수/몫이 아닌지 보라(D-6): {dt_text!r}"
 
 
 def test_item_count_row_keeps_its_population_rank(fake_bundle, fake_now):

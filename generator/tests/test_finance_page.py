@@ -63,7 +63,7 @@ def test_FN5_section_sits_after_benefit_table_and_before_cta(fake_bundle, fake_f
 
 def test_FN5_general_table_newest_first_with_eok_amounts_and_deltas(fake_bundle, fake_finance, fake_now):
     sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
-    assert "<caption>" in sec
+    assert "<caption" in sec  # 속성(id)이 붙을 수 있다 — 여는 태그로 본다
     for th in ("연도", "매출", "영업이익", "순이익", "전년 대비"):
         assert f'<th scope="col">{th}</th>' in sec, th
     rows = _rows(sec)
@@ -224,20 +224,28 @@ def test_FN5_finance_table_scrolls_inside_its_own_container_not_the_page(fake_bu
         sec, re.S,
     )
     assert wrap, "재무표가 .table-scroll 래퍼의 직계 자식이 아니다"
-    assert "<caption>" in wrap.group(2), "caption 은 표 안에 남는다 — 표의 접근 가능한 이름이다"
+    assert "<caption" in wrap.group(2), "caption 은 표 안에 남는다 — 표의 접근 가능한 이름이다"
 
 
 def test_FN5_scroll_container_is_reachable_by_keyboard_with_a_name(fake_bundle, fake_finance, fake_now):
     """마우스가 없는 사람은 스크롤 영역에 **들어갈 수단이 없다**(axe scrollable-region-focusable).
 
-    tabindex 로 탭 순서에 넣고, 이름 없는 포커스 정거장이 되지 않게 role+aria-label 로
-    "여기는 가로로 스크롤하는 표"라고 말한다. 포커스 링은 전역 :focus-visible 이 그린다.
+    tabindex 로 탭 순서에 넣고, 이름 없는 포커스 정거장이 되지 않게 role+이름을 준다.
+    포커스 링은 전역 :focus-visible 이 그린다.
+
+    이름은 **caption 을 가리킨다**: `tabindex` 는 폭과 무관하게 늘 붙어 있어서, "가로로
+    스크롤할 수 있습니다" 라고 적으면 표가 다 들어가는 폭(1280·640px 실측 clientWidth ==
+    scrollWidth)에서 없는 스크롤을 있다고 말하게 되고, 그룹 이름 뒤에 caption 이 이어 읽혀
+    같은 표가 두 번 소개된다. 한 이름을 그룹과 표가 나눠 쓰면 어느 폭에서도 참이다.
     """
     sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
     attrs = re.search(r'<div class="table-scroll"([^>]*)>', sec).group(1)
     assert 'tabindex="0"' in attrs
-    assert 'role="group"' in attrs, "aria-label 은 이름 없는 div 에서 무시될 수 있다"
-    assert re.search(r'aria-label="[^"]*가로[^"]*"', attrs), "가로 스크롤이라는 사실을 이름이 말해야 한다"
+    assert 'role="group"' in attrs, "이름 붙은 div 는 role 없이 그룹으로 노출되지 않는다"
+    ref = re.search(r'aria-labelledby="([^"]+)"', attrs)
+    assert ref, "포커스 정거장에 이름이 없다"
+    cap = re.search(rf'<caption id="{ref.group(1)}">([^<]+)</caption>', sec)
+    assert cap and cap.group(1).strip(), f"aria-labelledby 가 가리키는 caption 이 없다: {ref.group(1)}"
 
 
 def test_FN5_every_company_page_cages_its_finance_table(fake_bundle, fake_finance, fake_now):

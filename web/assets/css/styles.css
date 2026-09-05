@@ -144,8 +144,14 @@ header, header[data-global] {
    `flex-wrap:wrap` 은 **안전판**이지 레이아웃이 아니다: 좁은 폭에서 항목이 다 안 들어가면
    항목 단위로 줄을 바꾼다(글자 단위로 꺾이는 것과 다르다 — 아래 '좁은 폭의 GNB' 참조). */
 header:not([data-global]), header[data-global] nav {
-  display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-2); min-height:56px;
-  padding-block:var(--sp-2);
+  display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-2); row-gap:0; min-height:56px;
+  /* 세로 패딩이 `--sp-2`(8) 면 44px 탭 타깃 + 16 = 60 이 되어 바가 3px 자란다. 4 로 낮추면
+     44 + 8 = 52 < 56 이라 `min-height` 가 계속 높이를 정한다 — 바 높이는 그대로 57px 다.
+     줄이 바뀌는 상태(320px + 긴 닉네임)에서는 두 줄 모두 44 라 헤더가 96px 이 된다: 늘어난
+     것이 아니라, 이전에는 **누를 수 없던 줄**이 누를 수 있게 된 값이다. 줄 사이 간격은 0 으로
+     둔다 — 44px 상자 안에 이미 글자 위아래 11px 이 들어 있어, 여기에 8px 을 더하면 붙어 있는
+     상자 사이가 아니라 **바 전체 높이**만 자란다(105px → 97px). */
+  padding-block:var(--sp-1);
   padding-inline:max(var(--gutter-mobile), calc((100% - var(--container-max)) / 2));
 }
 header:not([data-global]) .site-logo, header[data-global] .brand { margin-right:var(--sp-2); }
@@ -154,6 +160,10 @@ header:not([data-global]) nav { display:flex; align-items:center; gap:var(--sp-4
   display:inline-flex; align-items:center; /* gap 제거: 텍스트 조각(jobcho/./wiki)이 flex 아이템이라 gap이 자간처럼 벌어짐 — 간격은 로고 img margin으로만 */
   font-family:var(--font-sans); font-size:0; font-weight:var(--fw-bold);
   color:var(--on-brand); letter-spacing:-0.01em;
+  /* 워드마크를 접으면 링크 폭이 로고 34 + 오른 여백 8 = 42px 로 줄어 규약(--tap-min 44)에
+     2px 모자란다. 높이는 아래 `header nav > a` 가 준다. 768 에서는 워드마크가 돌아와
+     140px 라 이 최소값은 아무 일도 하지 않는다. */
+  min-width:var(--tap-min);
 }
 .brand:hover, .site-logo:hover { text-decoration:none; }
 .brand-logo { display:block; width:34px; height:22px; margin-right:var(--sp-2); }
@@ -179,11 +189,22 @@ header nav a[aria-current="page"]:hover { text-decoration:underline; }
    않은 이유: 헤더는 잘리면 안 되고(로그인 진입점이 스크롤 뒤로 숨는다), overflow 컨테이너는
    포커스 링까지 잘라 먹는다.
    워드마크는 좁은 폭에서 **접는다**(위 `.brand{font-size:0}`) — 지우는 게 아니다. 로고 마크
-   34px 만 남기고 텍스트 노드는 DOM 에 그대로 두므로 브랜드 링크의 접근성 이름은
-   "jobcho.wiki" 그대로다. 140px 짜리 워드마크를 두면 320~390px 에서 탭 4개 + 로그인
+   34px 만 남기고 텍스트 노드는 DOM 에 그대로 두므로 브랜드 링크에 **접근성 이름이 남는다**
+   (`font-size:0` 은 이름을 지우지 않는다 — Chromium 실측). 다만 그 값은 "jobcho.wiki" 가
+   아니라 `jobcho . wiki` 다: 링크가 inline-flex 라 텍스트 조각 셋이 각각 플렉스 아이템이 되어
+   이름 계산이 사이에 공백을 넣는다. 768/1280 에서도 같은 값이니 접기 때문에 생긴 것이 아니고,
+   고치려면 마크업을 바꿔야 하는데 그 문자열은 수기 셸 8개와 바이트 동일해야 한다
+   (test_header_markup). 접힌 상태에서 **이름이 사라지지 않는다**는 것이 여기서 중요한 사실이다. 140px 짜리 워드마크를 두면 320~390px 에서 탭 4개 + 로그인
    진입점(prod M9 ON)이 한 줄에 못 들어간다 — 2026-09-01 '모든 페이지에 로고 마크' 결정의
    대상도 텍스트가 아니라 이 이미지였다. 768 에서 워드마크·gap 모두 되돌린다. */
-header nav > a { flex:0 0 auto; white-space:nowrap; }
+/* 탭 타깃(규약 --tap-min 44px, WCAG 2.5.8): 링크는 flex 아이템이라 블록화되므로 `min-height`
+   가 먹는다 — 글자를 가운데 두려면 자신도 flex 여야 한다. 상자만 커지고 **바 높이는 그대로**다
+   (위 padding-block 참조): 56px 바 안에서 22px 짜리 글자 줄 위아래 11px 이 이제 눌린다.
+   ⚠ 남은 미달은 **폭**이다 — '홈' 은 12px 라 44 에 한참 못 미친다. 이 브랜치가 만든 값이
+     아니고(main 도 같다), 폭을 채우려면 링크에 좌우 패딩을 줘야 하는데 320px 에서 탭 4개 +
+     로그인 진입점이 한 줄에 안 들어가게 된다 — 레이아웃 결정이라 여기서 하지 않는다.
+     세로 44px 과 항목 간 8px 여백으로 2.5.8 의 간격 예외는 충족한다(실측). */
+header nav > a { display:flex; align-items:center; flex:0 0 auto; min-height:var(--tap-min); white-space:nowrap; }
 /* GNB 검색은 은퇴했다(2026-09-01) — 상단을 페이지마다 다르게 만든 유일한 조각이었다.
    되살릴 땐 마크업·ui.js 배선과 함께 이 자리에 규칙을 다시 놓아라. */
 
@@ -209,6 +230,11 @@ header nav > a { flex:0 0 auto; white-space:nowrap; }
    우측으로 밀린다 — 밀어낼 여백을 만들려면 nav 가 남은 폭을 차지해야 한다. */
 header nav { flex:1 1 auto; }
 header nav .authnav { margin-left:auto; }
+/* 말줄임(…)은 **인라인 텍스트를 담은 상자**에서만 그려진다. `.authnav` 는 inline-flex 라
+   `text-overflow` 가 자식 라벨의 텍스트에 닿지 않아, 14ch 를 넘긴 닉네임이 점 없이 글자
+   중간에서 뚝 끊겼다(실측 '백지훈님아주긴닉ㅣ'). 잘라야 할 곳은 라벨이고, 플렉스 아이템은
+   기본 `min-width:auto` 라 내용보다 작아지지 않으므로 0 으로 풀어 줘야 줄어든다. */
+.authnav [data-authnav-label] { min-width:0; overflow:hidden; text-overflow:ellipsis; }
 .authnav:hover { color:var(--on-brand); background:rgba(255,255,255,.12); text-decoration:none; }
 .authnav-ico { display:block; flex:0 0 auto; }
 
