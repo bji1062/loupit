@@ -209,6 +209,25 @@ def test_rank_discloses_ties(fake_bundle):
     assert (top["items_rank"], top["items_tied"]) == (1, False)
 
 
+def test_rank_of_exposes_item_count_rank_only(fake_bundle):
+    """`rank_of()` 가 내는 키는 정확히 이 넷이다 — 금액 순위 키가 되살아나면 여기서 빨개진다.
+
+    낱말 가드가 아니라 **구조 가드**다: `render.py` 는 `undefined=StrictUndefined` 라
+    템플릿이 없는 키를 쓰는 순간 빌드가 죽는다. 그러니 `amount_rank`·`amount_tied` 를
+    **만들지 않는 것** 자체가 D-6("등록 금액 합에 순위를 붙이지 마라")의 진짜 방어선이고,
+    이 테스트는 그 방어선이 뚫렸는지를 본다. 금액 합계 값(`Corpus.amounts`)은 카드의
+    '등록 금액 합' 문구가 쓰므로 남는다 — 여기서 막는 것은 **등수·몫**이다.
+    """
+    companies = [
+        {"comp_id": 1, "benefits": [{"benefit_ctgr_cd": "perks", "qual_yn": False,
+                                     "benefit_amt": 500}] * 3},
+        {"comp_id": 2, "benefits": [{"benefit_ctgr_cd": "perks", "qual_yn": False,
+                                     "benefit_amt": 10000}] * 1},
+    ]
+    corpus = corpus_mod.build(companies, company.CATEGORY_ORDER)
+    assert set(corpus.rank_of(1)) == {"total", "item_count", "items_rank", "items_tied"}
+
+
 def test_page_prints_the_tie_word_when_tied(fake_bundle, fake_now):
     """픽스처 3사 중 두 곳이 항목 수가 같으면 화면에 '공동' 이 나온다."""
     counts = sorted(len(c["benefits"]) for c in fake_bundle["companies"])
@@ -367,16 +386,62 @@ def test_note_and_qual_desc_are_both_kept(fake_now):
     assert "연차, 반차, 경조휴가" in html and "휴가비 지원" in html
 
 
+def _sc_rank_rows(html: str) -> list[tuple[str, str]]:
+    """카드 순위 블록의 행 전부를 (머리 텍스트, 행 HTML) 로 낸다.
+
+    ⚠ 두 가지를 일부러 다르게 한다.
+      · "등록 금액 합" 은 페이지 **부제**(`company-sub`)에도 있다 — `html.index` 로 바로 자르면
+        카드가 아니라 앞쪽 부제가 잡힌다. 그래서 `.sc-rank` 블록 안에서만 자른다.
+      · `<dl class="sc-rank">` **전부**를 훑는다. 첫 블록만 보면 순위를 둘째 `<dl>` 에 옮기는
+        것만으로 가드를 빠져나간다(실측: 이전 가드가 그 뮤테이션을 통과시켰다).
+    """
+    rows = []
+    for block in re.findall(r'<dl class="sc-rank">(.*?)</dl>', html, re.S):
+        for row in re.findall(r"<div>(.*?)</div>", block, re.S):
+            head = re.sub(r"<[^>]+>", "", row[:row.index("</dt>")])
+            rows.append((head.strip(), row))
+    return rows
+
+
 def test_amount_total_carries_no_rank_and_no_annual_claim(fake_bundle, fake_now):
     """등록 금액에는 대출 한도·일회성 포상 같은 **연간 환산이 아닌 값**이 섞여 있다
     (CJ ENM 커머스 1억 600만원 중 1억 = 주택자금 대출 한도). 그런 합계에 '연' 과 순위를 붙이면
-    "이 회사가 1번째" 라는 없는 사실이 된다(D-6)."""
+    "이 회사가 1번째" 라는 없는 사실이 된다(D-6).
+
+    열쇠를 '번째' 세기에서 **모집단 문구**로 바꿨다. 이 저장소는 순위든 몫이든 모집단을 떼고
+    말하지 않으므로(`113개사 중 …`), 규약을 지키는 금액 순위라면 반드시 '개사 중' 을 달고
+    온다 — 낱말 목록을 쫓는 대신 규약에서 도출한 하나를 본다. 셈 대신 **행**으로 자르므로
+    금액 순위를 어느 자리에 끼워 넣든(둘째 `<dl>` 포함) 항목 수 행의 문구 변경에는 침묵한다.
+    """
     html = _samsung(fake_bundle, fake_now)
     assert "금액 합계 연" not in html
-    assert "등록 금액 합" in html
-    rank_block = html[html.index('class="sc-rank"'):html.index("</dl>", html.index('class="sc-rank"'))]
-    assert "번째" in rank_block  # 항목 수 순위는 남는다(우리가 센 사실이다)
-    assert rank_block.count("번째") == 1, "금액 순위가 아직 있다"
+    money = [(k, v) for k, v in _sc_rank_rows(html) if "금액" in k]
+    assert money, "카드 순위 블록에서 금액 행을 못 찾았다 — 가드가 헛돌고 있다"
+    for head, row in money:
+        dd = row[row.index("<dd>"):].strip()
+        # ① 구조: 금액 행의 값 칸은 **합계 하나**다. 순위든 몫이든 무엇이 붙어도 여기서 깨진다.
+        assert re.fullmatch(r"<dd><strong>[^<]*</strong></dd>", dd), \
+            f"금액 행 '{head}' 의 값 칸에 합계 말고 다른 것이 붙었다(D-6): {dd}"
+        # ② 규약: 이 저장소는 모집단 없는 순위를 쓰지 않으므로, 규약을 지킨 금액 순위라면
+        #    반드시 '개사 중' 을 달고 온다. 값 칸 밖(머리 등)에 끼워도 잡힌다.
+        assert "개사 중" not in row, f"금액 행 '{head}' 에 모집단을 낀 순위/몫이 붙었다(D-6)"
+
+
+def test_item_count_row_keeps_its_population_rank(fake_bundle, fake_now):
+    """항목 수 순위 문구 「N개사 중 (공동) M번째」는 **유지하기로 한 결정**이다(2026-09-04 사용자).
+
+    '상위 %' 로 바꾸자는 안을 철회한 이유: 이용자가 늘어 데이터가 좋아지면 동률이 풀린다 —
+    지금 107/113 이 '공동' 인 것은 문구의 결함이 아니라 데이터의 현재 상태다. 그 결정이
+    조용히 뒤집히지 않도록 여기서 못박는다(D-6 가드와 **다른 축**이라 테스트를 갈랐다).
+    """
+    html = _samsung(fake_bundle, fake_now)
+    # 기대값은 화면이 아니라 corpus 에서 가져온다 — 숫자를 테스트에 적어 두면 픽스처가 늘 때
+    # 테스트가 먼저 거짓말을 시작한다.
+    corpus = corpus_mod.build(fake_bundle["companies"], company.CATEGORY_ORDER)
+    rank = corpus.rank_of(1)  # 1 = samsung_elec(_samsung 이 고른 회사)
+    item_row = next(v for k, v in _sc_rank_rows(html) if "등록 복지 항목" in k)
+    assert f"{rank['total']}개사 중" in item_row
+    assert f"{rank['items_rank']}번째" in item_row
 
 
 def test_all_estimated_company_says_so(fake_now):
