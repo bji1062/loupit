@@ -415,6 +415,164 @@ describe('UT-SC-LENS', () => {
   });
 });
 
+// ── CSS 규칙을 **주어**로 보는 도우미(2026-09-05) ────────────────────────────
+// 아래 두 스위트는 처음에 셀렉터 문자열을 정규식으로 맞췄고, 그래서 모양만 다르고 효과가 같은
+// 규칙을 놓치거나(`:root body{overflow-x:hidden}`·@media 안쪽) 뜻이 같은 리팩터에 빨개졌다
+// (`flex:none`, `.table-scroll, .chart-scroll`). 셀렉터의 **주어**(마지막 복합 선택자)와
+// 선언의 **효과**를 보도록 바꾼다 — 그게 가드가 실제로 지키려던 것이다.
+
+/** 셀렉터 한 조각의 주어: 마지막 복합 선택자에서 속성·의사 부분을 뗀 것. `header[data-global] nav`→`nav` */
+function subjectOf(sel) {
+  const last = sel.trim().split(/[\s>+~]+/).pop() || '';
+  return last.replace(/[:[].*$/, '');
+}
+
+/** @media 안쪽까지 편 규칙 목록. 최상위만 훑으면 분기 안에 숨긴 규칙이 그대로 지나간다. */
+function allRules(css) {
+  const out = [];
+  for (const b of splitTopLevelBlocks(css)) {
+    if (b.selector.startsWith('@')) {
+      for (const [, sel, body] of b.body.matchAll(/([^{}]+)\{([^}]*)\}/g)) {
+        out.push({ selector: sel.trim(), body, inAt: b.selector });
+      }
+    } else {
+      out.push({ ...b, inAt: null });
+    }
+  }
+  return out;
+}
+
+/** 가로 넘침을 **감추는** 선언이면 그 선언을 돌려준다. `overflow` 축약형은 첫 값이 x 축이다. */
+function clipsInlineOverflow(body) {
+  for (const m of body.matchAll(/(?:^|[;{])\s*(overflow|overflow-x|overflow-inline)\s*:\s*([^;}]+)/g)) {
+    const x = m[2].trim().split(/\s+/)[0].toLowerCase();
+    if (x === 'hidden' || x === 'clip') return `${m[1]}:${m[2].trim()}`;
+  }
+  return null;
+}
+
+/** 가로로 **움직이거나 잘리는** 상자를 만드는 선언(스크롤 상자 금지 가드용). */
+function makesOverflowBox(body) {
+  const m = body.match(/(?:^|[;{])\s*(overflow(?:-x|-y|-inline|-block)?)\s*:\s*(auto|scroll|hidden|clip)/);
+  return m ? `${m[1]}:${m[2]}` : null;
+}
+
+// ── UT-TABLE-SCROLL (2026-09-05, SPEC 10 MD-4) ──────────────────────────────
+// 7열 표(재무 11개년·회사 인덱스)는 390px 를 넘긴다. 넘침을 **표 자신의 상자**에 가두지
+// 않으면 페이지가 통째로 가로로 팬된다(실측 390px: 회사 상세 110/113 페이지 +21~143px,
+// /companies +63px). 반대로 body{overflow-x:hidden} 으로 덮으면 오른쪽 열을 영원히 못 본다.
+describe('UT-TABLE-SCROLL', () => {
+  const blocks = splitTopLevelBlocks(cssText);
+
+  test('.table-scroll 이 최상위(비 @media) 규칙으로 overflow-x:auto 를 갖는다', () => {
+    // 모바일 기본에서 이미 스크롤 상자여야 한다 — 768 분기 안에만 두면 정작 밀리는 폭에서 무효다.
+    // 셀렉터 **목록**(`.table-scroll, .chart-scroll`)도 받는다: 상자를 하나 더 늘리는 것은
+    // 이 규칙이 막으려는 일이 아니다.
+    const rule = blocks.find((b) => b.selector.split(',').some((s) => s.trim() === '.table-scroll'));
+    assert.ok(rule, '.table-scroll 규칙이 없다');
+    assert.match(rule.body, /overflow-x\s*:\s*auto/);
+  });
+
+  test('폐기된 -webkit-overflow-scrolling 을 쓰지 않는다', () => {
+    // iOS 13 이후 무의미하고, 있으면 "이걸 붙여야 스크롤된다"는 오해를 다음 사람에게 남긴다.
+    assert.doesNotMatch(stripComments(cssText), /-webkit-overflow-scrolling/);
+  });
+
+  test('🚨 html/body 를 가로 넘침 은폐로 덮지 않는다 — 그건 열을 감추는 것이다', () => {
+    // 셀렉터 모양이 아니라 **주어**를 본다. 이전 정규식(`(^|[},])\s*body\s*\{`)은 효과가 똑같은
+    // 규칙 넷을 그냥 통과시켰다(실측): @media 안 첫 규칙 · `:root body` · `body, main` ·
+    // 논리 속성 `overflow-inline`. 축약형 `overflow:hidden auto` 도 x 축이 hidden 이면 잡는다.
+    for (const r of allRules(cssText)) {
+      const isDoc = r.selector.split(',').some((s) => ['html', 'body'].includes(subjectOf(s)));
+      if (!isDoc) continue;
+      const hit = clipsInlineOverflow(r.body);
+      assert.equal(hit, null, `${r.selector} 에 가로 넘침 은폐 규칙: ${hit}`);
+    }
+  });
+});
+
+// ── UT-GNB-NOWRAP (2026-09-05, SPEC 10 MD-4 / NFR13) ────────────────────────
+// 전역 헤더는 **모든 페이지**에 있고 CSS 는 머지 즉시 라이브다 — 여기가 무너지면 사이트
+// 전체의 첫 화면이 무너진다. 실측(프로덕션, iPhone Safari UA): 320px 에서 '커뮤니티'·
+// '회사정보'가 한 글자씩 4줄로 서고 헤더가 107px(360px 84px · 390px 62px). 가로로 넘친 게
+// 아니라 세로로 꺾인 것이었다 — CJK 는 글자 사이 어디서나 꺾이고, flex 기본 shrink:1 이
+// 링크를 한 글자 폭까지 줄여 그 꺾임을 강제한다. **둘 다** 막아야 낫는다.
+describe('UT-GNB-NOWRAP', () => {
+  const blocks = splitTopLevelBlocks(cssText);
+  const desktop = blocks.find((b) => /^@media/.test(b.selector) && /min-width/.test(b.selector));
+  /** 헤더/nav **컨테이너 자신**을 가리키는 규칙인가(자손 클래스는 아니다). */
+  const isNavBox = (sel) => sel.split(',').some((s) => /header/.test(s) && ['header', 'nav'].includes(subjectOf(s)));
+  /** GNB 링크를 가리키는 규칙인가. `header nav > a`·`header[data-global] nav a` 를 함께 받는다. */
+  const isNavLink = (sel) => sel.split(',').some((s) => {
+    const t = s.trim();
+    return /header/.test(t) && /\bnav\b/.test(t) && subjectOf(t) === 'a';
+  });
+  // 축소 금지는 뜻이 같은 표기가 여럿이다(`flex:0 0 auto`·`flex:none`·`flex-shrink:0`).
+  // 표기를 하나로 못박으면 정상 리팩터가 빨개지고, 그걸 피하려고 가드를 지우게 된다.
+  const NO_SHRINK = /flex\s*:\s*none|flex\s*:\s*0\s+0(\s|;|$)|flex-shrink\s*:\s*0(\D|$)/;
+  const linkRule = blocks.find((b) => isNavLink(b.selector) && /white-space\s*:\s*nowrap/.test(b.body));
+
+  test('GNB 링크는 nowrap 이면서 축소되지 않는다 — 한쪽만으로는 꺾임이 안 멈춘다', () => {
+    // white-space 만 걸면 flex 가 링크를 1글자 폭으로 줄여 놓고 nowrap 이 넘치게 만들고,
+    // 축소만 막으면 CJK 가 여전히 글자 사이에서 꺾인다. 그래서 한 규칙에서 둘을 함께 본다.
+    assert.ok(linkRule, 'GNB 링크에 white-space:nowrap 규칙이 없다 — 라벨 꺾임 방어가 통째로 빠졌다');
+    assert.match(linkRule.body, NO_SHRINK, 'flex-shrink 를 0 으로 묶지 않았다');
+  });
+
+  test('GNB 링크의 탭 타깃은 --tap-min 이다 — 워드마크를 접었어도 손가락은 그대로다', () => {
+    // 워드마크를 접자 브랜드 링크가 106×29 → 42×22 로 줄었다(실측 320/360/390px). 링크는
+    // flex 아이템이라 블록화되어 min-height 가 먹지만, 글자를 가운데 두려면 자신도 flex 여야
+    // 한다 — 둘을 함께 본다. 바 높이는 nav 의 padding-block 이 흡수한다(57px 유지).
+    assert.ok(linkRule, 'GNB 링크 규칙이 없다');
+    assert.match(linkRule.body, /min-height\s*:\s*var\(--tap-min\)/, 'GNB 링크에 --tap-min 높이가 없다');
+    assert.match(linkRule.body, /display\s*:\s*(inline-)?flex/, '높이만 주고 글자를 가운데 두지 않았다');
+    const brand = blocks.find((b) => /(^|,)\s*\.brand\s*(,|$)/.test(b.selector) && /font-size/.test(b.body));
+    assert.ok(brand, '.brand 규칙을 못 찾았다');
+    // 접힌 워드마크의 폭은 로고 34 + 여백 8 = 42px 이라 폭만 따로 채워야 44 가 된다.
+    assert.match(brand.body, /min-width\s*:\s*var\(--tap-min\)/, '접힌 브랜드 링크의 폭이 --tap-min 에 못 미친다');
+  });
+
+  test('모바일 기본의 GNB 는 항목 단위로 줄을 바꾼다(안전판) — 768 에서 한 줄로 되돌린다', () => {
+    // 안전판이 없으면 총 필요 폭이 뷰포트를 넘는 순간(320px + 로그인 진입점) 링크가 겹치거나
+    // 잘린다. 반대로 768 이상에서 줄이 바뀌면 그건 레이아웃이 아니라 버그라 nowrap 으로 못박는다.
+    const base = blocks.find((b) => isNavBox(b.selector) && /display\s*:\s*flex/.test(b.body));
+    assert.ok(base, 'GNB nav 의 flex 컨테이너 규칙을 못 찾았다');
+    assert.match(base.body, /flex-wrap\s*:\s*wrap/);
+    assert.ok(desktop, '768 분기 블록이 없다');
+    const restored = [...desktop.body.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .find(([, sel]) => isNavBox(sel));
+    assert.ok(restored, '768 에서 GNB nav 를 되돌리는 규칙이 없다');
+    assert.match(restored[2], /flex-wrap\s*:\s*nowrap/);
+  });
+
+  test('워드마크는 좁은 폭에서 접히고 768 에서 되돌아온다 — 영영 사라지면 안 된다', () => {
+    // 로고 마크(img)와 접근성 이름(텍스트 노드)은 그대로 두고 **글자만** 접는 방식이라,
+    // 되돌리는 쪽을 빠뜨리면 데스크톱에서도 브랜드가 사라진 채로 배포된다.
+    const brand = blocks.find((b) => /(^|,)\s*\.brand\s*(,|$)/.test(b.selector) && /font-size/.test(b.body));
+    assert.ok(brand, '.brand 규칙을 못 찾았다');
+    assert.match(brand.body, /font-size\s*:\s*0\b/);
+    const restored = [...desktop.body.matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      .find(([, sel]) => /(^|,)\s*\.brand\s*(,|$)/.test(sel));
+    assert.ok(restored, '768 에서 .brand 글자 크기를 되돌리는 규칙이 없다');
+    assert.match(restored[2], /font-size\s*:\s*var\(--fs-/);
+  });
+
+  test('🚨 헤더/nav **컨테이너**를 넘침 상자로 만들지 않는다 — 로그인 진입점과 포커스 링이 잘린다', () => {
+    // 표(UT-TABLE-SCROLL)와 반대 결론이다: 표는 넘침을 자기 상자에 가두는 게 맞지만, 헤더는
+    // 항상 통째로 보여야 하는 것이라 넘치면 **줄을 바꿔야** 한다. overflow 상자는 덤으로
+    // 포커스 링(outline-offset 2px)까지 잘라 키보드 사용자에게서 현재 위치를 뺏는다.
+    // ⚠ 경계는 **컨테이너 자신**이다. `.authnav` 는 긴 닉네임을 말줄임하려고 일부러 자기 상자를
+    //   자르므로(닉네임 칩 하나만 잘린다) 자손까지 금지하면 이 가드는 지킬 수 없는 약속이 된다 —
+    //   이전 판은 그 선언을 `header nav .authnav` 로 옮겨 적기만 해도 빨개졌다.
+    // @media 안쪽도 본다: 분기 안에 숨긴 overflow 는 이전 판이 통째로 놓쳤다.
+    for (const r of allRules(cssText)) {
+      if (!isNavBox(r.selector)) continue;
+      const hit = makesOverflowBox(r.body);
+      assert.equal(hit, null, `헤더 컨테이너 규칙에 넘침 상자: ${r.selector} { ${hit} }`);
+    }
+  });
+});
+
 // ── UT-REDUCED-MOTION (T-10.8.2) ────────────────────────────────────────────
 describe('UT-REDUCED-MOTION', () => {
   test('@media (prefers-reduced-motion: reduce) 블록 존재', () => {

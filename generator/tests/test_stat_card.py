@@ -16,7 +16,7 @@ import pytest
 
 from generator import corpus as corpus_mod
 from generator.context import build_context
-from generator.format import amount_kind, badge_state
+from generator.format import amount_kind, badge_state, krw_manwon
 from generator.pages import company
 from generator.radar import radar_svg
 from generator.render import make_env
@@ -209,6 +209,25 @@ def test_rank_discloses_ties(fake_bundle):
     assert (top["items_rank"], top["items_tied"]) == (1, False)
 
 
+def test_rank_of_exposes_item_count_rank_only(fake_bundle):
+    """`rank_of()` 가 내는 키는 정확히 이 넷이다 — 금액 순위 키가 되살아나면 여기서 빨개진다.
+
+    낱말 가드가 아니라 **구조 가드**다: `render.py` 는 `undefined=StrictUndefined` 라
+    템플릿이 없는 키를 쓰는 순간 빌드가 죽는다. 그러니 `amount_rank`·`amount_tied` 를
+    **만들지 않는 것** 자체가 D-6("등록 금액 합에 순위를 붙이지 마라")의 진짜 방어선이고,
+    이 테스트는 그 방어선이 뚫렸는지를 본다. 금액 합계 값(`Corpus.amounts`)은 카드의
+    '등록 금액 합' 문구가 쓰므로 남는다 — 여기서 막는 것은 **등수·몫**이다.
+    """
+    companies = [
+        {"comp_id": 1, "benefits": [{"benefit_ctgr_cd": "perks", "qual_yn": False,
+                                     "benefit_amt": 500}] * 3},
+        {"comp_id": 2, "benefits": [{"benefit_ctgr_cd": "perks", "qual_yn": False,
+                                     "benefit_amt": 10000}] * 1},
+    ]
+    corpus = corpus_mod.build(companies, company.CATEGORY_ORDER)
+    assert set(corpus.rank_of(1)) == {"total", "item_count", "items_rank", "items_tied"}
+
+
 def test_page_prints_the_tie_word_when_tied(fake_bundle, fake_now):
     """픽스처 3사 중 두 곳이 항목 수가 같으면 화면에 '공동' 이 나온다."""
     counts = sorted(len(c["benefits"]) for c in fake_bundle["companies"])
@@ -367,16 +386,78 @@ def test_note_and_qual_desc_are_both_kept(fake_now):
     assert "연차, 반차, 경조휴가" in html and "휴가비 지원" in html
 
 
+def _sc_rank_rows(html: str) -> list[tuple[str, str]]:
+    """카드 순위 블록의 행 전부를 (머리 텍스트, 행 HTML) 로 낸다.
+
+    ⚠ 세 가지를 일부러 다르게 한다.
+      · "등록 금액 합" 은 페이지 **부제**(`company-sub`)에도 있다 — `html.index` 로 바로 자르면
+        카드가 아니라 앞쪽 부제가 잡힌다. 그래서 `.sc-rank` 블록 안에서만 자른다.
+      · `<dl class="sc-rank">` **전부**를 훑는다. 첫 블록만 보면 순위를 둘째 `<dl>` 에 옮기는
+        것만으로 가드를 빠져나간다(실측: 이전 가드가 그 뮤테이션을 통과시켰다).
+      · 행 `<div>` 에 **속성이 붙어도 잡는다**. `<div>` 정확 일치로 찾으면 클래스를 하나 다는
+        정상 변경에 가드가 조용히 빈 목록을 내는 게 아니라 크게 실패했다 — 어느 쪽이든 행을
+        찾는 일에 클래스 유무가 끼어들 이유가 없다.
+    """
+    rows = []
+    for block in re.findall(r'<dl class="sc-rank">(.*?)</dl>', html, re.S):
+        for row in re.findall(r"<div\b[^>]*>(.*?)</div>", block, re.S):
+            head = re.sub(r"<[^>]+>", "", row[:row.index("</dt>")])
+            rows.append((head.strip(), row))
+    return rows
+
+
 def test_amount_total_carries_no_rank_and_no_annual_claim(fake_bundle, fake_now):
     """등록 금액에는 대출 한도·일회성 포상 같은 **연간 환산이 아닌 값**이 섞여 있다
     (CJ ENM 커머스 1억 600만원 중 1억 = 주택자금 대출 한도). 그런 합계에 '연' 과 순위를 붙이면
-    "이 회사가 1번째" 라는 없는 사실이 된다(D-6)."""
+    "이 회사가 1번째" 라는 없는 사실이 된다(D-6).
+
+    가드를 **낱말에서 형태로** 옮겼다. 이전 판은 '금액' 으로 행을 고르고 '개사 중' 으로 순위를
+    판별해서, 금액 순위를 넣는 방법 8가지 중 4가지가 초록으로 지나갔다(실측):
+      · 머리(`<dt>`)에 '상위 33%' 를 넣기          · '금액 순위' 행을 하나 더 만들기
+      · '금액' 낱말이 없는 '합계 순위' 행 만들기   · 합계 옆에 '· 3번째' 를 붙이기
+    셋을 형태로 못박아 넷 다 잡는다.
+      ① 순위 블록은 `<dl class="sc-rank">` **하나**이고 행은 **정확히 둘**이다 → 행을 더하는
+         모든 변이가 여기서 죽는다(둘째 `<dl>` 포함).
+      ② 금액 행의 값 칸은 **합계 문자열과 글자 하나까지 같다** → 값 칸에 무엇을 덧붙여도 죽는다.
+         기대값은 화면이 아니라 `corpus.amounts` + `krw_manwon` 에서 온다(카드가 쓰는 그 경로).
+      ③ 금액 행 머리에는 **숫자가 없다** → 등수든 몫이든 숫자를 데려오므로 머리에 끼워도 죽는다.
+    행 선택만 낱말('금액')에 남는데, 그건 판별이 아니라 **가드가 제 행을 보고 있는지**를 확인하는
+    용도이고 어긋나면 조용히 통과하는 게 아니라 실패한다.
+    """
     html = _samsung(fake_bundle, fake_now)
     assert "금액 합계 연" not in html
-    assert "등록 금액 합" in html
-    rank_block = html[html.index('class="sc-rank"'):html.index("</dl>", html.index('class="sc-rank"'))]
-    assert "번째" in rank_block  # 항목 수 순위는 남는다(우리가 센 사실이다)
-    assert rank_block.count("번째") == 1, "금액 순위가 아직 있다"
+
+    blocks = re.findall(r'<dl class="sc-rank">(.*?)</dl>', html, re.S)
+    assert len(blocks) == 1, f"순위 블록이 {len(blocks)}개다 — 금액 순위를 담을 자리가 새로 생겼다(D-6)"
+    rows = _sc_rank_rows(html)
+    assert len(rows) == 2, f"순위 행이 {len(rows)}개다({[k for k, _ in rows]}) — 항목 수·금액 합 둘뿐이어야 한다(D-6)"
+
+    head, row = rows[1]
+    assert "금액" in head, f"둘째 행이 금액 행이 아니다({head!r}) — 가드가 헛돌고 있다"
+    corpus = corpus_mod.build(fake_bundle["companies"], company.CATEGORY_ORDER)
+    total = corpus.amounts.get(1, 0)
+    expected = f"<dd><strong>{krw_manwon(total) if total else '—'}</strong></dd>"
+    assert row[row.index("<dd>"):].strip() == expected, \
+        f"금액 행의 값 칸이 합계 하나가 아니다(D-6): {row[row.index('<dd>'):].strip()}"
+    dt_text = re.sub(r"<[^>]+>", "", row[:row.index("</dt>")])
+    assert not re.search(r"\d", dt_text), f"금액 행 머리에 숫자가 붙었다 — 등수/몫이 아닌지 보라(D-6): {dt_text!r}"
+
+
+def test_item_count_row_keeps_its_population_rank(fake_bundle, fake_now):
+    """항목 수 순위 문구 「N개사 중 (공동) M번째」는 **유지하기로 한 결정**이다(2026-09-04 사용자).
+
+    '상위 %' 로 바꾸자는 안을 철회한 이유: 이용자가 늘어 데이터가 좋아지면 동률이 풀린다 —
+    지금 107/113 이 '공동' 인 것은 문구의 결함이 아니라 데이터의 현재 상태다. 그 결정이
+    조용히 뒤집히지 않도록 여기서 못박는다(D-6 가드와 **다른 축**이라 테스트를 갈랐다).
+    """
+    html = _samsung(fake_bundle, fake_now)
+    # 기대값은 화면이 아니라 corpus 에서 가져온다 — 숫자를 테스트에 적어 두면 픽스처가 늘 때
+    # 테스트가 먼저 거짓말을 시작한다.
+    corpus = corpus_mod.build(fake_bundle["companies"], company.CATEGORY_ORDER)
+    rank = corpus.rank_of(1)  # 1 = samsung_elec(_samsung 이 고른 회사)
+    item_row = next(v for k, v in _sc_rank_rows(html) if "등록 복지 항목" in k)
+    assert f"{rank['total']}개사 중" in item_row
+    assert f"{rank['items_rank']}번째" in item_row
 
 
 def test_all_estimated_company_says_so(fake_now):

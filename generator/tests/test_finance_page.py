@@ -63,7 +63,7 @@ def test_FN5_section_sits_after_benefit_table_and_before_cta(fake_bundle, fake_f
 
 def test_FN5_general_table_newest_first_with_eok_amounts_and_deltas(fake_bundle, fake_finance, fake_now):
     sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
-    assert "<caption>" in sec
+    assert "<caption" in sec  # 속성(id)이 붙을 수 있다 — 여는 태그로 본다
     for th in ("연도", "매출", "영업이익", "순이익", "전년 대비"):
         assert f'<th scope="col">{th}</th>' in sec, th
     rows = _rows(sec)
@@ -191,3 +191,67 @@ def test_FN5_build_cli_without_finance_json_says_so_and_renders_legacy(tmp_path,
     assert rc == 0
     assert 'class="finance"' not in (out / "company" / "samsung-elec.html").read_text(encoding="utf-8")
     assert "finance" in capsys.readouterr().err.lower(), "재무 미주입을 조용히 넘기면 안 된다"
+
+
+# ── MD-4: 7열 표는 페이지가 아니라 표가 스크롤한다 (2026-09-05) ────────────────
+# 실측(390px, iPhone Safari UA): 재무표가 있는 113 페이지 중 110 페이지에서
+# documentElement.scrollWidth 가 뷰포트를 21~143px 넘겼다. html/body 에
+# overflow-x:hidden 이 없어 **페이지 전체가 가로로 팬**됐다 — 헤더·본문·CTA 가 같이 밀린다.
+# 넘침을 표 자신의 스크롤 상자에 가두는 것이 유일하게 열을 안 잘라먹는 해법이다
+# (body{overflow-x:hidden} 은 오른쪽 열을 영원히 못 보게 만든다).
+
+
+def _tables_outside_scroll_wrapper(html: str) -> list[str]:
+    """`.table-scroll` 래퍼에 들어 있지 않은 `<table>` 여는 태그 목록."""
+    caged = re.sub(
+        r'<div class="table-scroll"[^>]*>\s*<table[^>]*>.*?</table>\s*</div>',
+        "", html, flags=re.S,
+    )
+    return re.findall(r"<table[^>]*>", caged)
+
+
+def test_FN5_finance_table_scrolls_inside_its_own_container_not_the_page(fake_bundle, fake_finance, fake_now):
+    """7열 표가 뷰포트를 넘겨도 **페이지**는 밀리지 않는다(SPEC 10 MD-4 '가로 스크롤 없음').
+
+    무엇을 막는가: 표를 래퍼 밖으로 다시 꺼내는 회귀. 낱말이 아니라 **구조**를 단언한다 —
+    섹션 안의 모든 `<table>` 이 스크롤 래퍼 안에 있어야 하고, 남은 것이 하나라도 있으면
+    그 표가 390px 에서 페이지를 민다.
+    """
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
+    assert _tables_outside_scroll_wrapper(sec) == [], "스크롤 래퍼 밖의 표 — 페이지가 가로로 밀린다"
+    wrap = re.search(
+        r'<div class="table-scroll"([^>]*)>\s*(<table class="benefit-table finance-table">.*?</table>)\s*</div>',
+        sec, re.S,
+    )
+    assert wrap, "재무표가 .table-scroll 래퍼의 직계 자식이 아니다"
+    assert "<caption" in wrap.group(2), "caption 은 표 안에 남는다 — 표의 접근 가능한 이름이다"
+
+
+def test_FN5_scroll_container_is_reachable_by_keyboard_with_a_name(fake_bundle, fake_finance, fake_now):
+    """마우스가 없는 사람은 스크롤 영역에 **들어갈 수단이 없다**(axe scrollable-region-focusable).
+
+    tabindex 로 탭 순서에 넣고, 이름 없는 포커스 정거장이 되지 않게 role+이름을 준다.
+    포커스 링은 전역 :focus-visible 이 그린다.
+
+    이름은 **caption 을 가리킨다**: `tabindex` 는 폭과 무관하게 늘 붙어 있어서, "가로로
+    스크롤할 수 있습니다" 라고 적으면 표가 다 들어가는 폭(1280·640px 실측 clientWidth ==
+    scrollWidth)에서 없는 스크롤을 있다고 말하게 되고, 그룹 이름 뒤에 caption 이 이어 읽혀
+    같은 표가 두 번 소개된다. 한 이름을 그룹과 표가 나눠 쓰면 어느 폭에서도 참이다.
+    """
+    sec = _section(_pages(fake_bundle, fake_finance, fake_now)["company/samsung-elec.html"])
+    attrs = re.search(r'<div class="table-scroll"([^>]*)>', sec).group(1)
+    assert 'tabindex="0"' in attrs
+    assert 'role="group"' in attrs, "이름 붙은 div 는 role 없이 그룹으로 노출되지 않는다"
+    ref = re.search(r'aria-labelledby="([^"]+)"', attrs)
+    assert ref, "포커스 정거장에 이름이 없다"
+    cap = re.search(rf'<caption id="{ref.group(1)}">([^<]+)</caption>', sec)
+    assert cap and cap.group(1).strip(), f"aria-labelledby 가 가리키는 caption 이 없다: {ref.group(1)}"
+
+
+def test_FN5_every_company_page_cages_its_finance_table(fake_bundle, fake_finance, fake_now):
+    """한 회사만 고친 것이 아니다 — 재무표를 그리는 모든 페이지가 같은 래퍼를 쓴다."""
+    for path, html in _pages(fake_bundle, fake_finance, fake_now).items():
+        sec = _section(html)
+        if "<table" not in sec:
+            continue  # 공시 없음 회사 — 표 자체가 없다
+        assert _tables_outside_scroll_wrapper(sec) == [], path

@@ -106,7 +106,7 @@ def test_FN7_index_rows_carry_latest_year_figures_and_basis(fake_bundle, fake_fi
     general = _section_html(p.html, "general")
     for th in ("회사", "업종", "연도", "매출(억원)", "영업이익(억원)", "순이익(억원)", "기준"):
         assert f'<th scope="col">{th}</th>' in general, th
-    assert "<caption>" in general
+    assert "<caption" in general  # 속성(id)이 붙을 수 있다 — 여는 태그로 본다
     samsung = re.search(r"<tr>(?:(?!</tr>).)*?삼성전자.*?</tr>", general, re.S).group(0)
     for cell in ("2025", "3,300,000", "400,000", "350,000", "연결"):
         assert cell in samsung, cell
@@ -151,3 +151,42 @@ def test_FN7_index_keeps_company_tab_current_and_no_ads(fake_bundle, fake_financ
     p = _render_fin(fake_bundle, fake_finance, fake_now)
     assert 'aria-current="page"' in p.html
     assert "data-ad-position" not in p.html
+
+
+# ── MD-4: 인덱스의 7열 표도 페이지가 아니라 표가 스크롤한다 (2026-09-05) ───────
+# 실측(390px): /companies 의 documentElement.scrollWidth 가 뷰포트를 63px 넘겼다.
+# 여기는 표가 **둘**(일반·금융)이라 한쪽만 가두면 나머지 하나가 그대로 페이지를 민다.
+
+
+def _tables_outside_scroll_wrapper(html: str) -> list[str]:
+    """`.table-scroll` 래퍼에 들어 있지 않은 `<table>` 여는 태그 목록."""
+    caged = re.sub(
+        r'<div class="table-scroll"[^>]*>\s*<table[^>]*>.*?</table>\s*</div>',
+        "", html, flags=re.S,
+    )
+    return re.findall(r"<table[^>]*>", caged)
+
+
+def test_FN7_index_tables_scroll_inside_their_own_containers_not_the_page(fake_bundle, fake_finance, fake_now):
+    """일반·금융 **두 표 모두** 자기 스크롤 상자 안에 있다(SPEC 10 MD-4).
+
+    무엇을 막는가: 한 섹션만 감싸고 다른 섹션을 잊는 회귀. 표 하나만 래퍼 밖에 남아도
+    390px 에서 페이지 전체가 가로로 밀린다 — 넘침은 가장 넓은 자식 하나로 결정된다.
+    """
+    p = _render_fin(fake_bundle, fake_finance, fake_now)
+    assert p.html.count('<div class="table-scroll"') == 2, "표 2개 = 래퍼 2개"
+    assert _tables_outside_scroll_wrapper(p.html) == [], "스크롤 래퍼 밖의 표"
+    for acct_set in ("general", "financial"):
+        sec = _section_html(p.html, acct_set)
+        wrap = re.search(
+            r'<div class="table-scroll"([^>]*)>\s*(<table class="benefit-table company-index-table">.*?</table>)\s*</div>',
+            sec, re.S,
+        )
+        assert wrap, acct_set
+        assert "<caption" in wrap.group(2), "caption 은 표 안에 남는다"
+        assert 'tabindex="0"' in wrap.group(1) and 'role="group"' in wrap.group(1), acct_set
+        # 이름은 caption 을 가리킨다(이유는 test_finance_page 의 같은 테스트 주석). 표가 둘이라
+        # id 가 겹치면 두 그룹이 한 표의 이름을 쓴다 — 섹션별로 다른 id 인지까지 본다.
+        ref = re.search(r'aria-labelledby="([^"]+)"', wrap.group(1))
+        assert ref and ref.group(1).endswith(acct_set), f"{acct_set}: 섹션별 이름이 아니다"
+        assert f'<caption id="{ref.group(1)}">' in wrap.group(2), acct_set

@@ -10,6 +10,12 @@
 
 **순위는 사실만 말한다**(DEC-B): 등수와 **동률 여부**를 함께 낸다. 동률을 숨긴 "2번째"는
 거짓이 되기 때문이다(실측: SK텔레콤 27항목 = LG CNS 27항목).
+
+🚨 **여기서 나가는 순위는 「등록 복지 항목 수」 하나뿐이다.** 금액 합(`amounts`)은 부제·카드의
+합계 문구가 쓰는 값일 뿐, **등수도 몫도 만들지 않는다** — 등록 금액에는 대출 한도(CJ ENM 커머스
+'주택자금 대출' = 1억)·일회성 포상 같은 연간 환산이 아닌 값이 섞여 있어 그 합의 순위는 무엇으로
+표현하든 거짓이다(D-6, SPEC 07). 키를 만들지 않는 것이 방어선이다: `render.py` 가
+`StrictUndefined` 라 템플릿이 없는 키를 쓰는 순간 빌드가 죽는다.
 """
 from __future__ import annotations
 
@@ -24,7 +30,9 @@ def _amount(benefits) -> int:
 
 
 def _rank(value: int, values: list[int]) -> tuple[int, int]:
-    """(등수, 같은 값 회사 수). 경쟁 순위 — 동률이면 같은 등수를 갖고 다음 등수는 건너뛴다."""
+    """(등수, 같은 값 회사 수). 경쟁 순위 — 동률이면 같은 등수를 갖고 다음 등수는 건너뛴다.
+
+    **항목 수 전용이다.** 금액 합에 이 함수를 다시 물리지 마라(D-6)."""
     return 1 + sum(1 for v in values if v > value), sum(1 for v in values if v == value)
 
 
@@ -39,19 +47,17 @@ class Corpus:
     amounts: dict[int, int]  # comp_id → 정량 금액 합(만원)
 
     def rank_of(self, comp_id: int) -> dict:
-        """이 회사의 두 순위 + 동률 수. 화면 문구는 템플릿이 만든다."""
-        item_vals = list(self.items.values())
-        amt_vals = list(self.amounts.values())
-        i_rank, i_tied = _rank(self.items.get(comp_id, 0), item_vals)
-        a_rank, a_tied = _rank(self.amounts.get(comp_id, 0), amt_vals)
+        """이 회사의 **항목 수 순위 + 동률 수**. 화면 문구는 템플릿이 만든다.
+
+        금액 순위는 만들지 않는다 — 등록 금액에는 대출 한도·일회성 포상이 섞여 있어 등수든
+        몫이든 거짓이 된다(D-6). 없는 키를 템플릿이 쓰면 `StrictUndefined` 가 빌드를 죽인다.
+        """
+        i_rank, i_tied = _rank(self.items.get(comp_id, 0), list(self.items.values()))
         return {
             "total": self.total,
             "item_count": self.items.get(comp_id, 0),
             "items_rank": i_rank,
             "items_tied": i_tied > 1,
-            "amount": self.amounts.get(comp_id, 0),
-            "amount_rank": a_rank,
-            "amount_tied": a_tied > 1,
         }
 
 

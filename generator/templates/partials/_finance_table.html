@@ -12,15 +12,28 @@
        보인 건 계정 ID(`ifrs-full_ProfitLossFromOperatingActivities`)를 안 넣어서였고, 넣으면 7/7 이다.
        진짜로 없는 것은 **단일 매출 계정 하나뿐**이고 그 자리에 자산총계(7/7)가 온다.
    - 데이터 없음도 섹션은 남긴다 — 없다는 사실도 정보다.
-   - 표 스타일은 복지표의 `.benefit-table` 을 재사용한다. #}
+   - 표 스타일은 복지표의 `.benefit-table` 을 재사용한다.
+   - 🚨 표는 `.table-scroll` 안에서만 스크롤한다(2026-09-05, SPEC 10 MD-4). 7열 × 11행은
+     390px 를 21~143px 넘겼고, html/body 에 은폐 규칙이 없어 **페이지 전체가 가로로 팬**됐다.
+     래퍼는 마우스 없는 사람도 들어갈 수 있어야 해서 `tabindex="0"` 이고(axe
+     scrollable-region-focusable), 이름 없는 포커스 정거장이 되지 않게 role+이름을 준다.
+     🚨 이름은 **caption 을 가리킨다**(`aria-labelledby`) — 처음엔 "…가로로 스크롤할 수
+     있습니다" 라고 적었는데, `tabindex` 는 폭과 무관하게 늘 붙어 있어서 표가 다 들어가는
+     1280·640px 에서도(clientWidth == scrollWidth, 실측) 그 이름이 **없는 스크롤을 있다고
+     말했다**. 게다가 그룹 이름 바로 뒤에 caption 이 읽혀 같은 표를 두 번 소개했다. 한 이름을
+     둘이 나눠 쓰면 둘 다 참이다. 폭을 아는 것은 브라우저뿐이라 "지금 스크롤된다"는 사실은
+     JS 없이 말할 수 없고, 그 한 문장을 위해 스크립트를 들이지는 않았다(NFR24).
+     `<table class="benefit-table finance-table">` 문자열과 caption 은 **그대로 둔다** —
+     test_metrics_page(MET10) 가 그 문자열로 "표가 사라졌는지"를 본다. #}
 {% macro finance_section(fin) -%}
 <section class="finance" aria-label="실적">
   <h2>실적</h2>
 {% if fin.present %}
   <p class="finance-basis-line"><span class="badge finance-basis">{{ fin.basis }}</span>{% if fin.financial %} 금융업은 단일 매출 계정을 공시하지 않아 그 자리에 자산총계를 싣습니다.{% endif %}</p>
   {% if fin.sibling_note %}<p class="finance-corp-note">{{ fin.sibling_note }}</p>{% endif %}
+  <div class="table-scroll" tabindex="0" role="group" aria-labelledby="finance-caption">
   <table class="benefit-table finance-table">
-    <caption>{{ fin.caption }}</caption>
+    <caption id="finance-caption">{{ fin.caption }}</caption>
     <thead>
       <tr><th scope="col">연도</th>{% for c in fin.columns %}<th scope="col">{{ c.name }}</th><th scope="col">전년 대비</th>{% endfor %}</tr>
     </thead>
@@ -30,6 +43,7 @@
     {% endfor %}
     </tbody>
   </table>
+  </div>
   <p class="finance-source">출처: 금융감독원 전자공시(DART) 사업보고서 · 접수번호 {% if fin.rcept_url %}<a href="{{ fin.rcept_url }}" rel="noopener">{{ fin.rcept_no }}</a>{% else %}{{ fin.rcept_no }}{% endif %}</p>
   <p class="finance-notice">공시 수치이며 평가나 전망이 아닙니다</p>
 {% else %}
