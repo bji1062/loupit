@@ -415,6 +415,27 @@ describe('UI-9 해시 딥링크 강등·부팅 자동 복원(B-1)', () => {
     assert.ok(document.getElementById('priority-picker').children.length > 0, '우선순위 피커 렌더');
   });
 
+  // 부팅 자동 복원은 이동을 boot 에 넘기려고 go 를 no-op 으로 주입한다(B-6). 그 no-op 이
+  // 입력 뷰 배선까지 물려가면 "회사 선택"이 눌러도 아무 일도 안 하는 죽은 버튼이 되어,
+  // 같은 레코드를 리포트 뷰 '불러오기'로 복원하면 멀쩡한데 부팅 복원에서만 죽는다.
+  test('UI-9f: 부팅 자동 복원 + REF 에서 사라진 comp_id → "회사 선택"이 실제로 검색 뷰로 간다', async () => {
+    const dom = loadShellWithStorage('https://loupit.example/compare/#report');
+    await seedRecordViaCompare();
+    const env = JSON.parse(dom.window.localStorage.getItem('loupit.recentComparisons'));
+    env.items[0].slots.b.comp_id = 999; // REF 에 없는 회사(수집 중단·통합 등)
+    dom.window.localStorage.setItem('loupit.recentComparisons', JSON.stringify(env));
+    await boot(hooks);
+    assert.equal(App.state.ui.screen, 'report', '사전조건: 자동 복원 성공');
+    assert.equal(App.state.matched.b, null, '사전조건: B 는 미선택으로 복원');
+    document.getElementById('btn-edit-input').dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    const btn = document.querySelector('#input-slot-b button.in-slot-pick');
+    assert.ok(btn, '사전조건: 안전망 버튼 존재');
+    btn.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(App.state.ui.screen, 'search', '억제해야 할 것은 부팅의 이동이지 버튼이 아니다');
+    assert.equal(document.getElementById('view-search').hidden, false);
+    assert.equal(document.activeElement, document.getElementById('search-input-b'));
+  });
+
   test('UI-9e: 부팅 자동 복원은 레코드를 재저장하지 않는다(id·순서 불변)', async () => {
     const dom = loadShellWithStorage('https://loupit.example/compare/#report');
     await seedRecordViaCompare();
@@ -467,6 +488,57 @@ describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이�
     assert.ok(document.getElementById('input-slot-b').children.length > 0, 'B 슬롯 컨트롤 렌더');
   });
 
+  // 스크린리더 사용자는 부팅 포커스가 곧장 B 텍스트박스에 떨어져 "이직 후보(B), 편집창"만
+  // 듣는다 — A 가 이미 채워졌다는 사실은 위로 한 항목 되돌아가야 알 수 있었다. 시각 사용자만
+  // 아는 정보(A 칸 값 + B 포커스 링)를 소리로도 준다.
+  test('UI-10d: ?a=1 → 포커스가 갈 입력칸에 프리필 안내가 aria-describedby 로 묶인다', async () => {
+    loadPrefillShell('?a=1');
+    await boot(hooks);
+    const inputB = document.getElementById('search-input-b');
+    const noteId = inputB.getAttribute('aria-describedby');
+    assert.ok(noteId, 'A 가 채워졌다는 사실이 소리로도 전달돼야 한다');
+    const note = document.getElementById(noteId);
+    assert.ok(note, '설명으로 가리킨 요소가 실제로 있어야 한다(깨진 참조 금지)');
+    assert.match(note.textContent, /현재 직장\(A\)/);
+    assert.match(note.textContent, /A사/, '어떤 회사로 채워졌는지까지 말한다');
+    assert.match(note.textContent, /이직 후보\(B\)/, '다음에 할 일');
+    assert.equal(note.getAttribute('role'), 'status');
+    // 타이핑을 시작하면 안내는 수명이 끝난다 — 남겨 두면 A 를 바꾸는 순간 거짓이 된다.
+    inputB.value = '삼';
+    inputB.dispatchEvent(new window.Event('input', { bubbles: true }));
+    assert.equal(document.getElementById(noteId), null);
+    assert.equal(inputB.getAttribute('aria-describedby'), null);
+  });
+
+  test('UI-10e: 두 슬롯 프리필에는 안내를 붙이지 않는다(고를 것이 없다)', async () => {
+    loadPrefillShell('?a=1&b=2');
+    await boot(hooks);
+    assert.equal(document.getElementById('search-input-b').getAttribute('aria-describedby'), null);
+  });
+
+  // 초안(24h)이 B 를 들고 있으면 ?a= 는 사용자가 고른 적 없는 쌍으로 입력 뷰를 띄운다.
+  // 초안은 "상태만 복원하고 화면은 URL 이 정한다"는 결정을 지키므로 화면은 그대로 두되,
+  // **그 B 를 바꿀 길**이 화면 안에 있어야 한다(hash 가 '' 이라 뒤로가기는 사이트 밖이다).
+  test('UI-10f: 초안 B + ?a=1 → 입력 뷰지만 B 를 "회사 변경"으로 바꿀 수 있다', async () => {
+    const dom = loadPrefillShell('?a=1');
+    const { inputDraft } = await import('./store.js');
+    inputDraft.save({
+      slots: { a: null, b: { comp_id: 2 } },
+      salS: { a: { low: null, high: null } }, selectedRate: null,
+      cmtS: { a: null, b: null }, wsState: {}, curPri: '워라밸', curSacrifice: null,
+      chosenType: { a: null, b: null }, inputMode: { a: 'company', b: 'company' },
+    });
+    App.state = createInitialState();
+    await boot(hooks);
+    assert.equal(App.state.matched.b.comp_id, 2, '사전조건: 초안이 B 를 되살렸다');
+    assert.equal(document.getElementById('view-input').hidden, false, '쌍이 찼으므로 입력 뷰');
+    const btn = document.querySelector('#input-slot-b button.in-slot-pick');
+    assert.ok(btn, '고른 적 없는 B 를 바꿀 길이 화면 안에 있어야 한다');
+    btn.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(document.getElementById('view-search').hidden, false);
+    assert.equal(document.activeElement, document.getElementById('search-input-b'));
+  });
+
   test('UI-10c: ?a=없는회사 → 검색 뷰·빈 상태(해석 실패는 정상 검색 진입)', async () => {
     loadPrefillShell('?a=%EC%97%86%EB%8A%94%ED%9A%8C%EC%82%AC');
     await boot(hooks);
@@ -476,10 +548,11 @@ describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이�
   });
 });
 
-// ── UI-11 안전망: 미선택 슬롯 머리의 "회사 선택" 버튼 ─────────────────────────
-// 입력 뷰에 한 슬롯만 찬 채로 도달하는 경로가 프리필 말고도 있다(REF 에서 사라진 comp_id 를
-// 담은 '최근 비교' 복원 등). 그때도 검색 뷰로 돌아갈 길이 화면 안에 있어야 한다.
-describe('UI-11 미선택 슬롯 → 회사 선택 버튼(막다른 골목 안전망)', () => {
+// ── UI-11 입력 뷰에서 검색 뷰로 돌아가는 길(슬롯 머리의 버튼) ─────────────────
+// 입력 뷰에 한 슬롯만 찬 채로 도달하는 경로가 프리필 말고도 있고(REF 에서 사라진 comp_id 를
+// 담은 '최근 비교' 복원 등), 두 슬롯이 다 차 있어도 그 중 하나가 사용자가 고른 적 없는 회사일
+// 수 있다(24시간 초안). 어느 쪽이든 검색 뷰로 돌아갈 길이 화면 안에 있어야 한다.
+describe('UI-11 슬롯 머리의 회사 선택·변경 버튼(막다른 골목 방지)', () => {
   beforeEach(() => loadShell());
 
   test('미선택 슬롯 머리에 button.in-slot-pick 이 있고 클릭 → go("search") + 그 슬롯 포커스', () => {
@@ -496,11 +569,29 @@ describe('UI-11 미선택 슬롯 → 회사 선택 버튼(막다른 골목 안�
     assert.equal(document.activeElement, document.getElementById('search-input-b'));
   });
 
-  test('선택된 슬롯 머리에는 버튼이 없다(회사명만)', () => {
+  // 개정(2026-09-05): 선택된 슬롯에도 길을 낸다. 24시간 초안이 B 를 들고 있으면 다른 회사
+  // 페이지의 "이 회사로 비교하기"(?a=…)가 **사용자가 고른 적 없는 B** 와 짝지어진 입력 뷰를
+  // 띄우는데, 입력 뷰에는 회사를 바꿀 컨트롤도 검색 뷰로 돌아갈 버튼도 없었다(hash 가 '' 이라
+  // 뒤로가기는 사이트 밖으로 나간다). 주소창을 다시 치는 것 말고 길이 없으면 막다른 골목이다.
+  test('선택된 슬롯 머리에는 "회사 변경" 버튼이 있고 검색 뷰로 되돌린다', () => {
     const state = stateWithMatches();
-    renderInputView(state, {});
-    assert.equal(document.querySelector('#input-slot-a button.in-slot-pick'), null);
+    const went = [];
+    renderInputView(state, { go: (screen) => went.push(screen) });
+    const btn = document.querySelector('#input-slot-a button.in-slot-pick');
+    assert.ok(btn, '이미 고른 회사도 바꿀 수 있어야 한다');
+    assert.equal(btn.textContent, '회사 변경', '미선택 슬롯의 "회사 선택"과 구분된다');
     assert.match(document.querySelector('#input-slot-a .in-slot-title').textContent, /A사/);
+    btn.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.deepEqual(went, ['search']);
+    assert.equal(document.activeElement, document.getElementById('search-input-a'));
+  });
+
+  test('미선택 슬롯 버튼 문구는 "회사 선택"(고를 것이 없다 vs 바꾼다)', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    state.benS.b = [];
+    renderInputView(state, {});
+    assert.equal(document.querySelector('#input-slot-b button.in-slot-pick').textContent, '회사 선택');
   });
 
   test('죽은 "직접 입력" 라벨은 더 이상 쓰지 않는다(진입점이 없는 모드)', () => {

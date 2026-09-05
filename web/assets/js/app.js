@@ -5,7 +5,7 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView } from './ui.js';
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill } from './ui.js';
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
@@ -113,12 +113,18 @@ function hasRenderedReport() {
 // restore:true는 "복원을 시도하라"는 지시일 뿐이고, 이동(go)은 언제나 호출부가 소유한다.
 // hasPair: **두 슬롯이 다 찼는가**(hasPairState). 이름이 내용과 어긋나면 안 되므로 인자도
 // 'slot' 이 아니라 'pair' 다 — 한 슬롯만 찬 상태를 input 으로 보내던 것이 이번 고장이었다.
-export function resolveBootScreen({ want = null, hasPair: pair = false, hasReport = false, recentCount = 0 } = {}) {
+// hasPrefill: **URL 이 슬롯을 시켰는가**(?a=·?b=). 규칙 5("프리필 > 자동 복원")를 세는 것은
+// 쌍이 아니라 이쪽이다 — 한 슬롯 프리필(?a=kakao#report)에서 pair 만 보면 false 라 자동 복원이
+// 이겨서, URL 이 시킨 카카오가 최근 레코드의 다른 쌍으로 조용히 덮이고 화면과 주소가 어긋난다.
+export function resolveBootScreen({
+  want = null, hasPair: pair = false, hasPrefill: prefill = false, hasReport = false, recentCount = 0,
+} = {}) {
   const fallback = pair ? 'input' : 'search'; // 두 슬롯이 다 차 있으면 검색보다 입력이 자연스럽다
   if (want === 'search') return { screen: 'search', restore: false };
   if (want === 'report') {
     if (hasReport) return { screen: 'report', restore: false }; // 이미 렌더돼 있음(popstate 경로)
     if (pair) return { screen: 'input', restore: false };       // 프리필 > 자동 복원(규칙 5)
+    if (prefill) return { screen: 'search', restore: false };   // 한 슬롯 프리필도 규칙 5 — 덮지 않는다
     if (recentCount > 0) return { screen: 'search', restore: true }; // 복원 시도 후 성공하면 report
     return { screen: 'search', restore: false };                // 복원 재료 없음 → 강등
   }
@@ -235,11 +241,12 @@ export async function boot(hooks = {}) {
   const decision = resolveBootScreen({
     want,
     hasPair: hasPairState() && (urlAsked || !draftRestored),
+    hasPrefill: prefilled, // 초안이 아니라 **URL 이 시킨 슬롯**만 규칙 5 의 방패가 된다
     hasReport: hasRenderedReport(),
     recentCount: recent.list().length,
   });
   let screen = decision.screen;
-  if (decision.restore && restoreLatestComparison({ recentCtx })) screen = 'report';
+  if (decision.restore && restoreLatestComparison({ recentCtx, viewDeps: deps })) screen = 'report';
   go(screen, { push: false }); // 부팅 경로의 유일한 go — 정확히 1회, push 금지
   // ⚠ go() 는 접근성용으로 뷰의 첫 헤딩에 포커스를 옮긴다(focusFirstHeading). 그래서
   //   restoreFromPrefill 이 빈 슬롯에 잡아 둔 포커스를 **부팅의 마지막 go 가 도로 뺏는다**.
@@ -247,7 +254,15 @@ export async function boot(hooks = {}) {
   //   여기서 한 번 더 잡는 수밖에 없다 — 순서를 바꾸면 이중 go 가 된다.
   if (prefilled && screen === 'search') {
     const pending = pendingSlot(App.state);
-    if (pending) focusSlotInput(pending);
+    if (pending) {
+      // 안내문을 **포커스 전에** 만든다: aria-describedby 로 묶인 설명은 포커스가 오는 순간
+      // label 과 함께 읽힌다. 순서가 뒤집히면 스크린리더는 "이직 후보(B), 편집창"만 듣고
+      // A 가 이미 채워졌다는 사실을 놓친다(시각 사용자는 A 칸 값으로 한눈에 안다).
+      const filled = pending === 'a' ? 'b' : 'a';
+      const m = App.state.matched[filled];
+      if (m) notePrefill(filled, m.comp_nm, pending);
+      focusSlotInput(pending);
+    }
   }
   bindDraftPersist();
 }
@@ -530,7 +545,13 @@ export function restoreComparison(record, deps = {}, state = App.state) {
   // 복원이 상태만 바꾸고 끝나면 "입력 수정" 한 번에 빈 입력 뷰가 나온다 — B-1과 같은 증상.
   // deps 를 넘긴다: REF 에서 사라진 comp_id 는 슬롯 미선택으로 복원되는데(위), 그 슬롯 머리의
   // "회사 선택" 버튼이 검색 뷰로 돌아가려면 deps.go 가 필요하다(없으면 눌러도 아무 일도 없다).
-  try { renderInputView(state, deps); } catch { /* 렌더 실패는 복원 자체를 막지 않는다 */ }
+  // ⚠ 다만 **이동 억제와 버튼 배선은 다른 것**이다. 부팅 자동 복원은 이동을 boot 에 넘기려고
+  //   go 를 no-op 으로 주입하는데(restoreLatestComparison, B-6), 그 no-op 이 버튼 핸들러까지
+  //   물려가면 "회사 선택"이 눌러도 아무 일도 안 하는 죽은 버튼이 된다 — 같은 레코드를 리포트
+  //   뷰 '불러오기'로 복원하면 멀쩡하고 부팅 복원에서만 죽는, 경로마다 다른 화면이 된다.
+  //   그래서 **뷰 배선용 deps 를 따로 받는다**(viewDeps). 안 주면 지금까지처럼 deps 그대로.
+  const viewDeps = deps.viewDeps || deps;
+  try { renderInputView(state, viewDeps); } catch { /* 렌더 실패는 복원 자체를 막지 않는다 */ }
   const goFn = typeof deps.go === 'function' ? deps.go : go;
   const report = typeof deps.runReport === 'function'
     ? deps.runReport({ state, mountEl: null })
@@ -548,11 +569,14 @@ export function restoreComparison(record, deps = {}, state = App.state) {
 //  · 비교 로그 전송 — deps.runReport(로그 래퍼) 대신 순수 runReport를 쓴다. 로그를 보내면
 //    새로고침마다 "실시간 비교 TOP 10" 집계가 실제 비교 없이 부풀어 오른다(B-7)
 //  · 레코드 재저장 — save:false. 재저장하면 id·savedAt이 새로 발급돼 목록 순서가 요동친다(B-7)
-export function restoreLatestComparison({ recentCtx } = {}, state = App.state) {
+//  · viewDeps 는 **억제하지 않는다**: 이동만 boot 이 독점할 뿐, 복원된 입력 뷰의 "회사 선택"
+//    버튼은 사용자가 나중에 누르는 것이므로 진짜 go 가 필요하다(no-op 을 물려주면 죽은 버튼).
+export function restoreLatestComparison({ recentCtx, viewDeps } = {}, state = App.state) {
   const rec = recent.list()[0]; // store가 전 경로 try/catch(L-5) — 손상 봉투는 빈 배열로 온다
   if (!rec) return false;
   return restoreComparison(rec, {
     go: () => {},
+    viewDeps: viewDeps || { go },
     runReport: (h) => runReport({ ...h, recentCtx, save: false }),
   }, state);
 }

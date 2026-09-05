@@ -439,6 +439,32 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     assert.deepEqual(resolveBootScreen(), { screen: 'search', restore: false }); // 인자 없음 방어
   });
 
+  // 규칙 5 를 세는 것은 쌍이 아니라 **URL 이 슬롯을 시켰는가**다. 한 슬롯 프리필에서 pair 만
+  // 보면 false 라 자동 복원이 이겨서, ?a=kakao#report 가 최근 레코드의 다른 쌍으로 조용히
+  // 덮인다 — 주소는 카카오인데 화면은 SK텔레콤 vs 삼성전자가 된다.
+  test('UT-ROUTE-6: 한 슬롯 프리필도 규칙 5 의 방패다(#report 자동 복원 차단)', () => {
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: true, recentCount: 1 }),
+      { screen: 'search', restore: false },
+      'URL 이 시킨 슬롯을 레코드가 덮으면 주소와 화면이 어긋난다',
+    );
+    // 프리필이 없을 때만 자동 복원(기존 계약 보존)
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: false, recentCount: 1 }),
+      { screen: 'search', restore: true },
+    );
+    // 이미 렌더된 리포트(popstate)는 프리필보다 앞선다 — 화면을 지우지 않는다
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: true, hasReport: true }),
+      { screen: 'report', restore: false },
+    );
+    // 두 슬롯 프리필은 그대로 input(기존 규칙 5)
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: true, hasPair: true, recentCount: 1 }),
+      { screen: 'input', restore: false },
+    );
+  });
+
   test('UT-ROUTE-4: #company는 상태와 무관하게 딥링크 진입 불가', () => {
     // company 뷰는 GNB 검색어(term)로만 렌더되므로 복원 가능한 상태가 원리적으로 없다.
     assert.deepEqual(resolveBootScreen({ want: 'company' }), { screen: 'search', restore: false });
@@ -540,6 +566,17 @@ describe('B-1 해시 딥링크 강등', () => {
     await boot(bootHooks);
     assert.equal(App.state.ui.screen, 'input');
     assert.equal(App.state.selectedRate, null, '레코드(10)가 프리필 슬롯을 덮지 않음');
+  });
+
+  test('UT-BOOT-5b: 한 슬롯 프리필 + #report → 검색 뷰, 레코드가 프리필을 덮지 않는다', async () => {
+    seedRecord(); // (1, 2)
+    globalThis.location.search = '?a=2'; // URL 이 시킨 것은 B사 하나뿐
+    globalThis.location.hash = '#report';
+    await boot(bootHooks);
+    assert.equal(App.state.ui.screen, 'search', 'B 를 고를 수 있는 화면');
+    assert.equal(App.state.matched.a.comp_id, 2, 'URL 이 시킨 a=2 가 레코드(1)로 덮이면 안 된다');
+    assert.equal(App.state.matched.b, null, '레코드의 B 도 들어오면 안 된다');
+    assert.equal(App.state.selectedRate, null, '레코드(10)가 새어 들어오지 않음');
   });
 
   test('UT-BOOT-6: 해시 없음 → search(기존 폴백 계약 유지)', async () => {
