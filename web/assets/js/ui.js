@@ -28,6 +28,61 @@ export function reflectSlotLabel(slot, name) {
   if (input) input.value = name || '';
 }
 
+// 슬롯 검색 입력칸으로 커서를 옮긴다(+ 화면 가운데로 스크롤). "다음에 할 일은 여기"를
+// 손가락으로 가리키는 장치 — 프리필이 한 슬롯만 채웠을 때·"회사 선택" 버튼을 눌렀을 때 쓴다.
+// scrollIntoView 는 jsdom 에 없을 수 있어 존재 확인 후 호출한다(테스트 무손상).
+export function focusSlotInput(slot) {
+  const input = byId('search-input-' + slot);
+  if (!input) return null;
+  if (typeof input.focus === 'function') input.focus();
+  if (typeof input.scrollIntoView === 'function') input.scrollIntoView({ block: 'center' });
+  return input;
+}
+
+// ── 프리필 안내(검색 뷰) ──────────────────────────────────────────────────
+// 한 슬롯 프리필은 이제 검색 뷰에 머문다. 시각 사용자는 A 칸에 든 회사명과 B 칸의 포커스 링을
+// 한 화면에서 같이 보지만, 스크린리더 사용자는 부팅 포커스가 곧장 B 텍스트박스에 떨어져
+// "이직 후보(B), 회사명 검색, 편집창"만 듣는다 — **A 가 이미 채워졌다는 사실**을 알려면 위로
+// 한 항목 되돌아가야 한다. 그래서 안내문을 하나 만들고 **포커스가 갈 입력칸의 설명**으로 묶는다.
+// aria-describedby 로 묶는 이유: 갓 만든 live 영역에 같은 틱에 텍스트를 넣으면 낭독을 놓치는
+// 리더가 있다. 포커스 시 label + description 은 확실히 읽힌다(role=status 는 보조 수단).
+const PREFILL_NOTE_ID = 'search-prefill-note';
+const SLOT_LABEL = { a: '현재 직장(A)', b: '이직 후보(B)' };
+const SLOT_TOPIC = { a: '현재 직장(A)은', b: '이직 후보(B)는' };
+
+export function clearPrefillNote() {
+  const note = byId(PREFILL_NOTE_ID);
+  if (note && note.remove) note.remove();
+  for (const slot of ['a', 'b']) {
+    const input = byId('search-input-' + slot);
+    if (input && input.getAttribute && input.getAttribute('aria-describedby') === PREFILL_NOTE_ID) {
+      input.removeAttribute('aria-describedby');
+    }
+  }
+}
+
+// filled: 이미 정해진 슬롯, pending: 사용자가 이제 골라야 할 슬롯.
+export function notePrefill(filled, name, pending) {
+  clearPrefillNote();
+  const view = byId('view-search');
+  const input = byId('search-input-' + pending);
+  if (!view || !input) return null;
+  const note = el('p', {
+    id: PREFILL_NOTE_ID, class: 'search-prefill-note', role: 'status',
+    text: SLOT_TOPIC[filled] + ' 이미 정해졌습니다(' + (name || '') + '). '
+      + SLOT_LABEL[pending] + ' 회사를 골라 주세요.',
+  });
+  const h2 = view.querySelector ? view.querySelector('h2') : null;
+  if (h2 && h2.after) h2.after(note); else view.prepend(note);
+  input.setAttribute('aria-describedby', PREFILL_NOTE_ID);
+  // 사용자가 타이핑을 시작하면 안내는 제 역할을 다했다. 남겨 두면 A 를 바꾸는 순간 거짓이 된다.
+  for (const slot of ['a', 'b']) {
+    const box = byId('search-input-' + slot);
+    if (box && box.addEventListener) box.addEventListener('input', clearPrefillNote, { once: true });
+  }
+  return note;
+}
+
 export function clearCandidatesDom(slot) {
   const list = byId('cand-' + slot);
   if (list) list.replaceChildren();
@@ -193,17 +248,44 @@ function rateControl(state) {
   return wrap;
 }
 
+// 미선택 슬롯의 머리는 예전에 "… — 직접 입력"이었다. 직접 입력 모드(setDirectType, FR-17)는
+// UI 진입점이 한 번도 만들어지지 않은 죽은 모드라, 그 라벨은 사용자에게 "여기서 뭘 어떻게
+// 하라는 것인지 알 수 없는" 막다른 골목이었다. 대신 **검색 뷰로 돌아가는 길**을 화면 안에 둔다
+// (안전망 — 프리필은 이제 한 슬롯이면 검색 뷰에 머물지만, REF 에서 사라진 comp_id 를 담은
+//  '최근 비교' 복원처럼 한 슬롯만 찬 입력 뷰가 만들어지는 경로가 남아 있다).
 function slotHeader(state, slot) {
   const m = state.matched[slot];
   const label = slot === 'a' ? '현재 직장(A)' : '이직 후보(B)';
-  return el('h3', { class: 'in-slot-title', text: label + ' — ' + (m ? m.comp_nm : '직접 입력') });
+  return el('h3', { class: 'in-slot-title', text: label + ' — ' + (m ? m.comp_nm : '미선택') });
 }
 
-export function renderInputSlot(state, slot) {
+// 검색 뷰로 돌아가는 길. **선택된 슬롯에도 단다**(2026-09-05): 입력 뷰에는 원래 회사를 바꿀
+// 컨트롤이 하나도 없었다. 24시간 초안이 B 를 들고 있으면 다른 회사 페이지의 "이 회사로
+// 비교하기"(`/compare/?a=lg_elec`)가 **사용자가 고른 적 없는 B** 와 짝지어진 입력 뷰를 띄우는데,
+// hash 가 '' 이라 뒤로가기는 사이트 밖으로 나가고 "새 비교"는 리포트 뷰 소유라 — B 를 바꾸려면
+// 주소창을 다시 치는 수밖에 없었다. 화면 안에 길이 없으면 그것은 막다른 골목이다.
+// 클래스 `btn` 을 함께 다는 이유: 이 저장소의 버튼 스타일은 styles.css(SP-DSN 소유)의 `.btn`
+// 규칙이 정본이고, 새 규칙을 추가하지 않고 기존 규칙을 재사용해야 h3 의 serif 를 물려받은
+// 이질적인 버튼이 생기지 않는다.
+function slotPickButton(slot, deps = {}, picked = false) {
+  const btn = el('button', {
+    type: 'button', class: 'in-slot-pick btn', 'data-pick-slot': slot,
+    text: picked ? '회사 변경' : '회사 선택',
+  });
+  btn.addEventListener('click', () => {
+    clearPrefillNote(); // 부팅 안내는 여기서 수명이 끝난다(사용자가 직접 검색 뷰로 돌아왔다)
+    if (typeof deps.go === 'function') deps.go('search');
+    focusSlotInput(slot); // 돌아간 검색 뷰에서 바로 타이핑할 수 있게
+  });
+  return btn;
+}
+
+export function renderInputSlot(state, slot, deps = {}) {
   const host = byId('input-slot-' + slot);
   if (!host) return;
   host.replaceChildren();
   host.append(slotHeader(state, slot));
+  host.append(slotPickButton(slot, deps, !!state.matched[slot]));
   if (slot === 'a') host.append(salaryControls(state)); else host.append(rateControl(state));
   host.append(benefitCheckboxes(state, slot));
   host.append(workStyleControls(state, slot));
@@ -229,9 +311,9 @@ export function renderPriorityPicker(state) {
   host.append(fs);
 }
 
-export function renderInputView(state, deps) {
-  renderInputSlot(state, 'a');
-  renderInputSlot(state, 'b');
+export function renderInputView(state, deps = {}) {
+  renderInputSlot(state, 'a', deps);
+  renderInputSlot(state, 'b', deps);
   renderPriorityPicker(state);
 }
 
@@ -333,7 +415,7 @@ export function mountUI(state, deps = {}) {
   bindBootRetry(state, deps);
   // 프리필·초안으로 이미 슬롯이 채워졌다면 입력 뷰 컨트롤을 렌더한다.
   // chosenType 도 보는 이유(2026-07-31): 직접 입력 모드는 matched 가 null 이라 회사 조건만
-  // 보면 초안 복원 후 입력 뷰가 비어 보인다(hasSlotState 는 이미 chosenType 을 센다 — 두 판정이
+  // 보면 초안 복원 후 입력 뷰가 비어 보인다(app.js slotFilled 도 chosenType 을 센다 — 두 판정이
   // 어긋나면 "상태는 있는데 화면은 빈" 상태가 된다).
   const hasSlot = state.matched && (state.matched.a || state.matched.b);
   const hasType = state.chosenType && (state.chosenType.a || state.chosenType.b);

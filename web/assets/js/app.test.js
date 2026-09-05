@@ -39,7 +39,7 @@ const {
   App, createInitialState, SCREENS, parseHash, go, boot, showBootError,
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
   pickTrendingPair, restoreComparison,
-  resolveBootScreen, hasSlotState, restoreLatestComparison, onPopState,
+  resolveBootScreen, hasPairState, restoreLatestComparison, onPopState,
   snapshotInput, restoreInputDraft, bindDraftPersist, isLandingShell,
 } = await import('./app.js');
 const { recent, inputDraft } = await import('./store.js');
@@ -171,14 +171,25 @@ describe('T-06.13.2 restoreFromPrefill', () => {
   function refState() {
     return createInitialState();
   }
-  test('유효 지시자 → 슬롯 반영·go("input") 호출', () => {
+  // 개정(2026-09-05, B 슬롯 막다른 골목): 입력 뷰에 들어갈 자격은 **두 슬롯이 다 찼을 때**다.
+  // `?a=` 하나만 온 /compare/?a=skt 를 입력 뷰로 보내던 옛 계약은 "B 를 고를 컨트롤이
+  // 화면 어디에도 없는" 막다른 골목을 만들었다 — 회사 선택 UI 는 검색 뷰에만 있다.
+  test('한 슬롯만 지정 → go("search") + 채운 슬롯 반영 + 남은 슬롯 포커스', () => {
     const state = refState();
     state.REF = { company_types: [], benefit_presets: {}, companies: [{ comp_id: 1, comp_nm: '삼성전자', benefits: [] }] };
     globalThis.location.search = '?a=삼성전자';
     let went = null;
-    restoreFromPrefill(state, { goFn: (screen, opts) => { went = { screen, opts }; } });
+    const reflected = [];
+    const focused = [];
+    restoreFromPrefill(state, {
+      goFn: (screen, opts) => { went = { screen, opts }; },
+      reflectSlotLabel: (slot, name) => reflected.push([slot, name]),
+      focusSlot: (slot) => focused.push(slot),
+    });
     assert.equal(state.matched.a.comp_id, 1);
-    assert.deepEqual(went, { screen: 'input', opts: { push: false } });
+    assert.deepEqual(went, { screen: 'search', opts: { push: false } });
+    assert.deepEqual(reflected, [['a', '삼성전자']], '검색 뷰의 A 입력칸이 비어 보이면 안 된다');
+    assert.deepEqual(focused, ['b'], '남은 슬롯으로 커서를 옮겨야 다음 할 일이 보인다');
   });
 
   test('무효 지시자 → 미선택 유지, go 미호출', () => {
@@ -191,13 +202,20 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     assert.equal(went, false);
   });
 
-  test('a·b 둘 다 지정 시 두 슬롯 반영', () => {
+  test('a·b 둘 다 지정 시 두 슬롯 반영 + go("input") (전진 자격 = 쌍)', () => {
     const state = refState();
     state.REF = { company_types: [], benefit_presets: {}, companies: [{ comp_id: 1, comp_nm: 'A' }, { comp_id: 2, comp_nm: 'B' }] };
     globalThis.location.search = '?a=1&b=2';
-    restoreFromPrefill(state, { goFn: () => {} });
+    let went = null;
+    const focused = [];
+    restoreFromPrefill(state, {
+      goFn: (screen, opts) => { went = { screen, opts }; },
+      focusSlot: (slot) => focused.push(slot),
+    });
     assert.equal(state.matched.a.comp_id, 1);
     assert.equal(state.matched.b.comp_id, 2);
+    assert.deepEqual(went, { screen: 'input', opts: { push: false } });
+    assert.deepEqual(focused, [], '두 슬롯이 다 찼으면 고를 것이 없다');
   });
 });
 
@@ -407,18 +425,44 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     assert.deepEqual(resolveBootScreen({ want: 'report', hasReport: true }), { screen: 'report', restore: false });
     // 프리필 > 자동 복원(규칙 5): 슬롯이 이미 차 있으면 레코드가 있어도 복원하지 않는다
     assert.deepEqual(
-      resolveBootScreen({ want: 'report', hasSlotState: true, recentCount: 1 }),
+      resolveBootScreen({ want: 'report', hasPair: true, recentCount: 1 }),
       { screen: 'input', restore: false },
     );
     // #input — 슬롯 없으면 막다른 입력 뷰가 되므로 강등
     assert.deepEqual(resolveBootScreen({ want: 'input' }), { screen: 'search', restore: false });
-    assert.deepEqual(resolveBootScreen({ want: 'input', hasSlotState: true }), { screen: 'input', restore: false });
+    assert.deepEqual(resolveBootScreen({ want: 'input', hasPair: true }), { screen: 'input', restore: false });
     // #search — 항상 search(프리필이 있어도 현행 동작 보존)
-    assert.deepEqual(resolveBootScreen({ want: 'search', hasSlotState: true }), { screen: 'search', restore: false });
+    assert.deepEqual(resolveBootScreen({ want: 'search', hasPair: true }), { screen: 'search', restore: false });
     // 해시 없음/미지 — 기존 폴백 계약 유지
     assert.deepEqual(resolveBootScreen({ want: null }), { screen: 'search', restore: false });
-    assert.deepEqual(resolveBootScreen({ want: null, hasSlotState: true }), { screen: 'input', restore: false });
+    assert.deepEqual(resolveBootScreen({ want: null, hasPair: true }), { screen: 'input', restore: false });
     assert.deepEqual(resolveBootScreen(), { screen: 'search', restore: false }); // 인자 없음 방어
+  });
+
+  // 규칙 5 를 세는 것은 쌍이 아니라 **URL 이 슬롯을 시켰는가**다. 한 슬롯 프리필에서 pair 만
+  // 보면 false 라 자동 복원이 이겨서, ?a=kakao#report 가 최근 레코드의 다른 쌍으로 조용히
+  // 덮인다 — 주소는 카카오인데 화면은 SK텔레콤 vs 삼성전자가 된다.
+  test('UT-ROUTE-6: 한 슬롯 프리필도 규칙 5 의 방패다(#report 자동 복원 차단)', () => {
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: true, recentCount: 1 }),
+      { screen: 'search', restore: false },
+      'URL 이 시킨 슬롯을 레코드가 덮으면 주소와 화면이 어긋난다',
+    );
+    // 프리필이 없을 때만 자동 복원(기존 계약 보존)
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: false, recentCount: 1 }),
+      { screen: 'search', restore: true },
+    );
+    // 이미 렌더된 리포트(popstate)는 프리필보다 앞선다 — 화면을 지우지 않는다
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: true, hasReport: true }),
+      { screen: 'report', restore: false },
+    );
+    // 두 슬롯 프리필은 그대로 input(기존 규칙 5)
+    assert.deepEqual(
+      resolveBootScreen({ want: 'report', hasPrefill: true, hasPair: true, recentCount: 1 }),
+      { screen: 'input', restore: false },
+    );
   });
 
   test('UT-ROUTE-4: #company는 상태와 무관하게 딥링크 진입 불가', () => {
@@ -426,22 +470,31 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     assert.deepEqual(resolveBootScreen({ want: 'company' }), { screen: 'search', restore: false });
     assert.deepEqual(resolveBootScreen({ want: 'company', recentCount: 5 }), { screen: 'search', restore: false });
     assert.deepEqual(
-      resolveBootScreen({ want: 'company', hasSlotState: true }),
+      resolveBootScreen({ want: 'company', hasPair: true }),
       { screen: 'input', restore: false },
     );
   });
 
-  test('UT-ROUTE-5: hasSlotState — 직접 입력 슬롯도 상태로 인정', () => {
+  // 개정(2026-09-05): 술어가 세는 것은 "슬롯 하나라도"가 아니라 **쌍**이다. 입력 뷰는
+  // 두 슬롯의 값을 나란히 받는 화면이라, 한쪽이 비어 있으면 그 슬롯을 채울 방법이 없다.
+  test('UT-ROUTE-5: hasPairState — 두 슬롯이 다 차야 true(직접 입력 슬롯도 찬 것으로 인정)', () => {
     const s = createInitialState();
-    assert.equal(hasSlotState(s), false, '초기 상태는 상태 없음(기존 prefilled와 동일)');
+    assert.equal(hasPairState(s), false, '초기 상태는 쌍 없음');
     s.matched.a = { comp_id: 1 };
-    assert.equal(hasSlotState(s), true);
+    assert.equal(hasPairState(s), false, '한 슬롯만 찬 입력 뷰 = B 를 고를 수 없는 막다른 골목');
+    s.matched.b = { comp_id: 2 };
+    assert.equal(hasPairState(s), true);
     const s2 = createInitialState();
-    s2.inputMode.a = 'direct';
-    assert.equal(hasSlotState(s2), true, '직접 입력 모드는 matched가 null이어도 상태');
+    s2.matched.a = { comp_id: 1 };
+    s2.inputMode.b = 'direct';
+    assert.equal(hasPairState(s2), true, '직접 입력 모드는 matched 가 null 이어도 찬 슬롯');
     const s3 = createInitialState();
-    s3.chosenType.b = 'startup';
-    assert.equal(hasSlotState(s3), true);
+    s3.chosenType.a = 'startup';
+    s3.chosenType.b = 'large';
+    assert.equal(hasPairState(s3), true);
+    const s4 = createInitialState();
+    s4.chosenType.b = 'startup';
+    assert.equal(hasPairState(s4), false, 'B 만 직접 입력이면 A 가 비어 있다');
   });
 });
 
@@ -515,6 +568,17 @@ describe('B-1 해시 딥링크 강등', () => {
     assert.equal(App.state.selectedRate, null, '레코드(10)가 프리필 슬롯을 덮지 않음');
   });
 
+  test('UT-BOOT-5b: 한 슬롯 프리필 + #report → 검색 뷰, 레코드가 프리필을 덮지 않는다', async () => {
+    seedRecord(); // (1, 2)
+    globalThis.location.search = '?a=2'; // URL 이 시킨 것은 B사 하나뿐
+    globalThis.location.hash = '#report';
+    await boot(bootHooks);
+    assert.equal(App.state.ui.screen, 'search', 'B 를 고를 수 있는 화면');
+    assert.equal(App.state.matched.a.comp_id, 2, 'URL 이 시킨 a=2 가 레코드(1)로 덮이면 안 된다');
+    assert.equal(App.state.matched.b, null, '레코드의 B 도 들어오면 안 된다');
+    assert.equal(App.state.selectedRate, null, '레코드(10)가 새어 들어오지 않음');
+  });
+
   test('UT-BOOT-6: 해시 없음 → search(기존 폴백 계약 유지)', async () => {
     await boot(bootHooks);
     assert.equal(App.state.ui.screen, 'search');
@@ -553,11 +617,20 @@ describe('B-1 해시 딥링크 강등', () => {
     assert.equal(globalThis.history._calls.length, 0, '재푸시 금지');
   });
 
-  test('UT-POP-1b: popstate — 슬롯이 살아 있으면 input 항목은 그대로 복원(정상 뒤로가기 보존)', () => {
+  test('UT-POP-1b: popstate — 쌍이 살아 있으면 input 항목은 그대로 복원(정상 뒤로가기 보존)', () => {
     App.state.matched.a = { comp_id: 1, comp_nm: 'A사' };
+    App.state.matched.b = { comp_id: 2, comp_nm: 'B사' };
     onPopState({ state: { screen: 'input' } });
     assert.equal(App.state.ui.screen, 'input', '세션 내 정상 뒤로/앞으로는 회귀하면 안 된다');
     assert.equal(globalThis.history._calls.length, 0);
+  });
+
+  // 부팅과 같은 술어를 쓴다: 한 슬롯짜리 입력 뷰는 B 를 고를 컨트롤이 없는 막다른 골목이라
+  // 뒤로가기로도 되돌아가면 안 된다(2026-09-05).
+  test('UT-POP-1c: popstate — 한 슬롯만 살아 있는 input 항목은 검색 뷰로 강등', () => {
+    App.state.matched.a = { comp_id: 1, comp_nm: 'A사' };
+    onPopState({ state: { screen: 'input' } });
+    assert.equal(App.state.ui.screen, 'search');
   });
 
   test('UT-POP-3: popstate — 해시 없는 무상태 항목은 슬롯이 있어도 search(뒤로가기 먹통 방지)', () => {
@@ -679,11 +752,20 @@ describe('입력 초안 snapshotInput·restoreInputDraft', () => {
 describe('boot — 초안은 상태만 되살리고 화면은 URL 이 정한다', () => {
   const REF = {
     company_types: [], benefit_presets: {},
-    companies: [{ comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] }],
+    companies: [
+      { comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] },
+      { comp_id: 2, comp_nm: 'SK텔레콤', comp_eng_nm: 'skt', comp_tp_cd: 'large', benefits: [] },
+    ],
   };
   function seedDraft() {
     globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
       v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: 1 } }, salS: { a: { low: 4000, high: 5000 } } },
+    }));
+  }
+  function seedPairDraft() {
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(),
+      draft: { slots: { a: { comp_id: 1 }, b: { comp_id: 2 } }, salS: { a: { low: 4000, high: 5000 } } },
     }));
   }
 
@@ -695,18 +777,34 @@ describe('boot — 초안은 상태만 되살리고 화면은 URL 이 정한다'
     assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 });
   });
 
-  test('URL 프리필이 있으면 → input(기존 계약 유지)', async () => {
+  // 개정(2026-09-05): 프리필이 한 슬롯이면 입력 뷰가 아니라 **검색 뷰**다. 나머지 슬롯을
+  // 고를 컨트롤이 검색 뷰에만 있기 때문이다(/compare/?a=skt 막다른 골목).
+  test('URL 프리필이 한 슬롯이면 → search(나머지를 고를 수 있는 화면)', async () => {
     seedDraft();
     globalThis.location.search = '?a=samsung_elec';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.ui.screen, 'search');
+    assert.equal(App.state.matched.a.comp_id, 1, '상태는 프리필대로 채워져 있어야 한다');
+  });
+
+  test('URL 프리필이 두 슬롯이면 → input', async () => {
+    globalThis.location.search = '?a=samsung_elec&b=skt';
     await boot({ loadReferenceFn: async () => REF });
     assert.equal(App.state.ui.screen, 'input');
   });
 
-  test('#input 새로고침이면 → input(사용자가 그 화면에 있었다)', async () => {
-    seedDraft();
+  test('#input 새로고침 + 쌍이 살아 있으면 → input(사용자가 그 화면에 있었다)', async () => {
+    seedPairDraft();
     globalThis.location.hash = '#input';
     await boot({ loadReferenceFn: async () => REF });
     assert.equal(App.state.ui.screen, 'input');
+  });
+
+  test('#input 새로고침이어도 한 슬롯뿐이면 → search(막다른 입력 뷰 금지)', async () => {
+    seedDraft();
+    globalThis.location.hash = '#input';
+    await boot({ loadReferenceFn: async () => REF });
+    assert.equal(App.state.ui.screen, 'search');
   });
 
   test('초안이 없으면 종전과 동일(하위호환)', async () => {
@@ -763,6 +861,6 @@ describe('boot — 대문(landing) 셸은 초안을 복원하지 않고 지운�
     globalThis.location.search = '?a=samsung_elec';
     await boot({ loadReferenceFn: async () => REF });
     assert.equal(App.state.matched.a.comp_id, 1);
-    assert.equal(App.state.ui.screen, 'input');
+    assert.equal(App.state.ui.screen, 'search', '한 슬롯 프리필은 검색 뷰(2026-09-05 개정)');
   });
 });
