@@ -415,6 +415,37 @@ describe('UT-SC-LENS', () => {
   });
 });
 
+// ── UT-TABLE-SCROLL (2026-09-05, SPEC 10 MD-4) ──────────────────────────────
+// 7열 표(재무 11개년·회사 인덱스)는 390px 를 넘긴다. 넘침을 **표 자신의 상자**에 가두지
+// 않으면 페이지가 통째로 가로로 팬된다(실측 390px: 회사 상세 110/113 페이지 +21~143px,
+// /companies +63px). 반대로 body{overflow-x:hidden} 으로 덮으면 오른쪽 열을 영원히 못 본다.
+describe('UT-TABLE-SCROLL', () => {
+  const blocks = splitTopLevelBlocks(cssText);
+
+  test('.table-scroll 이 최상위(비 @media) 규칙으로 overflow-x:auto 를 갖는다', () => {
+    // 모바일 기본에서 이미 스크롤 상자여야 한다 — 768 분기 안에만 두면 정작 밀리는 폭에서 무효다.
+    const rule = blocks.find((b) => b.selector === '.table-scroll');
+    assert.ok(rule, '.table-scroll 규칙이 없다');
+    assert.match(rule.body, /overflow-x\s*:\s*auto/);
+  });
+
+  test('폐기된 -webkit-overflow-scrolling 을 쓰지 않는다', () => {
+    // iOS 13 이후 무의미하고, 있으면 "이걸 붙여야 스크롤된다"는 오해를 다음 사람에게 남긴다.
+    assert.doesNotMatch(stripComments(cssText), /-webkit-overflow-scrolling/);
+  });
+
+  test('🚨 html/body 를 overflow-x:hidden 으로 덮지 않는다 — 그건 열을 감추는 것이다', () => {
+    const stripped = stripComments(cssText);
+    for (const sel of ['html', 'body']) {
+      const m = [...stripped.matchAll(new RegExp(`(^|[},])\\s*${sel}\\s*\\{([^}]*)\\}`, 'g'))];
+      for (const hit of m) {
+        assert.doesNotMatch(hit[2], /overflow(-x)?\s*:\s*(hidden|clip)/,
+          `${sel} 에 가로 넘침 은폐 규칙: ${hit[2].trim()}`);
+      }
+    }
+  });
+});
+
 // ── UT-REDUCED-MOTION (T-10.8.2) ────────────────────────────────────────────
 describe('UT-REDUCED-MOTION', () => {
   test('@media (prefers-reduced-motion: reduce) 블록 존재', () => {

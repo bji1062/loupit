@@ -279,6 +279,24 @@ main p { margin-top:var(--sp-3); }
 .benefit-note { color:var(--t3); }
 .benefit-verified { color:var(--t4); font-size:var(--fs-xs); }  /* .benefit-src 는 출처 열 제거로 삭제(2026-07-30) */
 
+/* ── 넓은 표는 **자기 상자 안에서만** 스크롤한다(SPEC 10 MD-4, 2026-09-05) ──────────
+   실측(390px, iPhone Safari UA): 재무 11개년 표(7열)가 회사 상세 110/113 페이지에서
+   documentElement.scrollWidth 를 +21~143px 밀었고 /companies 는 +63px 였다. html/body 에
+   가로 넘침 은폐가 없어 **헤더·본문·CTA 가 통째로 가로로 팬**된다.
+   ⛔ body{overflow-x:hidden} 은 고치는 게 아니라 **오른쪽 열을 영원히 감추는 것**이다.
+   ⓘ 새 클래스에만 건다. `/assets/v2/` 는 작업트리를 그대로 서빙해 CSS 는 머지 즉시 라이브고
+     HTML 은 release.sh 이후다 — 그 사이 구 마크업(래퍼 없는 <table>)은 이 규칙에 걸리지
+     않으므로 배포 간극 구간의 화면이 예전 그대로다. `.benefit-table` 의 선언은 손대지 않았다.
+   ⓘ 표의 폭은 바꾸지 않는다(`min-width:max-content` 를 주지 않음) — 열 줄바꿈이 달라지면
+     데스크톱까지 레이아웃이 변하고, 스크롤 거리도 필요 이상으로 길어진다. 바뀐 것은
+     "넘침이 어디로 가는가" 하나뿐이다. 1280px 처럼 표가 다 들어가는 폭에서는 스크롤이 없다.
+   ⓘ 가로 스와이프가 브라우저 뒤로가기로 새지 않게 스크롤 연쇄를 끊는다.
+   🚨 `-webkit-overflow-scrolling` 은 폐기됐다(UT-TABLE-SCROLL 가 재등장을 막는다). */
+.table-scroll { overflow-x:auto; overscroll-behavior-x:contain; }
+/* caption 기본값은 가운데 정렬이라, 뷰포트보다 넓은 표 위에서는 제목이 양끝으로 잘려 나간다.
+   왼쪽 정렬이면 최소한 **첫 글자부터** 보인다(래퍼 안에서만 바뀌므로 다른 표는 그대로). */
+.table-scroll > table > caption { text-align:left; }
+
 /* 코랄 콜아웃 CTA(풀블리드) */
 .cta {
   margin-top:var(--sp-7); padding:var(--sp-7) var(--sp-6);
