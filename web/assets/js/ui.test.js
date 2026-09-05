@@ -424,3 +424,91 @@ describe('UI-9 해시 딥링크 강등·부팅 자동 복원(B-1)', () => {
     assert.equal(after, before, '새로고침만으로 "최근 비교" 봉투가 바뀌면 목록 순서·id가 요동친다');
   });
 });
+// ── UI-10 URL 프리필이 한 슬롯이면 검색 뷰에서 나머지를 고른다(2026-09-05) ─────
+// 재현: 회사 상세 하단 "이 회사로 비교하기" → /compare/?a=skt → 입력 뷰가 떴는데 B 슬롯
+// 머리가 "이직 후보(B) — 직접 입력"이고 회사를 고를 컨트롤이 화면에 하나도 없었다.
+// 회사 선택 UI(#search-input-a/b + 후보 목록)는 검색 뷰에만 있고, 입력 뷰에서 검색 뷰로
+// 돌아갈 길도 없다("새 비교"는 리포트 뷰 소유). → 입력 뷰 진입 자격 = 두 슬롯.
+describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이면 입력 뷰', () => {
+  const REF = {
+    company_types: [{ comp_tp_cd: 'large', growth_rate_val: 0.04, stability_score_no: 90 }],
+    benefit_presets: {},
+    companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사')],
+  };
+  const hooks = { loadReferenceFn: async () => REF, mountAdsFn: () => {} };
+
+  function loadPrefillShell(query) {
+    const dom = loadShell('https://loupit.example/compare/' + query);
+    globalThis.localStorage = dom.window.localStorage;
+    globalThis.localStorage.clear(); // 초안이 남아 있으면 프리필과 뒤섞인다
+    App.state = createInitialState();
+    return dom;
+  }
+
+  test('UI-10a: ?a=1 → 검색 뷰 + A 입력칸 채움 + B 입력칸 포커스', async () => {
+    loadPrefillShell('?a=1');
+    await boot(hooks);
+    assert.equal(document.getElementById('view-search').hidden, false, '검색 뷰가 보여야 B 를 고를 수 있다');
+    assert.equal(document.getElementById('view-input').hidden, true, '막다른 입력 뷰 금지');
+    assert.equal(document.getElementById('search-input-a').value, 'A사', 'A 는 이미 정해졌음을 보여야 한다');
+    assert.equal(App.state.matched.a.comp_id, 1, '상태는 프리필대로');
+    assert.equal(
+      document.activeElement,
+      document.getElementById('search-input-b'),
+      'go() 의 헤딩 포커스가 빈 슬롯 포커스를 도로 뺏으면 안 된다',
+    );
+  });
+
+  test('UI-10b: ?a=1&b=2 → 입력 뷰(두 슬롯이 다 찼다)', async () => {
+    loadPrefillShell('?a=1&b=2');
+    await boot(hooks);
+    assert.equal(document.getElementById('view-input').hidden, false);
+    assert.equal(document.getElementById('view-search').hidden, true);
+    assert.ok(document.getElementById('input-slot-b').children.length > 0, 'B 슬롯 컨트롤 렌더');
+  });
+
+  test('UI-10c: ?a=없는회사 → 검색 뷰·빈 상태(해석 실패는 정상 검색 진입)', async () => {
+    loadPrefillShell('?a=%EC%97%86%EB%8A%94%ED%9A%8C%EC%82%AC');
+    await boot(hooks);
+    assert.equal(document.getElementById('view-search').hidden, false);
+    assert.equal(App.state.matched.a, null);
+    assert.equal(document.getElementById('search-input-a').value, '');
+  });
+});
+
+// ── UI-11 안전망: 미선택 슬롯 머리의 "회사 선택" 버튼 ─────────────────────────
+// 입력 뷰에 한 슬롯만 찬 채로 도달하는 경로가 프리필 말고도 있다(REF 에서 사라진 comp_id 를
+// 담은 '최근 비교' 복원 등). 그때도 검색 뷰로 돌아갈 길이 화면 안에 있어야 한다.
+describe('UI-11 미선택 슬롯 → 회사 선택 버튼(막다른 골목 안전망)', () => {
+  beforeEach(() => loadShell());
+
+  test('미선택 슬롯 머리에 button.in-slot-pick 이 있고 클릭 → go("search") + 그 슬롯 포커스', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    state.benS.b = [];
+    const went = [];
+    renderInputView(state, { go: (screen) => went.push(screen) });
+    const btn = document.querySelector('#input-slot-b button.in-slot-pick');
+    assert.ok(btn, '회사를 고를 길이 화면 안에 있어야 한다');
+    assert.equal(btn.dataset.pickSlot, 'b');
+    btn.dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.deepEqual(went, ['search']);
+    assert.equal(document.activeElement, document.getElementById('search-input-b'));
+  });
+
+  test('선택된 슬롯 머리에는 버튼이 없다(회사명만)', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    assert.equal(document.querySelector('#input-slot-a button.in-slot-pick'), null);
+    assert.match(document.querySelector('#input-slot-a .in-slot-title').textContent, /A사/);
+  });
+
+  test('죽은 "직접 입력" 라벨은 더 이상 쓰지 않는다(진입점이 없는 모드)', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    state.benS.b = [];
+    renderInputView(state, {});
+    const title = document.querySelector('#input-slot-b .in-slot-title');
+    assert.doesNotMatch(title.textContent, /직접 입력/);
+  });
+});

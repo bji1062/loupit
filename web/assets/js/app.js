@@ -5,7 +5,7 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, maybeAdvance, bindBootRetry, renderInputView } from './ui.js';
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView } from './ui.js';
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
@@ -74,13 +74,33 @@ export function go(screenId, { push = true } = {}) {
   return screenId;
 }
 
-// ── SP-FE-3.3 규칙 (3) 술어: "상태가 없으면 search" ─────────────────────────
-// 뷰에 들어갔을 때 보여줄 것이 실제로 있는지를 판정한다. 부팅·popstate 공통.
-export function hasSlotState(state = App.state) {
+// ── SP-FE-3.3 규칙 (3) 술어: "보여줄 것이 없으면 search" ────────────────────
+// 슬롯 하나가 "찼다"의 정의. 회사가 매칭됐거나 직접 입력 모드면 그 슬롯은 채워진 것이다.
+export function slotFilled(state, slot) {
   const ct = state.chosenType || {};
   const im = state.inputMode || {};
-  return !!(state.matched.a || state.matched.b || ct.a || ct.b
-    || im.a === 'direct' || im.b === 'direct');
+  return !!(state.matched[slot] || ct[slot] || im[slot] === 'direct');
+}
+
+// 입력 뷰에 들어갈 자격 = **두 슬롯이 다 찼는가**(2026-09-05 개정).
+// 왜 '슬롯 하나라도'가 아니라 '쌍'인가: 입력 뷰에는 회사를 고르는 컨트롤이 없다
+// (#search-input-a/b 와 후보 목록은 검색 뷰 소유이고, 검색 뷰로 돌아갈 버튼도 없다).
+// 그래서 한 슬롯만 찬 채로 입력 뷰에 들어가면 나머지 회사를 영영 고를 수 없는
+// 막다른 골목이 된다 — /compare/?a=skt 로 실제 재현된 고장이다. ui.js maybeAdvance 가
+// 전진 조건으로 이미 쓰던 술어(matched.a && matched.b)를 프리필·부팅·popstate 에도
+// 똑같이 적용한다. 판정이 화면마다 다르면 "상태는 있는데 고칠 길은 없는" 화면이 남는다.
+export function hasPairState(state = App.state) {
+  return slotFilled(state, 'a') && slotFilled(state, 'b');
+}
+
+// 한 슬롯만 찼을 때 **비어 있는** 쪽. 둘 다 찼거나 둘 다 비었으면 null(고를 것이 없거나,
+// 어디부터 고를지 우리가 정할 일이 아니다).
+export function pendingSlot(state = App.state) {
+  const a = slotFilled(state, 'a');
+  const b = slotFilled(state, 'b');
+  if (a && !b) return 'b';
+  if (b && !a) return 'a';
+  return null;
 }
 
 function hasRenderedReport() {
@@ -91,16 +111,18 @@ function hasRenderedReport() {
 
 // 해시가 요구한 뷰 + 현재 사실 → 실제로 들어갈 뷰. 순수 함수(브라우저 무의존, UT-ROUTE-3·4).
 // restore:true는 "복원을 시도하라"는 지시일 뿐이고, 이동(go)은 언제나 호출부가 소유한다.
-export function resolveBootScreen({ want = null, hasSlotState: slots = false, hasReport = false, recentCount = 0 } = {}) {
-  const fallback = slots ? 'input' : 'search'; // 슬롯이 차 있으면 검색보다 입력이 자연스럽다
+// hasPair: **두 슬롯이 다 찼는가**(hasPairState). 이름이 내용과 어긋나면 안 되므로 인자도
+// 'slot' 이 아니라 'pair' 다 — 한 슬롯만 찬 상태를 input 으로 보내던 것이 이번 고장이었다.
+export function resolveBootScreen({ want = null, hasPair: pair = false, hasReport = false, recentCount = 0 } = {}) {
+  const fallback = pair ? 'input' : 'search'; // 두 슬롯이 다 차 있으면 검색보다 입력이 자연스럽다
   if (want === 'search') return { screen: 'search', restore: false };
   if (want === 'report') {
     if (hasReport) return { screen: 'report', restore: false }; // 이미 렌더돼 있음(popstate 경로)
-    if (slots) return { screen: 'input', restore: false };      // 프리필 > 자동 복원(규칙 5)
+    if (pair) return { screen: 'input', restore: false };       // 프리필 > 자동 복원(규칙 5)
     if (recentCount > 0) return { screen: 'search', restore: true }; // 복원 시도 후 성공하면 report
     return { screen: 'search', restore: false };                // 복원 재료 없음 → 강등
   }
-  // 'input'(슬롯 없음)·'company'(term 없이 진입 불가)·null·미지 → 폴백
+  // 'input'(쌍 미완)·'company'(term 없이 진입 불가)·null·미지 → 폴백
   return { screen: fallback, restore: false };
 }
 
@@ -110,12 +132,12 @@ export function onPopState(e) {
   // 그 뒤 뒤로가기로 돌아온 report 항목은 보여줄 것이 없다. 신뢰하면 빈 리포트(B-1 재현)가,
   // 비우지 않으면 유령 리포트(오정보)가 된다. → 부팅과 동일한 상태 술어로 판정한다.
   const want = (e && e.state && e.state.screen) || parseHash();
-  // 해시도 상태도 없으면 기존 계약대로 search. resolveBootScreen의 폴백(슬롯 있으면 input)은
+  // 해시도 상태도 없으면 기존 계약대로 search. resolveBootScreen의 폴백(쌍이 차면 input)은
   // **부팅** 규칙이라 여기 적용하면 뒤로가기가 현재 입력 뷰에 눌러앉아 먹통으로 보인다.
   if (!want) { go('search', { push: false }); return; }
   // recentCount:0 고정 — popstate는 자동 복원하지 않는다(사용자가 뒤로 간 것이지 재진입이 아니다).
   const d = resolveBootScreen({
-    want, hasSlotState: hasSlotState(), hasReport: hasRenderedReport(), recentCount: 0,
+    want, hasPair: hasPairState(), hasReport: hasRenderedReport(), recentCount: 0,
   });
   go(d.screen, { push: false }); // 뒤로/앞으로 → 재푸시 없이 표시만
 }
@@ -161,7 +183,9 @@ export async function boot(hooks = {}) {
   const landing = isLandingShell();
   if (landing) inputDraft.clear();
   const draftRestored = landing ? false : restoreInputDraft();
-  const prefilled = restoreFromPrefill(); // SP-FE-11 URL 파라미터 → 슬롯 프리필(있으면)
+  // reflectSlotLabel 훅을 넘긴다: 프리필이 검색 뷰에 남을 수 있게 된 뒤로, 훅이 없으면
+  // 상태에는 A 가 들어 있는데 #search-input-a 는 비어 보인다(사용자에겐 프리필 실패로 읽힌다).
+  const prefilled = restoreFromPrefill(App.state, { reflectSlotLabel }); // SP-FE-11 URL → 슬롯 프리필
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
     const appEl = document.getElementById('app');
     if (appEl) appEl.hidden = false;
@@ -200,7 +224,7 @@ export async function boot(hooks = {}) {
   // 등록 회사 디렉토리(검색 카드 카운트 → 가나다순 목록 → 복지 펼침) — REF 재사용, 실패 무해.
   try { mountDirectory(App.state); } catch { /* 디렉토리 실패는 비교 툴 무손상 */ }
   // 부팅 뷰 결정(SP-FE-3.3 규칙 3·5): 해시가 요구한 뷰에 보여줄 상태가 없으면 강등한다.
-  // 이 시점에는 restoreFromPrefill(위)이 이미 슬롯을 채웠으므로 hasSlotState가 프리필을 포함한다.
+  // 이 시점에는 restoreFromPrefill(위)이 이미 슬롯을 채웠으므로 hasPairState가 프리필을 포함한다.
   // 🚨 초안은 **상태를 되살릴 뿐 화면을 가로채지 않는다**(2026-07-31). 부팅 화면 폴백이
   // "슬롯이 있으면 input" 이라, 초안이 슬롯을 채우면 대문(`/`)이 대문이 아니게 된다 —
   // 신규 방문자가 히어로·등록 회사 목록·광고가 있는 랜딩 대신 남이 쓰다 만 입력 화면을 본다.
@@ -210,13 +234,21 @@ export async function boot(hooks = {}) {
   const urlAsked = prefilled || want != null;
   const decision = resolveBootScreen({
     want,
-    hasSlotState: hasSlotState() && (urlAsked || !draftRestored),
+    hasPair: hasPairState() && (urlAsked || !draftRestored),
     hasReport: hasRenderedReport(),
     recentCount: recent.list().length,
   });
   let screen = decision.screen;
   if (decision.restore && restoreLatestComparison({ recentCtx })) screen = 'report';
   go(screen, { push: false }); // 부팅 경로의 유일한 go — 정확히 1회, push 금지
+  // ⚠ go() 는 접근성용으로 뷰의 첫 헤딩에 포커스를 옮긴다(focusFirstHeading). 그래서
+  //   restoreFromPrefill 이 빈 슬롯에 잡아 둔 포커스를 **부팅의 마지막 go 가 도로 뺏는다**.
+  //   프리필 판정을 restoreFromPrefill 에 두고 이동은 boot 이 독점하는 구조(B-6)를 지키려면
+  //   여기서 한 번 더 잡는 수밖에 없다 — 순서를 바꾸면 이중 go 가 된다.
+  if (prefilled && screen === 'search') {
+    const pending = pendingSlot(App.state);
+    if (pending) focusSlotInput(pending);
+  }
   bindDraftPersist();
 }
 
@@ -253,7 +285,7 @@ export function resolveCompanyToken(token, state = App.state) {
 }
 
 export function restoreFromPrefill(state = App.state, hooks = {}) {
-  const { reflectSlotLabel, goFn = go } = hooks;
+  const { reflectSlotLabel, goFn = go, focusSlot = focusSlotInput } = hooks;
   const search = typeof location !== 'undefined' ? (location.search || '') : '';
   const p = new URLSearchParams(search);
   // ⚠ "상태에 슬롯이 있나"가 아니라 **"내가 채웠나"**를 센다(2026-07-31). 초안 복원이 먼저
@@ -277,7 +309,21 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
   // 결과가 아니라 URL이 시킨 것이고, /compare/?a=…&b=… 는 JS를 실행하는 크롤러가 그대로
   // 밟는 경로다(실측: GoogleOther가 /compare/?a=<slug> 를 계속 긁는다). 여기에 로그를 걸면
   // 집계가 봇의 크롤 빈도를 재게 된다. 기록 시점은 사람이 슬롯을 채운 maybeAdvance 다.
-  if (filled) goFn('input', { push: false }); // 프리필 있으면 입력 뷰
+  // 화면은 **채운 개수**가 정한다(2026-09-05 개정, hasPairState 주석 참조).
+  //  · 두 슬롯 → 입력 뷰(전진 자격 충족 — maybeAdvance 와 같은 술어)
+  //  · 한 슬롯 → 검색 뷰. 나머지 회사를 고를 컨트롤이 거기에만 있다. 예전처럼 입력 뷰로
+  //    보내면 "이직 후보(B) — 직접 입력 / 복지 항목 없음" 만 있는 막다른 화면이 뜬다
+  //    (/compare/?a=skt — 회사 상세의 "이 회사로 비교하기" 가 항상 밟던 경로다).
+  //    빈 슬롯 입력칸에 커서를 넣어 "여기서 나머지를 고르면 된다"를 손가락으로 가리킨다.
+  if (filled) {
+    const pending = pendingSlot(state);
+    if (pending) {
+      goFn('search', { push: false });
+      focusSlot(pending);
+    } else {
+      goFn('input', { push: false });
+    }
+  }
   return filled; // 부팅 화면 결정에 쓴다 — "URL 이 시킨 것"과 "초안이 되살린 것"을 가른다
 }
 
@@ -482,7 +528,9 @@ export function restoreComparison(record, deps = {}, state = App.state) {
   }
   // 입력 뷰 컨트롤 재렌더: mountUI는 마운트 시점에 슬롯이 없으면 입력 뷰를 렌더하지 않는다(ui.js).
   // 복원이 상태만 바꾸고 끝나면 "입력 수정" 한 번에 빈 입력 뷰가 나온다 — B-1과 같은 증상.
-  try { renderInputView(state); } catch { /* 렌더 실패는 복원 자체를 막지 않는다 */ }
+  // deps 를 넘긴다: REF 에서 사라진 comp_id 는 슬롯 미선택으로 복원되는데(위), 그 슬롯 머리의
+  // "회사 선택" 버튼이 검색 뷰로 돌아가려면 deps.go 가 필요하다(없으면 눌러도 아무 일도 없다).
+  try { renderInputView(state, deps); } catch { /* 렌더 실패는 복원 자체를 막지 않는다 */ }
   const goFn = typeof deps.go === 'function' ? deps.go : go;
   const report = typeof deps.runReport === 'function'
     ? deps.runReport({ state, mountEl: null })

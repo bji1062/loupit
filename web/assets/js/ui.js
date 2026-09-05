@@ -28,6 +28,17 @@ export function reflectSlotLabel(slot, name) {
   if (input) input.value = name || '';
 }
 
+// 슬롯 검색 입력칸으로 커서를 옮긴다(+ 화면 가운데로 스크롤). "다음에 할 일은 여기"를
+// 손가락으로 가리키는 장치 — 프리필이 한 슬롯만 채웠을 때·"회사 선택" 버튼을 눌렀을 때 쓴다.
+// scrollIntoView 는 jsdom 에 없을 수 있어 존재 확인 후 호출한다(테스트 무손상).
+export function focusSlotInput(slot) {
+  const input = byId('search-input-' + slot);
+  if (!input) return null;
+  if (typeof input.focus === 'function') input.focus();
+  if (typeof input.scrollIntoView === 'function') input.scrollIntoView({ block: 'center' });
+  return input;
+}
+
 export function clearCandidatesDom(slot) {
   const list = byId('cand-' + slot);
   if (list) list.replaceChildren();
@@ -193,17 +204,37 @@ function rateControl(state) {
   return wrap;
 }
 
+// 미선택 슬롯의 머리는 예전에 "… — 직접 입력"이었다. 직접 입력 모드(setDirectType, FR-17)는
+// UI 진입점이 한 번도 만들어지지 않은 죽은 모드라, 그 라벨은 사용자에게 "여기서 뭘 어떻게
+// 하라는 것인지 알 수 없는" 막다른 골목이었다. 대신 **검색 뷰로 돌아가는 길**을 화면 안에 둔다
+// (안전망 — 프리필은 이제 한 슬롯이면 검색 뷰에 머물지만, REF 에서 사라진 comp_id 를 담은
+//  '최근 비교' 복원처럼 한 슬롯만 찬 입력 뷰가 만들어지는 경로가 남아 있다).
 function slotHeader(state, slot) {
   const m = state.matched[slot];
   const label = slot === 'a' ? '현재 직장(A)' : '이직 후보(B)';
-  return el('h3', { class: 'in-slot-title', text: label + ' — ' + (m ? m.comp_nm : '직접 입력') });
+  return el('h3', { class: 'in-slot-title', text: label + ' — ' + (m ? m.comp_nm : '미선택') });
 }
 
-export function renderInputSlot(state, slot) {
+// 미선택 슬롯에서 검색 뷰로 돌아가는 길. 클래스 `btn` 을 함께 다는 이유: 이 저장소의 버튼
+// 스타일은 styles.css(SP-DSN 소유)의 `.btn` 규칙이 정본이고, 새 규칙을 추가하지 않고
+// 기존 규칙을 재사용해야 h3 의 serif 를 물려받은 이질적인 버튼이 생기지 않는다.
+function slotPickButton(slot, deps = {}) {
+  const btn = el('button', {
+    type: 'button', class: 'in-slot-pick btn', 'data-pick-slot': slot, text: '회사 선택',
+  });
+  btn.addEventListener('click', () => {
+    if (typeof deps.go === 'function') deps.go('search');
+    focusSlotInput(slot); // 돌아간 검색 뷰에서 바로 타이핑할 수 있게
+  });
+  return btn;
+}
+
+export function renderInputSlot(state, slot, deps = {}) {
   const host = byId('input-slot-' + slot);
   if (!host) return;
   host.replaceChildren();
   host.append(slotHeader(state, slot));
+  if (!state.matched[slot]) host.append(slotPickButton(slot, deps));
   if (slot === 'a') host.append(salaryControls(state)); else host.append(rateControl(state));
   host.append(benefitCheckboxes(state, slot));
   host.append(workStyleControls(state, slot));
@@ -229,9 +260,9 @@ export function renderPriorityPicker(state) {
   host.append(fs);
 }
 
-export function renderInputView(state, deps) {
-  renderInputSlot(state, 'a');
-  renderInputSlot(state, 'b');
+export function renderInputView(state, deps = {}) {
+  renderInputSlot(state, 'a', deps);
+  renderInputSlot(state, 'b', deps);
   renderPriorityPicker(state);
 }
 
