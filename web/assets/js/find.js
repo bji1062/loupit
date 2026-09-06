@@ -42,7 +42,10 @@ export const LABEL_OVERRIDE = {
 export const MODES = ['and', 'or'];
 export const SORT_KEYS = ['match', 'amt', 'total', 'name'];
 export const PAGE_SIZE = 30; // 「더 보기」 한 번에 늘어나는 결과 행 수
-export const MOBILE_MAX = 900; // 이 폭 이하에서는 덱을 고정하지도 접지도 않는다(CSS 와 같은 경계)
+// 덱 고정·접힘이 켜지는 최소 폭. **styles.css 의 유일한 분기(`min-width:768px`)와 같은 값이어야
+// 한다** — 이 디자인 시스템은 분기가 하나이고 `max-width` 분기를 금지한다(UT-BP). 프로토타입은
+// 900 이었지만 그러면 768~900 구간에서 덱이 고정된 채 접히지 않아 화면 절반을 먹는다.
+export const DESKTOP_MIN = 768;
 
 /** 화면 상태의 기본값. URL 이 없으면 이것이 첫 화면이다(조건 없음 = 전체 회사). */
 export function defaultState() {
@@ -398,7 +401,7 @@ export function initDeckCollapse({ wrap, anchorEl, minibar, expandBtn, collapseB
 
   function evaluate() {
     if (suppress > 0) { suppress -= 1; return; } // 우리가 만든 스크롤(위 ③)
-    if (win.innerWidth <= MOBILE_MAX) { releaseForMobile(); return; }
+    if (win.innerWidth < DESKTOP_MIN) { releaseForMobile(); return; }
     const y = win.scrollY;
     if (!isCollapsed() && y > anchorTop + expandedH + 8) setCollapsed(true);
     else if (isCollapsed() && y <= anchorTop + 8) setCollapsed(false);
@@ -836,6 +839,12 @@ export function mountFind(root, ref, opts = {}) {
       render();
     });
   }
+
+  // 브라우저 스크롤 앵커링을 끈다 — 접힘·펼침 보정과 겹치면 화면이 두 번 움직인다. CSS 가 아니라
+  // 여기서 붙이는 이유: 필요한 것은 **이 페이지에서 JS 가 켜졌을 때**뿐이고, html 전역 규칙으로
+  // 두면 다른 페이지의 스크롤 동작까지 바뀐다.
+  const html = root.ownerDocument && root.ownerDocument.documentElement;
+  if (html && html.style) html.style.overflowAnchor = 'none';
 
   render();
   collapse = initDeckCollapse({

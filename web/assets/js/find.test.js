@@ -431,7 +431,7 @@ describe('suggest', () => {
 // 그건 jsdom 이 재현하지 못한다(레이아웃이 없다). 여기서 재는 것은 좌표 산수 네 가지다 —
 // 문턱 · 높이 보정 · 보정이 만든 이벤트의 무시 · 좁은 화면 해제.
 
-import { initDeckCollapse, MOBILE_MAX } from './find.js';
+import { initDeckCollapse, DESKTOP_MIN } from './find.js';
 
 function fakeClassList() {
   const set = new Set();
@@ -552,8 +552,8 @@ describe('initDeckCollapse', () => {
     assert.equal(env.win.scrollByCalls, 0);
   });
 
-  test('좁은 화면(≤900)에서는 접히지 않는다', () => {
-    const env = deckEnv({ innerWidth: MOBILE_MAX });
+  test('좁은 화면(<768)에서는 접히지 않는다 — CSS 의 유일한 분기와 같은 경계', () => {
+    const env = deckEnv({ innerWidth: DESKTOP_MIN - 1 });
     env.drive(50, 40);
     assert.equal(env.ctl.isCollapsed(), false);
     assert.deepEqual(env.log, []);
@@ -688,6 +688,11 @@ describe('mountFind — 첫 화면', () => {
     const env = mount();
     assert.deepEqual([...env.q('[data-facet-tp]').options].map((o) => o.value), ['', 'large', 'mid']);
     assert.equal([...env.q('[data-facet-ind]').options].length, 1 + 4);
+  });
+
+  test('스크롤 앵커링을 끈다 — 접힘 보정과 겹치면 화면이 두 번 움직인다', () => {
+    const env = mount();
+    assert.equal(env.doc.documentElement.style.overflowAnchor, 'none');
   });
 
   test('카테고리 탭과 칩 줄이 그려진다', () => {
