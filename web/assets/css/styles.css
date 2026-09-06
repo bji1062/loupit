@@ -135,6 +135,11 @@ main, .company-page, .policy-page, body > main {
 }
 
 /* ═══════════════════════════════════════════════════ HEADER / FOOTER ══ */
+/* 헤더는 `position:sticky; top:0` 이라 **화면 위 한 층을 차지한다**. 그 아래에 붙어야 하는 다른
+   sticky(덱·레일)는 이 높이만큼 내려야 하는데, 값이 여러 군데 적히면 헤더를 손볼 때 하나가 남는다.
+   높이 = `min-height:56px` + 아래 테두리 1px. 바꿀 일이 생기면 **여기 하나만** 고친다.
+   (`.main-cols > .rail` 의 72px 는 헤더 + 여백이라 이 토큰과 뜻이 다르다 — 그대로 둔다.) */
+:root { --header-h:57px; }
 /* GNB — 나무위키식 그린 상단 바(로고 + 메뉴 + 우측 검색; 최근토론·특수기능·로그인 없음) */
 header, header[data-global] {
   position:sticky; top:0; z-index:40;
@@ -1125,7 +1130,19 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 
   /* 복지로 찾기(SP-FIND) — 이 폭부터 덱이 고정되고 스크롤하면 한 줄로 접힌다(find.js).
      결과 행은 로고·본문·담기 3열, 복지 한 줄은 이름·금액·조건 3열이 된다. */
-  .find-deckwrap { position:sticky; top:0; z-index:15; padding:var(--sp-2) 0; }
+  /* 🚨 덱은 헤더(`position:sticky; top:0; z-index:40`) **아래**에 붙어야 한다. `top:0` 으로 두면
+     접힌 한 줄과 「검색·조건 바꾸기」 버튼이 헤더 밑으로 들어가 클릭조차 안 된다 — 되돌릴 길이
+     없는 상태가 된다(2026-09-06 헤드리스 검증). 프로토타입은 헤더가 없는 단일 문서라 이 층이
+     보이지 않았다. z-index 는 헤더보다 낮게 둔다(가려지는 편이 덮는 편보다 낫다). */
+  .find-deckwrap { position:sticky; top:var(--header-h); z-index:15; padding:var(--sp-2) 0; }
+  /* 🚨 **접힘의 실체가 이 세 줄이다.** find.js 는 class 만 토글하고 높이는 CSS 가 만든다 —
+     이 규칙이 없으면 한 줄이 덱 위에 **추가**돼 고정 블록이 385→447px 로 오히려 커진다(같은 검증).
+     가짜 window 테스트는 「접히면 48px」 을 픽스처에 적을 뿐 이 계약을 검사하지 못하므로
+     find.test.js 의 CSS 계약 테스트가 이 셀렉터들의 존재를 문자열로 지킨다. */
+  .find-deckwrap.collapsed:not(.open) .find-deck,
+  .find-deckwrap.collapsed:not(.open) .find-summary { display:none; }
+  .find-deckwrap.collapsed:not(.open) .find-minibar { display:flex; }
+  .find-deckwrap.collapsed.open .find-minibar { display:none; }
   .find-row { grid-template-columns:44px minmax(0,1fr) auto; }
   .find-logo { width:44px; height:44px; }
   .find-act { grid-column:auto; flex-direction:column; align-items:stretch; margin-top:0; }

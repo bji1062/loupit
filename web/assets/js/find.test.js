@@ -909,3 +909,42 @@ describe('템플릿 훅 계약', () => {
     assert.deepEqual(missing, []);
   });
 });
+
+// ── CSS 계약(UT-FIND-CSS) ────────────────────────────────────────────────────
+//
+// 왜 필요한가: 접힘의 **실체는 CSS 다**. `find.js` 는 class 를 토글할 뿐이고 "접히면 작아진다"를
+// 만드는 것은 스타일이다. 위의 가짜 window 테스트는 그 높이를 픽스처에 적어 두므로(collapsedH=48)
+// 규칙이 통째로 없어도 13개가 초록으로 남는다 — 실제로 2026-09-06 검증에서 그 상태가 잡혔다
+// (덱이 안 숨어 고정 블록이 385→447px 로 오히려 커졌다). 여기서 파일을 직접 읽어 계약을 지킨다.
+
+const CSS = readFileSync(new URL('../css/styles.css', import.meta.url), 'utf8');
+const DESKTOP_BLOCK = CSS.slice(CSS.indexOf(`@media (min-width: ${DESKTOP_MIN}px)`));
+
+describe('UT-FIND-CSS — 접힘·고정 계약', () => {
+  test('CSS 분기와 find.js 의 경계가 같은 값이다', () => {
+    assert.ok(CSS.includes(`@media (min-width: ${DESKTOP_MIN}px)`), `CSS 에 ${DESKTOP_MIN}px 분기가 없다`);
+    assert.ok(DESKTOP_BLOCK.length > 0);
+  });
+
+  test('접힌 덱은 본체와 요약 띠를 숨긴다 — 이 규칙이 없으면 한 줄이 덧붙어 더 커진다', () => {
+    const squashed = DESKTOP_BLOCK.replace(/\s+/g, ' ');
+    assert.match(squashed, /\.find-deckwrap\.collapsed:not\(\.open\) \.find-deck, ?\.find-deckwrap\.collapsed:not\(\.open\) \.find-summary \{[^}]*display:none/);
+  });
+
+  test('접힌 덱은 한 줄을 보이고, 임시로 펼치면 그 한 줄을 감춘다', () => {
+    const squashed = DESKTOP_BLOCK.replace(/\s+/g, ' ');
+    assert.match(squashed, /\.find-deckwrap\.collapsed:not\(\.open\) \.find-minibar \{[^}]*display:flex/);
+    assert.match(squashed, /\.find-deckwrap\.collapsed\.open \.find-minibar \{[^}]*display:none/);
+  });
+
+  test('덱은 사이트 헤더 아래에 붙는다 — top:0 이면 한 줄과 되돌리기 버튼이 헤더에 가린다', () => {
+    assert.match(DESKTOP_BLOCK, /\.find-deckwrap \{[^}]*top:var\(--header-h\)/);
+    assert.ok(!/\.find-deckwrap \{[^}]*top:0/.test(DESKTOP_BLOCK), 'top:0 이 남아 있다');
+    assert.match(CSS, /:root \{ --header-h:\d+px; \}/, '--header-h 토큰이 :root 에 없다');
+  });
+
+  test('접힘 규칙은 768 블록 안에만 있다 — 좁은 화면에는 접힘이 없다', () => {
+    const beforeBreakpoint = CSS.slice(0, CSS.indexOf(`@media (min-width: ${DESKTOP_MIN}px)`));
+    assert.ok(!beforeBreakpoint.includes('.find-deckwrap.collapsed'), '모바일 기본형에 접힘 규칙이 새어 들어갔다');
+  });
+});
