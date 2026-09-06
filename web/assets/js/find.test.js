@@ -621,3 +621,276 @@ describe('initDeckCollapse', () => {
     assert.equal(env.ctl.isCollapsed(), false);
   });
 });
+
+// ── 렌더·마운트(jsdom) ───────────────────────────────────────────────────────
+//
+// 픽스처 마크업을 손으로 적지 않고 **실제 템플릿에서 잘라 온다**. 도구 절(`.find-tool`)에는
+// Jinja 식이 하나도 없어서 그대로 HTML 이고, 이렇게 하면 템플릿의 `data-*` 훅을 하나 지웠을 때
+// 여기서 즉시 빨개진다 — 훅 이름은 템플릿과 이 모듈 사이의 계약이라 조용히 어긋나면 화면이
+// 아무 말 없이 절반만 그려진다.
+
+import { JSDOM } from 'jsdom';
+import { mountFind, initFind, renderRow, renderAmount } from './find.js';
+
+const TEMPLATE = readFileSync(new URL('../../../generator/templates/find.html', import.meta.url), 'utf8');
+
+function toolMarkup() {
+  const start = TEMPLATE.indexOf('<section class="find-tool"');
+  assert.ok(start > 0, '템플릿에서 도구 절을 찾지 못했다');
+  const end = TEMPLATE.indexOf('\n  </section>', start);
+  assert.ok(end > start, '도구 절의 닫는 태그를 찾지 못했다');
+  const html = TEMPLATE.slice(start, end + '\n  </section>'.length);
+  assert.ok(!/\{\{|\{%/.test(html), '도구 절에 Jinja 식이 들어왔다 — 이 픽스처가 더 이상 실제 마크업이 아니다');
+  return html;
+}
+
+function mount({ search = '', ref = REF } = {}) {
+  const dom = new JSDOM(`<main>${toolMarkup()}</main>`, { url: 'https://loupit.example/find' });
+  globalThis.document = dom.window.document;
+  globalThis.window = dom.window;
+  const urls = [];
+  const win = {
+    location: { search },
+    innerWidth: 1200,
+    scrollY: 0,
+    addEventListener() {}, removeEventListener() {},
+    requestAnimationFrame(fn) { fn(); return 1; },
+    scrollBy() {},
+  };
+  const history = { replaceState(_s, _t, url) { urls.push(url); } };
+  const root = dom.window.document.querySelector('[data-find-tool]');
+  root.hidden = false;
+  const app = mountFind(root, ref, { win, history });
+  const q = (s) => root.querySelector(s);
+  const all = (s) => [...root.querySelectorAll(s)];
+  return { dom, doc: dom.window.document, root, app, urls, q, all, rows: () => all('.find-row') };
+}
+
+const rowNames = (env) => env.rows().map((r) => r.querySelector('.find-row-ttl a, .find-row-nm').textContent);
+
+describe('mountFind — 첫 화면', () => {
+  test('조건이 없으면 전체 회사가 나온다', () => {
+    const env = mount();
+    assert.equal(env.rows().length, 5);
+    assert.equal(env.q('[data-count]').textContent, '5');
+    assert.equal(env.q('[data-count-sub]').textContent, ' / 5 회사');
+    assert.match(env.q('[data-desc]').textContent, /조건이 없으면 전체 회사/);
+  });
+
+  test('조건이 없는 행은 금액 큰 항목 3개를 보여준다(해시태그가 아니라 근거)', () => {
+    const env = mount();
+    const naver = env.rows().find((r) => r.textContent.includes('네이버'));
+    const hits = [...naver.querySelectorAll('.find-hit-k')].map((n) => n.textContent);
+    assert.deepEqual(hits, ['식사 제공', '복지포인트', '통근버스']); // 300 · 200 · 100
+  });
+
+  test('유형·업종 선택지는 있는 값만 — 0곳짜리 막다른 길을 만들지 않는다', () => {
+    const env = mount();
+    assert.deepEqual([...env.q('[data-facet-tp]').options].map((o) => o.value), ['', 'large', 'mid']);
+    assert.equal([...env.q('[data-facet-ind]').options].length, 1 + 4);
+  });
+
+  test('카테고리 탭과 칩 줄이 그려진다', () => {
+    const env = mount();
+    assert.ok(env.all('.find-tab').length >= 3);
+    const on = env.q('.find-tab.on');
+    assert.equal(on.textContent.startsWith('복리후생'), true, '기본 카테고리는 복리후생');
+    assert.ok(env.all('.find-chips .find-chip').length >= 3);
+  });
+});
+
+describe('mountFind — 조건 고르기', () => {
+  test('칩을 누르면 걸러지고 URL 이 따라간다', () => {
+    const env = mount();
+    const chip = env.all('.find-chips .find-chip').find((c) => c.textContent.startsWith('복지포인트'));
+    chip.dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    assert.equal(env.rows().length, 4);
+    assert.equal(env.urls.at(-1), '/find?b=welfare_point');
+    assert.equal(env.q('[data-sel-count]').textContent, '1개');
+    assert.equal(env.all('[data-sel] .find-chip').length, 1);
+  });
+
+  test('모두 갖춘 회사 ↔ 하나라도', () => {
+    const env = mount({ search: '?b=meal,long_service_leave' });
+    assert.equal(env.rows().length, 1); // 삼성E&A 만 둘 다 있다
+    env.q('[data-mode="or"]').dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    assert.equal(env.rows().length, 4);
+    assert.equal(env.urls.at(-1), '/find?b=meal,long_service_leave&m=or');
+    assert.equal(env.q('[data-mode="or"]').getAttribute('aria-pressed'), 'true');
+  });
+
+  test('맞는 회사가 없으면 빈 결과 안내가 나온다', () => {
+    const env = mount({ search: '?b=transport,long_service_bonus' });
+    assert.equal(env.rows().length, 0);
+    assert.equal(env.q('[data-empty]').hidden, false);
+  });
+
+  test('OR 모드에서 없는 항목은 「없음」으로 남는다(왜 걸렸는지 보인다)', () => {
+    const env = mount({ search: '?b=meal,transport&m=or' });
+    const samsung = env.rows().find((r) => r.textContent.includes('삼성전자'));
+    assert.equal(samsung.querySelectorAll('.find-hit-k.dim').length, 1);
+    assert.match(samsung.textContent, /해당 항목이 없습니다/);
+  });
+
+  test('지우기는 조건·필터·정렬을 한 번에 되돌린다', () => {
+    const env = mount({ search: '?b=meal&m=or&tp=mid&amt=1&sort=name' });
+    env.q('[data-reset]').dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    assert.equal(env.rows().length, 5);
+    assert.equal(env.urls.at(-1), '/find');
+    assert.equal(env.q('[data-facet-tp]').value, '');
+    assert.equal(env.q('[data-facet-amt]').checked, false);
+  });
+
+  test('URL 프리필 — 링크로 들어오면 그 조건으로 시작한다', () => {
+    const env = mount({ search: '?b=welfare_point&tp=mid&sort=name' });
+    assert.deepEqual(rowNames(env), ['카카오']); // 중견기업 중 복지포인트가 있는 곳
+    assert.equal(env.q('[data-facet-tp]').value, 'mid');
+    assert.equal(env.q('[data-sort]').value, 'name');
+  });
+});
+
+describe('mountFind — 렌더 안전(이스케이프)', () => {
+  test('회사명의 & 와 <b> 가 글자로 남는다', () => {
+    const env = mount();
+    const html = env.q('[data-list]').innerHTML;
+    assert.ok(html.includes('삼성E&amp;A'), '& 가 이스케이프되지 않았다');
+    assert.ok(html.includes('&lt;b&gt;엘지화학&lt;/b&gt;'), '태그가 마크업으로 새어 들어갔다');
+    assert.equal(env.q('[data-list] b > b'), null, '데이터 문자열이 요소가 됐다');
+    assert.ok(rowNames(env).includes('삼성E&A'));
+  });
+
+  test('renderRow 는 문서 없이도 텍스트를 그대로 보존한다', () => {
+    const evil = {
+      company: {
+        comp_id: 9, comp_nm: '<img src=x onerror=alert(1)>&', comp_eng_nm: 'evil', comp_tp_cd: 'large',
+        industry_nm: '"><script>', benefits: [],
+      },
+      hits: [], byCode: {}, amtSum: 0, total: 0,
+    };
+    const node = renderRow(evil, {});
+    assert.equal(node.querySelector('.find-row-ttl a').textContent, '<img src=x onerror=alert(1)>&');
+    assert.equal(node.querySelector('img'), null);
+    assert.equal(node.querySelector('script'), null);
+  });
+
+  test('금액 칸은 명시와 추정을 다르게 표시한다', () => {
+    const stated = renderAmount({ benefit_amt: 240, amt_source: 'stated', qual_yn: false });
+    const est = renderAmount({ benefit_amt: 240, amt_source: 'estimated', qual_yn: false });
+    const qual = renderAmount({ benefit_amt: null, amt_source: 'none', qual_yn: true });
+    assert.match(stated.textContent, /연 240만원명시/);
+    assert.match(est.textContent, /추정/);
+    assert.match(qual.textContent, /금액 미기재조건형/);
+    assert.ok(stated.querySelector('.find-tag-stated'));
+    assert.ok(est.querySelector('.find-tag-est'));
+  });
+});
+
+describe('mountFind — 결과·비교·제안', () => {
+  test('회사명은 정적 상세 페이지로 간다', () => {
+    const env = mount();
+    for (const a of env.all('.find-row-ttl a')) {
+      assert.match(a.getAttribute('href'), /^\/company\/[a-z0-9]+(-[a-z0-9]+)*$/);
+    }
+  });
+
+  test('A·B 를 고르면 비교 툴 링크가 열린다(같은 회사는 못 고른다)', () => {
+    const env = mount();
+    const click = (row, slot) => row.querySelectorAll('.find-pick')[slot].dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    click(env.rows()[0], 0);
+    assert.equal(env.q('[data-cmp]').hidden, false);
+    assert.equal(env.q('[data-cmp-link]').hidden, true, '한 곳만 골랐을 때는 비교 링크를 열지 않는다');
+    assert.equal(env.rows()[0].querySelectorAll('.find-pick')[1].disabled, true);
+    click(env.rows()[1], 1);
+    const link = env.q('[data-cmp-link]');
+    assert.equal(link.hidden, false);
+    assert.match(link.getAttribute('href'), /^\/\?a=[a-z_]+&b=[a-z_]+$/);
+  });
+
+  test('검색 제안 — 항목은 조건이 되고 회사는 회사 페이지로', () => {
+    const env = mount();
+    const input = env.q('[data-q]');
+    input.value = '주4.5일';
+    input.dispatchEvent(new env.dom.window.Event('input', { bubbles: true }));
+    const sugg = env.q('[data-sugg]');
+    assert.equal(sugg.hidden, false);
+    const first = sugg.querySelector('button');
+    assert.match(first.textContent, /주 4.5일제|선택적 근로시간제/);
+    first.dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    assert.equal(env.urls.at(-1), '/find?b=flex_work');
+    assert.equal(input.value, '');
+  });
+
+  test('맞는 것이 없으면 다른 말을 권한다(빈 상자를 열지 않는다)', () => {
+    const env = mount();
+    const input = env.q('[data-q]');
+    input.value = '없는말입니다';
+    input.dispatchEvent(new env.dom.window.Event('input', { bubbles: true }));
+    assert.match(env.q('[data-sugg]').textContent, /다른 말로 찾아보세요/);
+  });
+
+  test('30개를 넘으면 「더 보기」가 나온다', () => {
+    const many = { company_types: REF.company_types, benefit_presets: {}, companies: [] };
+    for (let i = 0; i < 71; i += 1) {
+      many.companies.push({
+        comp_id: 100 + i, comp_nm: `회사${String(i).padStart(2, '0')}`, comp_eng_nm: `co_${i}`,
+        comp_tp_cd: 'large', industry_nm: 'IT', aliases: [],
+        benefits: [ben('meal', '식대', 100 + i, 'perks')],
+      });
+    }
+    const env = mount({ ref: many });
+    assert.equal(env.rows().length, 30);
+    const more = env.q('[data-more]');
+    assert.equal(more.hidden, false);
+    assert.match(more.textContent, /41개 남음/);
+    more.dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    assert.equal(env.rows().length, 60);
+    more.dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
+    assert.equal(env.rows().length, 71);
+    assert.equal(env.q('[data-more]').hidden, true);
+  });
+
+  test('보유율 막대는 분모를 숨기지 않는다', () => {
+    const env = mount({ search: '?b=meal' });
+    const meter = env.q('.find-meter');
+    assert.match(meter.textContent, /4곳 · 80%/);
+    assert.equal(meter.querySelector('.find-meter-fi').getAttribute('style'), 'width:80%');
+  });
+});
+
+describe('initFind — 부팅', () => {
+  test('번들을 받으면 도구가 열린다', async () => {
+    const dom = new JSDOM(`<main>${toolMarkup()}</main>`, { url: 'https://loupit.example/find' });
+    globalThis.document = dom.window.document;
+    globalThis.window = dom.window;
+    const app = await initFind(dom.window.document, async () => REF);
+    assert.ok(app);
+    assert.equal(dom.window.document.querySelector('[data-find-tool]').hidden, false);
+    assert.ok(dom.window.document.querySelectorAll('.find-row').length > 0);
+  });
+
+  test('번들을 못 받으면 도구는 닫힌 채 안내만 나온다(정적 표는 그대로)', async () => {
+    const dom = new JSDOM(`<main>${toolMarkup()}<p data-find-error hidden></p></main>`, { url: 'https://loupit.example/find' });
+    globalThis.document = dom.window.document;
+    globalThis.window = dom.window;
+    const app = await initFind(dom.window.document, async () => { throw new Error('boom'); });
+    assert.equal(app, null);
+    assert.equal(dom.window.document.querySelector('[data-find-tool]').hidden, true);
+    assert.equal(dom.window.document.querySelector('[data-find-error]').hidden, false);
+  });
+
+  test('도구가 없는 문서에서는 아무것도 하지 않는다', async () => {
+    const dom = new JSDOM('<main></main>');
+    assert.equal(await initFind(dom.window.document, async () => REF), null);
+  });
+});
+
+// 템플릿이 이 모듈의 훅을 모두 들고 있는지 — 한쪽만 바뀌면 화면이 조용히 절반만 그려진다.
+describe('템플릿 훅 계약', () => {
+  test('find.js 가 찾는 data-* 훅이 템플릿에 전부 있다', () => {
+    const src = readFileSync(new URL('./find.js', import.meta.url), 'utf8');
+    const used = [...src.matchAll(/\[data-([a-z-]+)[\]=]/g)].map((m) => m[1]);
+    assert.ok(used.length >= 20, `훅을 못 찾았다(${used.length}개)`);
+    const missing = [...new Set(used)].filter((h) => !TEMPLATE.includes(`data-${h}`));
+    assert.deepEqual(missing, []);
+  });
+});

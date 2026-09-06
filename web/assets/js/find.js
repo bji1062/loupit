@@ -214,7 +214,9 @@ export function buildParams(state) {
   if (st.ind) params.set('ind', st.ind);
   if (st.amt) params.set('amt', '1');
   if (st.sort && st.sort !== 'match') params.set('sort', st.sort);
-  const qs = params.toString();
+  // 쉼표는 쿼리 값에서 합법(RFC 3986 sub-delims)인데 URLSearchParams 는 %2C 로 굽는다 —
+  // `?b=meal%2Cwelfare_point` 는 공유 링크로 읽히지 않는다. 되돌려도 왕복은 그대로다.
+  const qs = params.toString().replace(/%2C/g, ',');
   return qs ? `?${qs}` : '';
 }
 
@@ -437,3 +439,427 @@ export function initDeckCollapse({ wrap, anchorEl, minibar, expandBtn, collapseB
     },
   };
 }
+
+// ── 렌더 ─────────────────────────────────────────────────────────────────────
+// 전부 `dom.js::el`(textContent·setAttribute)로만 만든다. 회사명에 `&`(삼성E&A)·`<` 가 들어올 수
+// 있고, 복지 설명은 회사가 쓴 자유 문장이다 — 데이터 문자열이 innerHTML 에 닿는 경로가 없어야 한다.
+
+const AMOUNT_TAG = { stated: '명시', est: '추정' };
+
+/** 조건 칩 하나. `removable` 이면 × 를 붙인다(고른 조건 줄). */
+export function renderChip(info, { on = false, removable = false, onToggle } = {}) {
+  const btn = el('button', {
+    type: 'button',
+    class: `find-chip${on ? ' on' : ''}`,
+    'aria-pressed': on ? 'true' : 'false',
+    title: info.aliases && info.aliases.length > 1 ? `다른 이름: ${info.aliases.slice(0, 4).join(' · ')}` : null,
+  });
+  btn.append(el('span', { class: 'find-chip-nm', text: info.label }));
+  btn.append(el('small', { class: 'num', text: String(info.count) }));
+  if (removable) btn.append(el('span', { class: 'find-chip-x', 'aria-hidden': 'true', text: '×' }));
+  if (onToggle) btn.addEventListener('click', () => onToggle(info.code));
+  return btn;
+}
+
+/** 금액 칸 — 「연 240만원 명시」 / 「금액 미기재 조건형」. 추정치를 명시처럼 보이게 하지 않는다. */
+export function renderAmount(b) {
+  const wrap = el('span', { class: 'find-amt' });
+  const kind = amountKind(b);
+  if (kind === 'qual') {
+    wrap.append(el('span', { text: '금액 미기재' }));
+    wrap.append(el('span', { class: 'find-tag find-tag-ql', text: '조건형' }));
+    return wrap;
+  }
+  wrap.append(el('b', { class: 'num', text: `연 ${formatNumber(amountOf(b))}만원` }));
+  wrap.append(el('span', { class: `find-tag find-tag-${kind}`, text: AMOUNT_TAG[kind] }));
+  return wrap;
+}
+
+/** 복지 한 건의 설명 한 줄 — 조건 문장이 있으면 그것, 없으면 비고, 둘 다 없으면 `—`. */
+export function benefitNote(b) {
+  return (b && (b.qual_desc_ctnt || b.note_ctnt)) || '—';
+}
+
+/**
+ * 결과 행 하나. 고른 조건이 있으면 **그 항목들**을(없는 회사는 OR 모드에서 「없음」으로),
+ * 없으면 금액 큰 항목 3개를 보여준다 — 해시태그가 아니라 실제 명칭·금액·조건이 근거다.
+ */
+export function renderRow(row, { codes = {}, sel = [], types = {}, compare = null, onCompare = null } = {}) {
+  const c = row.company;
+  const slug = slugOf(c.comp_eng_nm);
+  const href = slug ? `/company/${slug}` : null;
+
+  const title = el('div', { class: 'find-row-ttl' });
+  // slug 를 만들 수 없는 회사는 링크를 만들지 않는다(404 로 가는 링크는 링크 없는 것보다 나쁘다).
+  title.append(href ? el('a', { href, text: c.comp_nm }) : el('span', { class: 'find-row-nm', text: c.comp_nm }));
+  const tpName = types[c.comp_tp_cd];
+  if (tpName) title.append(el('span', { class: 'find-tp', text: tpName }));
+  title.append(el('span', {
+    class: 'find-row-meta',
+    text: [c.industry_nm, `복지 ${row.total}개`].filter(Boolean).join(' · '),
+  }));
+
+  const hits = el('ul', { class: 'find-hits' });
+  const shown = sel.length
+    ? sel.map((cd) => ({ cd, b: row.byCode[cd] }))
+    : (c.benefits || []).filter((b) => amountOf(b) > 0).sort((x, y) => amountOf(y) - amountOf(x)).slice(0, 3)
+      .map((b) => ({ cd: b.benefit_cd, b }));
+  for (const { cd, b } of shown) {
+    const li = el('li', { class: 'find-hit' });
+    if (!b) {
+      li.append(el('span', { class: 'find-hit-k dim', text: (codes[cd] && codes[cd].label) || cd }));
+      li.append(el('span', { class: 'find-amt', text: '없음' }));
+      li.append(el('span', { class: 'find-hit-d', text: '이 회사 페이지에 해당 항목이 없습니다' }));
+    } else {
+      li.append(el('span', { class: 'find-hit-k', text: b.benefit_nm }));
+      li.append(renderAmount(b));
+      li.append(el('span', { class: 'find-hit-d', title: benefitNote(b), text: benefitNote(b) }));
+    }
+    hits.append(li);
+  }
+  if (!shown.length) {
+    const li = el('li', { class: 'find-hit' });
+    li.append(el('span', { class: 'find-hit-k dim', text: '금액 적힌 항목 없음' }));
+    li.append(el('span', { class: 'find-amt', text: `조건형 ${row.total}개` }));
+    li.append(el('span', {
+      class: 'find-hit-d',
+      text: (c.benefits || []).slice(0, 4).map((b) => b.benefit_nm).join(' · ') || '등록된 복지 없음',
+    }));
+    hits.append(li);
+  }
+
+  const act = el('div', { class: 'find-act' });
+  for (const slot of ['A', 'B']) {
+    const other = slot === 'A' ? 'B' : 'A';
+    const picked = compare && compare[slot] === c.comp_id;
+    const taken = compare && compare[other] === c.comp_id; // 같은 회사를 A·B 로 둘 다 고를 수 없다
+    const btn = el('button', {
+      type: 'button',
+      class: `find-pick${picked ? ' on' : ''}`,
+      'aria-pressed': picked ? 'true' : 'false',
+      title: taken ? `이미 ${other}로 고른 회사입니다` : null,
+    });
+    btn.textContent = `비교 ${slot}${picked ? ' ✓' : ''}`;
+    if (taken) btn.disabled = true;
+    else if (onCompare) btn.addEventListener('click', () => onCompare(slot, c.comp_id));
+    act.append(btn);
+  }
+  if (href) act.append(el('a', { class: 'find-go', href, text: '회사 페이지 →' }));
+
+  const body = el('div', { class: 'find-row-body' });
+  body.append(title, hits);
+  const logo = el('div', { class: 'find-logo', 'aria-hidden': 'true', text: c.logo_nm || (c.comp_nm || '·').slice(0, 1) });
+  return el('div', { class: 'find-row' }, logo, body, act);
+}
+
+/** 보유율 막대 — 「고른 조건이 얼마나 흔한가」. 분모(전체 회사 수)를 숨기지 않는다. */
+export function renderMeter(info, total) {
+  const pct = total ? Math.round((info.count / total) * 100) : 0;
+  const wrap = el('div', { class: 'find-meter' });
+  wrap.append(el('span', { class: 'find-meter-l', title: info.label, text: info.label }));
+  const track = el('div', { class: 'find-meter-tr' });
+  track.append(el('div', { class: 'find-meter-fi', style: `width:${pct}%` }));
+  wrap.append(track);
+  wrap.append(el('span', { class: 'find-meter-v num', text: `${info.count}곳 · ${pct}%` }));
+  return wrap;
+}
+
+// ── 페이지 배선 ──────────────────────────────────────────────────────────────
+
+const pick = (root, sel) => root.querySelector(sel);
+
+/**
+ * 도구를 마운트한다(동기 — 번들은 이미 받은 상태). 반환 = `{ render, state, destroy }` 또는 null.
+ * `initFind` 가 번들을 받아 이걸 부르고, 테스트는 픽스처 번들로 직접 부른다.
+ */
+export function mountFind(root, ref, opts = {}) {
+  // 브라우저에서는 `globalThis === window` 지만 테스트(node)에서는 아니다 — jsdom 이 심어 둔
+  // `globalThis.window` 를 먼저 본다. 이게 없으면 스크롤 배선이 부팅 자체를 깨뜨린다.
+  const win = opts.win || globalThis.window || globalThis;
+  const history = opts.history || win.history;
+  if (!root || !ref) return null;
+  const codes = deriveCodes(ref);
+  const byCat = codesByCategory(codes);
+  const companies = (ref && ref.companies) || [];
+  const types = Object.fromEntries((ref.company_types || []).map((t) => [t.comp_tp_cd, t.comp_tp_nm]));
+  const industries = [...new Set(companies.map((c) => c.industry_nm).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ko'));
+  const total = companies.length;
+
+  const state = parseParams(win.location ? win.location.search : '', { codes, types, industries });
+  let cat = state.sel.length ? (codes[state.sel[state.sel.length - 1]] || {}).ctgr || DEFAULT_CATEGORY : DEFAULT_CATEGORY;
+  let shown = PAGE_SIZE;
+  const compare = { A: null, B: null };
+
+  const $ = (s) => pick(root, s);
+  const nodes = {
+    q: $('[data-q]'), sugg: $('[data-sugg]'), sel: $('[data-sel]'), selCount: $('[data-sel-count]'),
+    tabs: $('[data-tabs]'), chips: $('[data-chips]'), chipHint: $('[data-chip-hint]'),
+    tp: $('[data-facet-tp]'), ind: $('[data-facet-ind]'), amt: $('[data-facet-amt]'), reset: $('[data-reset]'),
+    count: $('[data-count]'), countSub: $('[data-count-sub]'), desc: $('[data-desc]'),
+    meters: $('[data-meters]'), range: $('[data-range]'), sort: $('[data-sort]'),
+    list: $('[data-list]'), more: $('[data-more]'), empty: $('[data-empty]'),
+    cmp: $('[data-cmp]'), cmpA: $('[data-cmp-a]'), cmpB: $('[data-cmp-b]'), cmpLink: $('[data-cmp-link]'),
+    minibar: $('[data-minibar]'), miniCount: $('[data-minibar-count]'), miniSub: $('[data-minibar-sub]'),
+    miniSel: $('[data-minibar-sel]'), miniMode: $('[data-minibar-mode]'), miniSort: $('[data-minibar-sort]'),
+    deck: $('[data-deck]'), expand: $('[data-expand]'), collapse: $('[data-collapse]'),
+  };
+
+  // 유형·업종 select 는 **있는 값만** 채운다(0곳짜리 선택지는 막다른 길이다).
+  for (const [cd, nm] of Object.entries(types)) {
+    const n = companies.filter((c) => c.comp_tp_cd === cd).length;
+    if (n && nodes.tp) nodes.tp.append(el('option', { value: cd, text: `${nm} · ${n}` }));
+  }
+  for (const ind of industries) {
+    const n = companies.filter((c) => c.industry_nm === ind).length;
+    if (nodes.ind) nodes.ind.append(el('option', { value: ind, text: `${ind} · ${n}` }));
+  }
+  if (nodes.tp) nodes.tp.value = state.tp;
+  if (nodes.ind) nodes.ind.value = state.ind;
+  if (nodes.amt) nodes.amt.checked = state.amt;
+  if (nodes.sort) nodes.sort.value = state.sort;
+  if (nodes.miniSort) nodes.miniSort.value = state.sort;
+
+  function syncUrl() {
+    try { history.replaceState(null, '', '/find' + buildParams(state)); } catch { /* 무시 */ }
+  }
+
+  function toggleCode(cd) {
+    const i = state.sel.indexOf(cd);
+    if (i >= 0) state.sel.splice(i, 1);
+    else { state.sel.push(cd); cat = (codes[cd] || {}).ctgr || cat; }
+    shown = PAGE_SIZE;
+    render();
+  }
+
+  function onCompare(slot, compId) {
+    compare[slot] = compare[slot] === compId ? null : compId;
+    render();
+  }
+
+  function renderTabs() {
+    if (!nodes.tabs) return;
+    nodes.tabs.replaceChildren();
+    for (const ct of CATEGORY_ORDER) {
+      const list = byCat[ct] || [];
+      if (!list.length) continue;
+      const nSel = list.filter((i) => state.sel.includes(i.code)).length;
+      const btn = el('button', {
+        type: 'button', role: 'tab', class: `find-tab${cat === ct ? ' on' : ''}`,
+        'aria-selected': cat === ct ? 'true' : 'false',
+      });
+      btn.append(root.ownerDocument.createTextNode(CATEGORY_LABEL[ct] || ct));
+      btn.append(el('small', { class: 'num', text: String(list.length) }));
+      if (nSel) btn.append(el('span', { class: 'find-tab-dot', title: `고른 조건 ${nSel}개` }));
+      btn.addEventListener('click', () => { cat = ct; render(); });
+      nodes.tabs.append(btn);
+    }
+    if (nodes.chips) {
+      nodes.chips.replaceChildren();
+      for (const info of byCat[cat] || []) {
+        nodes.chips.append(renderChip(info, { on: state.sel.includes(info.code), onToggle: toggleCode }));
+      }
+    }
+    if (nodes.chipHint) nodes.chipHint.textContent = `${CATEGORY_LABEL[cat] || cat} · 숫자는 보유 회사 수`;
+  }
+
+  function renderSelected() {
+    for (const [box, mini] of [[nodes.sel, false], [nodes.miniSel, true]]) {
+      if (!box) continue;
+      box.replaceChildren();
+      if (!state.sel.length) {
+        box.append(el('span', {
+          class: 'find-sel-empty',
+          text: mini ? '조건 없음 — 전체' : '없음 — 검색하거나 아래 항목을 누르면 조건이 됩니다.',
+        }));
+        continue;
+      }
+      for (const cd of state.sel) {
+        const info = codes[cd] || { code: cd, label: cd, count: 0, aliases: [] };
+        box.append(renderChip(info, { on: true, removable: true, onToggle: toggleCode }));
+      }
+    }
+    if (nodes.selCount) nodes.selCount.textContent = state.sel.length ? `${state.sel.length}개` : '';
+    for (const btn of root.querySelectorAll('[data-mode]')) {
+      const on = btn.dataset.mode === state.mode;
+      btn.classList.toggle('on', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    if (nodes.miniMode) {
+      nodes.miniMode.textContent = state.sel.length > 1 ? (state.mode === 'and' ? '모두 갖춘' : '하나라도') : '';
+    }
+  }
+
+  function describe() {
+    if (!state.sel.length) return '조건이 없으면 전체 회사가 나옵니다 — 항목 수와 금액 큰 항목으로 훑어보는 상태입니다.';
+    const base = state.mode === 'and'
+      ? `고른 ${state.sel.length}개 조건을 모두 갖춘 회사`
+      : '고른 조건 중 하나라도 있는 회사';
+    return [base, state.amt ? '금액 적힌 항목만 인정' : '', types[state.tp] || '', state.ind || '']
+      .filter(Boolean).join(' · ');
+  }
+
+  function renderSummary(n) {
+    if (nodes.count) nodes.count.textContent = formatNumber(n);
+    if (nodes.countSub) nodes.countSub.textContent = ` / ${formatNumber(total)} 회사`;
+    if (nodes.miniCount) nodes.miniCount.textContent = formatNumber(n);
+    if (nodes.miniSub) nodes.miniSub.textContent = ` / ${formatNumber(total)}`;
+    if (nodes.desc) nodes.desc.textContent = describe();
+    if (nodes.range) nodes.range.textContent = n ? `1–${Math.min(shown, n)} / ${formatNumber(n)}개 표시` : '';
+    if (!nodes.meters) return;
+    nodes.meters.replaceChildren();
+    const list = state.sel.length
+      ? state.sel.map((cd) => codes[cd]).filter(Boolean)
+      : Object.values(codes).sort((a, b) => b.count - a.count).slice(0, 4);
+    if (!state.sel.length) nodes.meters.append(el('span', { class: 'find-meter-hint', text: '흔한 항목 4개 보유율' }));
+    for (const info of list) nodes.meters.append(renderMeter(info, total));
+  }
+
+  function renderCompare() {
+    if (!nodes.cmp) return;
+    const a = companies.find((c) => c.comp_id === compare.A);
+    const b = companies.find((c) => c.comp_id === compare.B);
+    nodes.cmp.hidden = !(a || b);
+    if (nodes.cmpA) nodes.cmpA.textContent = a ? a.comp_nm : '고르는 중';
+    if (nodes.cmpB) nodes.cmpB.textContent = b ? b.comp_nm : '고르는 중';
+    if (!nodes.cmpLink) return;
+    if (a && b) {
+      nodes.cmpLink.setAttribute('href', `/?a=${encodeURIComponent(a.comp_eng_nm)}&b=${encodeURIComponent(b.comp_eng_nm)}`);
+      nodes.cmpLink.textContent = `${a.comp_nm} vs ${b.comp_nm} 비교하기 →`;
+      nodes.cmpLink.hidden = false;
+    } else {
+      nodes.cmpLink.hidden = true; // 한 곳만 고른 상태에서 누르면 입력 뷰로 떨어진다(비교 툴 규약)
+    }
+  }
+
+  function renderSuggest() {
+    if (!nodes.sugg) return;
+    const res = suggest(ref, codes, nodes.q ? nodes.q.value : '');
+    nodes.sugg.replaceChildren();
+    if (!res.codes.length && !res.companies.length) {
+      if (!normalizeText(nodes.q ? nodes.q.value : '')) { nodes.sugg.hidden = true; return; }
+      nodes.sugg.append(el('p', { class: 'find-sugg-none', text: '맞는 복지 항목이나 회사가 없습니다. 다른 말로 찾아보세요(예: 기숙사 → 사택).' }));
+      nodes.sugg.hidden = false;
+      return;
+    }
+    if (res.codes.length) {
+      nodes.sugg.append(el('h3', { text: '복지 항목 — 조건에 추가' }));
+      for (const info of res.codes) {
+        const btn = el('button', { type: 'button', class: 'find-sugg-item' });
+        btn.append(el('span', { text: info.label }));
+        btn.append(el('small', { text: `${CATEGORY_LABEL[info.ctgr] || ''} · ${info.count}곳` }));
+        btn.addEventListener('click', () => {
+          if (nodes.q) nodes.q.value = '';
+          nodes.sugg.hidden = true;
+          toggleCode(info.code);
+        });
+        nodes.sugg.append(btn);
+      }
+    }
+    if (res.companies.length) {
+      nodes.sugg.append(el('h3', { text: '회사 — 회사 페이지로' }));
+      for (const c of res.companies) {
+        const slug = slugOf(c.comp_eng_nm);
+        const item = slug
+          ? el('a', { class: 'find-sugg-item', href: `/company/${slug}` })
+          : el('span', { class: 'find-sugg-item' });
+        item.append(el('span', { text: c.comp_nm }));
+        item.append(el('small', { text: `${c.industry_nm || ''} · 복지 ${(c.benefits || []).length}개` }));
+        nodes.sugg.append(item);
+      }
+    }
+    nodes.sugg.hidden = false;
+  }
+
+  let collapse = null;
+
+  function render() {
+    renderTabs();
+    renderSelected();
+    const rows = sortRows(matchCompanies(ref, state.sel, state), state.sort);
+    renderSummary(rows.length);
+    if (nodes.list) {
+      nodes.list.replaceChildren();
+      for (const row of rows.slice(0, shown)) {
+        nodes.list.append(renderRow(row, { codes, sel: state.sel, types, compare, onCompare }));
+      }
+    }
+    if (nodes.empty) nodes.empty.hidden = rows.length > 0;
+    if (nodes.more) {
+      nodes.more.hidden = rows.length <= shown;
+      nodes.more.textContent = `더 보기 (${Math.max(0, rows.length - shown)}개 남음)`;
+    }
+    renderCompare();
+    syncUrl();
+    if (collapse) collapse.measure(); // 덱 높이가 바뀌었을 수 있다 → 문턱 다시 재기
+  }
+
+  // ── 이벤트 ──
+  if (nodes.q) {
+    nodes.q.addEventListener('input', renderSuggest);
+    nodes.q.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') { const first = nodes.sugg && nodes.sugg.querySelector('button'); if (first) first.click(); }
+      if (ev.key === 'Escape' && nodes.sugg) nodes.sugg.hidden = true;
+    });
+  }
+  root.ownerDocument.addEventListener('click', (ev) => {
+    if (nodes.sugg && ev.target && typeof ev.target.closest === 'function' && !ev.target.closest('.find-search')) {
+      nodes.sugg.hidden = true;
+    }
+  });
+  for (const btn of root.querySelectorAll('[data-mode]')) {
+    btn.addEventListener('click', () => { state.mode = btn.dataset.mode; shown = PAGE_SIZE; render(); });
+  }
+  if (nodes.tp) nodes.tp.addEventListener('change', () => { state.tp = nodes.tp.value; shown = PAGE_SIZE; render(); });
+  if (nodes.ind) nodes.ind.addEventListener('change', () => { state.ind = nodes.ind.value; shown = PAGE_SIZE; render(); });
+  if (nodes.amt) nodes.amt.addEventListener('change', () => { state.amt = !!nodes.amt.checked; shown = PAGE_SIZE; render(); });
+  for (const s of [nodes.sort, nodes.miniSort]) {
+    if (!s) continue;
+    s.addEventListener('change', () => {
+      state.sort = SORT_KEYS.includes(s.value) ? s.value : 'match';
+      if (nodes.sort) nodes.sort.value = state.sort;
+      if (nodes.miniSort) nodes.miniSort.value = state.sort;
+      render();
+    });
+  }
+  if (nodes.more) nodes.more.addEventListener('click', () => { shown += PAGE_SIZE; render(); });
+  if (nodes.reset) {
+    nodes.reset.addEventListener('click', () => {
+      Object.assign(state, defaultState());
+      shown = PAGE_SIZE;
+      if (nodes.tp) nodes.tp.value = '';
+      if (nodes.ind) nodes.ind.value = '';
+      if (nodes.amt) nodes.amt.checked = false;
+      if (nodes.sort) nodes.sort.value = 'match';
+      if (nodes.miniSort) nodes.miniSort.value = 'match';
+      if (nodes.q) nodes.q.value = '';
+      if (nodes.sugg) nodes.sugg.hidden = true;
+      render();
+    });
+  }
+
+  render();
+  collapse = initDeckCollapse({
+    wrap: nodes.deck, anchorEl: root, minibar: nodes.minibar,
+    expandBtn: nodes.expand, collapseBtn: nodes.collapse, win,
+  });
+  return { render, state, codes, collapse, destroy() { if (collapse) collapse.destroy(); } };
+}
+
+/** 페이지 진입 — 번들을 받아 도구를 켠다. 실패해도 정적 본문(카테고리 표)은 그대로 남는다. */
+export async function initFind(doc = globalThis.document, loader = null) {
+  const root = doc && doc.querySelector('[data-find-tool]');
+  if (!root) return null;
+  const load = loader || (await import('./boot.js')).loadReference;
+  let ref;
+  try {
+    ref = await load();
+  } catch {
+    const err = doc.querySelector('[data-find-error]');
+    if (err) err.hidden = false;
+    return null;
+  }
+  root.hidden = false;
+  return mountFind(root, ref);
+}
+
+if (typeof document !== 'undefined' && document.querySelector('[data-find-tool]')) initFind();

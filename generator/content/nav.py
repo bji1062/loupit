@@ -12,7 +12,10 @@
 (`test_authnav.py`·`test_footer_links.py` 와 같은 방식). 여기 항목을 바꾸면 셸 7개도 함께 고쳐라 —
 안 고치면 그 테스트가 빨개진다(드리프트를 조용히 두지 않는다).
 
-탭 순서는 prober.kr 벤치마크(홈 바로 옆에 주요 구획)를 따른다 — `docs/PLAN-커뮤니티-회사정보탭-2026-08-27.md` §3-1.
+탭 순서는 홈 다음에 **찾는 도구**(복지로 찾기·회사정보·히트맵), 마지막이 커뮤니티다.
+2026-09-06 에 「복지로 찾기」를 홈 옆에 넣으면서 커뮤니티를 끝으로 옮겼다 — 새 탭이 이 사이트의
+핵심 동선(복지 → 회사 → 비교)의 입구이고, 커뮤니티는 그 동선 밖의 별도 구획이기 때문이다.
+그전 순서는 prober.kr 벤치마크(홈 바로 옆에 주요 구획)를 따랐다 — `docs/PLAN-커뮤니티-회사정보탭-2026-08-27.md` §3-1.
 `커뮤니티` 탭은 커뮤니티가 실제로 열리는 PR(lane/comm-launch, 2026-08-27)에서 추가했다 — 죽은 탭 금지 규약 그대로.
 """
 from __future__ import annotations
@@ -20,9 +23,10 @@ from __future__ import annotations
 # (라벨, href). href 가 탭의 식별자다 — `nav_active` 는 이 href 로 현재 탭을 가리킨다.
 GNB_TABS: tuple[tuple[str, str], ...] = (
     ("홈", "/"),
-    ("커뮤니티", "/community/"),  # SC15(2026-08-27) — 셸 web/community/index.html, nginx ^~ /community/
+    ("복지로 찾기", "/find"),  # SP-FIND(2026-09-06) — 생성 페이지 find.html, nginx = /find
     ("회사정보", "/companies"),
     ("히트맵", "/heatmap"),  # SP-HEAT(2026-08-27) — 생성 페이지 heatmap.html, nginx = /heatmap
+    ("커뮤니티", "/community/"),  # SC15(2026-08-27) — 셸 web/community/index.html, nginx ^~ /community/
 )
 
 GNB_TAB_HREFS: frozenset[str] = frozenset(h for _, h in GNB_TABS)

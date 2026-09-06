@@ -34,9 +34,10 @@
     <!-- 상단 탭: 공개 시 generator/content/nav.py::GNB_TABS 와 test_gnb_tabs 로 동기화(커뮤니티 탭은 그 PR 에서 정본에 추가).
          순서·라벨을 임의로 바꾸지 마라. '비교 조합'은 랜딩의 레일 앵커라 여기서는 절대 경로(/#trending)로 건다 -->
     <a href="/" class="gnb-link">홈</a>
-    <a href="/community/" class="gnb-link" aria-current="page">커뮤니티</a>
+    <a href="/find" class="gnb-link">복지로 찾기</a>
     <a href="/companies" class="gnb-link">회사정보</a>
     <a href="/heatmap" class="gnb-link">히트맵</a>
+    <a href="/community/" class="gnb-link" aria-current="page">커뮤니티</a>
     <!-- 헤더 검색 폼은 두지 않는다(2026-08-27 결정): 랜딩의 `.gnb-search` 는 ui.js bindHeaderSearch 가
          REF(전체 회사 참조)를 가진 SPA 안에서만 동작하고, 홈은 `?q=` 를 읽지 않는다(app.js 는 `?a=`·`?b=` 만).
          입력을 받고 버리는 폼은 죽은 UI 다 — 로그인 계열 셸·생성 헤더와 같이 탭 + 로그인 진입점만 둔다. -->

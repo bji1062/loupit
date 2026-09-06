@@ -6,7 +6,7 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, heatmap, policy
+from generator.pages import combo, company, company_index, find, heatmap, policy
 from generator.render import make_env
 
 _TAG_COUNT_PATTERNS = {
@@ -142,6 +142,7 @@ def _all_indexable_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
+        + [find.render(env, ctx, CFG)]
         + combo.render_all(env, ctx, CFG, pairs=pairs)
         + policy.render_all(env, ctx)
     )
