@@ -28,7 +28,8 @@ if str(SEED_DIR) not in sys.path:
 import load_corp  # noqa: E402  # db/seed/load_corp.py
 
 FINANCIAL_7 = {"DB손해보험", "NH투자증권", "기업은행", "삼성생명", "삼성카드", "카카오뱅크", "카카오페이",
-               "KB금융"}  # 확장 웨이브 1(2026-09-01): 금융지주 추가 — 이름은 역사적 이유로 FINANCIAL_7 유지
+               "KB금융",  # 확장 웨이브 1(2026-09-01): 금융지주 추가 — 이름은 역사적 이유로 FINANCIAL_7 유지
+               "삼성화재", "한화생명"}  # 확장 웨이브 2(2026-09-05): 손보·생보 추가(총 10)
 CJ_ENM_CORP = "00265324"
 
 
@@ -50,8 +51,8 @@ def test_FN1_seed_populates_mapping_at_last_step(seeded_db):
     """`load.main(fresh=True)` 만으로 TCORP·TCOMPANY_CORP 가 채워진다(재시드 후 매핑 소실 방지)."""
     rows = load_corp.read_map()
     mapped = [r for r in rows if r["status"] != "UNMAPPED"]
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 112
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 111
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 125
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 124
     # 매핑된 회사는 전부 실재하는 TCOMPANY 를 가리킨다(고아 0)
     assert _scalar(
         seeded_db,
@@ -72,7 +73,7 @@ def test_FN1_reapply_is_idempotent(seeded_db):
     seeded_db.commit()
     assert _rows(seeded_db, "SELECT COMP_ID, CORP_CODE, MATCH_CD FROM TCOMPANY_CORP ORDER BY COMP_ID") == before
     assert _rows(seeded_db, "SELECT CORP_CODE, CORP_NM, STOCK_CD, ACCT_SET_CD, FS_DIV_CD FROM TCORP ORDER BY CORP_CODE") == corps_before
-    assert stats["mapped"] == 112 and stats["unmatched"] == []
+    assert stats["mapped"] == 125 and stats["unmatched"] == []
     assert all(db_id == dict((nm, cid) for cid, nm in _rows(seeded_db, "SELECT COMP_ID, COMP_NM FROM TCOMPANY"))[nm]
                for nm, _csv_id, db_id in stats["id_drift"]), "드리프트가 이름으로 해소되지 않았다"
     drift_lines = [ln for ln in lines if "드리프트" in ln]
@@ -122,6 +123,11 @@ def test_FN1_corp_nm_prefers_dart_name_from_note(seeded_db):
     assert by_code["00261443"] == "NC"
     assert by_code["00126380"] == "삼성전자"  # note 없음 → comp_nm
     assert by_code["00149655"] == "삼성물산"  # note 는 있으나 DART 명 아님 → comp_nm
+    # 확장 웨이브 2(2026-09-05) — note 의 DART 명은 **홑따옴표로 감싸야** _DART_NM_RE 가 읽는다.
+    # 감사가 따옴표 없는 3행을 잡았다(조용히 comp_nm 폴백). 다음 웨이브가 같은 실수를 못 하게 못박는다.
+    assert by_code["00139214"] == "삼성화재해상보험"
+    assert by_code["00126186"] == "삼성에스디에스"
+    assert by_code["00309503"] == "한국항공우주"
 
 
 def test_FN1_match_by_name_not_by_csv_comp_id(seeded_db, clean_tx):

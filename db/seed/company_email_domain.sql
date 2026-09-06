@@ -62,7 +62,10 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'samsung.com', TRUE FROM TCOMPANY
    WHERE COMP_ENG_NM IN ('samsung_elec','samsung_sdi','samsung_ct','samsung_bio',
-                         'samsung_life','samsung_electro','samsung_card');
+                         'samsung_life','samsung_electro','samsung_card',
+                         -- 확장 웨이브 2(2026-09-05): 관측 주소가 전부 @samsung.com
+                         -- (shi.is@ · 그룹 채용문의 · sdsjobs@/joinsds@ · recruit.sena@)
+                         'samsung_heavy','samsung_fire','samsung_sds','samsung_ena');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
@@ -292,7 +295,8 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- ⚠ 도메인만으로는 계열사를 구분할 수 없다 — "한화 계열 재직자"까지만 판별된다.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hanwha.com', TRUE FROM TCOMPANY
-   WHERE COMP_ENG_NM IN ('hanwha','hanwha_systems','hanwha_aerospace','hanwha_ocean');
+   WHERE COMP_ENG_NM IN ('hanwha','hanwha_systems','hanwha_aerospace','hanwha_ocean',
+                         'hanwha_life');  -- 웨이브 2(2026-09-05): 관측 hli_IR@hanwha.com
 
 -- ── 에코프로 그룹 공용 도메인 ecopro.co.kr → 지주·비엠(그룹단위 인증) ────────────
 -- 지주 개인정보처리방침이 10개 계열사 CPO 를 각각 이름·직책과 함께 나열하는데 **이메일은
@@ -362,3 +366,30 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'landf.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'landf';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hd.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hd_hyundai';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 2026-09-05 확장 웨이브 2 — 신규 13개사 중 회사 전용 도메인 8 (삼성 4사·한화생명은 위 그룹 줄에 병합)
+-- 근거는 각사 evidence(docs/handoff/2026-09-05-evidence/wave2/) 의 「이메일 도메인 관측」 절.
+-- @rejected: lginnotek.co.kr — LG이노텍 구 도메인. 웹 호스트 사망·403, 메일 별칭만 문서에 잔존
+-- @rejected: roundsquare.ai — 삼양식품. 삼양라운드스퀘어 그룹 주소(csteam@·information@)
+-- @rejected: isu.co.kr — 이수페타시스. 이수그룹 공용 도메인(계열사 전 직원 사용 가능)
+-- @rejected: nm-neo.com — 넷마블. 넷마블네오(자회사) 도메인 — nm-n2.com·nm-nexus.com 등 자회사 도메인 전부 동일 사유
+-- ⚠ isupetasys.com 은 웹 호스트가 죽어 있으나(HTTP 타임아웃) MX 는 Google Workspace 로 살아 있고
+--    Contact Us 에 주소 5건이 게시돼 있다 — CAREERS_BENEFIT_URL(petasys.com)과 혼동 금지.
+-- ═══════════════════════════════════════════════════════════════════════════════
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lginnotek.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lg_innotek';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'daeduck.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'daeduck';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'isupetasys.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'isu_petasys';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'celltrionph.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'celltrion_pharm';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'netmarble.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'netmarble';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'dongjin.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'dongjin_semichem';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'samyangfoods.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'samyang_foods';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'koreaaero.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kai';
