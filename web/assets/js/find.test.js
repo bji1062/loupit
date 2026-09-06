@@ -159,6 +159,16 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     assert.equal(c.aa.label, '지원금 · aa'); // 별칭이 없으면 코드 id
   });
 
+  test('동률 대표 이름은 코드포인트 순 — 파이썬 쪽(find.py)과 같은 규칙', () => {
+    // 로케일 정렬을 쓰면 동률이 갈릴 때 표(파이썬)와 칩(JS)이 다른 이름을 고른다.
+    const c = deriveCodes({ companies: [
+      { comp_id: 1, benefits: [ben('x', '힣나', null, 'perks')] },
+      { comp_id: 2, benefits: [ben('x', '가나', null, 'perks')] },
+    ] });
+    assert.equal(c.x.baseLabel, '가나');
+    assert.deepEqual(c.x.aliases, ['가나', '힣나']);
+  });
+
   test('코드 없는 행은 건너뛴다(코드가 검색의 축이다)', () => {
     const c = deriveCodes({ companies: [{ comp_id: 1, benefits: [{ benefit_nm: '이름만', benefit_ctgr_cd: 'perks' }] }] });
     assert.deepEqual(Object.keys(c), []);

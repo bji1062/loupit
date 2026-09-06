@@ -95,8 +95,14 @@ function hasKey(known, key) {
 // 이름이 달라(`commute_subsidy` = 통근버스 / 셔틀버스 / 야근 교통비 …) 화면에 낼 대표 이름을
 // 여기서 뽑는다: 대표 = 최빈 `benefit_nm`, 나머지는 별칭(검색어가 된다).
 
+// 최빈값. 동률은 **코드포인트 순**으로 가른다 — `localeCompare('ko')` 가 아니다. 같은 규칙이
+// `generator/pages/find.py::_most_common` 에도 있어야 하고(표와 칩이 같은 이름을 불러야 한다),
+// 파이썬의 문자열 비교는 코드포인트다. ICU 한국어 정렬은 그것과 달라서 동률이 갈릴 때 두 쪽이
+// **다른 대표 이름**을 고르게 된다 — 화면에서만 보이고 테스트로는 잘 안 잡히는 종류의 어긋남이다.
+const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+
 function mostCommon(counter) {
-  return [...counter.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'ko'))[0]?.[0];
+  return [...counter.entries()].sort((a, b) => b[1] - a[1] || byCodePoint(String(a[0]), String(b[0])))[0]?.[0];
 }
 
 /**
@@ -131,7 +137,7 @@ export function deriveCodes(ref) {
       code: cd,
       baseLabel,
       label: baseLabel,
-      aliases: [...nm.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), 'ko')).map(([n]) => n),
+      aliases: [...nm.entries()].sort((a, b) => b[1] - a[1] || byCodePoint(String(a[0]), String(b[0]))).map(([n]) => n),
       ctgr: mostCommon(ctgrs.get(cd)) || '',
       count: comps.get(cd).size,
       amtCount: amts.get(cd),

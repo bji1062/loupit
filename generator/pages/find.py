@@ -36,7 +36,12 @@ LABEL_OVERRIDE = {
 
 
 def _most_common(counter: Counter):
-    """최빈값 — 동률은 이름순으로 갈라 빌드가 결정적이 되게 한다(JS 쪽과 같은 규칙)."""
+    """최빈값 — 동률은 **코드포인트 순**으로 가른다(파이썬 기본 문자열 비교).
+
+    같은 규칙이 `web/assets/js/find.js::mostCommon` 에도 있어야 한다. 거기서 한국어 로케일 정렬
+    (`localeCompare('ko')`)을 쓰면 동률이 갈릴 때 표와 칩이 **다른 대표 이름**을 고른다 — 화면에서만
+    보이고 테스트로는 잘 안 잡히는 어긋남이라 양쪽 다 로케일 없는 비교로 못 박는다.
+    """
     if not counter:
         return None
     return sorted(counter.items(), key=lambda kv: (-kv[1], str(kv[0])))[0][0]
