@@ -483,6 +483,32 @@ describe('suggest', () => {
     assert.deepEqual(suggest(REF, codes, 'SAMSUNG').companies.map((c) => c.comp_id), [1, 3]);
   });
 
+  test('정확 일치가 흔한 항목보다 앞선다 — 「사택」은 dormitory 다', () => {
+    // 실데이터: housing_loan(68곳)의 별칭에 「주택자금/사택」이 있고, dormitory(32곳)의 별칭에
+    // 정확히 「사택」이 있다. 보유 수만으로 줄 세우면 Enter 가 엉뚱한 조건을 고른다.
+    const ref2 = { companies: [] };
+    for (let i = 0; i < 6; i += 1) {
+      ref2.companies.push({ comp_id: 100 + i, comp_nm: `대형${i}`, comp_eng_nm: `big${i}`, aliases: [],
+        benefits: [ben('housing_loan', '주택자금/사택', 500, 'perks')] });
+    }
+    for (let i = 0; i < 2; i += 1) {
+      ref2.companies.push({ comp_id: 200 + i, comp_nm: `소형${i}`, comp_eng_nm: `small${i}`, aliases: [],
+        benefits: [ben('dormitory', '사택', null, 'perks')] });
+    }
+    const r = suggest(ref2, deriveCodes(ref2), '사택');
+    assert.deepEqual(r.codes.map((i) => i.code), ['dormitory', 'housing_loan']);
+  });
+
+  test('접두가 포함보다 앞선다', () => {
+    const ref2 = { companies: [
+      { comp_id: 1, comp_nm: 'A', comp_eng_nm: 'a', aliases: [], benefits: [ben('x', '학자금 대출', null, 'growth')] },
+      { comp_id: 2, comp_nm: 'B', comp_eng_nm: 'b', aliases: [], benefits: [ben('y', '자녀 학자금', null, 'family')] },
+      { comp_id: 3, comp_nm: 'C', comp_eng_nm: 'c', aliases: [], benefits: [ben('y', '자녀 학자금', null, 'family')] },
+    ] };
+    // y 가 보유 2곳으로 더 흔하지만 x 가 「학자금」으로 시작한다
+    assert.deepEqual(suggest(ref2, deriveCodes(ref2), '학자금').codes.map((i) => i.code), ['x', 'y']);
+  });
+
   test('맞는 것이 없으면 양쪽 다 빈 배열', () => {
     assert.deepEqual(suggest(REF, codes, '없는말'), { codes: [], companies: [] });
   });
@@ -677,6 +703,31 @@ describe('initDeckCollapse', () => {
     assert.equal(env.ctl.isCollapsed(), true);
   });
 
+  test('보정이 스크롤을 못 움직이면 무시 예약을 되돌린다 — 다음 판정을 삼키지 않는다', () => {
+    // 문서 끝이거나 보정값이 반올림돼 0px 이면 브라우저는 scroll 이벤트를 내지 않는다.
+    // 그때 예약해 둔 무시가 남으면 **사용자**의 다음 스크롤 판정 한 번이 사라진다.
+    const env = deckEnv();
+    env.win.scrollBy = () => { env.win.scrollByCalls += 1; }; // 아무 일도 하지 않는 스크롤
+    env.win.scrollTo(700);
+    assert.equal(env.ctl.isCollapsed(), true);
+    assert.equal(env.win.scrollByCalls, 1, '보정을 시도하긴 했다');
+    // 곧바로 맨 위로 — 무시가 남아 있으면 이 한 번이 삼켜져 접힌 채로 남는다
+    env.win.scrollTo(0);
+    assert.equal(env.ctl.isCollapsed(), false, '판정 한 번이 삼켜졌다(suppress 고착)');
+  });
+
+  test('보정이 정상이면 300ms 뒤 무시 예약을 턴다(타이머 예약 확인)', () => {
+    const timers = [];
+    const env = deckEnv();
+    env.win.setTimeout = (fn, ms) => { timers.push({ fn, ms }); return timers.length; };
+    env.win.clearTimeout = () => {};
+    env.win.scrollTo(700);
+    assert.equal(env.ctl.isCollapsed(), true);
+    assert.equal(timers.length, 1, '되돌림 타이머가 예약되지 않았다');
+    assert.equal(timers[0].ms, 300);
+    assert.doesNotThrow(() => timers[0].fn());
+  });
+
   test('destroy 뒤에는 스크롤에 반응하지 않는다', () => {
     const env = deckEnv();
     env.ctl.destroy();
@@ -712,12 +763,14 @@ function mount({ search = '', ref = REF } = {}) {
   globalThis.document = dom.window.document;
   globalThis.window = dom.window;
   const urls = [];
+  const visited = [];
   const win = {
-    location: { search },
+    location: { search, assign(u) { visited.push(u); } },
     innerWidth: 1200,
     scrollY: 0,
     addEventListener() {}, removeEventListener() {},
     requestAnimationFrame(fn) { fn(); return 1; },
+    setTimeout() { return 0; }, clearTimeout() {},
     scrollBy() {},
   };
   const history = { replaceState(_s, _t, url) { urls.push(url); } };
@@ -726,7 +779,7 @@ function mount({ search = '', ref = REF } = {}) {
   const app = mountFind(root, ref, { win, history });
   const q = (s) => root.querySelector(s);
   const all = (s) => [...root.querySelectorAll(s)];
-  return { dom, doc: dom.window.document, root, app, urls, q, all, rows: () => all('.find-row') };
+  return { dom, doc: dom.window.document, root, app, urls, visited, q, all, rows: () => all('.find-row') };
 }
 
 const rowNames = (env) => env.rows().map((r) => r.querySelector('.find-row-ttl a, .find-row-nm').textContent);
@@ -886,6 +939,26 @@ describe('mountFind — 결과·비교·제안', () => {
     first.dispatchEvent(new env.dom.window.Event('click', { bubbles: true }));
     assert.equal(env.urls.at(-1), '/find?b=flex_work');
     assert.equal(input.value, '');
+  });
+
+  test('회사만 맞을 때 Enter 는 그 회사 페이지로 간다', () => {
+    const env = mount();
+    const input = env.q('[data-q]');
+    input.value = '카카오'; // 복지 항목에는 없는 말
+    input.dispatchEvent(new env.dom.window.Event('input', { bubbles: true }));
+    assert.equal(env.q('[data-sugg] button'), null, '이 검색어에 복지 항목 제안이 있으면 가드가 무의미하다');
+    input.dispatchEvent(new env.dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assert.deepEqual(env.visited, ['/company/kakao']);
+  });
+
+  test('항목이 맞으면 Enter 는 그 조건을 고른다(이동하지 않는다)', () => {
+    const env = mount();
+    const input = env.q('[data-q]');
+    input.value = '복지포인트';
+    input.dispatchEvent(new env.dom.window.Event('input', { bubbles: true }));
+    input.dispatchEvent(new env.dom.window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assert.deepEqual(env.visited, []);
+    assert.equal(env.urls.at(-1), '/find?b=welfare_point');
   });
 
   test('맞는 것이 없으면 다른 말을 권한다(빈 상자를 열지 않는다)', () => {

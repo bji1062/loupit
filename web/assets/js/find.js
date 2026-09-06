@@ -306,19 +306,42 @@ export function sortRows(rows, key = 'match') {
 // ── 검색 제안 ────────────────────────────────────────────────────────────────
 
 /**
+ * 검색어가 이름 하나와 얼마나 가까운가 — 0 정확 일치 · 1 접두 · 2 포함 · -1 미일치.
+ * **정확 일치를 맨 앞에 두는 것이 핵심이다.** 보유 회사 수만으로 줄 세우면 「사택」이 별칭에
+ * 「주택자금/사택」을 가진 housing_loan(68곳)을 먼저 내놓고, 이름이 정확히 「사택」인
+ * dormitory(32곳)는 둘째가 된다 — Enter 를 누른 사람이 기대한 것과 다르다.
+ */
+function matchRank(keys, key) {
+  let best = -1;
+  for (const raw of keys) {
+    const k = normalizeText(raw);
+    if (!k) continue;
+    if (k === key) return 0;
+    if (k.startsWith(key)) best = best < 0 ? 1 : Math.min(best, 1);
+    else if (k.includes(key)) best = best < 0 ? 2 : Math.min(best, 2);
+  }
+  return best;
+}
+
+/**
  * 검색어 → `{codes: [코드정보 ≤8], companies: [회사 ≤5]}`.
- * 코드는 라벨·별칭·코드 id 를 다 훑고 **보유 회사 수 내림차순**(흔한 항목이 먼저 = 고를 값이 있다).
- * 회사는 정식명·별칭·영문 식별자를 훑는다. 빈 검색어는 양쪽 다 빈 배열(제안창을 열지 않는다).
+ * 순위는 **일치 정도(정확 → 접두 → 포함) → 보유 회사 수 내림차순 → 이름**이다.
+ * 빈 검색어는 양쪽 다 빈 배열(제안창을 열지 않는다).
  */
 export function suggest(ref, codes, q) {
   const key = normalizeText(q);
   if (!key) return { codes: [], companies: [] };
   const hitCodes = Object.values(codes || {})
-    .filter((i) => [i.label, i.baseLabel, ...(i.aliases || []), i.code].some((k) => normalizeText(k).includes(key)))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'))
+    .map((i) => ({ i, r: matchRank([i.label, i.baseLabel, ...(i.aliases || []), i.code], key) }))
+    .filter((x) => x.r >= 0)
+    .sort((a, b) => a.r - b.r || b.i.count - a.i.count || byCodePoint(a.i.label, b.i.label))
+    .map((x) => x.i)
     .slice(0, 8);
   const hitComps = ((ref && ref.companies) || [])
-    .filter((c) => [c.comp_nm, c.comp_eng_nm, ...(c.aliases || [])].some((k) => normalizeText(k).includes(key)))
+    .map((c) => ({ c, r: matchRank([c.comp_nm, c.comp_eng_nm, ...(c.aliases || [])], key) }))
+    .filter((x) => x.r >= 0)
+    .sort((a, b) => a.r - b.r)  // 같은 등급이면 번들 순서(= 등록 순서)를 그대로 둔다
+    .map((x) => x.c)
     .slice(0, 5);
   return { codes: hitCodes, companies: hitComps };
 }
@@ -379,11 +402,28 @@ export function initDeckCollapse({ wrap, anchorEl, minibar, expandBtn, collapseB
     if (!isCollapsed()) expandedH = heightOf(wrap);
   }
 
-  /** 높이 변화만큼 스크롤을 보정하고, 그 보정이 만들 scroll 이벤트 1회를 예약 무시한다. */
+  /**
+   * 높이 변화만큼 스크롤을 보정하고, 그 보정이 만들 scroll 이벤트 1회를 예약 무시한다.
+   *
+   * ⚠ 예약해 둔 무시가 **쓰이지 않고 남는 경우**가 있다: 문서 끝이라 더 스크롤할 곳이 없거나
+   * 보정값이 반올림돼 0px 이면 브라우저는 scroll 이벤트를 내지 않는다. 그러면 그 무시가 다음
+   * **사용자** 스크롤 판정을 한 번 삼켜 접힘이 한 박자 늦는다. 그래서 두 겹으로 막는다:
+   * ① 스크롤이 실제로 안 움직였으면 바로 되돌리고 ② 그래도 남으면 300ms 뒤에 0 으로 턴다.
+   */
   function compensate(delta) {
     if (!delta) return;
+    const before = win.scrollY;
     suppress += 1;
     win.scrollBy(0, delta);
+    if (win.scrollY === before && suppress > 0) suppress -= 1;
+    else scheduleSuppressReset();
+  }
+
+  let resetTimer = null;
+  function scheduleSuppressReset() {
+    if (typeof win.setTimeout !== 'function') return;
+    if (resetTimer != null && typeof win.clearTimeout === 'function') win.clearTimeout(resetTimer);
+    resetTimer = win.setTimeout(() => { suppress = 0; resetTimer = null; }, 300);
   }
 
   function setCollapsed(on) {
@@ -453,6 +493,7 @@ export function initDeckCollapse({ wrap, anchorEl, minibar, expandBtn, collapseB
     isOpen,
     ok: true,
     destroy() {
+      if (resetTimer != null && typeof win.clearTimeout === 'function') win.clearTimeout(resetTimer);
       win.removeEventListener('scroll', onScroll);
       win.removeEventListener('resize', onResize);
       expandBtn.removeEventListener('click', onExpand);
@@ -815,10 +856,25 @@ export function mountFind(root, ref, opts = {}) {
   }
 
   // ── 이벤트 ──
+  /**
+   * Enter — 제안 목록의 **첫 항목**을 고른다. 첫 항목이 회사면 그 회사 페이지로 간다.
+   * 예전에는 `button`(= 복지 항목)만 찾아서, 회사만 맞는 검색어(「삼성」)에서 Enter 가 아무 일도
+   * 하지 않았다. 이동은 `win.location.assign` 으로 해서 주입된 window 로 검사할 수 있게 둔다.
+   */
+  function activateFirstSuggestion() {
+    if (!nodes.sugg || nodes.sugg.hidden) return false;
+    const first = nodes.sugg.querySelector('.find-sugg-item');
+    if (!first) return false;
+    const href = first.tagName === 'A' ? first.getAttribute('href') : null;
+    if (href && win.location && typeof win.location.assign === 'function') win.location.assign(href);
+    else first.click();
+    return true;
+  }
+
   if (nodes.q) {
     nodes.q.addEventListener('input', renderSuggest);
     nodes.q.addEventListener('keydown', (ev) => {
-      if (ev.key === 'Enter') { const first = nodes.sugg && nodes.sugg.querySelector('button'); if (first) first.click(); }
+      if (ev.key === 'Enter') activateFirstSuggestion();
       if (ev.key === 'Escape' && nodes.sugg) nodes.sugg.hidden = true;
     });
   }
