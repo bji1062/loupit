@@ -69,7 +69,7 @@ def run(
     pages += company.render_all(env, ctx, combo_pairs=combo_pairs)  # 회사 ~95 (SP-GEN-5·6)
     pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages.append(heatmap.render(env, ctx, CFG))  # 복지·실적 히트맵 (SP-HEAT, 2026-08-27)
-    pages.append(find.render(env, ctx, CFG))  # 복지로 찾기 (SP-FIND, 2026-09-06)
+    pages.append(find.render(env, ctx, CFG))  # 복지검색 (SP-FIND, 2026-09-06)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     if only:  # 개발용 경로 접두 필터

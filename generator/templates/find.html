@@ -1,4 +1,4 @@
-{# find.html — 「복지로 찾기」(/find, SP-FIND). 두 층이 한 문서에 있다.
+{# find.html — 「복지검색」(/find, SP-FIND). 두 층이 한 문서에 있다.
 
    ① **도구**(`[data-find-tool]`) — 처음엔 `hidden` 이고 `find.js` 가 부팅 번들을 받은 뒤 연다.
       마크업은 껍데기(칩·행·요약은 전부 JS 가 그린다)라 여기 있는 `data-*` 훅이 JS 와의 계약이다.
@@ -11,7 +11,7 @@
 {% extends "base.html" %}
 {% block main %}
 <article class="find-page">
-  <h1>복지로 찾기</h1>
+  <h1>복지검색</h1>
   <p class="index-lead">회사 이름이 아니라 <strong>복지 항목</strong>으로 상장사 {{ total }}곳을 거릅니다. 조건을 여러 개 고르면 그것을 모두 갖춘 회사만 남고, 결과에는 해시태그가 아니라 실제 항목 이름·연 환산 금액·조건 문장이 나옵니다.</p>
 
   <p class="find-error" data-find-error hidden>복지 데이터를 불러오지 못했습니다. 잠시 뒤 새로고침해 주세요. 아래 표는 그대로 보실 수 있습니다.</p>

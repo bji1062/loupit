@@ -1,4 +1,4 @@
-"""generator/tests/test_find_page.py — `/find` 「복지로 찾기」 (SP-FIND).
+"""generator/tests/test_find_page.py — `/find` 「복지검색」 (SP-FIND).
 
 잡으려는 회귀 넷:
   ① **비-JS 본문이 안내 문구로 쪼그라드는 것.** 도구는 JS 라 색인되지 않는다. 크롤러가 보는
@@ -48,7 +48,7 @@ def test_find_page_is_generated_with_canonical_route(fake_bundle, fake_now):
     assert page.path == "find.html"
     assert page.url == f"{CFG.site_origin}/find"
     assert page.in_sitemap is True
-    assert "복지로 찾기" in page.title
+    assert "복지검색" in page.title
     assert page.description and len(page.description) <= 200
 
 
@@ -281,12 +281,12 @@ def test_page_loads_the_find_module(fake_bundle, fake_now):
 
 
 def test_find_tab_is_in_the_canonical_tab_list():
-    """탭 라벨은 **「복지찾기」(4자)** 다 — 페이지 제목(「복지로 찾기」)과 일부러 다르다.
+    """탭 라벨은 **「복지검색」(4자)** 다 — 페이지 제목(「복지검색」)과 일부러 다르다.
 
     5자 라벨은 익명·M9 ON 에서 360~400px 헤더를 두 줄로 만든다(탭 폭 +71px → 「로그인」이 둘째 줄).
     라벨을 다시 늘리려면 그 폭에서 헤더 높이를 먼저 재라.
     """
-    assert ("복지찾기", "/find") in GNB_TABS
+    assert ("복지검색", "/find") in GNB_TABS
     assert all(len(label) <= 4 for label, _ in GNB_TABS), "탭 라벨이 4자를 넘으면 좁은 폭 헤더가 두 줄이 된다"
 
 
@@ -304,10 +304,10 @@ def test_find_tab_exists_on_every_page_type(fake_bundle, fake_now, fake_combinat
     kinds = {p.path.split("/")[0] for p in pages}
     assert {"company", "companies.html", "heatmap.html", "find.html", "404.html"} <= kinds
     for p in pages:
-        assert '<a href="/find"' in p.html, f"{p.path}: 복지로 찾기 탭이 없다"
+        assert '<a href="/find"' in p.html, f"{p.path}: 복지검색 탭이 없다"
 
 
 def test_find_tab_exists_in_every_hand_written_shell():
     for name in SHELLS:
         html = (WEB / name).read_text(encoding="utf-8")
-        assert '<a href="/find" class="gnb-link"' in html, f"{name}: 복지로 찾기 탭이 없다"
+        assert '<a href="/find" class="gnb-link"' in html, f"{name}: 복지검색 탭이 없다"

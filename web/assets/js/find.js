@@ -1,4 +1,4 @@
-// web/assets/js/find.js — 「복지로 찾기」 탭(/find, SP-FIND). 회사 이름이 아니라 **복지 항목**으로 거른다.
+// web/assets/js/find.js — 「복지검색」 탭(/find, SP-FIND). 회사 이름이 아니라 **복지 항목**으로 거른다.
 //
 // 데이터는 부팅 참조 번들(`reference/all`) 하나뿐이다 — 새 API 도, 새 DB 컬럼도 없다(INV: 무빌드
 // 바닐라 ES 모듈 · 읽기 전용 · 무전송). 그래서 이 파일은 두 층으로 갈라져 있다:
