@@ -35,6 +35,7 @@ if str(SEED_DIR) not in sys.path:
 FINANCIAL_COMPANIES = frozenset({
     "DB손해보험", "NH투자증권", "기업은행", "삼성생명", "삼성카드", "카카오뱅크", "카카오페이",
     "KB금융",
+    "삼성화재", "한화생명",  # 확장 웨이브 2(2026-09-05): 손보·생보
 })
 
 # note 에 적힌 DART 정식명 — "DART 명 '씨제이올리브네트웍스'" · "DART 'LIG…'" · "DART corp_name 은 'NC'" 꼴.

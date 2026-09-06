@@ -96,6 +96,25 @@ WAVE1_ALIASES: dict[str, list[str]] = {
     "kbfg": ["KB금융", "KB금융지주", "KB Financial Group", "KB금융그룹"],
     "hd_hyundai": ["HD현대", "에이치디현대", "HD Hyundai", "현대중공업지주"],
 }
+# 확장 웨이브 2(2026-09-05, 13개사 신규 등록) — 웨이브 1 과 같은 이유로 override 필수.
+# ⚠ 타 법인 이름은 넣지 않는다: ㈜대덕(지주)·셀트리온(모회사)·삼양사/삼양홀딩스/삼양라운드스퀘어·
+#    넷마블 개발 자회사(넷마블네오 등)·한화생명금융서비스(FP 법인). 구명(삼성엔지니어링·대한생명·
+#    넷마블게임즈)은 유입 자산이라 남긴다.
+WAVE2_ALIASES: dict[str, list[str]] = {
+    "samsung_heavy": ["삼성중공업", "삼중", "Samsung Heavy Industries", "SHI"],
+    "lg_innotek": ["LG이노텍", "엘지이노텍", "LG Innotek"],
+    "daeduck": ["대덕전자", "Daeduck Electronics"],
+    "samsung_fire": ["삼성화재", "삼성화재해상보험", "Samsung Fire"],
+    "samsung_sds": ["삼성SDS", "삼성에스디에스", "Samsung SDS"],
+    "samsung_ena": ["삼성E&A", "삼성이앤에이", "삼성엔지니어링", "Samsung E&A"],
+    "isu_petasys": ["이수페타시스", "페타시스", "ISU Petasys"],
+    "celltrion_pharm": ["셀트리온제약", "Celltrion Pharm"],
+    "netmarble": ["넷마블", "Netmarble", "넷마블게임즈"],
+    "dongjin_semichem": ["동진쎄미켐", "동진세미켐", "Dongjin Semichem"],
+    "hanwha_life": ["한화생명", "한화생명보험", "Hanwha Life", "대한생명"],
+    "samyang_foods": ["삼양식품", "Samyang Foods"],
+    "kai": ["한국항공우주산업", "한국항공우주", "KAI", "카이", "Korea Aerospace Industries"],
+}
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -253,6 +272,9 @@ def build_company_meta() -> dict:
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
     for eng, extra_aliases in WAVE1_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE2_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
