@@ -23,7 +23,11 @@ from __future__ import annotations
 # (라벨, href). href 가 탭의 식별자다 — `nav_active` 는 이 href 로 현재 탭을 가리킨다.
 GNB_TABS: tuple[tuple[str, str], ...] = (
     ("홈", "/"),
-    ("복지로 찾기", "/find"),  # SP-FIND(2026-09-06) — 생성 페이지 find.html, nginx = /find
+    # 탭 라벨만 「복지찾기」(4자)다 — 페이지 h1·title·SPEC 이름은 「복지로 찾기」. 5자 라벨은
+    # 익명·M9 ON(현재 prod)에서 360~400px 헤더를 두 줄 97px 로 만들었다(main 은 57px, 헤드리스 실측
+    # 2026-09-06): 탭 폭이 +71px 늘어 「로그인」이 둘째 줄로 밀린다. 갤럭시(360)·아이폰(390) 익명
+    # 방문자의 **전 페이지** 헤더가 40px 자라는 값이라 라벨을 줄이는 쪽을 택했다.
+    ("복지찾기", "/find"),  # SP-FIND(2026-09-06) — 생성 페이지 find.html, nginx = /find
     ("회사정보", "/companies"),
     ("히트맵", "/heatmap"),  # SP-HEAT(2026-08-27) — 생성 페이지 heatmap.html, nginx = /heatmap
     ("커뮤니티", "/community/"),  # SC15(2026-08-27) — 셸 web/community/index.html, nginx ^~ /community/

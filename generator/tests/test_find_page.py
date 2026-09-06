@@ -208,7 +208,13 @@ def test_page_loads_the_find_module(fake_bundle, fake_now):
 
 
 def test_find_tab_is_in_the_canonical_tab_list():
-    assert ("복지로 찾기", "/find") in GNB_TABS
+    """탭 라벨은 **「복지찾기」(4자)** 다 — 페이지 제목(「복지로 찾기」)과 일부러 다르다.
+
+    5자 라벨은 익명·M9 ON 에서 360~400px 헤더를 두 줄로 만든다(탭 폭 +71px → 「로그인」이 둘째 줄).
+    라벨을 다시 늘리려면 그 폭에서 헤더 높이를 먼저 재라.
+    """
+    assert ("복지찾기", "/find") in GNB_TABS
+    assert all(len(label) <= 4 for label, _ in GNB_TABS), "탭 라벨이 4자를 넘으면 좁은 폭 헤더가 두 줄이 된다"
 
 
 def test_find_tab_exists_on_every_page_type(fake_bundle, fake_now, fake_combinations_path):
