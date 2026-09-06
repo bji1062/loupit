@@ -17,7 +17,7 @@ from pathlib import Path
 from generator.config import CFG
 from generator.content.nav import GNB_TABS, GNB_TAB_HREFS
 from generator.context import build_context
-from generator.pages import combo, company, company_index, heatmap, policy
+from generator.pages import combo, company, company_index, find, heatmap, policy
 from generator.render import make_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -69,6 +69,7 @@ def _all_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
+        + [find.render(env, ctx, CFG)]
         + combo.render_all(env, ctx, CFG, pairs=pairs)
         + policy.render_all(env, ctx)
     )
@@ -128,6 +129,8 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
             assert cur == ["/companies"], f"{p.path}: 회사정보 탭이 현재 탭이어야 한다"
         elif p.path == "heatmap.html":
             assert cur == ["/heatmap"], "히트맵 탭이 현재 탭이어야 한다"
+        elif p.path == "find.html":
+            assert cur == ["/find"], "복지로 찾기 탭이 현재 탭이어야 한다"
         else:
             assert cur == [], f"{p.path}: 속한 탭이 없는 페이지에 aria-current 가 붙었다"
 

@@ -1,0 +1,139 @@
+{# find.html — 「복지로 찾기」(/find, SP-FIND). 두 층이 한 문서에 있다.
+
+   ① **도구**(`[data-find-tool]`) — 처음엔 `hidden` 이고 `find.js` 가 부팅 번들을 받은 뒤 연다.
+      마크업은 껍데기(칩·행·요약은 전부 JS 가 그린다)라 여기 있는 `data-*` 훅이 JS 와의 계약이다.
+   ② **정적 본문**(카테고리 9개 × 코드 표) — JS 와 무관하게 항상 보인다. 크롤러가 보는 것은
+      이쪽이 전부이고, 표의 각 줄이 `/find?b=<code>` 로 도구에 들어가는 입구가 된다. 도구가
+      켜져도 **숨기지 않는다** — 숨기면 색인 가치가 사라진다.
+
+   page_type 미선언 = 광고 0(검색 화면 무광고 규약). 전용 CSS 는 없다: `find` 절은
+   styles.css 안에 있다(토큰 리터럴 금지 테스트 UT-NO-LITERAL 이 그 파일만 본다). #}
+{% extends "base.html" %}
+{% block main %}
+<article class="find-page">
+  <h1>복지로 찾기</h1>
+  <p class="index-lead">회사 이름이 아니라 <strong>복지 항목</strong>으로 상장사 {{ total }}곳을 거릅니다. 조건을 여러 개 고르면 그것을 모두 갖춘 회사만 남고, 결과에는 해시태그가 아니라 실제 항목 이름·연 환산 금액·조건 문장이 나옵니다.</p>
+
+  <p class="find-error" data-find-error hidden>복지 데이터를 불러오지 못했습니다. 잠시 뒤 새로고침해 주세요. 아래 표는 그대로 보실 수 있습니다.</p>
+
+  {#- ── ① 도구(JS) ── 훅 이름을 바꾸면 find.js 도 함께 바꿔야 한다(test_find_page.py 가 존재를 강제). -#}
+  <section class="find-tool" data-find-tool aria-label="복지 조건으로 회사 찾기" hidden>
+    <div class="find-deckwrap" data-deck>
+      <div class="find-minibar" data-minibar hidden>
+        <span class="find-hero"><b class="num" data-minibar-count>—</b><small data-minibar-sub></small></span>
+        <span class="find-sel find-sel-mini" data-minibar-sel></span>
+        <span class="find-mini-mode" data-minibar-mode></span>
+        <label class="find-sortbar">정렬
+          <select data-minibar-sort aria-label="정렬 기준">
+            <option value="match">맞는 항목 많은 순</option>
+            <option value="amt">금액 합계 큰 순</option>
+            <option value="total">복지 항목 많은 순</option>
+            <option value="name">회사명</option>
+          </select>
+        </label>
+        <button type="button" class="find-expand" data-expand aria-expanded="false">검색·조건 바꾸기</button>
+      </div>
+
+      <div class="find-deck">
+        <div class="find-deck-row">
+          <div class="find-search">
+            <label class="sr-only" for="find-q">복지 항목 또는 회사 검색</label>
+            <input id="find-q" type="search" data-q autocomplete="off" placeholder="복지 항목이나 회사 — 예: 사택, 학자금, 주4.5일">
+            <div class="find-sugg" data-sugg hidden></div>
+          </div>
+          <div class="find-selwrap">
+            <span class="find-lbl">고른 조건 <span class="num" data-sel-count></span></span>
+            <span class="find-sel" data-sel></span>
+            <span class="find-modes" role="group" aria-label="조건 조합 방식">
+              <button type="button" data-mode="and" aria-pressed="true">모두 갖춘 회사</button>
+              <button type="button" data-mode="or" aria-pressed="false">하나라도</button>
+            </span>
+          </div>
+        </div>
+        <div class="find-deck-row find-tabs-row">
+          <div class="find-tabs" data-tabs role="tablist" aria-label="복지 카테고리"></div>
+          <div class="find-facets">
+            <select data-facet-tp aria-label="회사 유형"><option value="">유형 전체</option></select>
+            <select data-facet-ind aria-label="업종"><option value="">업종 전체</option></select>
+            <label class="find-chk"><input type="checkbox" data-facet-amt> 금액 적힌 항목만</label>
+            <label class="find-chk find-chk-off" title="지금은 전 항목이 공식 출처입니다. 재직자 수정·등록이 쌓이면 켜집니다."><input type="checkbox" disabled> 재직자 확인만</label>
+            <button type="button" class="find-reset" data-reset>지우기</button>
+          </div>
+        </div>
+        <div class="find-chiprow">
+          <span class="find-chip-hint" data-chip-hint></span>
+          <span class="find-chips" data-chips></span>
+        </div>
+        <button type="button" class="find-collapse" data-collapse hidden>접기</button>
+      </div>
+
+      <div class="find-summary">
+        <span class="find-hero"><b class="num" data-count>—</b><small data-count-sub></small></span>
+        <span class="find-desc" data-desc></span>
+        <span class="find-meters" data-meters></span>
+        <span class="find-sortbar"><span class="find-range num" data-range></span>
+          <label>정렬
+            <select data-sort aria-label="정렬 기준">
+              <option value="match">맞는 항목 많은 순</option>
+              <option value="amt">금액 합계 큰 순</option>
+              <option value="total">복지 항목 많은 순</option>
+              <option value="name">회사명</option>
+            </select>
+          </label>
+        </span>
+      </div>
+    </div>
+
+    <div class="find-list" data-list></div>
+    <p class="find-empty" data-empty hidden>이 조합을 모두 갖춘 회사가 없습니다. 조건을 하나 빼거나 「하나라도」로 바꿔 보세요.</p>
+    <button type="button" class="find-more" data-more hidden>더 보기</button>
+    <div class="find-cmp" data-cmp hidden>
+      <span>A <b data-cmp-a>—</b> · B <b data-cmp-b>—</b></span>
+      <a data-cmp-link href="/" hidden>비교하기 →</a>
+    </div>
+  </section>
+
+  {#- ── ② 정적 본문 — JS 와 무관하게 항상 보인다 ── -#}
+  <section class="find-static">
+    <h2>복지 항목 {{ view.total_codes }}종 — 카테고리별 보유 회사 수</h2>
+    <p class="index-lead">등록 회사 {{ total }}곳의 복지 {{ '{:,}'.format(view.total_rows) }}건을 표준 코드 {{ view.total_codes }}종으로 정리한 표입니다. 「보유 회사」는 그 항목이 회사 페이지에 실린 회사 수이고, 「금액 있음」은 그중 연 환산 금액이 붙은 회사 수입니다({{ '{:,}'.format(view.amount_rows) }}건). 항목 이름을 누르면 그 복지가 있는 회사가 바로 걸러집니다.</p>
+    {% for cat in view.categories %}
+    <div class="find-cat">
+      <h3 id="cat-{{ cat.key }}">{{ cat.label }} — 항목 {{ cat.codes }}종 · 회사 {{ cat.companies }}곳</h3>
+      <div class="table-scroll" tabindex="0" role="group" aria-labelledby="find-cap-{{ cat.key }}">
+        <table class="benefit-table find-table">
+          <caption id="find-cap-{{ cat.key }}">{{ cat.label }} 카테고리의 복지 항목과 보유 회사 수</caption>
+          <thead>
+            <tr><th scope="col">복지 항목</th><th scope="col">다른 이름</th><th scope="col">보유 회사</th><th scope="col">금액 있음</th></tr>
+          </thead>
+          <tbody>
+          {% for r in cat.rows %}
+            <tr>
+              <th scope="row"><a href="/find?b={{ r.code }}">{{ r.label }}</a></th>
+              <td class="find-aliases">{{ r.aliases | join(' · ') if r.aliases else '—' }}</td>
+              <td class="num">{{ r.count }}곳</td>
+              <td class="num">{{ r.amt_count }}곳</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+
+  <section class="find-method">
+    <h2>읽는 법</h2>
+    <ul>
+      <li><strong>조건 조합</strong> — 항목을 여러 개 고르면 기본은 「모두 갖춘 회사」입니다. 「하나라도」로 바꾸면 고른 것 중 하나만 있어도 남습니다. 회사 하나에 같은 항목은 한 번만 실리므로 계산이 겹치지 않습니다.</li>
+      <li><strong>금액</strong> — 연 환산 만원 단위입니다. 「명시」는 회사가 밝힌 수치, 「추정」은 공개 정보로 환산한 값입니다. 금액을 매길 수 없는 항목은 「조건형」으로 두고 금액 0으로 셉니다. 「금액 적힌 항목만」을 켜면 고른 항목에 금액이 있는 회사만 남습니다.</li>
+      <li><strong>같은 이름의 다른 항목</strong> — 「통근버스」·「장기근속 포상」처럼 회사마다 같은 말을 다른 코드로 쓴 경우가 있어 표시명을 갈라 두었습니다. 표의 「다른 이름」 칸이 그 회사들이 실제로 쓴 말입니다.</li>
+      <li><strong>정렬</strong> — 맞는 항목 수 → 금액 합계 → 전체 항목 수 → 회사명 순입니다. 기준을 감추지 않습니다.</li>
+      <li>수치는 각 회사가 공개한 자료에서 옮긴 것이고 회사에 대한 평가가 아닙니다. 항목별 출처와 확인일은 회사 페이지에서 확인하세요.</li>
+    </ul>
+  </section>
+
+  <p class="cta"><a href="/companies">회사정보 표로 보기</a></p>
+</article>
+<script type="module" src="/assets/v2/js/find.js" defer></script>
+{% endblock %}

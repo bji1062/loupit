@@ -597,6 +597,30 @@ describe('UT-NO-LITERAL', () => {
   });
 });
 
+// ── UT-HEADER-NARROW (2026-09-06) ────────────────────────────────────────────
+// 좁은 폭 헤더는 **한 줄**이어야 한다. 탭이 다섯이 되면서 익명·M9 ON 의 360·390px 에서 「로그인」이
+// 둘째 줄로 밀려 헤더가 57 → 97px 이 됐다(헤드리스 실측). 고친 방법은 두 가지 — 탭 라벨을 4자로,
+// 그리고 라벨을 좁은 폭에서 **화면에서만** 감추기(접근성 이름은 남는다). 되돌리면 다시 두 줄이 된다.
+describe('UT-HEADER-NARROW', () => {
+  const stripped = stripComments(cssText);
+
+  test('로그인 라벨은 모바일 기본에서 화면 밖으로 빠진다(아이콘만 보인다)', () => {
+    assert.match(stripped, /\.authnav \[data-authnav-label\] \{[^}]*position:absolute/);
+    assert.match(stripped, /\.authnav \[data-authnav-label\] \{[^}]*clip:rect\(0 0 0 0\)/);
+  });
+
+  test('768 분기에서 라벨이 되돌아온다 — 넓은 화면은 예전 그대로', () => {
+    const desktop = stripped.slice(stripped.indexOf('@media (min-width: 768px)'));
+    assert.match(desktop, /\.authnav \[data-authnav-label\] \{[^}]*position:static/);
+  });
+
+  test('`display:none` 이 아니다 — 접근성 이름(로그인·닉네임)이 사라지면 안 된다', () => {
+    const rules = [...stripped.matchAll(/\.authnav \[data-authnav-label\] \{([^}]*)\}/g)].map((m) => m[1]);
+    assert.ok(rules.length >= 2, `라벨 규칙 ${rules.length}개`);
+    for (const body of rules) assert.ok(!/display\s*:\s*none/.test(body), `display:none 발견: ${body}`);
+  });
+});
+
 // ── UT-LIGHT-DEFAULT (T-10.2.1) — 사용자 결정(2026-07-13): 시안 A(라이트) 채택 ──
 describe('UT-LIGHT-DEFAULT', () => {
   const tokens = parseTokens(cssText);
