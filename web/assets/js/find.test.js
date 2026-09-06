@@ -424,3 +424,200 @@ describe('suggest', () => {
     assert.deepEqual(suggest(REF, codes, '없는말'), { codes: [], companies: [] });
   });
 });
+
+// ── 접힘 컨트롤러 ────────────────────────────────────────────────────────────
+//
+// 가짜 window 로 검사하는 이유: 이 알고리즘의 버그는 "화면이 떨린다" 라는 모양으로만 나타나고
+// 그건 jsdom 이 재현하지 못한다(레이아웃이 없다). 여기서 재는 것은 좌표 산수 네 가지다 —
+// 문턱 · 높이 보정 · 보정이 만든 이벤트의 무시 · 좁은 화면 해제.
+
+import { initDeckCollapse, MOBILE_MAX } from './find.js';
+
+function fakeClassList() {
+  const set = new Set();
+  return {
+    contains: (c) => set.has(c),
+    add: (...cs) => cs.forEach((c) => set.add(c)),
+    remove: (...cs) => cs.forEach((c) => set.delete(c)),
+    toggle(c, on) {
+      const next = on === undefined ? !set.has(c) : !!on;
+      if (next) set.add(c); else set.delete(c);
+      return next;
+    },
+  };
+}
+
+function fakeNode({ height = () => 0, top = () => 0 } = {}) {
+  const node = {
+    classList: fakeClassList(),
+    hidden: false,
+    attrs: {},
+    handlers: {},
+    setAttribute(k, v) { node.attrs[k] = String(v); },
+    getAttribute(k) { return node.attrs[k] ?? null; },
+    addEventListener(t, fn) { (node.handlers[t] = node.handlers[t] || []).push(fn); },
+    removeEventListener(t, fn) { node.handlers[t] = (node.handlers[t] || []).filter((f) => f !== fn); },
+    click() { (node.handlers.click || []).forEach((f) => f()); },
+    getBoundingClientRect: () => ({ height: height(node), top: top(node) }),
+  };
+  return node;
+}
+
+/**
+ * 덱 하나 + 가짜 window. `drive(delta, n)` 는 사람의 스크롤을 **상대 이동**으로 흉내낸다 —
+ * 절대 좌표로 밀면 우리가 만든 보정이 없던 일이 돼 진동 버그가 테스트를 통과해 버린다.
+ */
+function deckEnv({ expandedH = 200, collapsedH = 48, openH = 220, anchorTop = 300, innerWidth = 1200 } = {}) {
+  const win = {
+    scrollY: 0,
+    innerWidth,
+    scrollByCalls: 0,
+    handlers: {},
+    addEventListener(t, fn) { (win.handlers[t] = win.handlers[t] || []).push(fn); },
+    removeEventListener(t, fn) { win.handlers[t] = (win.handlers[t] || []).filter((f) => f !== fn); },
+    requestAnimationFrame(fn) { fn(); return 1; },
+    emit(t) { (win.handlers[t] || []).forEach((f) => f()); },
+    scrollTo(y) { win.scrollY = Math.max(0, y); win.emit('scroll'); },
+    scrollBy(_x, dy) { win.scrollByCalls += 1; win.scrollTo(win.scrollY + dy); },
+  };
+  const wrap = fakeNode({
+    height: (n) => (n.classList.contains('collapsed') ? (n.classList.contains('open') ? openH : collapsedH) : expandedH),
+  });
+  const anchorEl = fakeNode({ top: () => anchorTop - win.scrollY }); // 뷰포트 기준 좌표(브라우저와 같다)
+  const minibar = fakeNode();
+  minibar.hidden = true; // 실제 마크업과 같다 — 한 줄은 접혔을 때만 나온다
+  const expandBtn = fakeNode();
+  const collapseBtn = fakeNode();
+  const ctl = initDeckCollapse({ wrap, anchorEl, minibar, expandBtn, collapseBtn, win });
+
+  const log = [];
+  let last = ctl.isCollapsed();
+  const record = () => { const now = ctl.isCollapsed(); if (now !== last) { log.push(now); last = now; } };
+  const drive = (delta, times = 1) => { for (let i = 0; i < times; i += 1) { win.scrollTo(win.scrollY + delta); record(); } };
+  return { win, wrap, minibar, expandBtn, collapseBtn, ctl, drive, log, anchorTop, expandedH, collapsedH, openH };
+}
+
+describe('initDeckCollapse', () => {
+  test('요소가 없으면 아무 일도 하지 않는다(마크업이 바뀌어도 페이지는 산다)', () => {
+    const ctl = initDeckCollapse({});
+    assert.equal(ctl.ok, false);
+    assert.equal(ctl.isCollapsed(), false);
+    assert.doesNotThrow(() => { ctl.onScroll(); ctl.measure(); ctl.setCollapsed(true); ctl.setOpen(true); });
+  });
+
+  test('처음에는 펼친 상태 — 맨 위에서 한 줄이 보이면 안 된다', () => {
+    const env = deckEnv();
+    assert.equal(env.ctl.isCollapsed(), false);
+    assert.equal(env.minibar.hidden, true); // 한 줄은 접혔을 때만 나온다
+  });
+
+  test('느린 스크롤에서 전환은 딱 한 번', () => {
+    const env = deckEnv();
+    env.drive(20, 40);
+    assert.deepEqual(env.log, [true], '접힘 전환이 1회가 아니다');
+    assert.equal(env.ctl.isCollapsed(), true);
+    assert.equal(env.minibar.hidden, false);
+  });
+
+  test('문턱을 천천히 오르내려도 흔들리지 않는다(내려가며 1회, 올라오며 1회)', () => {
+    const env = deckEnv();
+    env.drive(6, 120); // 아래로
+    env.drive(-6, 200); // 위로
+    assert.deepEqual(env.log, [true, false], `전환 기록: ${JSON.stringify(env.log)}`);
+    assert.equal(env.ctl.isCollapsed(), false);
+  });
+
+  test('접히는 순간 보던 내용이 제자리에 남는다(높이 차이만큼 스크롤 보정)', () => {
+    const env = deckEnv();
+    env.win.scrollTo(520); // 문턱(300+200+8=508) 바로 밖
+    assert.equal(env.ctl.isCollapsed(), true);
+    assert.equal(env.win.scrollY, 520 - (env.expandedH - env.collapsedH));
+    assert.equal(env.win.scrollByCalls, 1);
+  });
+
+  test('보정이 만든 스크롤은 판정을 부르지 않는다(무시 1회)', () => {
+    const env = deckEnv();
+    env.win.scrollTo(520);
+    const after = env.win.scrollY;
+    assert.equal(env.ctl.isCollapsed(), true);
+    // 보정으로 간 368 은 펼침 문턱(308)보다 아래다 — 무시가 없어도 안전해야 하고, 있으면 더 안전하다
+    assert.ok(after > env.anchorTop + 8);
+    assert.equal(env.win.scrollByCalls, 1, '보정이 두 번 일어났다 = 판정이 재귀했다');
+  });
+
+  test('맨 위 근처에서는 보정하지 않는다(아래 내용이 올라오는 게 자연스럽다)', () => {
+    const env = deckEnv({ anchorTop: 0, expandedH: 100 });
+    env.ctl.setCollapsed(true); // scrollY 0 == anchorTop → 보정 없음
+    assert.equal(env.win.scrollY, 0);
+    assert.equal(env.win.scrollByCalls, 0);
+  });
+
+  test('좁은 화면(≤900)에서는 접히지 않는다', () => {
+    const env = deckEnv({ innerWidth: MOBILE_MAX });
+    env.drive(50, 40);
+    assert.equal(env.ctl.isCollapsed(), false);
+    assert.deepEqual(env.log, []);
+    assert.equal(env.minibar.hidden, true);
+  });
+
+  test('접힌 채로 좁아지면 고정이 풀린다(회전·창 줄이기)', () => {
+    const env = deckEnv();
+    env.drive(20, 40);
+    assert.equal(env.ctl.isCollapsed(), true);
+    env.win.innerWidth = 480;
+    env.win.emit('resize');
+    assert.equal(env.ctl.isCollapsed(), false);
+    assert.equal(env.minibar.hidden, true);
+    assert.equal(env.expandBtn.getAttribute('aria-expanded'), 'false');
+  });
+
+  test('한 줄에서 「검색·조건 바꾸기」를 누르면 임시로 펼쳐지고, 접기로 되돌아온다', () => {
+    const env = deckEnv();
+    env.drive(20, 40);
+    const y0 = env.win.scrollY;
+    env.expandBtn.click();
+    assert.equal(env.ctl.isOpen(), true);
+    assert.equal(env.expandBtn.getAttribute('aria-expanded'), 'true');
+    assert.equal(env.collapseBtn.hidden, false);
+    assert.equal(env.win.scrollY, y0 + (env.openH - env.collapsedH));
+    env.collapseBtn.click();
+    assert.equal(env.ctl.isOpen(), false);
+    assert.equal(env.expandBtn.getAttribute('aria-expanded'), 'false');
+    assert.equal(env.collapseBtn.hidden, true);
+    assert.equal(env.win.scrollY, y0);
+    assert.equal(env.ctl.isCollapsed(), true, '접기는 한 줄로 돌아가는 것이지 고정 해제가 아니다');
+  });
+
+  test('펼친 상태에서 「접기」는 아무 일도 하지 않는다', () => {
+    const env = deckEnv();
+    env.collapseBtn.click();
+    assert.equal(env.ctl.isOpen(), false);
+    assert.equal(env.win.scrollByCalls, 0);
+  });
+
+  test('덱이 커지면(조건 칩이 늘면) 문턱도 따라 커진다 — measure 재호출', () => {
+    let expanded = 200;
+    const env = deckEnv({ expandedH: 200 });
+    env.win.scrollTo(400); // 508 문턱 안 → 아직 펼침
+    assert.equal(env.ctl.isCollapsed(), false);
+    // 덱이 100 더 커졌다고 치고 다시 재면 문턱은 608 이 된다
+    expanded = 300;
+    env.wrap.getBoundingClientRect = () => ({
+      height: env.wrap.classList.contains('collapsed')
+        ? (env.wrap.classList.contains('open') ? env.openH : env.collapsedH) : expanded,
+      top: 0,
+    });
+    env.ctl.measure();
+    env.win.scrollTo(560);
+    assert.equal(env.ctl.isCollapsed(), false, '문턱이 옛 높이에 묶여 있다');
+    env.win.scrollTo(620);
+    assert.equal(env.ctl.isCollapsed(), true);
+  });
+
+  test('destroy 뒤에는 스크롤에 반응하지 않는다', () => {
+    const env = deckEnv();
+    env.ctl.destroy();
+    env.drive(50, 40);
+    assert.equal(env.ctl.isCollapsed(), false);
+  });
+});
