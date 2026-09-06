@@ -221,6 +221,7 @@ header nav > a { display:flex; align-items:center; flex:0 0 auto; min-height:var
      `display` 를 쓰면 안 되므로 `:not([hidden])` 으로 한정한다. */
 .authnav:not([hidden]) { display:inline-flex; }
 .authnav {
+  min-width:var(--tap-min); justify-content:center; /* <768 아이콘만일 때도 탭 타깃 44px(WCAG 2.5.8) — 2026-09-06 검증 LOW */
   align-items:center; gap:var(--sp-1); margin-left:var(--sp-3);
   padding:var(--sp-1) var(--sp-2); border-radius:var(--r-sm);
   color:var(--on-brand-soft); font-size:var(--fs-sm); font-weight:var(--fw-medium);
