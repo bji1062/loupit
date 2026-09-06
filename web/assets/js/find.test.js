@@ -159,14 +159,67 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     assert.equal(c.aa.label, '지원금 · aa'); // 별칭이 없으면 코드 id
   });
 
-  test('동률 대표 이름은 코드포인트 순 — 파이썬 쪽(find.py)과 같은 규칙', () => {
-    // 로케일 정렬을 쓰면 동률이 갈릴 때 표(파이썬)와 칩(JS)이 다른 이름을 고른다.
+  test('동률 대표 이름은 길이 → 코드포인트 — 파이썬 쪽(find.py)과 같은 규칙', () => {
+    // 짧은 쪽이 대개 수식어 없는 일반명이다. 로케일 정렬을 쓰면 동률이 갈릴 때 표(파이썬)와
+    // 칩(JS)이 다른 이름을 고른다 — 그래서 마지막 키는 양쪽 다 코드포인트다.
     const c = deriveCodes({ companies: [
-      { comp_id: 1, benefits: [ben('x', '힣나', null, 'perks')] },
-      { comp_id: 2, benefits: [ben('x', '가나', null, 'perks')] },
+      { comp_id: 1, benefits: [ben('x', '아주 긴 이름', null, 'perks')] },
+      { comp_id: 2, benefits: [ben('x', '짧은이름', null, 'perks')] },
     ] });
-    assert.equal(c.x.baseLabel, '가나');
-    assert.deepEqual(c.x.aliases, ['가나', '힣나']);
+    assert.equal(c.x.baseLabel, '짧은이름');
+    assert.deepEqual(c.x.aliases, ['짧은이름', '아주 긴 이름']);
+    const same = deriveCodes({ companies: [
+      { comp_id: 1, benefits: [ben('y', '힣나', null, 'perks')] },
+      { comp_id: 2, benefits: [ben('y', '가나', null, 'perks')] },
+    ] });
+    assert.equal(same.y.baseLabel, '가나');
+  });
+
+  // 실데이터 픽스처 — `generator/tests/test_find_page.py` 가 **같은 파일**로 같은 기대값을 잰다.
+  // 표(파이썬)와 칩(JS)이 같은 이름을 부른다는 약속을 실데이터에서 확인하는 자리다.
+  test('실 번들 86종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
+    const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
+    const entries = Object.entries(cases.codes);
+    assert.equal(entries.length, 86, '픽스처가 실데이터 86종이 아니다');
+    // 행 하나 = 회사 하나. 회사 안에서 코드는 UNIQUE 라 빈도만큼 회사를 나눈다(파이썬 쪽과 같은 방식).
+    const companies = [];
+    for (const [code, info] of entries) {
+      for (const [name, freq] of Object.entries(info.names)) {
+        for (let i = 0; i < freq; i += 1) {
+          companies.push({ comp_id: companies.length + 1, benefits: [ben(code, name, null, info.ctgr)] });
+        }
+      }
+    }
+    const codes = deriveCodes({ companies });
+    assert.deepEqual(Object.keys(codes).sort(), entries.map(([c]) => c).sort());
+    for (const [code, want] of entries) {
+      assert.equal(codes[code].label, want.label, code);
+      assert.deepEqual(codes[code].aliases, want.aliases, code);
+    }
+  });
+
+  test('카테고리 안 순서가 파이썬(정적 표)과 같다 — 칩 줄과 표가 같은 순서', () => {
+    const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
+    const companies = [];
+    for (const [code, info] of Object.entries(cases.codes)) {
+      for (const [name, freq] of Object.entries(info.names)) {
+        for (let i = 0; i < freq; i += 1) {
+          companies.push({ comp_id: companies.length + 1, benefits: [ben(code, name, null, info.ctgr)] });
+        }
+      }
+    }
+    const byCat = codesByCategory(deriveCodes({ companies }));
+    for (const [key, want] of Object.entries(cases.category_order)) {
+      assert.deepEqual(byCat[key].map((i) => i.code), want, key);
+    }
+  });
+
+  test('한 회사의 표기가 전체의 이름이 되지 않는다', () => {
+    const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
+    for (const [code, expect] of [['company_event', '야유회'], ['mba', '대학원비 지원'],
+      ['work_tools', '노트북 지원'], ['profit_sharing', '경영성과금']]) {
+      assert.equal(cases.codes[code].label, expect, code);
+    }
   });
 
   test('코드 없는 행은 건너뛴다(코드가 검색의 축이다)', () => {

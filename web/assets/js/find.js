@@ -95,14 +95,23 @@ function hasKey(known, key) {
 // 이름이 달라(`commute_subsidy` = 통근버스 / 셔틀버스 / 야근 교통비 …) 화면에 낼 대표 이름을
 // 여기서 뽑는다: 대표 = 최빈 `benefit_nm`, 나머지는 별칭(검색어가 된다).
 
-// 최빈값. 동률은 **코드포인트 순**으로 가른다 — `localeCompare('ko')` 가 아니다. 같은 규칙이
-// `generator/pages/find.py::_most_common` 에도 있어야 하고(표와 칩이 같은 이름을 불러야 한다),
-// 파이썬의 문자열 비교는 코드포인트다. ICU 한국어 정렬은 그것과 달라서 동률이 갈릴 때 두 쪽이
-// **다른 대표 이름**을 고르게 된다 — 화면에서만 보이고 테스트로는 잘 안 잡히는 종류의 어긋남이다.
+// 대표 이름 고르기: **빈도 내림차순 → 이름 길이 오름차순 → 코드포인트**.
+//
+// ① 길이가 두 번째 키인 이유: 86개 중 **26개는 이름이 전부 1회씩**이라 라벨이 tie-break 로만
+//    정해진다. 빈도만 보고 코드포인트로 가르면 라틴·숫자·괄호가 한글 앞에 서서 「KB 패밀리데이」
+//    「Global MBA/유학」「PS (Profit Sharing)」처럼 **한 회사의 표기가 86종 전체의 이름**이 된다
+//    (2026-09-06 실데이터 검증). 짧은 쪽은 대개 수식어가 없는 일반명이다 — 야유회 · 대학원비 지원
+//    · 경영성과금 · 노트북 지원.
+// ② 코드포인트가 마지막 키인 이유: 이 규칙이 `generator/pages/find.py::_most_common` 에도 있어야
+//    하는데(표는 파이썬이, 칩은 JS 가 그린다) 파이썬의 문자열 비교는 코드포인트다. ICU 한국어
+//    정렬(`localeCompare('ko')`)은 그것과 달라서 동률이 갈릴 때 두 쪽이 **다른 이름**을 고른다 —
+//    화면에서만 보이고 테스트로는 잘 안 잡히는 어긋남이라 양쪽 다 로케일을 쓰지 않는다.
 const byCodePoint = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
+const preferName = (a, b) => b[1] - a[1] || String(a[0]).length - String(b[0]).length
+  || byCodePoint(String(a[0]), String(b[0]));
 
 function mostCommon(counter) {
-  return [...counter.entries()].sort((a, b) => b[1] - a[1] || byCodePoint(String(a[0]), String(b[0])))[0]?.[0];
+  return [...counter.entries()].sort(preferName)[0]?.[0];
 }
 
 /**
@@ -137,7 +146,7 @@ export function deriveCodes(ref) {
       code: cd,
       baseLabel,
       label: baseLabel,
-      aliases: [...nm.entries()].sort((a, b) => b[1] - a[1] || byCodePoint(String(a[0]), String(b[0]))).map(([n]) => n),
+      aliases: [...nm.entries()].sort(preferName).map(([n]) => n),
       ctgr: mostCommon(ctgrs.get(cd)) || '',
       count: comps.get(cd).size,
       amtCount: amts.get(cd),
@@ -174,8 +183,11 @@ export function codesByCategory(codes) {
     if (!out[info.ctgr]) out[info.ctgr] = [];
     out[info.ctgr].push(info);
   }
+  // 정렬은 `find.py::build_view` 와 **같아야 한다** — 칩 줄과 정적 표가 같은 순서를 쓴다는 약속이다.
+  // 파이썬은 코드포인트 비교라 여기서 `localeCompare('ko')` 를 쓰면 보유 수가 같은 항목의 순서가
+  // 네 카테고리에서 갈렸다(2026-09-06 검증).
   for (const list of Object.values(out)) {
-    list.sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'ko'));
+    list.sort((a, b) => b.count - a.count || byCodePoint(a.label, b.label));
   }
   return out;
 }

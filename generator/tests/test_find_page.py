@@ -12,6 +12,7 @@
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -25,6 +26,7 @@ from generator.render import make_env
 REPO_ROOT = Path(__file__).resolve().parents[2]
 FIND_JS = REPO_ROOT / "web" / "assets" / "js" / "find.js"
 FIND_TEMPLATE = REPO_ROOT / "generator" / "templates" / "find.html"
+LABEL_CASES = REPO_ROOT / "generator" / "tests" / "data" / "find_label_cases.json"
 WEB = REPO_ROOT / "web"
 SHELLS = [
     "index.html", "compare/index.html", "login.html", "mypage.html",
@@ -165,18 +167,89 @@ def test_label_override_matches_the_js_module():
     assert js_map == find.LABEL_OVERRIDE, "표시명 override 가 파이썬·JS 사이에서 갈라졌다"
 
 
-def test_most_common_tie_breaks_by_code_point_like_the_js_module():
-    """동률 대표 이름은 코드포인트 순 — JS 쪽과 **같은 규칙**이어야 표와 칩이 같은 이름을 부른다.
+def _companies_from_label_cases(cases: dict) -> list[dict]:
+    """픽스처의 `코드 → {이름: 빈도}` 를 회사 목록으로 되돌린다(행 하나 = 회사 하나).
 
-    `가`(U+AC00) < `힣`(U+D7A3) 라 한 번씩 나온 두 이름 중 `가나`가 대표가 된다. 한국어 로케일
-    정렬을 쓰면 같은 결과가 보장되지 않는다(그래서 양쪽 다 로케일을 쓰지 않는다).
+    회사 안에서 코드는 UNIQUE 라 같은 코드를 여러 번 쓰려면 회사를 나눠야 한다 — 그래서
+    빈도만큼 회사를 만든다. JS 쪽 테스트도 **같은 방식으로** 같은 파일을 읽는다.
     """
-    codes = find.derive_codes([
-        {"comp_id": 1, "benefits": [{"benefit_cd": "x", "benefit_nm": "힣나", "benefit_ctgr_cd": "perks", "qual_yn": True}]},
-        {"comp_id": 2, "benefits": [{"benefit_cd": "x", "benefit_nm": "가나", "benefit_ctgr_cd": "perks", "qual_yn": True}]},
-    ])
-    assert codes["x"]["base_label"] == "가나"
-    assert codes["x"]["aliases"] == ["가나", "힣나"]
+    companies, cid = [], 0
+    for code, info in cases["codes"].items():
+        for name, freq in info["names"].items():
+            for _ in range(freq):
+                cid += 1
+                companies.append({"comp_id": cid, "benefits": [{
+                    "benefit_cd": code, "benefit_nm": name,
+                    "benefit_ctgr_cd": info["ctgr"], "qual_yn": True, "benefit_amt": None,
+                }]})
+    return companies
+
+
+def test_real_bundle_labels_match_the_shared_fixture():
+    """실데이터 86종의 대표 이름·별칭 순서를 못 박는다.
+
+    같은 파일을 `web/assets/js/find.test.js` 도 읽어 같은 기대값을 검사한다 — 표(파이썬)와
+    칩(JS)이 **같은 이름을 부른다**는 약속을 실데이터로 재는 자리다. 규칙을 손대면 여기가 먼저 빨개진다.
+    """
+    cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
+    assert len(cases["codes"]) == 86, "픽스처가 실데이터 86종이 아니다"
+    codes = find.derive_codes(_companies_from_label_cases(cases))
+    assert sorted(codes) == sorted(cases["codes"])
+    for code, want in cases["codes"].items():
+        assert codes[code]["label"] == want["label"], code
+        assert codes[code]["aliases"] == want["aliases"], code
+
+
+def test_category_order_matches_the_shared_fixture(fake_bundle, fake_now):
+    """카테고리 안 순서 = 보유 회사 수 내림차순 → 라벨. **칩 줄과 정적 표가 같은 순서**여야 한다.
+
+    JS 쪽이 한국어 로케일 정렬을 쓰는 동안 네 카테고리에서 순서가 갈려 있었다(2026-09-06 검증).
+    두 구현이 같은 픽스처로 같은 기대값을 재면 그 어긋남이 다시 조용히 들어올 수 없다.
+    """
+    cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
+    codes = find.derive_codes(_companies_from_label_cases(cases))
+    by_cat: dict[str, list] = {}
+    for info in codes.values():
+        by_cat.setdefault(info["ctgr"], []).append(info)
+    for key, want in cases["category_order"].items():
+        got = [i["code"] for i in sorted(by_cat[key], key=lambda i: (-i["count"], i["label"]))]
+        assert got == want, key
+
+
+def test_short_generic_name_wins_over_one_company_wording():
+    """동률일 때 **짧은 일반명**이 이긴다 — 한 회사의 표기가 86종 전체의 이름이 되면 안 된다.
+
+    실데이터에서 이름이 전부 1회씩인 코드가 19종이라 라벨이 tie-break 로만 정해진다. 빈도만 보고
+    코드포인트로 가르면 라틴·숫자·괄호가 한글 앞에 서서 「KB 패밀리데이」가 야유회 코드의 이름이 됐다.
+    """
+    cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
+    for code, expect in (("company_event", "야유회"), ("mba", "대학원비 지원"),
+                         ("work_tools", "노트북 지원"), ("profit_sharing", "경영성과금"),
+                         ("massage", "안마의자"), ("birthday_leave", "생일 선물")):
+        names = cases["codes"][code]["names"]
+        assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
+        top = max(names.values())
+        assert len([n for n, k in names.items() if k == top]) > 1, f"{code}: 동률이 아니다 — 가드가 공회전한다"
+        assert cases["codes"][code]["label"] == expect, code
+        # 더 길거나 회사 고유 표기인 후보가 실제로 함께 있었다는 것까지 확인한다
+        assert any(len(n) > len(expect) for n in names), code
+
+
+def test_most_common_tie_breaks_by_length_then_code_point():
+    """동률 대표 이름은 **길이 → 코드포인트** — JS 쪽과 같은 규칙이어야 표와 칩이 같은 이름을 부른다.
+
+    길이가 먼저다(짧은 쪽이 대개 수식어 없는 일반명). 길이도 같으면 `가`(U+AC00) < `힣`(U+D7A3).
+    한국어 로케일 정렬을 쓰면 같은 결과가 보장되지 않는다(그래서 양쪽 다 로케일을 쓰지 않는다).
+    """
+    def one(code, name, cid):
+        return {"comp_id": cid, "benefits": [{"benefit_cd": code, "benefit_nm": name,
+                                              "benefit_ctgr_cd": "perks", "qual_yn": True}]}
+    codes = find.derive_codes([one("x", "아주 긴 이름", 1), one("x", "짧은이름", 2)])
+    assert codes["x"]["base_label"] == "짧은이름"
+    assert codes["x"]["aliases"] == ["짧은이름", "아주 긴 이름"]
+    same_len = find.derive_codes([one("y", "힣나", 1), one("y", "가나", 2)])
+    assert same_len["y"]["base_label"] == "가나"
+    assert same_len["y"]["aliases"] == ["가나", "힣나"]
 
 
 def test_codes_with_no_benefit_cd_are_skipped():

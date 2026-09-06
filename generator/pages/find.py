@@ -35,16 +35,25 @@ LABEL_OVERRIDE = {
 }
 
 
-def _most_common(counter: Counter):
-    """최빈값 — 동률은 **코드포인트 순**으로 가른다(파이썬 기본 문자열 비교).
+def _prefer_name(kv) -> tuple:
+    """대표 이름 정렬 키 — **빈도 내림차순 → 이름 길이 오름차순 → 코드포인트**.
 
-    같은 규칙이 `web/assets/js/find.js::mostCommon` 에도 있어야 한다. 거기서 한국어 로케일 정렬
-    (`localeCompare('ko')`)을 쓰면 동률이 갈릴 때 표와 칩이 **다른 대표 이름**을 고른다 — 화면에서만
-    보이고 테스트로는 잘 안 잡히는 어긋남이라 양쪽 다 로케일 없는 비교로 못 박는다.
+    ① 길이가 두 번째 키인 이유: 86개 중 **26개는 이름이 전부 1회씩**이라 라벨이 tie-break 로만
+       정해진다. 빈도만 보고 코드포인트로 가르면 라틴·숫자·괄호가 한글 앞에 서서 「KB 패밀리데이」
+       「Global MBA/유학」처럼 **한 회사의 표기가 86종 전체의 이름**이 된다(2026-09-06 실데이터 검증).
+       짧은 쪽은 대개 수식어가 없는 일반명이다.
+    ② 코드포인트가 마지막 키인 이유: 같은 규칙이 `web/assets/js/find.js::preferName` 에도 있어야
+       하는데(표는 여기서, 칩은 거기서 그린다) 로케일 정렬은 두 언어에서 결과가 갈릴 수 있다.
     """
+    name, count = kv
+    return (-count, len(str(name)), str(name))
+
+
+def _most_common(counter: Counter):
+    """최빈값 — 동률은 `_prefer_name` 규칙(길이 → 코드포인트)으로 가른다."""
     if not counter:
         return None
-    return sorted(counter.items(), key=lambda kv: (-kv[1], str(kv[0])))[0][0]
+    return sorted(counter.items(), key=_prefer_name)[0][0]
 
 
 def derive_codes(companies: list[dict]) -> dict[str, dict]:
@@ -75,7 +84,7 @@ def derive_codes(companies: list[dict]) -> dict[str, dict]:
             "code": code,
             "base_label": base,
             "label": base,
-            "aliases": [nm for nm, _ in sorted(cnt.items(), key=lambda kv: (-kv[1], str(kv[0])))],
+            "aliases": [nm for nm, _ in sorted(cnt.items(), key=_prefer_name)],
             "ctgr": _most_common(ctgrs[code]) or "",
             "count": len(comps[code]),
             "amt_count": amts[code],
