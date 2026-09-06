@@ -974,7 +974,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .policy-draft { border-left:3px solid var(--warning); padding:var(--sp-3) var(--sp-4); background:var(--badge-est-bg); border-radius:var(--r-sm); }
 
 /* ══════════════════════════════════════════════════ RESPONSIVE(768) ══ */
-/* ── 복지로 찾기(/find, SP-FIND, 2026-09-06) ─────────────────────────────────
+/* ── 복지검색(/find, SP-FIND, 2026-09-06) ─────────────────────────────────
    도구는 find.js 가 그리고 이 절은 자리·간격·상태 색만 준다. 색은 전부 토큰이다(UT-NO-LITERAL).
    ⚠ 이 시스템의 분기는 `min-width:768px` **하나**이고 max-width 분기는 금지다(UT-BP). 그래서
    기본형이 모바일(고정 없음·단일 열)이고 덱 고정·접힘은 아래 768 블록에서만 켜진다. 접힘
@@ -1140,7 +1140,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
      버리고 1열로 남는다(깨지지 않는 폴백). */
   .metric-cards { grid-template-columns:repeat(auto-fit, minmax(max(29%, 240px), 1fr)); }
 
-  /* 복지로 찾기(SP-FIND) — 이 폭부터 덱이 고정되고 스크롤하면 한 줄로 접힌다(find.js).
+  /* 복지검색(SP-FIND) — 이 폭부터 덱이 고정되고 스크롤하면 한 줄로 접힌다(find.js).
      결과 행은 로고·본문·담기 3열, 복지 한 줄은 이름·금액·조건 3열이 된다. */
   /* 🚨 덱은 헤더(`position:sticky; top:0; z-index:40`) **아래**에 붙어야 한다. `top:0` 으로 두면
      접힌 한 줄과 「검색·조건 바꾸기」 버튼이 헤더 밑으로 들어가 클릭조차 안 된다 — 되돌릴 길이

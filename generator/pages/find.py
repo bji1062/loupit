@@ -1,4 +1,4 @@
-"""generator/pages/find.py — `/find` 「복지로 찾기」 (SP-FIND, 2026-09-06).
+"""generator/pages/find.py — `/find` 「복지검색」 (SP-FIND, 2026-09-06).
 
 회사 이름이 아니라 **복지 항목**으로 회사를 거르는 탭이다. 고르는 도구 자체는 클라이언트가
 그린다(`web/assets/js/find.js` + 부팅 번들 `reference/all` — 새 API·새 컬럼 0). 이 파일이 만드는
@@ -163,7 +163,7 @@ def render(env, ctx, cfg=CFG) -> Page:
     view = build_view(ctx)
     url = f"{cfg.site_origin}/find"
     total = view["total_companies"]
-    title = f"복지로 찾기 — 복지 항목으로 상장사 {total}곳 거르기 | {cfg.site_name}"
+    title = f"복지검색 — 복지 항목으로 상장사 {total}곳 거르기 | {cfg.site_name}"
     desc = (
         f"사택·학자금·복지포인트처럼 원하는 복지 항목을 골라 그 복지가 있는 회사를 찾습니다. "
         f"등록 회사 {total}곳 · 복지 항목 {view['total_rows']:,}건 · 표준 코드 {view['total_codes']}종을 "

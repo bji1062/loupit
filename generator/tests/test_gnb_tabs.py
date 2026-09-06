@@ -130,7 +130,7 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
         elif p.path == "heatmap.html":
             assert cur == ["/heatmap"], "히트맵 탭이 현재 탭이어야 한다"
         elif p.path == "find.html":
-            assert cur == ["/find"], "복지로 찾기 탭이 현재 탭이어야 한다"
+            assert cur == ["/find"], "복지검색 탭이 현재 탭이어야 한다"
         else:
             assert cur == [], f"{p.path}: 속한 탭이 없는 페이지에 aria-current 가 붙었다"
 

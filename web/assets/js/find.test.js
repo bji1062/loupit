@@ -1,4 +1,4 @@
-// web/assets/js/find.test.js — 「복지로 찾기」(SP-FIND) 계약 테스트.
+// web/assets/js/find.test.js — 「복지검색」(SP-FIND) 계약 테스트.
 //
 // 잡으려는 회귀 셋:
 //   ① **코드 사전이 번들에서 파생된다는 사실**이 깨지는 것 — 대표 이름·별칭·카테고리·보유 수는
