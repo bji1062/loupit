@@ -1,32 +1,37 @@
 <!doctype html>
-<!-- web/index.html — SCR-01 랜딩 + SCR-02 비교 툴 통합 화면(SP-FE-2·SP-DS).
-     히어로·특징은 정적(무빌드·인덱싱 대상, 본문 JS 없이 읽힘 — NFR12·24). 검색/입력/리포트는
-     app.js가 부팅하는 SPA(#app). 부팅 성공 전엔 히어로·특징만 노출된다(정적 폴백). -->
+<!-- web/index.html — 대문(SCR-01·SCR-10). **고밀도 정적 허브**다: 비교 도구는 /compare/ 로 갔고
+     (결정 (c), 2026-09-12) 여기에는 회사·복지·조합으로 가는 실제 링크의 실제 목록만 남는다.
+     본문 JS 0 — 크롤러가 보는 것이 이 페이지의 전부이고, 그게 요점이다(NFR12·24).
+     ⚠ 숫자·회사명은 **수기**다. 웨이브 3(회사 확장) 첫 배포부터 썩기 시작하므로 2단계에서
+       generator/pages/home.py 로 이관해야 한다 — 그때까지 「2026-09-12 기준」이 방어선이다. -->
 <html lang="ko">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <!-- 네이버 서치어드바이저 사이트 소유확인(2026-07-21). 루트 문서 전용 — 소유확인은 등록 URL(/) 하나만 확인. -->
+  <!-- 네이버 서치어드바이저 사이트 소유확인(2026-07-21). 루트 문서 전용 — 소유확인은 등록 URL(/) 하나만 확인.
+       🚨 지우면 서치어드바이저 소유권을 잃는다. 2단계 템플릿 이관 시에도 반드시 따라가야 한다. -->
   <meta name="naver-site-verification" content="db7956bfac6b387b3c03f707dd526a763d420a7d">
-  <title>jobcho.wiki 잡초 — 로그인 없는 회사 복지·연봉 비교</title>
-  <meta name="description" content="두 회사의 실효연봉·복지·워라밸·문화를 로그인 없이 한 화면에서 비교하세요. 큐레이션된 기업 복지 데이터, 계산은 100% 브라우저에서.">
+  <title>잡초위키 — 회사 복지·연봉·재무를 로그인 없이 열람·비교</title>
+  <meta name="description" content="잡초위키는 126곳 회사의 복지 2,032건·연봉·재무를 로그인 없이 열람하고 두 회사를 비교합니다. 복지는 회사 공식 페이지에서 수집해 표준 항목 86종으로 분류합니다.">
   <link rel="canonical" href="https://jobcho.wiki/">
-  <!-- SEO: OpenGraph·JSON-LD(WebSite). 회사별 상세 메타는 SP-GEN 정적 페이지가 담당 -->
+  <!-- SEO: OpenGraph·JSON-LD(WebSite). 회사별 상세 메타는 SP-GEN 정적 페이지가 담당.
+       og:site_name 은 generator/config.py CFG.site_name('jobcho.wiki')과 같은 값을 유지한다 —
+       브랜드 문자열 「잡초위키」는 h1·title·JSON-LD name 이 싣는다. -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="jobcho.wiki">
-  <meta property="og:title" content="jobcho.wiki 잡초 — 로그인 없는 회사 복지·연봉 비교">
-  <meta property="og:description" content="두 회사의 실효연봉·복지·워라밸·문화를 로그인 없이 한 화면에서 비교하세요.">
+  <meta property="og:title" content="잡초위키 — 회사 복지·연봉·재무를 로그인 없이 열람·비교">
+  <meta property="og:description" content="회사 126곳의 복지 2,032건·연봉·재무를 로그인 없이 열람하고 두 회사를 비교합니다.">
   <meta property="og:url" content="https://jobcho.wiki/">
   <meta property="og:image" content="https://jobcho.wiki/assets/v2/og-default.png">
   <meta property="og:locale" content="ko_KR">
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"잡초(jobcho.wiki)","alternateName":"jobcho.wiki","url":"https://jobcho.wiki/","inLanguage":"ko","description":"로그인 없는 한국 회사 복지·연봉·근무조건 비교 도구"}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"잡초위키","alternateName":["jobcho.wiki","잡초"],"url":"https://jobcho.wiki/","inLanguage":"ko","description":"로그인 없이 열람하는 한국 상장사 복지·연봉·재무 위키"}</script>
   <link rel="icon" type="image/svg+xml" href="/assets/v2/img/logo.svg">
   <link rel="icon" href="/assets/v2/img/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico" sizes="32x32">
   <link rel="apple-touch-icon" href="/assets/v2/img/apple-touch-icon.png">
   <link rel="stylesheet" href="/assets/v2/css/styles.css">
 </head>
-<body data-page-type="landing"> <!-- 랜딩 유형(SP-ADS): 콘텐츠 하단 광고 1(예약). 입력/리포트 뷰 광고는 app.js가 명시 마운트 -->
+<body data-page-type="landing"> <!-- 랜딩 유형(SP-ADS): 콘텐츠 하단 광고 1(예약). 빼면 ads.js 가 무광고로 떨어진다 -->
 <header data-global class="gnb"> <!-- 나무위키식 그린 상단 바. 로그인 진입점은 authnav.js 가 런타임에 채운다(아래 슬롯) -->
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
@@ -53,102 +58,375 @@
 </header>
 
 <main>
-  <!-- 히어로: 정적·JS 없이 읽힘(SEO·NFR12·24). 검색 박스는 아래 SPA(#app)가 부팅 후 채운다. -->
-  <h1 id="main-heading">회사 복지·연봉, 로그인 없이 비교하세요</h1>
-  <p class="lede">잡초(jobcho)에 오신 것을 환영합니다.</p>
-  <p class="lede-sub">jobcho는 job choice의 줄임말로, 여러분의 더 나은 직장 선택을 돕기 위해 만들었습니다.</p>
-  <p class="lede-sub">연봉 숫자만 보지 마세요. 복지, 워라밸, 시간가치까지 모두 숫자로 비교하고 선택하세요.</p>
-  <!-- 제보 기능은 미구현이다. "개발 중"으로 명시해 있는 기능처럼 읽히지 않게 한다 —
-       실제 구현은 INV-1(쓰기 라우트 0 + 익명 로그 1종) 개정이 선행돼야 한다. -->
-  <p class="lede-note">(직장인 여러분의 참여를 통해 공식 페이지에 없는 진짜 복지를 채울 수 있게 기능 개발 중입니다)</p>
+<div class="home">
+  <!-- 히어로 — 브랜드가 첫 어절이어야 한다(구글 사이트 이름 신호는 홈 한 장의 h1·title·JSON-LD 에서만 읽힌다).
+       인트로는 운영자 확정 문안(2026-09-08)이다: 전부 완결문장이라 「제목만 나열」 거절 조항에 정면으로 대응하고,
+       "어떻게 만들었나"가 아니라 "왜 있는가"에 답하며, 브랜드 문자열 「잡초위키」가 본문에 들어간다. -->
+  <section class="home-hero" aria-labelledby="main-heading">
+    <h1 id="main-heading">잡초위키 — 회사 복지·연봉·재무를 로그인 없이 열람·비교</h1>
+    <p class="lede">잡초(jobcho)에 오신 것을 환영합니다.</p>
+    <!-- 데이터 띠 — 이름-값 쌍 네 개라 <dl> 이다(목업에 제목이 없는 블록이라 heading 은 없다).
+         DOM 순서는 dt(라벨) → dd(값)이고 화면만 뒤집는다(column-reverse) — 스크린리더는
+         「등록 회사, 126곳」으로 읽고 눈은 큰 숫자를 먼저 본다.
+         숫자는 수기다: 웨이브 3 부터 썩는다(2단계 생성기 이관이 그 해법). 「2026-09-12 기준」을 반드시 함께 둔다. -->
+    <dl class="home-strip">
+      <div><dt>등록 회사</dt><dd>126곳</dd></div>
+      <div><dt>복지 · 표준 항목 86종</dt><dd>2,032건</dd></div>
+      <div><dt>재무·직원 사업연도</dt><dd>2015–2025</dd></div>
+      <div><dt>최근 등록</dt><dd>2026-09-06</dd></div>
+    </dl>
+    <p class="home-asof">2026-09-12 기준</p>
 
-  <!-- 2칼럼: 본문(비교 툴+특징) + 우측 레일(실시간 비교 TOP 10, 768px 미만은 본문 아래 스택) -->
-  <div class="main-cols">
-  <div class="main-primary">
+    <div class="home-cta">
+      <a href="/compare/">두 회사 비교하기 <span aria-hidden="true">→</span><span class="home-cta-d">현재 직장과 이직 후보를 고르면 실효연봉(야근·근무시간 반영), 복지 총가치, 근무형태 차이를 한 화면에 냅니다. 계산은 브라우저에서만 하고 입력값은 서버로 보내지 않습니다.</span></a>
+      <a href="/find">복지 조건으로 회사 찾기 <span aria-hidden="true">→</span><span class="home-cta-d">사택·학자금·복지포인트처럼 원하는 복지를 골라 그 복지가 있는 회사를 찾습니다.</span></a>
+    </div>
 
-  <!-- 비교 툴 SPA 셸(3뷰 상태 머신). JS 부팅 성공 시 hidden 해제(PE-1). -->
-  <div id="app" hidden>
-    <section id="view-search" class="view" data-screen="search">
-      <h2>비교할 두 직장을 선택하세요</h2>
-      <!-- 등록 회사 디렉토리(directory.js가 채움): 우측 상단 "등록된 회사 수: N" → 가나다순 목록 → 복지 펼침 -->
-      <div id="company-directory"></div>
-      <div class="search-slot" data-slot="a">
-        <label for="search-input-a">현재 직장(A)</label>
-        <input id="search-input-a" type="text" autocomplete="off" placeholder="회사명 검색">
-        <ul id="cand-a" class="cand-list" role="listbox" aria-label="A 후보"></ul>
-        <p class="search-empty" data-slot="a" hidden>검색 결과가 없습니다. 현재는 등록된 회사끼리만 비교할 수 있어요.</p>
-        <p class="search-error" data-slot="a" hidden>검색에 실패했습니다. <button type="button" data-retry="a">다시 시도</button></p>
-      </div>
-      <div class="search-slot" data-slot="b">
-        <label for="search-input-b">이직 후보(B)</label>
-        <input id="search-input-b" type="text" autocomplete="off" placeholder="회사명 검색">
-        <ul id="cand-b" class="cand-list" role="listbox" aria-label="B 후보"></ul>
-        <p class="search-empty" data-slot="b" hidden>검색 결과가 없습니다. 현재는 등록된 회사끼리만 비교할 수 있어요.</p>
-        <p class="search-error" data-slot="b" hidden>검색에 실패했습니다. <button type="button" data-retry="b">다시 시도</button></p>
-      </div>
-    </section>
+    <!-- 인트로는 띠·CTA 뒤에 둔다(2026-09-12 사용자 결정 (b)): 폰 360×740 에서 첫 화면에 갈 곳(CTA)이 보여야 한다 —
+         인트로 6단락이 앞서면 CTA 가 869px 로 접힘선 아래였다. 문안은 그대로다. -->
+    <p class="home-intro">jobcho는 Job Choice, 더 나은 직장 선택을 뜻합니다.</p>
+    <p class="home-intro">직장을 비교할 때 우리는 흔히 연봉부터 봅니다. 하지만 복지도 연봉의 일부입니다.</p>
+    <p class="home-intro">채용공고에 적힌 ‘각종 복지 제도’가 실제로 얼마의 가치가 있는지, 함께 따져봐야 합니다.</p>
+    <p class="home-intro">잡초위키는 흩어진 기업 복지 정보를 한곳에 모으고, 실제 구성원들의 경험을 더해 연봉만으로는 보이지 않는 회사의 가치를 비교할 수 있도록 돕습니다.</p>
+    <p class="home-intro-note">(복지는 회사 공식 채용·복지 페이지에서 수집해 86종의 표준 항목으로 다시 분류하고, 항목마다 연간 환산 금액과 금액의 성격(회사 공식 수치/추정치)을 적습니다.)</p>
+    <p class="home-intro">여러분들이 남긴 한 줄의 경험이 누군가의 더 나은 직장 선택을 만듭니다.</p>
 
-    <section id="view-input" class="view" data-screen="input" hidden>
-      <h2>비교 입력</h2>
-      <div id="input-slot-a" class="input-slot" data-slot="a"></div>
-      <div id="input-slot-b" class="input-slot" data-slot="b"></div>
-      <div id="priority-picker"></div>
-      <button id="btn-compare" type="button">비교하기</button>
-    </section>
+  </section>
 
-    <section id="view-report" class="view" data-screen="report" hidden>
-      <h2>비교 리포트</h2>
-      <div id="report-body"></div>
-      <!-- SP-ADS-9.2: report 뷰 하단 절제 광고 슬롯 정확히 1개(판정 상단·중간 삽입 금지) -->
-      <div data-ad-position="report_bottom"></div>
-      <div data-affiliate-host></div>
-      <button id="btn-edit-input" type="button">입력 수정</button>
-      <button id="btn-new-search" type="button">새 비교</button>
-    </section>
-
-
-    <section id="view-company" class="view" data-screen="company" hidden>
-      <!-- 회사 복지 페이지(GNB 검색 직행) — company.js가 #company-page를 렌더(카테고리별 복지) -->
-      <h2 class="sr-only">회사 복지 정보</h2>
-      <div id="company-page"></div>
-    </section>
-
-  </div>
-
-  <!-- FR-E1 참조 로드 실패 재시도 UI — #app(hidden) 밖에 두어야 부팅 실패 시 실제로 보인다(#10) -->
-  <div id="boot-error" hidden>
-    <p>비교 도구를 불러오지 못했습니다. 네트워크 상태를 확인해주세요.</p>
-    <button id="btn-boot-retry" type="button">다시 시도</button>
-  </div>
-
-  <!-- 특징: 정적·JS 없이 읽힘(SEO). 검색 박스가 부팅 실패해도 랜딩 가치 설명은 남는다. -->
-  <section aria-label="특징">
-    <h2>이런 걸 알려드립니다</h2>
-    <ul>
-      <li><strong>실효연봉</strong> — 야근·근무시간을 반영해 시간당 가치까지 환산</li>
-      <li><strong>복지 총가치</strong> — 9개 카테고리 복지를 금액·정성으로 비교(추정치는 정직하게 표기)</li>
-      <li><strong>워라밸·문화</strong> — 유연근무·재택·시차출퇴근 등 근무형태와 조직문화 비교</li>
+  <section class="home-sec" aria-labelledby="home-vs">
+    <h2 id="home-vs">비교 예시</h2>
+    <p class="home-note">두 회사를 나란히 본 정적 리포트입니다.</p>
+    <ul class="home-list">
+      <li><a href="/vs/samsung-elec-sk-hynix">삼성전자 vs SK하이닉스</a> <span class="home-c">반도체 경쟁사</span></li>
+      <li><a href="/vs/kakao-naver">카카오 vs NAVER</a> <span class="home-c">IT 플랫폼</span></li>
+      <li><a href="/vs/hyundai-mobis-kia">현대모비스 vs 기아</a> <span class="home-c">완성차·부품</span></li>
     </ul>
   </section>
 
-  <!-- SP-ADS: 랜딩 콘텐츠 하단 광고 슬롯(런타임 ads.js 마운트, 승인 전엔 예약 박스). -->
+  <!-- 회사 둘러보기 — 묶음은 히트맵과 **같은 KRX 분류**(generator/sector.py)다. 회사 1곳짜리
+       묶음만 「그 밖」으로 합치고 그 밖에는 손대지 않는다 — 여기서 임의로 합치면 히트맵과 다른
+       업종 체계가 둘이 되고, 둘 중 어느 쪽이 맞는지 아무도 모르게 된다. -->
+  <section class="home-sec" aria-labelledby="home-companies">
+    <h2 id="home-companies">회사 둘러보기</h2>
+    <p class="home-note">등록 회사 126곳 — 대기업 76, 중견기업 50. 이름을 누르면 그 회사의 복지·연봉·재무 페이지로 갑니다. 괄호 안은 등록된 복지 항목 수이며, 묶음마다 항목 수가 많은 5곳까지 싣습니다. KRX 업종 분류를 따르므로 에코프로(금융)·코웨이(일반서비스)처럼 낯선 자리가 있습니다.</p>
+    <div class="home-grp">
+      <h3>전기·전자 24곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/sk-hynix">SK하이닉스</a> <span class="home-c">(25)</span></li>
+        <li><a href="/company/isu-petasys">이수페타시스</a> <span class="home-c">(21)</span></li>
+        <li><a href="/company/lg-innotek">LG이노텍</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/landf">엘앤에프</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/nepes">네패스</a> <span class="home-c">(18)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>IT 서비스 15곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/lg-cns">LG CNS</a> <span class="home-c">(27)</span></li>
+        <li><a href="/company/naver">NAVER</a> <span class="home-c">(23)</span></li>
+        <li><a href="/company/samsung-sds">삼성SDS</a> <span class="home-c">(23)</span></li>
+        <li><a href="/company/netmarble">넷마블</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/krafton">크래프톤</a> <span class="home-c">(21)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>화학 12곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/sk-innovation">SK이노베이션</a> <span class="home-c">(26)</span></li>
+        <li><a href="/company/hankook-tire">한국타이어앤테크놀로지</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/s-oil">S-Oil</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/apr">에이피알</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/dongjin-semichem">동진쎄미켐</a> <span class="home-c">(19)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>제약 11곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/celltrion">셀트리온</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/hugel">휴젤</a> <span class="home-c">(18)</span></li>
+        <li><a href="/company/celltrion-pharm">셀트리온제약</a> <span class="home-c">(17)</span></li>
+        <li><a href="/company/yuhan">유한양행</a> <span class="home-c">(17)</span></li>
+        <li><a href="/company/pharma-research">파마리서치</a> <span class="home-c">(17)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>기계·장비 10곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/wonik-ips">원익IPS</a> <span class="home-c">(24)</span></li>
+        <li><a href="/company/techwing">테크윙</a> <span class="home-c">(19)</span></li>
+        <li><a href="/company/doosan-enerbility">두산에너빌리티</a> <span class="home-c">(16)</span></li>
+        <li><a href="/company/hanmi-semi">한미반도체</a> <span class="home-c">(15)</span></li>
+        <li><a href="/company/hpsp">HPSP</a> <span class="home-c">(14)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>운송장비·부품 8곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/kai">한국항공우주산업</a> <span class="home-c">(34)</span></li>
+        <li><a href="/company/samsung-heavy">삼성중공업</a> <span class="home-c">(26)</span></li>
+        <li><a href="/company/hyundai-motor">현대자동차</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/hyundai-mobis">현대모비스</a> <span class="home-c">(18)</span></li>
+        <li><a href="/company/hyundai-rotem">현대로템</a> <span class="home-c">(15)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>기타금융 6곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/samsung-card">삼성카드</a> <span class="home-c">(23)</span></li>
+        <li><a href="/company/kakao-pay">카카오페이</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/kbfg">KB금융</a> <span class="home-c">(21)</span></li>
+        <li><a href="/company/hd-hyundai">HD현대</a> <span class="home-c">(19)</span></li>
+        <li><a href="/company/lg">LG</a> <span class="home-c">(14)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>보험 4곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/samsung-fire">삼성화재</a> <span class="home-c">(28)</span></li>
+        <li><a href="/company/samsung-life">삼성생명</a> <span class="home-c">(16)</span></li>
+        <li><a href="/company/db-insurance">DB손해보험</a> <span class="home-c">(15)</span></li>
+        <li><a href="/company/hanwha-life">한화생명</a> <span class="home-c">(15)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>오락·문화 4곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/cj-enm-com">CJ ENM 커머스부문</a> <span class="home-c">(24)</span></li>
+        <li><a href="/company/cj-enm-ent">CJ ENM 엔터테인먼트부문</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/cj-cgv">CJ CGV</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/hybe">하이브</a> <span class="home-c">(9)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>운송·창고 4곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/cj-logistics">CJ대한통운</a> <span class="home-c">(19)</span></li>
+        <li><a href="/company/hmm">HMM</a> <span class="home-c">(16)</span></li>
+        <li><a href="/company/korean-air">대한항공</a> <span class="home-c">(16)</span></li>
+        <li><a href="/company/hyundai-glovis">현대글로비스</a> <span class="home-c">(11)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>의료·정밀기기 4곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/isens">아이센스</a> <span class="home-c">(29)</span></li>
+        <li><a href="/company/park-systems">파크시스템스</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/classys">클래시스</a> <span class="home-c">(10)</span></li>
+        <li><a href="/company/remed">리메드</a> <span class="home-c">(6)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>일반서비스 4곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/olix">올릭스</a> <span class="home-c">(14)</span></li>
+        <li><a href="/company/coway">코웨이</a> <span class="home-c">(14)</span></li>
+        <li><a href="/company/alteogen">알테오젠</a> <span class="home-c">(12)</span></li>
+        <li><a href="/company/voronoi">보로노이</a> <span class="home-c">(9)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>그 밖 3곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/tck">티씨케이</a> <span class="home-c">(18)</span></li>
+        <li><a href="/company/ecopro">에코프로</a> <span class="home-c">(13)</span></li>
+        <li><a href="/company/nh-invest">NH투자증권</a> <span class="home-c">(11)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>금속 3곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/lig-nex1">LIG디펜스앤에어로스페이스(구 LIG넥스원)</a> <span class="home-c">(24)</span></li>
+        <li><a href="/company/hyundai-steel">현대제철</a> <span class="home-c">(14)</span></li>
+        <li><a href="/company/korea-zinc">고려아연</a> <span class="home-c">(12)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>유통 3곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/cj-freshway">CJ프레시웨이</a> <span class="home-c">(21)</span></li>
+        <li><a href="/company/silicon2">실리콘투</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/samsung-ct">삼성물산</a> <span class="home-c">(11)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>통신 3곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/skt">SK텔레콤</a> <span class="home-c">(27)</span></li>
+        <li><a href="/company/lg-uplus">LG유플러스</a> <span class="home-c">(14)</span></li>
+        <li><a href="/company/kt">KT</a> <span class="home-c">(11)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>건설 2곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/samsung-ena">삼성E&amp;A</a> <span class="home-c">(26)</span></li>
+        <li><a href="/company/hyundai-enc">현대건설</a> <span class="home-c">(14)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>비상장 2곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/cj-oliveyoung">CJ올리브영</a> <span class="home-c">(22)</span></li>
+        <li><a href="/company/cj">CJ올리브네트웍스</a> <span class="home-c">(17)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>은행 2곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/kakao-bank">카카오뱅크</a> <span class="home-c">(18)</span></li>
+        <li><a href="/company/ibk">기업은행</a> <span class="home-c">(12)</span></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>음식료·담배 2곳</h3>
+      <ul class="home-row">
+        <li><a href="/company/cj-cheiljedang">CJ제일제당</a> <span class="home-c">(20)</span></li>
+        <li><a href="/company/samyang-foods">삼양식품</a> <span class="home-c">(9)</span></li>
+      </ul>
+    </div>
+    <p class="home-more"><a href="/companies">전체 126곳 보기 <span aria-hidden="true">→</span></a><a href="/heatmap">업종별 히트맵 <span aria-hidden="true">→</span></a></p>
+  </section>
+
+  <section class="home-sec" aria-labelledby="home-find">
+    <h2 id="home-find">복지 조건으로 찾기</h2>
+    <p class="home-note">표준 항목 86종을 9개 분류로 나눠 보유 회사 수와 함께 보여 줍니다. 항목을 누르면 그 복지가 있는 회사 목록으로 갑니다.</p>
+    <ul class="home-chips">
+      <li><a href="/find#cat-compensation">보상 <b>78</b></a></li>
+      <li><a href="/find#cat-flexibility">유연성 <b>65</b></a></li>
+      <li><a href="/find#cat-work_env">근무환경 <b>55</b></a></li>
+      <li><a href="/find#cat-time_off">휴가 <b>92</b></a></li>
+      <li><a href="/find#cat-health">건강 <b>121</b></a></li>
+      <li><a href="/find#cat-family">가족 <b>122</b></a></li>
+      <li><a href="/find#cat-growth">성장 <b>96</b></a></li>
+      <li><a href="/find#cat-leisure">여가 <b>114</b></a></li>
+      <li><a href="/find#cat-perks">복리후생 <b>125</b></a></li>
+    </ul>
+    <ul class="home-chips">
+      <li><a href="/find?b=health_check">건강검진 <b>113</b></a></li>
+      <li><a href="/find?b=event">경조사 지원 <b>112</b></a></li>
+      <li><a href="/find?b=resort">휴양시설 <b>101</b></a></li>
+      <li><a href="/find?b=child_edu">자녀학자금 <b>91</b></a></li>
+      <li><a href="/find?b=meal">구내식당 <b>82</b></a></li>
+      <li><a href="/find?b=welfare_point">복지포인트 <b>82</b></a></li>
+      <li><a href="/find?b=club">사내 동호회 <b>71</b></a></li>
+      <li><a href="/find?b=edu_support">직무/리더십 교육 <b>69</b></a></li>
+      <li><a href="/find?b=housing_loan">주택자금 대출 <b>68</b></a></li>
+      <li><a href="/find?b=medical">의료비 지원 <b>63</b></a></li>
+      <li><a href="/find?b=flex_work">유연근무제 <b>60</b></a></li>
+      <li><a href="/find?b=fitness">사내 피트니스 <b>55</b></a></li>
+    </ul>
+  </section>
+
+  <!-- 숫자로 보는 회사 — 값은 회사 페이지 「연도별 추이」 카드와 **같은 로더·같은 연도 선택**
+       (generator/employ.py)에서 나왔다. 여기와 회사 페이지가 다른 숫자를 말하면 둘 다 못 믿는다. -->
+  <section class="home-sec" aria-labelledby="home-numbers">
+    <h2 id="home-numbers">숫자로 보는 회사</h2>
+    <p class="home-note">2025 사업연도 사업보고서(DART) 기준. 평균연봉은 직원 1,000명 이상 회사만 순위에 넣었습니다 — 소인원 지주사가 상단을 독식하기 때문입니다. 복지 항목 수는 등록된 항목의 개수이며 금액 합계 순위는 만들지 않습니다.</p>
+    <div class="home-four">
+      <div>
+        <h3>직원 수</h3>
+        <ul class="home-rank">
+          <li><a href="/company/samsung-elec">삼성전자</a> <span class="home-c">128,881명</span></li>
+          <li><a href="/company/hyundai-motor">현대자동차</a> <span class="home-c">72,598명</span></li>
+          <li><a href="/company/kia">기아</a> <span class="home-c">36,566명</span></li>
+          <li><a href="/company/sk-hynix">SK하이닉스</a> <span class="home-c">34,549명</span></li>
+          <li><a href="/company/lg-elec">LG전자</a> <span class="home-c">34,144명</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>평균 근속</h3>
+        <ul class="home-rank">
+          <li><a href="/company/kia">기아</a> <span class="home-c">20.8년</span></li>
+          <li><a href="/company/kt">KT</a> <span class="home-c">19.3년</span></li>
+          <li><a href="/company/korean-air">대한항공</a> <span class="home-c">18.4년</span></li>
+          <li><a href="/company/s-oil">S-Oil</a> <span class="home-c">17.4년</span></li>
+          <li><a href="/company/samsung-life">삼성생명</a> <span class="home-c">17.4년</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>평균연봉 (1,000명 이상)</h3>
+        <ul class="home-rank">
+          <li><a href="/company/sk-hynix">SK하이닉스</a> <span class="home-c">1억 8,500만원</span></li>
+          <li><a href="/company/nh-invest">NH투자증권</a> <span class="home-c">1억 8,483만원</span></li>
+          <li><a href="/company/skt">SK텔레콤</a> <span class="home-c">1억 6,296만원</span></li>
+          <li><a href="/company/samsung-fire">삼성화재</a> <span class="home-c">1억 5,851만원</span></li>
+          <li><a href="/company/samsung-elec">삼성전자</a> <span class="home-c">1억 5,706만원</span></li>
+        </ul>
+      </div>
+      <div>
+        <h3>복지 항목 수</h3>
+        <ul class="home-rank">
+          <li><a href="/company/kai">한국항공우주산업</a> <span class="home-c">34항목</span></li>
+          <li><a href="/company/isens">아이센스</a> <span class="home-c">29항목</span></li>
+          <li><a href="/company/samsung-fire">삼성화재</a> <span class="home-c">28항목</span></li>
+          <li><a href="/company/lg-cns">LG CNS</a> <span class="home-c">공동 27항목</span></li>
+          <li><a href="/company/skt">SK텔레콤</a> <span class="home-c">공동 27항목</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 새로 등록된 회사 — 번들에 등록일 필드가 없어(회사 dict 키 10종 확인) 웨이브 handoff
+       문서(2026-09-05-회사확장-웨이브2 · 2026-09-01-회사확장-웨이브1)의 목록을 출처로 쓴다.
+       날짜는 문서 작성일이 아니라 **서빙 반영일**이다. -->
+  <section class="home-sec" aria-labelledby="home-new">
+    <h2 id="home-new">새로 등록된 회사</h2>
+    <p class="home-note">가장 최근에 등록해 복지를 확인한 회사입니다. 항목별 확인일은 각 회사 페이지에 적혀 있습니다.</p>
+    <div class="home-grp">
+      <h3>2026-09-06 등록 13곳</h3>
+      <ul class="home-chips">
+        <li><a href="/company/lg-innotek">LG이노텍</a></li>
+        <li><a href="/company/netmarble">넷마블</a></li>
+        <li><a href="/company/daeduck">대덕전자</a></li>
+        <li><a href="/company/dongjin-semichem">동진쎄미켐</a></li>
+        <li><a href="/company/samsung-ena">삼성E&amp;A</a></li>
+        <li><a href="/company/samsung-sds">삼성SDS</a></li>
+        <li><a href="/company/samsung-heavy">삼성중공업</a></li>
+        <li><a href="/company/samsung-fire">삼성화재</a></li>
+        <li><a href="/company/samyang-foods">삼양식품</a></li>
+        <li><a href="/company/celltrion-pharm">셀트리온제약</a></li>
+        <li><a href="/company/isu-petasys">이수페타시스</a></li>
+        <li><a href="/company/kai">한국항공우주산업</a></li>
+        <li><a href="/company/hanwha-life">한화생명</a></li>
+      </ul>
+    </div>
+    <div class="home-grp">
+      <h3>2026-09-01 등록 11곳</h3>
+      <ul class="home-chips">
+        <li><a href="/company/hd-hyundai">HD현대</a></li>
+        <li><a href="/company/kbfg">KB금융</a></li>
+        <li><a href="/company/lg-cns">LG CNS</a></li>
+        <li><a href="/company/ls-electric">LS ELECTRIC</a></li>
+        <li><a href="/company/korea-zinc">고려아연</a></li>
+        <li><a href="/company/simmtech">심텍</a></li>
+        <li><a href="/company/landf">엘앤에프</a></li>
+        <li><a href="/company/wonik-ips">원익IPS</a></li>
+        <li><a href="/company/hana-micron">하나마이크론</a></li>
+        <li><a href="/company/hankook-tire">한국타이어앤테크놀로지</a></li>
+        <li><a href="/company/hyundai-enc">현대건설</a></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 🚨 이 블록에 **링크를 걸지 않는다**. /verify·/edit·/edits 로 가는 <a> 는 hidden authnav
+       슬롯 하나만 허용된다(test_authnav.py::test_no_visible_login_link_in_static_html,
+       신설 test_home_shell.py 가 수기 셸에도 같은 검사를 건다). prod 는 그 경로를 nginx 가
+       404 로 막고 있어, 눌리는 진입점을 공개하면 그 순간 죽은 링크가 된다. 문장만 둔다. -->
+  <section class="home-sec home-edit" aria-labelledby="home-edit-h">
+    <h2 id="home-edit-h">재직자가 직접 고칩니다</h2>
+    <p>회사 공식 페이지에 없는 복지, 바뀐 금액, 없어진 제도를 알고 계시다면 직접 고쳐 주세요. 회사 이메일로 재직을 확인하면 그 회사의 복지 항목을 수정하거나 추가할 수 있습니다. 회사 이메일은 확인에만 쓰고 저장하지 않습니다. 모든 편집은 공개 이력에 남고, 재직자가 고친 항목에는 「재직자 확인」 배지가 붙습니다. 회사가 아직 등록되어 있지 않으면 등록을 요청할 수 있습니다.</p>
+  </section>
+
+  <section class="home-sec" aria-labelledby="home-trust-h">
+    <h2 id="home-trust-h">읽기 전에 알아 둘 것</h2>
+    <p class="home-trust">복지 2,032건은 모두 회사 공식 페이지를 근거로 하지만, 회사가 금액을 직접 밝힌 항목은 <strong>76건(3.7%)</strong>입니다. 558건은 공개된 조건을 바탕으로 계산한 추정치이며 「추정」 표시와 함께 ±20% 범위로 보여 줍니다. 나머지 1,398건은 금액으로 환산하지 않는 정성 항목입니다. 항목마다 확인일을 적어 두었고, 1,173건은 2026년 4월 15일에, 780건은 그 뒤에, 79건은 그 전에 확인했습니다. 만료된 항목은 「재확인 필요」로 표시합니다. 채용·이직처럼 중요한 결정 전에는 회사 공식 자료로 다시 확인하세요.</p>
+  </section>
+
+  <!-- SP-ADS: 랜딩 콘텐츠 하단 광고 슬롯(런타임 ads.js 마운트, 승인 전엔 예약 박스).
+       body[data-page-type="landing"] 을 빼면 ads.js 기본값이 무광고가 된다 — 둘은 한 쌍이다. -->
   <div data-ad-position="content_bottom"></div>
-
-  </div><!-- /.main-primary -->
-
-  <!-- 비교 조합 레일(익명 집계, INV-1 개정 2026-07-14) — trending.js가 렌더 성공 시 hidden 해제.
-       접힘: 1~10위 순차 롤링 / 호버·포커스: 전체 펼침 / 클릭: 양 슬롯 프리필.
-       모드는 JS가 정한다(data-mode): 집계 있으면 trending, 콜드스타트면 suggest(같은 업종 제안).
-       제목·aria-label도 JS가 모드에 맞춰 덮어쓰므로 여기 라벨은 중립값이다(2026-07-31). -->
-  <aside id="trending" class="rail" hidden aria-label="비교 조합"></aside>
-
-  </div><!-- /.main-cols -->
+</div><!-- /.home -->
 </main>
-
-
-<noscript id="nojs"> <!-- SCR-94 비-JS 폴백: 검색 도구는 JS 필요. 히어로·특징 본문은 위에서 이미 읽힌다. -->
-  <p>회사 검색·비교 도구는 자바스크립트가 필요합니다. 자바스크립트를 켜면 위에서 두 직장을 검색해 비교할 수 있습니다.</p>
-</noscript>
 
 <footer data-global>
   <!-- 회사 인덱스 진입문(2026-07-19 고아 페이지 해소): 랜딩·비교툴에서 회사 상세로
@@ -165,7 +443,15 @@
   <p class="disclaimer">본 서비스의 복지·연봉 정보는 참고용이며 실제와 다를 수 있습니다. 추정 금액은 별도 표기합니다.</p>
 </footer>
 
-<script type="module" src="/assets/v2/js/app.js" defer></script>
+<!-- 🚨 app.js 는 싣지 않는다. 요소(#app·#trending·#boot-error)만 빼고 스크립트를 남기면 매 방문
+     reference/all 1,063,955 B + JS 17모듈을 그대로 받는다 — 전부 null-safe 라 아무 에러도 남기지
+     않고 조용히 죽는다. 비교 도구는 /compare/ 가 통째로 갖고 있다. -->
+<!-- SP-ADS-9 정적 배선 — 생성 페이지(base.html)와 **같은 진입점**이다. app.js 를 걷어내면서
+     광고 마운트 경로도 함께 사라져 content_bottom 슬롯이 죽은 마크업이 됐다(검증 HIGH ①).
+     static-ads.js 는 mountAds() 하나만 부르고, 게이팅은 mountAds 가 body[data-page-type] 를
+     읽어 스스로 한다(adPolicy('landing') = auto ON + manual ['content_bottom']). 즉 이 한 줄과
+     body 의 landing 속성이 한 쌍이고, 둘 중 하나만 있으면 광고는 조용히 0 이 된다. -->
+<script type="module" src="/assets/v2/js/static-ads.js" defer></script>
 <script type="module" src="/assets/v2/js/authnav.js" defer></script>
 </body>
 </html>

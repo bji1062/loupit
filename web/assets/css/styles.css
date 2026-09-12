@@ -1092,6 +1092,78 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .find-method ul { padding-left:var(--sp-5); color:var(--t2); }
 .find-method li { margin:var(--sp-2) 0; }
 
+/* ── 대문 정적 허브(2026-09-12, 1단계 수기 셸) ────────────────────────────────
+   대문은 비교 도구 셸이 아니라 **링크의 목록**이다(도구는 /compare/ 로 갔다). 그래서 여기 있는
+   것은 전부 「촘촘한 목록을 읽히게 만드는」 규칙뿐이고, 새 색·새 간격은 하나도 없다 — 전부
+   :root 토큰이다(UT-NO-LITERAL). 분기도 768 하나(UT-BP)이며 그 규칙들은 파일 끝 @media 안에 있다.
+   ⚠ 접두사 `.home-` 를 벗어나지 않는다: 머지~pull 사이에 137 생성 페이지가 '구 HTML + 신 CSS'
+   구간에 걸리므로, 기존 클래스를 한 줄이라도 고치면 그 순간 전 사이트가 깨진다. */
+.home { max-width:1040px; margin-inline:auto; }
+.home-sec { margin-top:var(--sp-7); }
+.home-sec h2 { padding-bottom:var(--sp-2); border-bottom:var(--bw) solid var(--border); }
+
+/* 히어로 제목 — 한국어는 어절이 단위다. `word-break:normal` 기본값은 CJK 를 글자 단위로 꺾어
+   「열/람·비교」 같은 조각을 만든다(검증 MED ③). 모바일에서 한 단계 작게 가는 이유는 따로 있다:
+   38px 제목 + 인트로 6단락이 첫 화면을 다 먹어 360×740 에서 CTA 가 907px 아래로 밀렸다
+   (검증 MED ⑤). 블록 순서는 그대로 둔다 — 인트로 우선은 운영자 결정이다. 768 부터는 예전 크기. */
+.home-hero h1 { font-size:var(--fs-h2); word-break:keep-all; text-wrap:balance; }
+
+/* 인트로 — 완결문장 단락. 읽는 폭을 60ch 로 묶는다(main 이 1400px 까지 벌어지므로). */
+.home-intro { max-width:62ch; color:var(--t2); font-size:var(--fs-sm); }
+.home-intro-note { max-width:62ch; color:var(--t3); font-size:var(--fs-sm); }
+
+/* 데이터 띠 — 이름-값 쌍 넷이라 <dl> 이다. 1px 간격은 배경색으로 그린다(테두리 4겹 금지).
+   🚨 `column-reverse` 는 장식이 아니다: DOM 은 dt(라벨) → dd(값) 순서여야 정의 목록이고
+   스크린리더가 「등록 회사, 126곳」으로 읽는데, 눈은 큰 숫자를 먼저 봐야 띠로 기능한다.
+   둘을 동시에 얻는 방법이 이 한 줄뿐이다(dd 를 dt 앞에 둘 수는 없다). */
+.home-strip { display:flex; flex-wrap:wrap; gap:var(--bw); margin-top:var(--sp-5); background:var(--border); border:var(--bw) solid var(--border); border-radius:var(--r-md); overflow:hidden; }
+.home-strip > div { display:flex; flex-direction:column-reverse; flex:1 1 150px; padding:var(--sp-3) var(--sp-4); background:var(--surface); }
+.home-strip dt { margin:0; color:var(--t3); font-size:var(--fs-xs); }
+.home-strip dd { margin:0; color:var(--brand); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+.home-asof { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
+
+/* CTA 2장 — 버튼이 아니라 **설명을 데리고 다니는 링크 카드**다(무JS 본문의 일부). */
+.home-cta { display:flex; flex-wrap:wrap; gap:var(--sp-3); margin-top:var(--sp-5); }
+.home-cta a { flex:1 1 260px; padding:var(--sp-4); border:var(--bw) solid var(--brand); border-radius:var(--r-md); background:var(--surface); font-weight:var(--fw-semibold); }
+.home-cta a:hover { background:var(--brand-tint); }
+.home-cta-d { display:block; margin-top:var(--sp-2); color:var(--t2); font-size:var(--fs-sm); font-weight:var(--fw-regular); line-height:var(--lh-base); }
+
+/* 목록 블록 — 머리말 · 묶음 머리 · 한 줄 목록 */
+.home-note { margin-top:var(--sp-3); max-width:76ch; color:var(--t3); font-size:var(--fs-sm); }
+.home-grp { margin-top:var(--sp-4); }
+.home-grp h3 { margin-top:0; font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-semibold); color:var(--t2); letter-spacing:normal; }
+.home-row { margin-top:var(--sp-1); color:var(--t3); font-size:var(--fs-sm); line-height:1.9; }
+.home-row li { display:inline; white-space:nowrap; }
+.home-row li + li::before { content:" · "; color:var(--t4); }
+.home-c { color:var(--t3); }
+.home-more { margin-top:var(--sp-5); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+.home-more a + a::before { content:" · "; color:var(--t4); font-weight:var(--fw-regular); }
+
+/* 한 줄에 하나씩 쌓이는 목록(비교 예시) — 순위표와 달리 값을 오른쪽 끝으로 밀지 않는다.
+   1040px 폭에서 `space-between` 을 쓰면 「반도체 경쟁사」가 회사 이름과 한 화면 떨어져 앉는다. */
+.home-list { margin-top:var(--sp-3); font-size:var(--fs-sm); line-height:1.9; }
+
+/* 칩 — 복지 카테고리·코드. 탭 대상이므로 최소 높이를 준다. */
+.home-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-3); }
+.home-chips li { display:block; }
+.home-chips a { display:inline-flex; align-items:center; gap:var(--sp-1); min-height:32px; padding:var(--sp-1) var(--sp-3); border:var(--bw) solid var(--border); border-radius:var(--r-pill); background:var(--surface); font-size:var(--fs-sm); }
+.home-chips a:hover { border-color:var(--brand); background:var(--brand-tint); }
+.home-chips b { color:var(--t3); font-weight:var(--fw-regular); }
+
+/* 숫자로 보는 회사 — 4 목록. 좁은 폭은 한 줄씩 쌓고 768 에서 나뉜다. */
+.home-four { display:grid; grid-template-columns:1fr; gap:var(--sp-5); margin-top:var(--sp-4); }
+.home-four h3 { margin-top:0; font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-semibold); color:var(--t2); letter-spacing:normal; }
+/* 이름과 값 사이를 36ch 로 묶는다. `space-between` 만 두면 1280 에서 둘이 400px 떨어져
+   앉아 같은 줄로 읽히지 않는다(검증 MED ④). 회사 이름은 어절 단위로 꺾는다(MED ③). */
+.home-rank { margin-top:var(--sp-2); max-width:36ch; font-size:var(--fs-sm); line-height:1.9; }
+.home-rank a { word-break:keep-all; }
+.home-rank li { display:flex; justify-content:space-between; gap:var(--sp-3); }
+.home-rank .home-c { white-space:nowrap; }
+
+/* 신뢰 고지 — 회색 판이 아니라 **왼쪽 굵은 선**. 본문과 같은 글자 크기로 읽히게 둔다. */
+.home-trust { margin-top:var(--sp-3); padding:var(--sp-4); border-left:3px solid var(--border-strong); background:var(--surface-soft); color:var(--t2); font-size:var(--fs-sm); max-width:76ch; }
+.home-edit p { max-width:76ch; color:var(--t2); }
+
 @media (min-width: 768px) {
   /* GNB 원복 — 여기부터는 워드마크와 넉넉한 gap 이 다 들어간다(768px 실측: 필요 폭 435px).
      `flex-wrap:nowrap` 을 되돌려 두는 건 안전판을 끄는 게 아니라, 이 폭에서 줄이 바뀌면
@@ -1167,4 +1239,12 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .find-search { flex:0 1 360px; }
   .find-tabs-row { justify-content:space-between; }
   .find-collapse { position:absolute; right:var(--sp-4); bottom:var(--sp-3); }
+
+  /* 대문 정적 허브 — 넓은 폭에서만 목록을 나눈다(좁은 폭은 한 줄씩 쌓인 그대로가 옳다).
+     제목·인트로는 여기서 예전 크기로 돌아온다: 첫 화면이 좁은 것은 폰의 문제이지 데스크톱의
+     문제가 아니다(`main h1` 기본이 --fs-display 지만 `.home-hero h1` 이 더 구체적이라 되돌린다). */
+  .home-hero h1 { font-size:var(--fs-display); }
+  .home-intro { font-size:var(--fs-base); }
+  .home-four { grid-template-columns:repeat(auto-fit, minmax(max(40%, 220px), 1fr)); column-gap:var(--sp-6); }
+  .home-sec { margin-top:var(--sp-8); }
 }
