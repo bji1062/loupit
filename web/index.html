@@ -78,7 +78,11 @@
     <p class="home-asof">2026-09-12 기준</p>
 
     <div class="home-cta">
-      <a href="/compare/">두 회사 비교하기 <span aria-hidden="true">→</span><span class="home-cta-d">현재 직장과 이직 후보를 고르면 실효연봉(야근·근무시간 반영), 복지 총가치, 근무형태 차이를 한 화면에 냅니다. 계산은 브라우저에서만 하고 입력값은 서버로 보내지 않습니다.</span></a>
+      <!-- 비교 도구가 두 모드로 갈라졌다(SPEC 19 SP-CMP). 두 모드의 진짜 차이는 **내 숫자를 넣는가**이고,
+           이름이 그것을 스스로 말한다 — 그래서 카드도 둘이다. 「복지 비교」는 입력 없이 볼 수 있는
+           화면이라 문턱이 낮고, 「이직 계산기」는 연봉을 넣어야 하므로 무엇을 넣는지 먼저 밝힌다. -->
+      <a href="/compare/">복지 비교 — 두 회사 복지를 나란히 <span aria-hidden="true">→</span><span class="home-cta-d">회사 이름 두 개만 고르면 9개 카테고리 복지 항목과 연 환산 금액, 근무형태를 항목별로 맞대어 보여줍니다. 연봉이나 근무시간을 입력할 필요가 없습니다.</span></a>
+      <a href="/compare/#input">이직 계산기 — 내 연봉으로 따져 보기 <span aria-hidden="true">→</span><span class="home-cta-d">지금 연봉과 이직 후 인상률, 야근·통근 시간을 넣으면 두 회사의 실효연봉과 시간당 가치를 계산해 연봉·워라밸·복지 가운데 내가 고른 기준으로 판정합니다. 계산은 브라우저 안에서만 이뤄지고 서버에 저장되지 않습니다.</span></a>
       <a href="/find">복지 조건으로 회사 찾기 <span aria-hidden="true">→</span><span class="home-cta-d">사택·학자금·복지포인트처럼 원하는 복지를 골라 그 복지가 있는 회사를 찾습니다.</span></a>
     </div>
 
