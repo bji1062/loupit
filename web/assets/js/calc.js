@@ -325,8 +325,11 @@ export function bandCoeff(item, now) {
  * 코드만 싣지만, 없는 값을 0 으로 취급해 「큰 쪽」을 말하는 경로를 열어 두지 않는다.
  */
 export function pairVerdict(a, b, now) {
-  const amtA = a && !a.qual_yn ? Number(a.benefit_amt) : NaN;
-  const amtB = b && !b.qual_yn ? Number(b.benefit_amt) : NaN;
+  // ⚠ `Number(null)` 은 0 이고 0 은 유한하다 — `!= null` 로 먼저 거르지 않으면 「금액 미기재」가
+  // 「0원」이 되어 상대가 무조건 큰 쪽으로 판정된다(없는 값을 0 으로 세지 않는다, SP-CMP-3).
+  const amt = (it) => (it && !it.qual_yn && it.benefit_amt != null ? Number(it.benefit_amt) : NaN);
+  const amtA = amt(a);
+  const amtB = amt(b);
   if (!Number.isFinite(amtA) || !Number.isFinite(amtB)) return 'unsure';
   if (amtA === amtB) return 'same';
   const ca = bandCoeff(a, now);
