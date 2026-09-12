@@ -625,7 +625,7 @@ describe('UI-11 슬롯 머리의 회사 선택·변경 버튼(막다른 골목 �
 // 셋째로 만들지 않는다) · 목적지 판정이 **한 곳**인가 · 회사를 바꿔도 히스토리가 쌓이지 않는가.
 
 const { pairTarget } = await import('./benefits.js');
-const { swapSlots, syncPairUrl, bindBenefitsView, go, slotToChange } = await import('./app.js');
+const { swapSlots, syncPairUrl, bindBenefitsView, go, slotToChange, noteBorrowedSlot } = await import('./app.js');
 
 describe('SP-CMP-9 compare 셸 계약', () => {
   test('compare 셸은 noindex 다 — 상태 의존 SPA 는 색인 대상이 아니다(가드 0건이었다)', () => {
@@ -704,6 +704,27 @@ describe('SP-CMP-2 목적지·히스토리', () => {
     globalThis.history = dom.window.history;
     syncPairUrl(App.state);
     assert.equal(dom.window.location.search, '?a=a%EC%82%AC&b=b%EC%82%AC');
+  });
+});
+
+describe('SP-CMP-8 빌려온 슬롯을 말해 준다', () => {
+  test('주소가 한 슬롯만 시켰으면 나머지가 어디서 왔는지 알린다', () => {
+    loadShell('https://loupit.example/compare/?a=a사');
+    App.state = stateWithMatches();
+    App.state.ui.prefilledSlots = ['a'];
+    const said = noteBorrowedSlot(App.state);
+    assert.match(said, /회사 B 는 이전 비교에서 가져온 B사 입니다/);
+    assert.match(said, /회사 바꾸기/);
+    const live = document.querySelector('[data-cmp-live]');
+    assert.equal(live.getAttribute('aria-live'), 'polite');
+  });
+
+  test('주소가 둘 다 시켰으면 아무 말도 하지 않는다 — 사용자가 고른 것이다', () => {
+    loadShell('https://loupit.example/compare/?a=a사&b=b사');
+    App.state = stateWithMatches();
+    App.state.ui.prefilledSlots = ['a', 'b'];
+    assert.equal(noteBorrowedSlot(App.state), null);
+    assert.equal(document.querySelector('[data-cmp-live]').textContent, '');
   });
 });
 

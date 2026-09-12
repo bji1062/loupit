@@ -546,6 +546,12 @@ function renderButterfly(vm) {
   const mid = el('div', { class: 'cmp-bf-sc' });
   mid.append(el('i', { class: 'cmp-key cmp-key-avg-v', 'aria-hidden': 'true' }),
     el('span', { text: `${vm.total}개사 평균` }));
+  // 평균의 **실제 값**은 지금 세로 눈금의 자리와 `title` 에만 있다 — 터치 기기에는 호버가 없어
+  // 그 숫자에 닿을 길이 없다. 아홉 값을 글로도 한 번 적어 둔다(화면에는 안 보인다).
+  mid.append(el('span', {
+    class: 'sr-only',
+    text: ` — ${vm.labels.map((lb, k) => `${lb} ${vm.avgs[k]}`).join(', ')}`,
+  }));
   scale.append(ticks('a'), mid, ticks('b'));
   bf.append(scale);
 

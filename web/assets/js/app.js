@@ -284,6 +284,7 @@ export async function boot(hooks = {}) {
   if (decision.restore && restoreLatestComparison({ recentCtx, viewDeps: deps })) screen = 'report';
   go(screen, { push: false }); // 부팅 경로의 유일한 go — 정확히 1회, push 금지
   stampBootEntry(screen);
+  if (screen === 'benefits') noteBorrowedSlot(App.state); // 초안이 채운 슬롯을 소리로도 알린다
   // ⚠ go() 는 접근성용으로 뷰의 첫 헤딩에 포커스를 옮긴다(focusFirstHeading). 그래서
   //   restoreFromPrefill 이 빈 슬롯에 잡아 둔 포커스를 **부팅의 마지막 go 가 도로 뺏는다**.
   //   프리필 판정을 restoreFromPrefill 에 두고 이동은 boot 이 독점하는 구조(B-6)를 지키려면
@@ -605,6 +606,29 @@ export function swapSlots(state = App.state, deps = {}) {
     }
   }
   return state.matched;
+}
+
+/**
+ * 「이 슬롯은 내가 고른 게 아니다」를 말해 준다 (SP-CMP-8).
+ *
+ * `/compare/?a=naver` 처럼 한 슬롯만 주소에 있고 나머지를 **초안이 되살리면** 비교 화면이 곧장
+ * 뜬다(예전에는 입력 뷰였다). 화면을 보는 사람은 B 칸에 낯선 회사가 앉아 있는 것을 보지만,
+ * 안 보는 사람에게는 아무 설명이 없다 — 어디서 온 이름인지 말해 줘야 바꿀 생각을 할 수 있다.
+ */
+export function noteBorrowedSlot(state = App.state) {
+  // 이 파일의 다른 DOM 접근과 같은 방어 — 셸마다 있는 것이 다르고, 없는 API 를 부르면
+  // 부팅 전체가 죽는다(여기서 죽으면 화면이 통째로 안 뜬다).
+  if (typeof document === 'undefined' || typeof document.querySelector !== 'function') return null;
+  const live = document.querySelector('[data-cmp-live]');
+  if (!live) return null;
+  const asked = (state.ui && state.ui.prefilledSlots) || [];
+  if (asked.length !== 1) return null;              // 둘 다 주소가 시켰거나, 둘 다 아니면 할 말이 없다
+  const borrowed = asked[0] === 'a' ? 'b' : 'a';
+  const comp = state.matched[borrowed];
+  if (!comp) return null;
+  const label = borrowed === 'a' ? '회사 A' : '회사 B';
+  live.textContent = `${label} 는 이전 비교에서 가져온 ${comp.comp_nm} 입니다. 「회사 바꾸기」로 다시 고를 수 있습니다.`;
+  return live.textContent;
 }
 
 /**

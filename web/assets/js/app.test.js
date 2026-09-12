@@ -17,6 +17,7 @@ function makeDocument() {
     _registry: registry,
     body: { dataset: {} },   // isLandingShell 이 data-page-type 을 읽는다(대문 판정)
     getElementById(id) { return registry.get(id) || null; },
+    querySelector() { return null; },   // 이 셸에는 모드 A 마크업이 없다(뷰를 안 그린다)
     addEventListener() {},
     removeEventListener() {},
   };

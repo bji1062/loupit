@@ -742,7 +742,7 @@ main p { margin-top:var(--sp-3); }
 .rd-hit:hover .rd-hv, .rd-hit:focus .rd-hv { display:block; }
 .rd-hl, .rdp-hl { display:none; fill:none; stroke:var(--t3); stroke-width:2; }
 .rd-hvbg, .rdp-hvbg { display:none; fill:var(--bg-1); }
-.rd-hv0, .rdp-hv0 { fill:var(--t3); font-size:12px; font-family:var(--font-sans); }
+.rd-hv0, .rdp-hv0 { fill:var(--t3); font-size:15px; font-family:var(--font-sans); }
 
 /* ══════════════════════════════════════════════ 복지 비교 (모드 A · SP-CMP) ══ */
 /* 🚨 덱 규칙은 `find` 절에서 **복제**한다. 합치면 find 의 CSS 계약 테스트 5개가 깨진다 —
@@ -751,7 +751,10 @@ main p { margin-top:var(--sp-3); }
 /* 9각형 겹침 — 회사 상세(.rd-*)와 같은 기하·같은 눈금. 다른 것은 도형이 둘이라는 점뿐이다. */
 .rdp { display:block; width:100%; height:auto; overflow:visible; }
 .rdp-ring, .rdp-ax { fill:none; stroke:var(--border); stroke-width:1; }
-.rdp-tick { fill:var(--t3); font-size:13px; font-family:var(--font-sans); }
+/* SVG 안의 font-size 는 **사용자 단위**라 viewBox(416) 스케일을 탄다 — 360px 화면에서 그림이
+   약 310px 로 줄면 13 이 9.7px 로 렌더된다(회사 상세가 라벨 17 을 고른 것과 같은 이유).
+   눈금·판독문을 16 으로 올린다. 판독문은 폭 상한(viewBox 90%)을 넘지 않는 선까지만. */
+.rdp-tick { fill:var(--t3); font-size:16px; font-family:var(--font-sans); }
 .rdp-lb { fill:var(--t2); font-size:17px; font-weight:var(--fw-medium); font-family:var(--font-sans); }
 /* 평균은 **선 모양**으로 구분한다(색 아님) — 겹친 채움 위에서 밝은 회색은 2.1:1 로 잠긴다. */
 .rdp-avg { fill:none; stroke:var(--t3); stroke-width:1.5; stroke-dasharray:4 3; }
@@ -764,7 +767,7 @@ main p { margin-top:var(--sp-3); }
 .rdp-hitc { fill:transparent; pointer-events:all; }
 .rdp-hit { cursor:default; outline:none; }
 .rdp-hit:hover .rdp-hitc, .rdp-hit:focus-visible .rdp-hitc { fill:var(--surface-soft); stroke:var(--t3); stroke-width:1; }
-.rdp-hv { display:none; pointer-events:none; fill:var(--t1); font-size:13px; font-weight:var(--fw-semibold);
+.rdp-hv { display:none; pointer-events:none; fill:var(--t1); font-size:16px; font-weight:var(--fw-semibold);
   font-family:var(--font-sans); paint-order:stroke; stroke:var(--bg-1); stroke-width:4px; stroke-linejoin:round; }
 .rdp-hit:hover .rdp-hv, .rdp-hit:hover .rdp-hl, .rdp-hit:hover .rdp-hvbg,
 .rdp-hit:focus .rdp-hv, .rdp-hit:focus .rdp-hl, .rdp-hit:focus .rdp-hvbg { display:block; }

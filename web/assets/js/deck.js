@@ -166,6 +166,12 @@ export function initDeckCollapse({
 
   win.addEventListener('scroll', onScroll, { passive: true });
   win.addEventListener('resize', onResize);
+  // 웹폰트가 바뀌면 헤더 줄 수가 바뀐다 — 390px 에서 `style.top` 이 97 로 잡혔다가 실측이
+  // 57 이 되는 것을 봤다(폴백 폰트로 잰 값이 스왑 뒤에도 남았다). 로드가 끝나면 다시 잰다.
+  const fonts = win.document && win.document.fonts;
+  if (fonts && fonts.ready && typeof fonts.ready.then === 'function') {
+    fonts.ready.then(() => { try { measure(); onScroll(); } catch { /* 실측 실패 무손상 */ } });
+  }
   if (expandBtn) expandBtn.addEventListener('click', onExpand);
   if (collapseBtn) collapseBtn.addEventListener('click', onCollapse);
   measure();
