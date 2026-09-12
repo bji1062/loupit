@@ -1102,8 +1102,14 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-sec { margin-top:var(--sp-7); }
 .home-sec h2 { padding-bottom:var(--sp-2); border-bottom:var(--bw) solid var(--border); }
 
+/* 히어로 제목 — 한국어는 어절이 단위다. `word-break:normal` 기본값은 CJK 를 글자 단위로 꺾어
+   「열/람·비교」 같은 조각을 만든다(검증 MED ③). 모바일에서 한 단계 작게 가는 이유는 따로 있다:
+   38px 제목 + 인트로 6단락이 첫 화면을 다 먹어 360×740 에서 CTA 가 907px 아래로 밀렸다
+   (검증 MED ⑤). 블록 순서는 그대로 둔다 — 인트로 우선은 운영자 결정이다. 768 부터는 예전 크기. */
+.home-hero h1 { font-size:var(--fs-h2); word-break:keep-all; text-wrap:balance; }
+
 /* 인트로 — 완결문장 단락. 읽는 폭을 60ch 로 묶는다(main 이 1400px 까지 벌어지므로). */
-.home-intro { max-width:62ch; color:var(--t2); }
+.home-intro { max-width:62ch; color:var(--t2); font-size:var(--fs-sm); }
 .home-intro-note { max-width:62ch; color:var(--t3); font-size:var(--fs-sm); }
 
 /* 데이터 띠 — 1px 간격을 배경색으로 그린다(테두리 4겹을 그리지 않는다). */
@@ -1124,7 +1130,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-grp { margin-top:var(--sp-4); }
 .home-grp h3 { margin-top:0; font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-semibold); color:var(--t2); letter-spacing:normal; }
 .home-row { margin-top:var(--sp-1); color:var(--t3); font-size:var(--fs-sm); line-height:1.9; }
-.home-row li { display:inline; }
+.home-row li { display:inline; white-space:nowrap; }
 .home-row li + li::before { content:" · "; color:var(--t4); }
 .home-c { color:var(--t3); }
 .home-more { margin-top:var(--sp-5); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
@@ -1144,7 +1150,10 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* 숫자로 보는 회사 — 4 목록. 좁은 폭은 한 줄씩 쌓고 768 에서 나뉜다. */
 .home-four { display:grid; grid-template-columns:1fr; gap:var(--sp-5); margin-top:var(--sp-4); }
 .home-four h3 { margin-top:0; font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-semibold); color:var(--t2); letter-spacing:normal; }
-.home-rank { margin-top:var(--sp-2); font-size:var(--fs-sm); line-height:1.9; }
+/* 이름과 값 사이를 36ch 로 묶는다. `space-between` 만 두면 1280 에서 둘이 400px 떨어져
+   앉아 같은 줄로 읽히지 않는다(검증 MED ④). 회사 이름은 어절 단위로 꺾는다(MED ③). */
+.home-rank { margin-top:var(--sp-2); max-width:36ch; font-size:var(--fs-sm); line-height:1.9; }
+.home-rank a { word-break:keep-all; }
 .home-rank li { display:flex; justify-content:space-between; gap:var(--sp-3); }
 .home-rank .home-c { white-space:nowrap; }
 
@@ -1228,7 +1237,11 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .find-tabs-row { justify-content:space-between; }
   .find-collapse { position:absolute; right:var(--sp-4); bottom:var(--sp-3); }
 
-  /* 대문 정적 허브 — 넓은 폭에서만 목록을 나눈다(좁은 폭은 한 줄씩 쌓인 그대로가 옳다). */
+  /* 대문 정적 허브 — 넓은 폭에서만 목록을 나눈다(좁은 폭은 한 줄씩 쌓인 그대로가 옳다).
+     제목·인트로는 여기서 예전 크기로 돌아온다: 첫 화면이 좁은 것은 폰의 문제이지 데스크톱의
+     문제가 아니다(`main h1` 기본이 --fs-display 지만 `.home-hero h1` 이 더 구체적이라 되돌린다). */
+  .home-hero h1 { font-size:var(--fs-display); }
+  .home-intro { font-size:var(--fs-base); }
   .home-four { grid-template-columns:repeat(auto-fit, minmax(max(40%, 220px), 1fr)); column-gap:var(--sp-6); }
   .home-sec { margin-top:var(--sp-8); }
 }

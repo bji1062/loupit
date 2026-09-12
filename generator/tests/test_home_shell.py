@@ -19,6 +19,8 @@ import json
 import pathlib
 import re
 
+from generator.pages.company import CATEGORY_ORDER
+from generator.pages.find import derive_codes
 from generator.slug import combo_slug, slug_of
 from generator.tests.test_links import (
     _ALLOWED_STATIC_ROUTES,
@@ -40,6 +42,11 @@ _SEED_ENG_RE = re.compile(
     r"INSERT\s+IGNORE\s+INTO\s+TCOMPANY\s*\([^)]*COMP_ENG_NM[^)]*\)\s*VALUES\s*\(\s*'([^']+)'",
     re.I | re.S,
 )
+
+FIND_TEMPLATE = REPO_ROOT / "generator" / "templates" / "find.html"
+
+# 복지 행의 `BENEFIT_CD` — 시드 SQL 의 `(@comp_id, '<code>', …)` 첫 칼럼.
+_SEED_CODE_RE = re.compile(r"\(\s*@comp_id\s*,\s*'([A-Za-z0-9_]+)'")
 
 # 노출된 M9 링크 — `test_authnav.py::test_no_visible_login_link_in_static_html` 과 **같은 정규식**.
 # 그 테스트는 생성 페이지를 돌지만 수기 셸은 돌지 않는다. 원칙은 하나이므로 여기서 셸에 건다.
@@ -74,6 +81,21 @@ def _seed_slugs() -> dict[str, str]:
         assert m, f"{f.name}: TCOMPANY 자기등록 문장을 찾지 못했다 — 시드 규약이 바뀌었다면 이 게이트도 고쳐라"
         out[m.group(1)] = slug_of(m.group(1))
     return out
+
+
+def _seed_benefit_codes() -> set[str]:
+    """시드에 실제로 등장하는 복지 코드 전부.
+
+    `derive_codes` 의 **키 집합과 정의상 같다** — 그 함수는 번들 복지 행의 `benefit_cd` 로
+    사전을 만들고, 번들의 복지 행은 이 시드가 넣은 것이기 때문이다(실측 86 = 86). fake 픽스처로는
+    이 검사를 할 수 없다: 회사 3곳짜리 번들에는 대문이 쓰는 12개 코드가 애초에 없어서 테스트가
+    공허해진다. DB 도 CI 에 없다 — 그래서 회사 slug 와 **같은 정본**(커밋된 시드)을 쓴다.
+    """
+    codes: set[str] = set()
+    for f in sorted(SEED_SQL.glob("*.sql")):
+        codes |= set(_SEED_CODE_RE.findall(f.read_text(encoding="utf-8")))
+    assert codes, "시드에서 복지 코드를 하나도 뽑지 못했다 — 시드 규약이 바뀌었다"
+    return codes
 
 
 def _visible_text(html: str) -> str:
@@ -114,7 +136,22 @@ def test_home_internal_links_all_resolve(fake_bundle, fake_now, fake_combination
     for m in _INTERNAL_HREF_RE.finditer(html):
         href = m.group(1)
         path = href.split("?", 1)[0].split("#", 1)[0]
-        known = _ALLOWED_STATIC_ROUTES | generated | _QUERY_ROUTES | company_routes | combo_routes
+        if path in _QUERY_ROUTES:
+            # 🚨 경로만 보면 `/find?b=오타` 도 `/find#cat-없는키` 도 통과한다 — 링크는 열리지만
+            #   칩은 빈 결과를, 앵커는 페이지 맨 위를 준다. 404 보다 알아채기 어려운 고장이라
+            #   여기서 **실어 나르는 값**까지 본다(검증 MED ⑥·LOW ⑪).
+            code = re.search(r"\?b=([^&#]+)", href)
+            if code:
+                assert code.group(1) in _seed_benefit_codes(), (
+                    f"{href}: 실재하지 않는 복지 코드 — 누르면 빈 결과가 나온다"
+                )
+            cat = re.search(r"#cat-(.+)$", href)
+            if cat:
+                assert cat.group(1) in CATEGORY_ORDER, (
+                    f"{href}: CATEGORY_ORDER 에 없는 카테고리 — 앵커가 없어 맨 위로 떨어진다"
+                )
+            continue
+        known = _ALLOWED_STATIC_ROUTES | generated | company_routes | combo_routes
         if _variants(path) & known:
             continue
         if _in_hidden_authnav_slot(html, m.start()):
@@ -126,6 +163,29 @@ def test_home_internal_links_all_resolve(fake_bundle, fake_now, fake_combination
             continue
         missing.append(href)
     assert not missing, f"대문이 실재하지 않는 곳을 가리킨다(404 위험): {missing}"
+
+
+def test_find_template_emits_category_anchors():
+    """앵커의 **반대쪽 절반** — 도착지 템플릿이 `id="cat-…"` 를 실제로 찍는가.
+
+    링크 쪽 key 검사(`test_home_internal_links_all_resolve` 의 `/find` 분기)만으로는 부족하다:
+    key 가 다 맞아도 템플릿이 id 를 안 찍으면 9개 링크가 전부 페이지 맨 위로 떨어지고,
+    그 고장은 아무 에러도 내지 않는다.
+    """
+    tpl = FIND_TEMPLATE.read_text(encoding="utf-8")
+    assert 'id="cat-{{ cat.key }}"' in tpl, (
+        "find.html 이 카테고리 앵커를 찍지 않는다 — 대문의 #cat-… 링크가 전부 맨 위로 떨어진다"
+    )
+
+
+def test_derive_codes_keys_are_benefit_codes(fake_bundle):
+    """위 두 게이트의 전제 — `derive_codes` 의 키가 복지 행의 `benefit_cd` 라는 것.
+
+    전제가 조용히 바뀌면(예: 키를 라벨로 바꾸면) 코드 칩 게이트는 통과하는데 링크는 죽는다.
+    픽스처로 충분한 검사다 — 확인하려는 것이 규칙이지 데이터가 아니기 때문이다.
+    """
+    expected = {b["benefit_cd"] for c in fake_bundle["companies"] for b in c["benefits"]}
+    assert set(derive_codes(fake_bundle["companies"])) == expected
 
 
 def test_home_does_not_point_to_404_page():
@@ -167,8 +227,14 @@ def test_home_loads_static_ads():
 
 
 def test_home_keeps_authnav_script():
-    """로그인 슬롯을 채우는 스크립트는 남는다(슬롯만 있고 스크립트가 없으면 영원히 숨겨진다)."""
-    assert "js/authnav.js" in _home_html()
+    """로그인 슬롯을 채우는 스크립트는 남는다(슬롯만 있고 스크립트가 없으면 영원히 숨겨진다).
+
+    ⓘ 부분 문자열이 아니라 **script 태그의 src** 를 본다 — 파일에 authnav 를 설명하는 주석이
+      있어서, 문자열 검사는 스크립트를 지우고 주석만 남겨도 통과한다(검증 LOW ⑫).
+      `app.js`·`static-ads.js` 검사와 같은 기준이다.
+    """
+    srcs = re.findall(r'<script[^>]*\bsrc="([^"]+)"', _home_html())
+    assert any(s.endswith("/authnav.js") for s in srcs), f"authnav.js 스크립트 태그가 없다: {srcs}"
 
 
 # ── 3. 머리·몸통 불변식 ──────────────────────────────────────────────────────
@@ -205,9 +271,13 @@ def test_home_body_is_readable_without_js():
 
 
 def test_home_carries_company_direct_links():
-    """회사 상세로 가는 **1홉** 경로. 이전에는 0개였고 크롤러 진입로가 sitemap 뿐이었다."""
-    n = len(re.findall(r'href="/company/', _home_html()))
-    assert n >= 60, f"/company/ 직링크 {n}개 — 60개 미만"
+    """회사 상세로 가는 **1홉** 경로. 이전에는 0개였고 크롤러 진입로가 sitemap 뿐이었다.
+
+    ⓘ 세는 것은 출현 횟수가 아니라 **고유 회사 수**다 — 한 회사를 여러 블록이 가리키므로
+      (삼성전자는 업종·직원 수·평균연봉 셋에 나온다) 횟수로 세면 같은 회사 60번도 통과한다.
+    """
+    unique = set(re.findall(r'href="(/company/[^"]+)"', _home_html()))
+    assert len(unique) >= 60, f"/company/ 고유 직링크 {len(unique)}개 — 60개 미만"
 
 
 # ── 5. 노출된 M9 링크 0 ──────────────────────────────────────────────────────
