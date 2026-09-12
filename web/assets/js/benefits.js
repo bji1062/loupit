@@ -61,20 +61,30 @@ export const NONE_LEGEND = '‘등록 없음’은 이 사이트에 등록되지
 // ── 순수 계산 ────────────────────────────────────────────────────────────────
 
 /**
- * 파이썬 `round(x, 2)` 와 **같은 답**. `Math.round` 를 그냥 쓰면 정확한 동점에서 갈린다.
+ * 파이썬 `round(x, 2)` 와 **같은 답**. 9각형 좌표가 이 평균에서 나오고 그 좌표는 정적 페이지와
+ * 바이트 일치여야 하므로, 「거의 같다」로는 부족하다.
  *
- * 동점은 x 가 k/200(k 홀수)일 때만 생긴다 — 회사 수가 8의 배수이면 실제로 나온다(항목 1 / 8곳
- * = 0.125 → 파이썬 0.12, `Math.round` 0.13). 지금 126곳에서는 안 나오지만, 안 나오는 값에
- * 기대는 것과 규칙을 맞추는 것은 다르다: 9각형 좌표가 이 평균에서 나오고 그 좌표는 정적 페이지와
- * **바이트 일치**여야 한다.
+ * 갈리는 지점은 **정확한 동점**뿐이다. 파이썬은 짝수 쪽으로, `Math.round` 는 위로 간다.
+ * 그리고 2자리 반올림에서 정확한 동점은 `x = 홀수/8` 일 때만 생긴다 — (2n+1)/200 이 이진수로
+ * 딱 떨어지려면 분자가 25 의 배수여야 하고, 그러면 x 는 m/8(m 홀수)이 된다. 회사 수가 8의
+ * 배수이면 실제로 나온다(항목 1 / 8곳 = 0.125 → 파이썬 0.12).
+ *
+ * 🚨 **판정에 `x * 200` 을 쓰면 안 된다**(2026-09-12 검증에서 잡힌 오답). ×8 은 2의 거듭제곱이라
+ * 무손실이지만 ×200 은 ×25 를 포함해 무손실이 아니다 — 비이진 값이 정수로 반올림돼 **동점으로
+ * 오판**된다. 실제 오답: 3/120 = 0.025 → 0.02(파이썬 0.03) · 7/40 = 0.175 → 0.18(파이썬 0.17) ·
+ * 2.675 → 2.68(파이썬 2.67). 회사 수 120·160·200·240 에서 정적과 도구의 좌표가 갈렸을 것이다.
+ *
+ * 동점이 아니면 `toFixed(2)` 를 그대로 쓴다. 그 연산은 **더블의 정확한 값**을 보고 가장 가까운
+ * 쪽을 고르므로 동점이 아닌 한 파이썬과 같은 답이다(`Math.round(x*100)` 은 곱에서 한 번 더
+ * 반올림돼 다른 답이 나올 수 있다).
  */
 export function round2(x) {
-  const q = x * 200;                       // 소수 비트가 적은 값만 정수가 된다(200 곱은 그때 무손실)
-  if (Number.isInteger(q) && q % 2 !== 0) { // 정확히 .xx5 → 짝수 쪽
+  const eighths = x * 8;                    // 2의 거듭제곱 곱은 무손실 — 정확히 m/8 일 때만 정수다
+  if (Number.isInteger(eighths) && Math.abs(eighths) % 2 === 1) { // x = 홀수/8 = 정확한 동점
     const lo = Math.floor(x * 100);
-    return (lo % 2 === 0 ? lo : lo + 1) / 100;
+    return (lo % 2 === 0 ? lo : lo + 1) / 100; // 짝수 쪽(파이썬 round 의 규칙)
   }
-  return Math.round(x * 100) / 100;
+  return Number(x.toFixed(2));
 }
 
 /** 회사 하나의 카테고리별 등록 항목 수. 빈 카테고리는 0 이다(빼지 않는다 — 없는 축도 사실이다). */
@@ -222,19 +232,29 @@ export function aggregateSentence(counts, duels, aNm, bNm) {
   return lines.join(' ');
 }
 
-/** ISO 문자열 → 「2026년 4월 15일」. 못 읽으면 null(문장에서 그 절이 통째로 빠진다). */
+const DATE10 = /^(\d{4})-(\d{2})-(\d{2})/;
+
+/**
+ * ISO 문자열 → 「2026년 4월 15일」. 못 읽으면 null(문장에서 그 절이 통째로 빠진다).
+ *
+ * 🚨 **`Date` 를 거치지 않는다.** 확인일은 「그날 확인했다」는 사실이지 시각이 아니다 — 시간대
+ * 개념이 없다. 그런데 `verified_dtm` 은 오프셋 없는 문자열(`2026-04-15T00:00:00`)이라
+ * `Date.parse` 가 **로컬 시각**으로 읽고, 거기서 `getUTC*` 를 꺼내면 KST 브라우저에서 날짜가
+ * 하루 앞으로 밀린다(4월 15일 → 4월 14일). 보는 사람의 시간대에 따라 사실이 달라지는 화면은
+ * 틀린 화면이다.
+ *
+ * 그래서 앞 10자만 쓴다. 최신값 비교도 그 10자의 **사전순**이다 — `YYYY-MM-DD` 는 사전순과
+ * 날짜순이 같아서 파싱 없이 안전하다.
+ */
 export function verifiedText(items) {
   let best = null;
   for (const it of (items || [])) {
-    const raw = it && it.verified_dtm;
-    if (!raw) continue;
-    const t = Date.parse(raw);
-    if (Number.isNaN(t)) continue;
-    if (best == null || t > best) best = t;
+    const m = DATE10.exec(String((it && it.verified_dtm) || ''));
+    if (!m) continue;
+    if (best == null || m[0] > best[0]) best = m;
   }
   if (best == null) return null;
-  const d = new Date(best);
-  return `${d.getUTCFullYear()}년 ${d.getUTCMonth() + 1}월 ${d.getUTCDate()}일`;
+  return `${+best[1]}년 ${+best[2]}월 ${+best[3]}일`;
 }
 
 /**

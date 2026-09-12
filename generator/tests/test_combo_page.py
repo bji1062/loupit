@@ -38,13 +38,20 @@ def test_gc16_combo_cta_href_has_both_eng_params(fake_bundle, fake_now, fake_com
     # HTML 속성 내 "&"는 autoescape가 "&amp;"로 이스케이프한다(NFR21, 표준 HTML 규약).
     # 브라우저·URL 파서는 &amp;를 &로 해석하므로 쿼리 파라미터 의미는 동일하다.
     assert f'href="{CFG.compare_path}?a=samsung_elec&amp;b=sk_hynix"' in p.html
-    assert "비교 툴에서 열기" in p.html
+    # ⚠ 2026-09-12(SP-CMP-2): 착지점이 두 모드로 갈렸다. 경로는 그대로이고 **라벨이 사실을
+    #   말하도록** 바뀌었다 — 기본 화면은 입력이 없는 모드 A 라 「직접 입력해 확인하세요」가 거짓이다.
+    assert "복지 비교로 열기" in p.html
+    assert f'href="{CFG.compare_path}?a=samsung_elec&amp;b=sk_hynix#input"' in p.html
+    assert "내 연봉으로 계산하기" in p.html
 
 
 def test_gc16_combo_cta_has_no_prefill_or_slot_param(fake_bundle, fake_now, fake_combinations_path):
     pages = _render(fake_bundle, fake_now)
     for p in pages:
-        cta_hrefs = re.findall(r'class="cta"><a href="([^"]+)"', p.html)
+        # 콜아웃 안의 **모든** 링크를 본다 — 링크가 둘이 되면서 첫 번째만 보던 정규식은
+        # 둘째(모드 B)를 가드 밖에 남겼다(2026-09-12).
+        cta_block = re.search(r'<p class="cta">(.*?)</p>', p.html, re.S)
+        cta_hrefs = re.findall(r'href="([^"]+)"', cta_block.group(1)) if cta_block else []
         assert cta_hrefs
         for href in cta_hrefs:
             assert "prefill=" not in href

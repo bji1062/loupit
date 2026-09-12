@@ -76,7 +76,7 @@ const ben = (cd, over = {}) => ({
 describe('SP-CMP-4 categoryStats — corpus.build 와 같은 셈', () => {
   test('픽스처가 세 케이스를 싣고 있다', () => {
     assert.deepEqual(STATS.cases.map((c) => c.name),
-      ['mixed_three', 'eight_companies_quarter_avg', 'empty_bundle']);
+      ['mixed_three', 'eight_companies_quarter_avg', 'one_twenty_companies_fake_tie', 'empty_bundle']);
     assert.deepEqual(STATS.category_order, CATEGORY_ORDER);
   });
 
@@ -89,11 +89,26 @@ describe('SP-CMP-4 categoryStats — corpus.build 와 같은 셈', () => {
     });
   }
 
-  test('round2 는 파이썬 round(x, 2) 처럼 정확한 동점에서 짝수 쪽으로 간다', () => {
+  test('round2: **정확한** 동점(x = 홀수/8)은 짝수 쪽으로 간다', () => {
     assert.equal(round2(0.125), 0.12);
     assert.equal(Math.round(0.125 * 100) / 100, 0.13); // 왜 손으로 맞췄는지의 증거
     assert.equal(round2(0.375), 0.38);
     assert.equal(round2(1.0277777777777777), 1.03);
+  });
+
+  test('round2: **가짜** 동점(비이진 값)을 동점으로 오판하지 않는다', () => {
+    // 🚨 2026-09-12 검증에서 잡힌 오답. 판정에 `x*200` 을 쓰면 ×25 가 무손실이 아니라서
+    //    아래 값들이 정수로 반올림돼 동점으로 읽힌다 — 회사 수 120·160·200·240 에서
+    //    정적 페이지와 도구의 9각형 좌표가 갈렸을 자리다(전수 대조 560건).
+    const oldWrong = (x) => {
+      const q = x * 200;
+      if (Number.isInteger(q) && q % 2 !== 0) { const lo = Math.floor(x * 100); return (lo % 2 === 0 ? lo : lo + 1) / 100; }
+      return Math.round(x * 100) / 100;
+    };
+    for (const [x, py] of [[3 / 120, 0.03], [7 / 40, 0.17], [2.675, 2.67]]) {
+      assert.equal(round2(x), py, `round2(${x})`);
+      assert.notEqual(oldWrong(x), py, '옛 판정이 이 값을 틀리지 않았다면 이 케이스는 무의미하다');
+    }
   });
 
   test('쌍마다 최댓값을 다시 잡지 않는다 — 눈금은 전 회사 기준 하나다', () => {
@@ -258,6 +273,28 @@ describe('SP-CMP-7 신뢰도 문장', () => {
       ben('a', { verified: '2026-01-02T00:00:00' }),
       ben('b', { verified: '2026-08-30T00:00:00' }),
     ]), '2026년 8월 30일');
+  });
+
+  test('확인일은 보는 사람의 시간대에 따라 달라지지 않는다(KST 에서 하루 밀리지 않는다)', () => {
+    // 🚨 `verified_dtm` 은 오프셋 없는 문자열이라 `Date.parse` 가 **로컬 시각**으로 읽는다.
+    //    거기서 getUTC* 를 꺼내면 KST(+9)에서 4월 15일이 4월 14일이 된다 — 아래가 그 증거다.
+    //    확인일은 「그날 확인했다」는 사실이지 시각이 아니므로 Date 를 아예 거치지 않는다.
+    const before = process.env.TZ;
+    try {
+      process.env.TZ = 'Asia/Seoul';
+      const hazard = new Date(Date.parse('2026-04-15T00:00:00')).getUTCDate();
+      assert.equal(hazard, 14, '이 환경에서 TZ 가 안 먹으면 이 케이스는 함정을 재현하지 못한다');
+      assert.equal(verifiedText([ben('a', { verified: '2026-04-15T00:00:00' })]), '2026년 4월 15일');
+      process.env.TZ = 'UTC';
+      assert.equal(verifiedText([ben('a', { verified: '2026-04-15T00:00:00' })]), '2026년 4월 15일');
+    } finally {
+      if (before === undefined) delete process.env.TZ; else process.env.TZ = before;
+    }
+  });
+
+  test('날짜만 있는 문자열도, 못 읽는 문자열도 조용히 처리한다', () => {
+    assert.equal(verifiedText([ben('a', { verified: '2026-04-15' })]), '2026년 4월 15일');
+    assert.equal(verifiedText([ben('a', { verified: '어제' })]), null);
   });
 });
 

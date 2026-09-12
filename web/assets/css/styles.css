@@ -375,6 +375,10 @@ main p { margin-top:var(--sp-3); }
 .cta p { color:var(--accent-ink); }
 .cta a { display:inline-flex; align-items:center; justify-content:center; min-height:var(--tap-min); margin-top:var(--sp-4); padding:var(--sp-3) var(--sp-5); background:var(--bg-0); color:var(--t1); font-weight:var(--fw-medium); border-radius:var(--r-md); }
 .cta a:hover { text-decoration:none; background:var(--bg-1); }
+/* 두 모드로 갈린 착지점(SP-CMP-2) — 한 콜아웃 안에 링크 둘. 둘째는 보조라 테두리만 준다
+   (녹색 블록을 두 개 쌓으면 무엇을 먼저 눌러야 하는지가 사라진다). */
+.cta a + .cta-second { margin-left:var(--sp-3); background:none; border:var(--bw) solid var(--bg-0); color:var(--accent-ink); }
+.cta a + .cta-second:hover { background:var(--accent-hover); }
 
 /* ═══════════════════════════════════════ COMPARE TOOL(셸 3뷰 + ui.js) ══ */
 /* hidden 은 항상 display 규칙을 이겨야 한다(뷰 전환 정확성). */

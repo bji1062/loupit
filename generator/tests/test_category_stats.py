@@ -56,6 +56,19 @@ CASE_INPUTS = [
         ),
     },
     {
+        # 🚨 120곳이면 평균이 **비이진** 값 0.025 에 떨어진다(보상 합 3 / 120곳). 파이썬 round 는
+        # 0.03 인데, JS 쪽이 `x*200` 으로 동점을 판정하면 이것을 동점으로 오판해 0.02 를 낸다
+        # (2026-09-12 검증에서 잡힌 오답 — 회사 수 120·160·200·240 에서 좌표가 갈렸다).
+        # 8의 배수 케이스(위)는 **정확한** 동점이고 이것은 **가짜** 동점이라, 둘이 함께 있어야
+        # 양쪽 방향의 오답이 다 잡힌다.
+        "name": "one_twenty_companies_fake_tie",
+        "why": "0.025 = 비이진 값 — 동점으로 오판하면 안 된다(파이썬 0.03)",
+        "companies": (
+            [_co(20, ["compensation"]), _co(21, ["compensation"]), _co(22, ["compensation"])]
+            + [_co(i, []) for i in range(23, 140)]  # 합쳐 120곳
+        ),
+    },
+    {
         "name": "empty_bundle",
         "why": "회사 0곳(부팅 번들 실패 폴백)에서도 죽지 않고 rmax 는 1 로 선다",
         "companies": [],
@@ -98,12 +111,18 @@ def test_category_stats_fixture_matches_corpus_build():
     )
 
 
-def test_fixture_pins_the_rounding_trap():
-    """`.125` 평균이 픽스처에 실제로 들어 있어야 JS 쪽 반올림 규칙이 검사된다."""
+def test_fixture_pins_both_directions_of_the_rounding_trap():
+    """반올림 오답은 **양방향**이다 — 진짜 동점을 올리는 쪽과, 가짜 동점을 내리는 쪽.
+
+    두 케이스가 함께 있어야 둘 다 잡힌다. 하나만 두면 다른 방향이 조용히 통과한다.
+    """
     saved = json.loads(CASES_PATH.read_text(encoding="utf-8"))
     quarter = next(c for c in saved["cases"] if c["name"] == "eight_companies_quarter_avg")
-    assert quarter["avgs"]["compensation"] == 0.12, "1/8 = 0.125 는 짝수 쪽 0.12 여야 한다"
-    assert quarter["avgs"]["health"] == 0.38, "3/8 = 0.375 는 짝수 쪽 0.38 이어야 한다"
+    assert quarter["avgs"]["compensation"] == 0.12, "1/8 = 0.125(정확한 동점)은 짝수 쪽 0.12"
+    assert quarter["avgs"]["health"] == 0.38, "3/8 = 0.375(정확한 동점)은 짝수 쪽 0.38"
+    fake = next(c for c in saved["cases"] if c["name"] == "one_twenty_companies_fake_tie")
+    assert fake["total"] == 120
+    assert fake["avgs"]["compensation"] == 0.03, "3/120 = 0.025 는 비이진 값 — 동점이 아니라 0.03"
 
 
 def test_empty_bundle_still_has_a_usable_axis_max():
