@@ -9,6 +9,9 @@
 
 import { el } from './dom.js';
 import { slugOf } from './directory.js';
+// 덱 접힘 컨트롤러의 집은 `deck.js` 다(SP-CMP-8). 여기서 가져와 아래에서 다시 내보낸다 —
+// `find.js` 가 그 이름의 원래 집이라 호출부·테스트의 import 경로를 바꾸지 않는다.
+import { initDeckCollapse, DESKTOP_MIN } from './deck.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -42,10 +45,7 @@ export const LABEL_OVERRIDE = {
 export const MODES = ['and', 'or'];
 export const SORT_KEYS = ['match', 'amt', 'total', 'name'];
 export const PAGE_SIZE = 30; // 「더 보기」 한 번에 늘어나는 결과 행 수
-// 덱 고정·접힘이 켜지는 최소 폭. **styles.css 의 유일한 분기(`min-width:768px`)와 같은 값이어야
-// 한다** — 이 디자인 시스템은 분기가 하나이고 `max-width` 분기를 금지한다(UT-BP). 프로토타입은
-// 900 이었지만 그러면 768~900 구간에서 덱이 고정된 채 접히지 않아 화면 절반을 먹는다.
-export const DESKTOP_MIN = 768;
+// `DESKTOP_MIN`(덱 접힘 경계)은 `deck.js` 가 소유하고 이 파일 아래에서 재수출한다.
 
 /** 화면 상태의 기본값. URL 이 없으면 이것이 첫 화면이다(조건 없음 = 전체 회사). */
 export function defaultState() {
@@ -348,158 +348,18 @@ export function suggest(ref, codes, q) {
 
 // ── 접힘 컨트롤러 ────────────────────────────────────────────────────────────
 //
-// 스크롤을 내리면 검색·조건 덱이 **한 줄(minibar)** 로 접히고, 맨 위로 돌아오면 펼쳐진다.
-// 순진하게 구현하면 문턱 근처에서 무한 토글이 난다. 네 가지가 함께 있어야 조용하다:
-//
-//   ① `html { overflow-anchor: none }` — 브라우저의 스크롤 앵커링을 끈다. 켜져 있으면 브라우저도
-//      우리도 같은 스크롤을 보정해 두 번 움직인다(CSS 쪽에 있다).
-//   ② 접힘·펼침으로 **바뀐 높이만큼 스크롤을 직접 보정**해 화면 내용이 제자리에 남게 한다.
-//   ③ 그 보정이 만든 scroll 이벤트는 **한 번 무시**한다(`suppress`). 안 그러면 보정이 또 판정을
-//      부르고, 그 판정이 또 보정한다.
-//   ④ 접힘 문턱을 「덱 위쪽 + 펼친 높이 + 8px」 밖에 둔다. 보정으로 되돌아간 위치(문턱 − 높이차)가
-//      펼침 문턱(덱 위쪽 + 8px)보다 **항상 아래**여야 하기 때문이다. 이 여유가 없으면 접자마자
-//      펼침 문턱 안으로 들어가 진동한다.
-//
-// `win` 을 주입받는 이유는 이 네 규칙을 DOM 없이 테스트하기 위해서다(가짜 window 로 느린 스크롤·
-// 문턱 왕복·보정 후 위치·모바일 해제를 전부 검사한다).
+// 본체는 `deck.js` 로 옮겼다 — 모드 A 「복지 비교」(SP-CMP-8)가 같은 장치를 쓴다. 여기서 다시
+// 내보내는 이유는 이 파일이 이미 그 이름의 집이었기 때문이다(find.test.js 가 `find.js` 에서
+// 가져온다). 규칙·주석은 `deck.js` 머리에 그대로 있다.
+export { initDeckCollapse, DESKTOP_MIN };
 
-const noopController = {
-  measure() {}, onScroll() {}, setCollapsed() {}, setOpen() {},
-  isCollapsed: () => false, isOpen: () => false, destroy() {}, ok: false,
-};
-
-function heightOf(node) {
-  const rect = node && typeof node.getBoundingClientRect === 'function' ? node.getBoundingClientRect() : null;
-  return rect ? rect.height || 0 : 0;
-}
-
-/**
- * 덱 접힘 배선. 반환 = 컨트롤러(`measure`·`onScroll`·`setCollapsed`·`setOpen`·`destroy`).
- * 요소가 하나라도 없으면 아무것도 하지 않는 컨트롤러를 돌려준다(마크업이 바뀌어도 페이지는 산다).
- *
- * @param {object}  o
- * @param {Element} o.wrap        `position:sticky` 인 덱 바깥 상자 — `collapsed`·`open` class 를 받는다
- * @param {Element} o.anchorEl    덱이 놓인 자리(문턱 계산 기준). 보통 덱을 감싼 섹션
- * @param {Element} o.minibar     접혔을 때 보이는 한 줄
- * @param {Element} o.expandBtn   한 줄에서 「검색·조건 바꾸기」
- * @param {Element} o.collapseBtn 임시로 펼친 상태에서 「접기」
- * @param {Window}  [o.win]       주입점(테스트용 가짜 window)
- */
-export function initDeckCollapse({ wrap, anchorEl, minibar, expandBtn, collapseBtn, win = globalThis } = {}) {
-  if (!wrap || !anchorEl || !minibar || !expandBtn || !collapseBtn || !win) return noopController;
-
-  let anchorTop = 0; // 덱 위쪽의 문서 절대 좌표
-  let expandedH = 0; // 펼친 덱의 높이(접힌 동안에는 마지막으로 잰 값을 유지한다)
-  let suppress = 0; // 우리가 만든 스크롤 이벤트를 무시할 횟수(위 ③)
-  let ticking = false;
-
-  const isCollapsed = () => wrap.classList.contains('collapsed');
-  const isOpen = () => wrap.classList.contains('open');
-
-  /** 문턱을 다시 잰다. 조건이 바뀌어 덱 높이가 달라질 때마다(= 매 렌더) 호출한다. */
-  function measure() {
-    anchorTop = anchorEl.getBoundingClientRect().top + win.scrollY;
-    if (!isCollapsed()) expandedH = heightOf(wrap);
-  }
-
-  /**
-   * 높이 변화만큼 스크롤을 보정하고, 그 보정이 만들 scroll 이벤트 1회를 예약 무시한다.
-   *
-   * ⚠ 예약해 둔 무시가 **쓰이지 않고 남는 경우**가 있다: 문서 끝이라 더 스크롤할 곳이 없거나
-   * 보정값이 반올림돼 0px 이면 브라우저는 scroll 이벤트를 내지 않는다. 그러면 그 무시가 다음
-   * **사용자** 스크롤 판정을 한 번 삼켜 접힘이 한 박자 늦는다. 그래서 두 겹으로 막는다:
-   * ① 스크롤이 실제로 안 움직였으면 바로 되돌리고 ② 그래도 남으면 300ms 뒤에 0 으로 턴다.
-   */
-  function compensate(delta) {
-    if (!delta) return;
-    const before = win.scrollY;
-    suppress += 1;
-    win.scrollBy(0, delta);
-    if (win.scrollY === before && suppress > 0) suppress -= 1;
-    else scheduleSuppressReset();
-  }
-
-  let resetTimer = null;
-  function scheduleSuppressReset() {
-    if (typeof win.setTimeout !== 'function') return;
-    if (resetTimer != null && typeof win.clearTimeout === 'function') win.clearTimeout(resetTimer);
-    resetTimer = win.setTimeout(() => { suppress = 0; resetTimer = null; }, 300);
-  }
-
-  function setCollapsed(on) {
-    if (on === isCollapsed()) return;
-    const before = heightOf(wrap);
-    wrap.classList.toggle('collapsed', on);
-    wrap.classList.remove('open'); // 임시로 펼쳐 둔 상태는 상태 전환과 함께 걷는다
-    collapseBtn.hidden = true;
-    minibar.hidden = !on;
-    expandBtn.setAttribute('aria-expanded', 'false');
-    // 덱 **위쪽보다 아래**를 보고 있을 때만 보정한다 — 맨 위에서는 아래 내용이 올라오는 게 자연스럽다
-    if (win.scrollY > anchorTop) compensate(heightOf(wrap) - before);
-  }
-
-  /** 접힌 상태에서 덱을 임시로 펼친다(스크롤 위치는 그대로 두고 내용만 밀어낸다). */
-  function setOpen(on) {
-    if (!isCollapsed()) return;
-    const before = heightOf(wrap);
-    wrap.classList.toggle('open', on);
-    collapseBtn.hidden = !on;
-    expandBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
-    compensate(heightOf(wrap) - before);
-  }
-
-  /** 좁은 화면에서는 고정도 접힘도 없다 — 덱이 그냥 문서의 일부다(CSS 와 같은 경계). */
-  function releaseForMobile() {
-    if (!isCollapsed() && !isOpen()) return;
-    wrap.classList.remove('collapsed', 'open');
-    collapseBtn.hidden = true;
-    minibar.hidden = true;
-    expandBtn.setAttribute('aria-expanded', 'false');
-  }
-
-  function evaluate() {
-    if (suppress > 0) { suppress -= 1; return; } // 우리가 만든 스크롤(위 ③)
-    if (win.innerWidth < DESKTOP_MIN) { releaseForMobile(); return; }
-    const y = win.scrollY;
-    if (!isCollapsed() && y > anchorTop + expandedH + 8) setCollapsed(true);
-    else if (isCollapsed() && y <= anchorTop + 8) setCollapsed(false);
-  }
-
-  function onScroll() {
-    if (ticking) return;
-    ticking = true;
-    const run = () => { ticking = false; evaluate(); };
-    if (typeof win.requestAnimationFrame === 'function') win.requestAnimationFrame(run);
-    else run();
-  }
-
-  const onResize = () => { measure(); onScroll(); };
-  const onExpand = () => setOpen(true);
-  const onCollapse = () => setOpen(false);
-
-  win.addEventListener('scroll', onScroll, { passive: true });
-  win.addEventListener('resize', onResize);
-  expandBtn.addEventListener('click', onExpand);
-  collapseBtn.addEventListener('click', onCollapse);
-  measure();
-  onScroll();
-
-  return {
-    measure,
-    onScroll,
-    setCollapsed,
-    setOpen,
-    isCollapsed,
-    isOpen,
-    ok: true,
-    destroy() {
-      if (resetTimer != null && typeof win.clearTimeout === 'function') win.clearTimeout(resetTimer);
-      win.removeEventListener('scroll', onScroll);
-      win.removeEventListener('resize', onResize);
-      expandBtn.removeEventListener('click', onExpand);
-      collapseBtn.removeEventListener('click', onCollapse);
-    },
-  };
+/** 사이트 헤더 요소(없으면 null) — 덱이 붙을 높이를 실측할 대상. 없어도 덱은 CSS 토큰으로 산다. */
+function siteHeader(node) {
+  const doc = (node && node.ownerDocument) || (typeof document !== 'undefined' ? document : null);
+  // 셀렉터는 `header` 하나다 — 두 셸(정적 생성물·compare) 모두 최상위 헤더가 하나뿐이고,
+  // 헤더의 data 속성으로 좁히지 않는다 — 「find.js 가 찾는 data-* 훅」 계약 테스트가 소스에서
+  // 정규식으로 훅을 뽑기 때문에, 그 표기를 쓰면 find 템플릿에 없는 훅을 요구한 것으로 읽힌다.
+  return (doc && typeof doc.querySelector === 'function') ? doc.querySelector('header') : null;
 }
 
 // ── 렌더 ─────────────────────────────────────────────────────────────────────
@@ -924,6 +784,9 @@ export function mountFind(root, ref, opts = {}) {
   collapse = initDeckCollapse({
     wrap: nodes.deck, anchorEl: root, minibar: nodes.minibar,
     expandBtn: nodes.expand, collapseBtn: nodes.collapse, win,
+    // 헤더 높이 실측(SP-CMP-8). 여기도 같은 함정을 안고 있었다 — `--header-h:57px` 는 한 줄
+    // 헤더의 값이고 360px 에서는 97px 이 된다. `headerEl` 이 없으면 CSS 의 토큰값이 그대로 남는다.
+    headerEl: siteHeader(root),
   });
   return { render, state, codes, collapse, destroy() { if (collapse) collapse.destroy(); } };
 }
