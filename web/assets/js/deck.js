@@ -54,8 +54,8 @@ function heightOf(node) {
  * @param {Element} o.wrap        `position:sticky` 인 덱 바깥 상자 — `collapsed`·`open` class 를 받는다
  * @param {Element} o.anchorEl    덱이 놓인 자리(문턱 계산 기준). 보통 덱을 감싼 섹션
  * @param {Element} o.minibar     접혔을 때 보이는 한 줄
- * @param {Element} o.expandBtn   한 줄에서 「검색·조건 바꾸기」
- * @param {Element} o.collapseBtn 임시로 펼친 상태에서 「접기」
+ * @param {Element} [o.expandBtn] 한 줄에서 「검색·조건 바꾸기」(없으면 임시 펼침 기능이 없다)
+ * @param {Element} [o.collapseBtn] 임시로 펼친 상태에서 「접기」
  * @param {Window}  [o.win]       주입점(테스트용 가짜 window)
  * @param {number}  [o.minWidth]  이 폭 미만에서는 고정도 접힘도 없다(기본 768 = CSS 분기)
  * @param {Element} [o.headerEl]  사이트 헤더. 주면 그 높이를 **실측**해 `wrap.style.top` 에 적는다
@@ -64,7 +64,10 @@ export function initDeckCollapse({
   wrap, anchorEl, minibar, expandBtn, collapseBtn, win = globalThis,
   minWidth = DESKTOP_MIN, headerEl = null,
 } = {}) {
-  if (!wrap || !anchorEl || !minibar || !expandBtn || !collapseBtn || !win) return noopController;
+  // 덱이 서려면 이 넷이 있어야 한다. `expandBtn`·`collapseBtn` 은 **선택**이다 — 접힌 한 줄이
+  // 펼친 덱과 같은 것을 말하는 화면(모드 A 「복지 비교」)에는 임시로 펼칠 이유가 없고, 없는
+  // 컨트롤을 위해 쓰이지 않는 버튼을 마크업에 심는 편이 더 나쁘다. find 는 둘 다 넘긴다.
+  if (!wrap || !anchorEl || !minibar || !win) return noopController;
 
   let anchorTop = 0; // 덱 위쪽의 문서 절대 좌표
   let expandedH = 0; // 펼친 덱의 높이(접힌 동안에는 마지막으로 잰 값을 유지한다)
@@ -115,19 +118,19 @@ export function initDeckCollapse({
     const before = heightOf(wrap);
     wrap.classList.toggle('collapsed', on);
     wrap.classList.remove('open'); // 임시로 펼쳐 둔 상태는 상태 전환과 함께 걷는다
-    collapseBtn.hidden = true;
+    if (collapseBtn) collapseBtn.hidden = true;
     minibar.hidden = !on;
-    expandBtn.setAttribute('aria-expanded', 'false');
+    if (expandBtn) expandBtn.setAttribute('aria-expanded', 'false');
     // 덱 **위쪽보다 아래**를 보고 있을 때만 보정한다 — 맨 위에서는 아래 내용이 올라오는 게 자연스럽다
     if (win.scrollY > anchorTop) compensate(heightOf(wrap) - before);
   }
 
   /** 접힌 상태에서 덱을 임시로 펼친다(스크롤 위치는 그대로 두고 내용만 밀어낸다). */
   function setOpen(on) {
-    if (!isCollapsed()) return;
+    if (!isCollapsed() || !expandBtn) return; // 펼치기 컨트롤이 없는 덱에는 '임시로 펼침'이 없다
     const before = heightOf(wrap);
     wrap.classList.toggle('open', on);
-    collapseBtn.hidden = !on;
+    if (collapseBtn) collapseBtn.hidden = !on;
     expandBtn.setAttribute('aria-expanded', on ? 'true' : 'false');
     compensate(heightOf(wrap) - before);
   }
@@ -136,9 +139,9 @@ export function initDeckCollapse({
   function releaseForMobile() {
     if (!isCollapsed() && !isOpen()) return;
     wrap.classList.remove('collapsed', 'open');
-    collapseBtn.hidden = true;
+    if (collapseBtn) collapseBtn.hidden = true;
     minibar.hidden = true;
-    expandBtn.setAttribute('aria-expanded', 'false');
+    if (expandBtn) expandBtn.setAttribute('aria-expanded', 'false');
   }
 
   function evaluate() {
@@ -163,8 +166,8 @@ export function initDeckCollapse({
 
   win.addEventListener('scroll', onScroll, { passive: true });
   win.addEventListener('resize', onResize);
-  expandBtn.addEventListener('click', onExpand);
-  collapseBtn.addEventListener('click', onCollapse);
+  if (expandBtn) expandBtn.addEventListener('click', onExpand);
+  if (collapseBtn) collapseBtn.addEventListener('click', onCollapse);
   measure();
   onScroll();
 
@@ -180,8 +183,8 @@ export function initDeckCollapse({
       if (resetTimer != null && typeof win.clearTimeout === 'function') win.clearTimeout(resetTimer);
       win.removeEventListener('scroll', onScroll);
       win.removeEventListener('resize', onResize);
-      expandBtn.removeEventListener('click', onExpand);
-      collapseBtn.removeEventListener('click', onCollapse);
+      if (expandBtn) expandBtn.removeEventListener('click', onExpand);
+      if (collapseBtn) collapseBtn.removeEventListener('click', onCollapse);
     },
   };
 }

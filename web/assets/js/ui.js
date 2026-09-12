@@ -9,6 +9,7 @@
 // 경계: 상태(App.state)는 app.js 단일 소유(인자로 주입받음). 순수 계산·렌더는 재구현하지 않고
 // 호출·마운트만 한다(SP-FE-9.2). app.js가 boot()에서 mountUI(App.state, deps)를 호출한다.
 import { el } from './dom.js';
+import { pairTarget } from './benefits.js'; // 두 슬롯이 찼을 때의 목적지(SP-CMP-2) — 집은 하나다
 import { onSearchInput, selectCompany, clearSlot } from './search.js';
 
 export const PRIORITIES = ['연봉', '워라밸', '복지'];
@@ -120,7 +121,11 @@ export function searchHooks(state, deps) {
   };
 }
 
-// 양 슬롯 모두 채워지면 입력 뷰로 전진(회사 검색 기본 경로). 한쪽만이면 검색 뷰 유지.
+// 양 슬롯 모두 채워지면 전진(회사 검색 기본 경로). 한쪽만이면 검색 뷰 유지.
+// 🚩 목적지는 **pairTarget() 하나**가 정한다(SP-CMP-2, 2026-09-12 개정: input → benefits).
+// 부팅 폴백과 여기가 따로 적으면 "주소로 들어오면 비교, 검색으로 고르면 입력"처럼 경로마다
+// 다른 화면이 뜬다 — 버그가 아니라 설계가 둘인 상태라 고치기 어렵다.
+// 입력 뷰는 **그래도 미리 그린다**: 덱의 「이직 계산기 →」가 그 화면을 바로 연다.
 // deps.onPairReady: 두 회사가 확정된 시점 훅(app.js가 익명 쌍 로그를 건다, 2026-07-31).
 // 여기가 문턱인 이유 — 이전에는 "비교하기 성공"에서만 기록해 연봉·상승률까지 다 채운
 // 사용자만 집계에 잡혔고, 그 결과 11일간 집계가 0건이 됐다. 회사 둘을 고른 것 자체가
@@ -128,7 +133,7 @@ export function searchHooks(state, deps) {
 export function maybeAdvance(state, deps) {
   if (state.matched.a && state.matched.b) {
     renderInputView(state, deps);
-    if (typeof deps.go === 'function') deps.go('input');
+    if (typeof deps.go === 'function') deps.go(pairTarget());
     if (typeof deps.onPairReady === 'function') {
       try { deps.onPairReady(state); } catch { /* 로그 실패는 비교 흐름에 무해 */ }
     }

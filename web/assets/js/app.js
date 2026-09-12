@@ -1,6 +1,7 @@
 // web/assets/js/app.js — 엔트리·오케스트레이터(SP-FE-1·2·3·4·5·9.3·11, FR-02·03·40·42, INV-1·2·4).
 // 상태(App.state) 단일 소유자. go() 라우팅·부팅 조립·엔진 호출 조립(assembleCompareState)·
 // URL 프리필 소비. calc.js(SP-ENGINE)를 import해 소비만 하고(재구현 금지), report.js에 렌더를 위임한다.
+import { el } from './dom.js'; // 덱 이름표도 데이터 문자열이다(회사명에 `&` 가 있다, NFR21)
 import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
@@ -10,6 +11,8 @@ import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
 import { findCompanies, renderCompanyView } from './company.js';
+import { mountBenefits, pairTarget } from './benefits.js'; // 모드 A 「복지 비교」(SP-CMP)
+import { initDeckCollapse } from './deck.js';
 import { recent, inputDraft } from './store.js'; // 부팅 시 #report 딥링크 자동 복원(SP-FE-10.3 L-8) + 입력 초안
 
 // ── SP-FE-4.1 전역 클라이언트 상태 모델(프로파일러 상태 없음, SP-FE-4.3) ───
@@ -40,7 +43,10 @@ export const App = { state: createInitialState() };
 
 // ── SP-FE-3 화면 라우팅(go·해시/History) ────────────────────────────────────
 // 'company': 회사 복지 페이지(GNB 검색 직행, 2026-07-16) — REF 기반, 서버 라우트 없음.
-export const SCREENS = ['search', 'input', 'report', 'company'];
+// 'benefits': 모드 A 「복지 비교」(SP-CMP) — 입력 없이 두 회사 복지를 나란히 보는 화면.
+// 정본 주소는 해시 없는 `/compare/?a=&b=` 이고, `#benefits` 는 검색 뷰에서 넘어올 때 생기는
+// 히스토리 항목이다(뒤로가기로 검색 뷰에 돌아갈 수 있어야 한다).
+export const SCREENS = ['search', 'input', 'report', 'company', 'benefits'];
 
 export function parseHash() { // '#input' → 'input'
   const h = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '');
@@ -57,20 +63,38 @@ function focusFirstHeading(screenId) {
   }
 }
 
-export function go(screenId, { push = true } = {}) {
+/**
+ * 뷰 전환. `replace:true` 는 **현재 히스토리 항목을 덮는다** — 회사를 바꿀 때마다 pushState 가
+ * 쌓이면 뒤로가기를 다섯 번 눌러야 도구를 빠져나간다(SP-CMP-2).
+ */
+export function go(screenId, { push = true, replace = false } = {}) {
   if (!SCREENS.includes(screenId)) screenId = 'search'; // 방어: 미지 뷰 → 검색
   App.state.ui.screen = screenId;
+  // 모드 A 본문은 **보이기 직전에** 그린다. 9각형·나비는 viewBox·% 라 hidden 인 채 그려도
+  // 깨지지 않는다(실측이 필요한 것은 덱뿐이고, 그건 뷰가 보인 뒤 아래에서 잰다).
+  if (screenId === 'benefits') {
+    try { renderBenefitsView(); } catch { /* 렌더 실패가 라우팅을 막지는 않는다 */ }
+  }
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
     for (const s of SCREENS) {
       const view = document.getElementById('view-' + s);
       if (view) view.hidden = (s !== screenId);
     }
   }
-  if (push && typeof history !== 'undefined' && typeof history.pushState === 'function') {
-    history.pushState({ screen: screenId }, '', '#' + screenId); // 해시 + History 상태
+  if (typeof history !== 'undefined') {
+    if (replace && typeof history.replaceState === 'function') {
+      history.replaceState({ screen: screenId }, '', '#' + screenId);
+    } else if (push && typeof history.pushState === 'function') {
+      history.pushState({ screen: screenId }, '', '#' + screenId); // 해시 + History 상태
+    }
   }
   if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') window.scrollTo(0, 0);
   focusFirstHeading(screenId); // 접근성: 뷰 전환 시 포커스 이동(NFR14)
+  // 🚨 덱 문턱은 **뷰가 보인 뒤** 잰다. `#app`(또는 뷰)이 hidden 인 채 재면 높이가 0 으로 잡혀
+  //    문턱이 무너지고, 증상이 "가끔 이상함"으로 나와 원인을 못 가리킨다.
+  if (screenId === 'benefits' && benefitsDeck) {
+    try { benefitsDeck.measure(); benefitsDeck.onScroll(); } catch { /* 실측 실패 무손상 */ }
+  }
   return screenId;
 }
 
@@ -119,16 +143,23 @@ function hasRenderedReport() {
 export function resolveBootScreen({
   want = null, hasPair: pair = false, hasPrefill: prefill = false, hasReport = false, recentCount = 0,
 } = {}) {
-  const fallback = pair ? 'input' : 'search'; // 두 슬롯이 다 차 있으면 검색보다 입력이 자연스럽다
+  // 🚩 2026-09-12(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가 입력 뷰 → **복지 비교**로 바뀌었다.
+  // `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이기 때문이다. 목적지는 `pairTarget()` 하나가
+  // 정한다 — 여기와 `ui.js::maybeAdvance` 가 따로 적으면 경로마다 다른 화면이 뜬다.
+  const fallback = pair ? pairTarget() : 'search';
   if (want === 'search') return { screen: 'search', restore: false };
   if (want === 'report') {
     if (hasReport) return { screen: 'report', restore: false }; // 이미 렌더돼 있음(popstate 경로)
-    if (pair) return { screen: 'input', restore: false };       // 프리필 > 자동 복원(규칙 5)
+    if (pair) return { screen: fallback, restore: false };      // 프리필 > 자동 복원(규칙 5)
     if (prefill) return { screen: 'search', restore: false };   // 한 슬롯 프리필도 규칙 5 — 덮지 않는다
     if (recentCount > 0) return { screen: 'search', restore: true }; // 복원 시도 후 성공하면 report
     return { screen: 'search', restore: false };                // 복원 재료 없음 → 강등
   }
-  // 'input'(쌍 미완)·'company'(term 없이 진입 불가)·null·미지 → 폴백
+  // `#input` 은 **사용자가 명시한 모드 B** 다 — 쌍이 차 있으면 그대로 입력 뷰로 간다(폴백을 태우면
+  // 새로고침할 때마다 계산기가 비교 화면으로 되돌아간다). 쌍이 없으면 예전대로 강등한다.
+  if (want === 'input') return { screen: pair ? 'input' : 'search', restore: false };
+  if (want === 'benefits') return { screen: pair ? 'benefits' : 'search', restore: false };
+  // 'company'(term 없이 진입 불가)·null·미지 → 폴백
   return { screen: fallback, restore: false };
 }
 
@@ -220,6 +251,7 @@ export async function boot(hooks = {}) {
   };
   deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
+  bindBenefitsView(App.state, deps); // 모드 A 덱 배선(렌더는 go('benefits') 가 한다)
   try { mountAdsFn(); } catch { /* 광고 마운트 실패 무손상(MON6) */ } // page_type별 광고 배선(랜딩 등, #12)
   // "많이 찾아본 조합" 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
   // companies: 집계 0건일 때 같은 업종 폴백을 만들 재료(REF는 위에서 이미 로드됨 — 추가 네트워크 없음).
@@ -336,7 +368,7 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
       goFn('search', { push: false });
       focusSlot(pending);
     } else {
-      goFn('input', { push: false });
+      goFn(pairTarget(), { push: false }); // 두 슬롯 프리필 = 모드 A 의 정본 주소(SP-CMP-2)
     }
   }
   return filled; // 부팅 화면 결정에 쓴다 — "URL 이 시킨 것"과 "초안이 되살린 것"을 가른다
@@ -443,6 +475,137 @@ export function pickTrendingPair(item, deps = {}, state = App.state) {
   // 계속 밀어올리는 자기강화 루프가 된다(한 사람이 클릭만 반복해도 순위가 굳는다).
   maybeAdvance(state, { ...deps, onPairReady: null });
   return true;
+}
+
+// ── 모드 A 「복지 비교」 배선 (SP-CMP-2·8) ───────────────────────────────────
+
+let benefitsDeck = null; // 덱 접힘 컨트롤러(뷰가 보인 뒤 go() 가 measure 한다)
+
+function qsAll(root, sel) {
+  return root && typeof root.querySelectorAll === 'function' ? [...root.querySelectorAll(sel)] : [];
+}
+
+/** 덱·미니바에 지금 고른 두 회사를 적는다. 표식(원·네모)은 9각형·막대와 **같은 모양**이다. */
+function reflectDeck(state = App.state) {
+  if (typeof document === 'undefined') return;
+  const view = document.getElementById('view-benefits');
+  if (!view) return;
+  const a = state.matched.a;
+  const b = state.matched.b;
+  const slots = view.querySelector('[data-cmp-slots]');
+  if (slots) {
+    slots.replaceChildren();
+    const slot = (key, label, comp) => {
+      const box = el('div', { class: 'cmp-slot' });
+      const lb = el('span', { class: 'cmp-slot-l' });
+      lb.append(el('i', { class: `cmp-key cmp-key-${key}`, 'aria-hidden': 'true' }), el('span', { text: label }));
+      box.append(lb, el('span', { class: 'cmp-slot-nm', text: comp ? comp.comp_nm : '고르는 중' }));
+      return box;
+    };
+    slots.append(slot('a', '회사 A', a), el('span', { class: 'cmp-vs', text: 'vs' }), slot('b', '회사 B', b));
+  }
+  const hero = view.querySelector('[data-cmp-hero]');
+  if (hero) {
+    hero.replaceChildren();
+    hero.append(
+      el('i', { class: 'cmp-key cmp-key-a', 'aria-hidden': 'true' }),
+      el('span', { text: a ? a.comp_nm : '고르는 중' }),
+      el('span', { class: 'cmp-vs', text: ' vs ' }),
+      el('i', { class: 'cmp-key cmp-key-b', 'aria-hidden': 'true' }),
+      el('span', { text: b ? b.comp_nm : '고르는 중' }),
+    );
+  }
+}
+
+/**
+ * 주소를 **화면과 같게** 맞춘다 — `?a=&b=` 가 지금 보이는 두 회사를 가리켜야 새로고침·공유가
+ * 같은 것을 연다. 언제나 `replaceState` 다: 회사를 바꿀 때마다 항목이 쌓이면 뒤로가기를 다섯 번
+ * 눌러야 나간다(SP-CMP-2).
+ */
+export function syncPairUrl(state = App.state) {
+  if (typeof location === 'undefined' || typeof history === 'undefined') return null;
+  if (typeof history.replaceState !== 'function') return null;
+  const a = state.matched.a;
+  const b = state.matched.b;
+  if (!a || !b || !a.comp_eng_nm || !b.comp_eng_nm) return null;
+  const url = new URL(location.href);
+  if (url.searchParams.get('a') === a.comp_eng_nm && url.searchParams.get('b') === b.comp_eng_nm) return null;
+  url.searchParams.set('a', a.comp_eng_nm);
+  url.searchParams.set('b', b.comp_eng_nm);
+  history.replaceState(history.state, '', url.pathname + url.search + url.hash);
+  return url.search;
+}
+
+/** 덱 + 본문을 그린다. 두 슬롯이 다 차 있을 때만 본문이 나온다(반쪽 비교는 비교가 아니다). */
+export function renderBenefitsView(state = App.state, deps = {}) {
+  if (typeof document === 'undefined') return null;
+  if (!document.getElementById('view-benefits')) return null;
+  reflectDeck(state);
+  syncPairUrl(state);
+  return mountBenefits(state, { go, ...deps });
+}
+
+/**
+ * A·B 를 맞바꾼다. **색·표식은 슬롯을 따르므로**(A 초록 원 / B 파랑 네모) 바꾼 뒤에는 같은 회사가
+ * 다른 색을 입는다 — 그 사실을 `aria-live` 로 말해 준다. 화면만 보는 사람에게는 이름이 자리를
+ * 옮긴 것이 보이지만, 안 보는 사람에게는 아무 일도 일어나지 않은 것과 같기 때문이다.
+ *
+ * 회사에 딸린 상태만 바꾼다 — 연봉·상승률은 **내 숫자**라 슬롯이 아니라 사람을 따라간다.
+ */
+export function swapSlots(state = App.state, deps = {}) {
+  for (const key of ['matched', 'benS', 'wsState', 'chosenType', 'inputMode', 'cmtS']) {
+    const box = state[key];
+    if (!box) continue;
+    const keep = box.a;
+    box.a = box.b;
+    box.b = keep;
+  }
+  for (const slot of ['a', 'b']) {
+    const m = state.matched[slot];
+    reflectSlotLabel(slot, m ? m.comp_nm : '');
+  }
+  renderBenefitsView(state, deps);
+  if (typeof document !== 'undefined') {
+    const live = document.querySelector('[data-cmp-live]');
+    const a = state.matched.a;
+    const b = state.matched.b;
+    if (live && a && b) {
+      live.textContent = `이제 회사 A 는 ${a.comp_nm}(초록 원), 회사 B 는 ${b.comp_nm}(파랑 네모)입니다.`;
+    }
+  }
+  return state.matched;
+}
+
+/** 덱 버튼·접힘 배선. 부팅에서 한 번만 부른다(렌더는 `renderBenefitsView` 가 따로 한다). */
+export function bindBenefitsView(state = App.state, deps = {}) {
+  if (typeof document === 'undefined') return null;
+  const view = document.getElementById('view-benefits');
+  if (!view) return null;
+  for (const btn of qsAll(view, '[data-cmp-search]')) {
+    // 회사를 바꾸러 검색 뷰로 — **항목을 쌓지 않는다**(SP-CMP-2). 돌아올 때도 같은 자리를 덮는다.
+    btn.addEventListener('click', () => {
+      go('search', { replace: true });
+      const pending = pendingSlot(state) || 'a';
+      focusSlotInput(pending);
+    });
+  }
+  for (const btn of qsAll(view, '[data-cmp-input]')) {
+    // 모드 전환은 **항목을 남긴다** — 뒤로가기로 비교 화면에 돌아올 수 있어야 한다.
+    btn.addEventListener('click', () => { renderInputView(state, { go, ...deps }); go('input'); });
+  }
+  for (const btn of qsAll(view, '[data-cmp-swap]')) {
+    btn.addEventListener('click', () => swapSlots(state, deps));
+  }
+  benefitsDeck = initDeckCollapse({
+    wrap: view.querySelector('[data-cmp-deck]'),
+    anchorEl: view,
+    minibar: view.querySelector('[data-cmp-minibar]'),
+    win: typeof window !== 'undefined' ? window : undefined,
+    // 헤더 높이는 **실측**이다 — 360px 에서 GNB 가 두 줄(97px)이 되면 `--header-h:57px` 는 거짓이고,
+    // 그때 미니바 위 40px 이 헤더 밑에 묻혀 버튼이 안 눌린다(되돌릴 길 없는 상태).
+    headerEl: document.querySelector('header'),
+  });
+  return benefitsDeck;
 }
 
 // ── 회사 복지 페이지(GNB 검색 직행, #company 뷰) ─────────────────────────────

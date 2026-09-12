@@ -202,7 +202,10 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     assert.equal(went, false);
   });
 
-  test('a·b 둘 다 지정 시 두 슬롯 반영 + go("input") (전진 자격 = 쌍)', () => {
+  test('a·b 둘 다 지정 시 두 슬롯 반영 + go("benefits") (전진 자격 = 쌍)', () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
+    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
+    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     const state = refState();
     state.REF = { company_types: [], benefit_presets: {}, companies: [{ comp_id: 1, comp_nm: 'A' }, { comp_id: 2, comp_nm: 'B' }] };
     globalThis.location.search = '?a=1&b=2';
@@ -214,7 +217,7 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     });
     assert.equal(state.matched.a.comp_id, 1);
     assert.equal(state.matched.b.comp_id, 2);
-    assert.deepEqual(went, { screen: 'input', opts: { push: false } });
+    assert.deepEqual(went, { screen: 'benefits', opts: { push: false } });
     assert.deepEqual(focused, [], '두 슬롯이 다 찼으면 고를 것이 없다');
   });
 });
@@ -271,14 +274,17 @@ describe('pickTrendingPair (트렌딩 위젯 클릭 배선)', () => {
   }
   const ITEM = { a_comp_id: 1, a_comp_nm: '삼성전자', b_comp_id: 2, b_comp_nm: 'SK하이닉스', cnt: 5 };
 
-  test('REF 해석 성공 → 양 슬롯 매칭 + go("input")', () => {
+  test('REF 해석 성공 → 양 슬롯 매칭 + go("benefits")', () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
+    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
+    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     const state = refState();
     let went = null;
     const ok = pickTrendingPair(ITEM, { go: (s) => { went = s; } }, state);
     assert.equal(ok, true);
     assert.equal(state.matched.a.comp_id, 1);
     assert.equal(state.matched.b.comp_id, 2);
-    assert.equal(went, 'input');
+    assert.equal(went, 'benefits');
   });
 
   test('REF에 없는 comp_id → 미프리필·false·go 미호출', () => {
@@ -423,10 +429,13 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     assert.deepEqual(resolveBootScreen({ want: 'report', recentCount: 1 }), { screen: 'search', restore: true });
     // #report + 이미 렌더된 리포트(popstate 경로) → 그대로 유지
     assert.deepEqual(resolveBootScreen({ want: 'report', hasReport: true }), { screen: 'report', restore: false });
-    // 프리필 > 자동 복원(규칙 5): 슬롯이 이미 차 있으면 레코드가 있어도 복원하지 않는다
+    // 프리필 > 자동 복원(규칙 5): 슬롯이 이미 차 있으면 레코드가 있어도 복원하지 않는다.
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
+    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
+    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     assert.deepEqual(
       resolveBootScreen({ want: 'report', hasPair: true, recentCount: 1 }),
-      { screen: 'input', restore: false },
+      { screen: 'benefits', restore: false },
     );
     // #input — 슬롯 없으면 막다른 입력 뷰가 되므로 강등
     assert.deepEqual(resolveBootScreen({ want: 'input' }), { screen: 'search', restore: false });
@@ -435,7 +444,7 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     assert.deepEqual(resolveBootScreen({ want: 'search', hasPair: true }), { screen: 'search', restore: false });
     // 해시 없음/미지 — 기존 폴백 계약 유지
     assert.deepEqual(resolveBootScreen({ want: null }), { screen: 'search', restore: false });
-    assert.deepEqual(resolveBootScreen({ want: null, hasPair: true }), { screen: 'input', restore: false });
+    assert.deepEqual(resolveBootScreen({ want: null, hasPair: true }), { screen: 'benefits', restore: false });
     assert.deepEqual(resolveBootScreen(), { screen: 'search', restore: false }); // 인자 없음 방어
   });
 
@@ -458,10 +467,10 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
       resolveBootScreen({ want: 'report', hasPrefill: true, hasReport: true }),
       { screen: 'report', restore: false },
     );
-    // 두 슬롯 프리필은 그대로 input(기존 규칙 5)
+    // 두 슬롯 프리필은 규칙 5 그대로 — 다만 목적지가 비교 화면이다(SP-CMP-2).
     assert.deepEqual(
       resolveBootScreen({ want: 'report', hasPrefill: true, hasPair: true, recentCount: 1 }),
-      { screen: 'input', restore: false },
+      { screen: 'benefits', restore: false },
     );
   });
 
@@ -471,7 +480,7 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     assert.deepEqual(resolveBootScreen({ want: 'company', recentCount: 5 }), { screen: 'search', restore: false });
     assert.deepEqual(
       resolveBootScreen({ want: 'company', hasPair: true }),
-      { screen: 'input', restore: false },
+      { screen: 'benefits', restore: false }, // 쌍이 차 있으면 폴백은 모드 A 다(SP-CMP-2)
     );
   });
 
@@ -553,18 +562,24 @@ describe('B-1 해시 딥링크 강등', () => {
     assert.equal(globalThis.history._calls.length, 0, '부팅 복원은 pushState를 발생시키지 않는다');
   });
 
-  test('UT-BOOT-4: 프리필(?a=1&b=2) → input 진입(기존 계약 보존)', async () => {
+  test('UT-BOOT-4: 프리필(?a=1&b=2) → 복지 비교 진입(SP-CMP-2)', async () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
+    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
+    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     globalThis.location.search = '?a=1&b=2';
     await boot(bootHooks);
-    assert.equal(App.state.ui.screen, 'input');
+    assert.equal(App.state.ui.screen, 'benefits');
   });
 
-  test('UT-BOOT-5: 프리필 + #report → input(프리필 우선, 자동 복원 미시도)', async () => {
+  test('UT-BOOT-5: 프리필 + #report → 복지 비교(프리필 우선, 자동 복원 미시도)', async () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
+    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
+    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     seedRecord();
     globalThis.location.search = '?a=1&b=2';
     globalThis.location.hash = '#report';
     await boot(bootHooks);
-    assert.equal(App.state.ui.screen, 'input');
+    assert.equal(App.state.ui.screen, 'benefits');
     assert.equal(App.state.selectedRate, null, '레코드(10)가 프리필 슬롯을 덮지 않음');
   });
 
@@ -787,10 +802,13 @@ describe('boot — 초안은 상태만 되살리고 화면은 URL 이 정한다'
     assert.equal(App.state.matched.a.comp_id, 1, '상태는 프리필대로 채워져 있어야 한다');
   });
 
-  test('URL 프리필이 두 슬롯이면 → input', async () => {
+  test('URL 프리필이 두 슬롯이면 → 복지 비교', async () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
+    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
+    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     globalThis.location.search = '?a=samsung_elec&b=skt';
     await boot({ loadReferenceFn: async () => REF });
-    assert.equal(App.state.ui.screen, 'input');
+    assert.equal(App.state.ui.screen, 'benefits');
   });
 
   test('#input 새로고침 + 쌍이 살아 있으면 → input(사용자가 그 화면에 있었다)', async () => {

@@ -41,6 +41,20 @@ export const WS_LABEL = {
 /** 금액 출처 칩 문구. 정성 항목에는 금액이 없으므로 이 칩도 없다(「정성」 표식을 대신 단다). */
 export const AMT_SOURCE_LABEL = { stated: '공식 수치', estimated: '추정치' };
 
+/**
+ * **두 슬롯이 확정되면 어디로 가는가** — 이 판정의 집은 여기 하나다 (SP-CMP-2).
+ *
+ * 부팅 폴백(`app.js::resolveBootScreen`)과 검색 뷰 전진(`ui.js::maybeAdvance`)이 같은 답을 써야
+ * 한다. 두 곳에 따로 적으면 「주소로 들어오면 비교, 검색으로 고르면 입력」처럼 경로마다 다른
+ * 화면이 뜨고, 그런 화면은 버그가 아니라 **설계가 둘**인 상태라 고치기 어렵다.
+ *
+ * `ui.js` 가 `app.js` 를 import 하면 순환이 되므로(앱이 UI 를 부른다) 집을 이 모듈에 둔다 —
+ * 목적지가 곧 이 화면이기도 하다.
+ */
+export function pairTarget() {
+  return 'benefits';
+}
+
 export const NONE = '등록 없음';
 export const NONE_LEGEND = '‘등록 없음’은 이 사이트에 등록되지 않았다는 뜻이며, 제도가 없다는 확인이 아닙니다.';
 
