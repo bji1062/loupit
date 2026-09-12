@@ -1112,11 +1112,14 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-intro { max-width:62ch; color:var(--t2); font-size:var(--fs-sm); }
 .home-intro-note { max-width:62ch; color:var(--t3); font-size:var(--fs-sm); }
 
-/* 데이터 띠 — 1px 간격을 배경색으로 그린다(테두리 4겹을 그리지 않는다). */
+/* 데이터 띠 — 이름-값 쌍 넷이라 <dl> 이다. 1px 간격은 배경색으로 그린다(테두리 4겹 금지).
+   🚨 `column-reverse` 는 장식이 아니다: DOM 은 dt(라벨) → dd(값) 순서여야 정의 목록이고
+   스크린리더가 「등록 회사, 126곳」으로 읽는데, 눈은 큰 숫자를 먼저 봐야 띠로 기능한다.
+   둘을 동시에 얻는 방법이 이 한 줄뿐이다(dd 를 dt 앞에 둘 수는 없다). */
 .home-strip { display:flex; flex-wrap:wrap; gap:var(--bw); margin-top:var(--sp-5); background:var(--border); border:var(--bw) solid var(--border); border-radius:var(--r-md); overflow:hidden; }
-.home-strip > div { flex:1 1 150px; padding:var(--sp-3) var(--sp-4); background:var(--surface); }
-.home-strip-n { display:block; color:var(--brand); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
-.home-strip-l { display:block; color:var(--t3); font-size:var(--fs-xs); }
+.home-strip > div { display:flex; flex-direction:column-reverse; flex:1 1 150px; padding:var(--sp-3) var(--sp-4); background:var(--surface); }
+.home-strip dt { margin:0; color:var(--t3); font-size:var(--fs-xs); }
+.home-strip dd { margin:0; color:var(--brand); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
 .home-asof { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
 
 /* CTA 2장 — 버튼이 아니라 **설명을 데리고 다니는 링크 카드**다(무JS 본문의 일부). */

@@ -72,19 +72,21 @@
     <p class="home-intro-note">(복지는 회사 공식 채용·복지 페이지에서 수집해 86종의 표준 항목으로 다시 분류하고, 항목마다 연간 환산 금액과 금액의 성격(회사 공식 수치/추정치)을 적습니다.)</p>
     <p class="home-intro">여러분들이 남긴 한 줄의 경험이 누군가의 더 나은 직장 선택을 만듭니다.</p>
 
-    <!-- 데이터 띠 — 목업에 제목이 없는 블록이라 heading 대신 aria-label 로 이름을 준다.
+    <!-- 데이터 띠 — 이름-값 쌍 네 개라 <dl> 이다(목업에 제목이 없는 블록이라 heading 은 없다).
+         DOM 순서는 dt(라벨) → dd(값)이고 화면만 뒤집는다(column-reverse) — 스크린리더는
+         「등록 회사, 126곳」으로 읽고 눈은 큰 숫자를 먼저 본다.
          숫자는 수기다: 웨이브 3 부터 썩는다(2단계 생성기 이관이 그 해법). 「2026-09-12 기준」을 반드시 함께 둔다. -->
-    <div class="home-strip">
-      <div><span class="home-strip-n">126곳</span><span class="home-strip-l">등록 회사</span></div>
-      <div><span class="home-strip-n">2,032건</span><span class="home-strip-l">복지 · 표준 항목 86종</span></div>
-      <div><span class="home-strip-n">2015–2025</span><span class="home-strip-l">재무·직원 사업연도</span></div>
-      <div><span class="home-strip-n">2026-09-06</span><span class="home-strip-l">최근 등록</span></div>
-    </div>
+    <dl class="home-strip">
+      <div><dt>등록 회사</dt><dd>126곳</dd></div>
+      <div><dt>복지 · 표준 항목 86종</dt><dd>2,032건</dd></div>
+      <div><dt>재무·직원 사업연도</dt><dd>2015–2025</dd></div>
+      <div><dt>최근 등록</dt><dd>2026-09-06</dd></div>
+    </dl>
     <p class="home-asof">2026-09-12 기준</p>
 
     <div class="home-cta">
-      <a href="/compare/">두 회사 비교하기 →<span class="home-cta-d">현재 직장과 이직 후보를 고르면 실효연봉(야근·근무시간 반영), 복지 총가치, 근무형태 차이를 한 화면에 냅니다. 계산은 브라우저에서만 하고 입력값은 서버로 보내지 않습니다.</span></a>
-      <a href="/find">복지 조건으로 회사 찾기 →<span class="home-cta-d">사택·학자금·복지포인트처럼 원하는 복지를 골라 그 복지가 있는 회사를 찾습니다.</span></a>
+      <a href="/compare/">두 회사 비교하기 <span aria-hidden="true">→</span><span class="home-cta-d">현재 직장과 이직 후보를 고르면 실효연봉(야근·근무시간 반영), 복지 총가치, 근무형태 차이를 한 화면에 냅니다. 계산은 브라우저에서만 하고 입력값은 서버로 보내지 않습니다.</span></a>
+      <a href="/find">복지 조건으로 회사 찾기 <span aria-hidden="true">→</span><span class="home-cta-d">사택·학자금·복지포인트처럼 원하는 복지를 골라 그 복지가 있는 회사를 찾습니다.</span></a>
     </div>
   </section>
 
@@ -93,7 +95,7 @@
     <p class="home-note">두 회사를 나란히 본 정적 리포트입니다.</p>
     <ul class="home-list">
       <li><a href="/vs/samsung-elec-sk-hynix">삼성전자 vs SK하이닉스</a> <span class="home-c">반도체 경쟁사</span></li>
-      <li><a href="/vs/kakao-naver">NAVER vs 카카오</a> <span class="home-c">IT 플랫폼</span></li>
+      <li><a href="/vs/kakao-naver">카카오 vs NAVER</a> <span class="home-c">IT 플랫폼</span></li>
       <li><a href="/vs/hyundai-mobis-kia">현대모비스 vs 기아</a> <span class="home-c">완성차·부품</span></li>
     </ul>
   </section>
@@ -279,7 +281,7 @@
         <li><a href="/company/samyang-foods">삼양식품</a> <span class="home-c">(9)</span></li>
       </ul>
     </div>
-    <p class="home-more"><a href="/companies">전체 126곳 보기 →</a><a href="/heatmap">업종별 히트맵 →</a></p>
+    <p class="home-more"><a href="/companies">전체 126곳 보기 <span aria-hidden="true">→</span></a><a href="/heatmap">업종별 히트맵 <span aria-hidden="true">→</span></a></p>
   </section>
 
   <section class="home-sec" aria-labelledby="home-find">
