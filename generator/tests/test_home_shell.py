@@ -151,6 +151,21 @@ def test_home_is_a_static_hub_not_a_tool_shell():
         assert dead not in html, f"도구 셸 잔해가 남았다: {dead}"
 
 
+def test_home_loads_static_ads():
+    """광고 마운트 경로 — `app.js` 를 걷어낸 자리를 생성 페이지와 **같은 진입점**으로 메운다.
+
+    🚨 `data-ad-position` 마크업만 두고 스크립트를 빼면 슬롯은 **죽은 div** 가 된다. 아무 에러도
+      나지 않고 광고만 0 이 되므로(가장 알아채기 어려운 형태) 마크업과 로더를 한 쌍으로 묶는다.
+    ⓘ 게이팅은 여기서 하지 않는다 — `static-ads.js` → `ads.js::mountAds()` 가 `body[data-page-type]`
+      를 읽어 스스로 정한다(`adPolicy('landing')` = auto ON + manual `['content_bottom']`).
+      그래서 이 테스트의 짝이 `test_home_keeps_landing_ad_wiring` 이다.
+    """
+    srcs = re.findall(r'<script[^>]*\bsrc="([^"]+)"', _home_html())
+    assert any(s.endswith("/static-ads.js") for s in srcs), (
+        f"대문이 static-ads.js 를 싣지 않는다 — content_bottom 슬롯이 죽은 마크업이 된다: {srcs}"
+    )
+
+
 def test_home_keeps_authnav_script():
     """로그인 슬롯을 채우는 스크립트는 남는다(슬롯만 있고 스크립트가 없으면 영원히 숨겨진다)."""
     assert "js/authnav.js" in _home_html()

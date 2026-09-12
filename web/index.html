@@ -441,6 +441,12 @@
 <!-- 🚨 app.js 는 싣지 않는다. 요소(#app·#trending·#boot-error)만 빼고 스크립트를 남기면 매 방문
      reference/all 1,063,955 B + JS 17모듈을 그대로 받는다 — 전부 null-safe 라 아무 에러도 남기지
      않고 조용히 죽는다. 비교 도구는 /compare/ 가 통째로 갖고 있다. -->
+<!-- SP-ADS-9 정적 배선 — 생성 페이지(base.html)와 **같은 진입점**이다. app.js 를 걷어내면서
+     광고 마운트 경로도 함께 사라져 content_bottom 슬롯이 죽은 마크업이 됐다(검증 HIGH ①).
+     static-ads.js 는 mountAds() 하나만 부르고, 게이팅은 mountAds 가 body[data-page-type] 를
+     읽어 스스로 한다(adPolicy('landing') = auto ON + manual ['content_bottom']). 즉 이 한 줄과
+     body 의 landing 속성이 한 쌍이고, 둘 중 하나만 있으면 광고는 조용히 0 이 된다. -->
+<script type="module" src="/assets/v2/js/static-ads.js" defer></script>
 <script type="module" src="/assets/v2/js/authnav.js" defer></script>
 </body>
 </html>

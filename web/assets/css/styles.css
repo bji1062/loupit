@@ -1111,7 +1111,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-strip > div { flex:1 1 150px; padding:var(--sp-3) var(--sp-4); background:var(--surface); }
 .home-strip-n { display:block; color:var(--brand); font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
 .home-strip-l { display:block; color:var(--t3); font-size:var(--fs-xs); }
-.home-asof { margin-top:var(--sp-2); color:var(--t4); font-size:var(--fs-xs); }
+.home-asof { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
 
 /* CTA 2장 — 버튼이 아니라 **설명을 데리고 다니는 링크 카드**다(무JS 본문의 일부). */
 .home-cta { display:flex; flex-wrap:wrap; gap:var(--sp-3); margin-top:var(--sp-5); }
@@ -1126,7 +1126,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-row { margin-top:var(--sp-1); color:var(--t3); font-size:var(--fs-sm); line-height:1.9; }
 .home-row li { display:inline; }
 .home-row li + li::before { content:" · "; color:var(--t4); }
-.home-c { color:var(--t4); }
+.home-c { color:var(--t3); }
 .home-more { margin-top:var(--sp-5); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
 .home-more a + a::before { content:" · "; color:var(--t4); font-weight:var(--fw-regular); }
 
@@ -1139,7 +1139,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-chips li { display:block; }
 .home-chips a { display:inline-flex; align-items:center; gap:var(--sp-1); min-height:32px; padding:var(--sp-1) var(--sp-3); border:var(--bw) solid var(--border); border-radius:var(--r-pill); background:var(--surface); font-size:var(--fs-sm); }
 .home-chips a:hover { border-color:var(--brand); background:var(--brand-tint); }
-.home-chips b { color:var(--t4); font-weight:var(--fw-regular); }
+.home-chips b { color:var(--t3); font-weight:var(--fw-regular); }
 
 /* 숫자로 보는 회사 — 4 목록. 좁은 폭은 한 줄씩 쌓고 768 에서 나뉜다. */
 .home-four { display:grid; grid-template-columns:1fr; gap:var(--sp-5); margin-top:var(--sp-4); }
