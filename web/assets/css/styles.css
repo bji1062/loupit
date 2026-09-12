@@ -731,6 +731,10 @@ main p { margin-top:var(--sp-3); }
 /* 꼭짓점 호버 — 투명 히트 원(r=14)이 포인터를 받고 라벨이 즉시 뜬다. `fill:transparent` 는 `none` 과
    달리 페인트로 취급돼 포인터를 받는다(charts.py 히트 칸과 같은 장치). */
 .rd-hitc { fill:transparent; pointer-events:all; }
+/* 탭으로 꼭짓점을 짚었을 때 **어디를 짚었는지** 보이게 한다 — 라벨만 뜨고 자리가 안 보이면
+   축이 아홉이라 어느 것인지 알 수 없다. 모양은 쌍 레이더(`.rdp-hit`)와 같다. */
+.rd-hit { outline:none; }
+.rd-hit:focus-visible .rd-hitc { fill:var(--surface-soft); stroke:var(--t3); stroke-width:1; }
 .rd-hv { display:none; pointer-events:none; fill:var(--t1); font-size:14px; font-weight:var(--fw-semibold); font-family:var(--font-sans);
   paint-order:stroke; stroke:var(--bg-1); stroke-width:4px; stroke-linejoin:round; }
 /* 호버 전용 라벨은 값을 키보드·보조기기 사용자에게서 통째로 감춘다 — `:focus` 까지 넓힌다.

@@ -31,6 +31,9 @@ export function createInitialState() {
     inputMode: { a: 'company', b: 'company' }, // 'company' | 'direct'
     ui: {
       screen: 'search',
+      // URL(`?a=`·`?b=`)이 채운 슬롯. 「회사 바꾸기」가 **어느 칸에 커서를 둘지**를 정하는 데만
+      // 쓴다 — 사용자가 고르지 않은 쪽(초안·레코드가 채운 쪽)을 먼저 가리켜야 한다(SP-CMP-8).
+      prefilledSlots: [],
       searchTimers: { a: null, b: null },
       searchAborts: { a: null, b: null },
       searchState: { a: 'idle', b: 'idle' },
@@ -349,6 +352,9 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
       initWsState(state, slot);
       if (typeof reflectSlotLabel === 'function') reflectSlotLabel(slot, comp.comp_nm);
       filled = true;
+      if (state.ui && Array.isArray(state.ui.prefilledSlots) && !state.ui.prefilledSlots.includes(slot)) {
+        state.ui.prefilledSlots.push(slot); // 이 슬롯은 **URL 이** 시켰다(사용자가 고른 게 아니다)
+      }
     }
     // 해석 실패 시 슬롯 미선택 유지(정상 검색 진입으로 폴백, P-3)
   }
@@ -576,6 +582,21 @@ export function swapSlots(state = App.state, deps = {}) {
   return state.matched;
 }
 
+/**
+ * 「회사 바꾸기」를 눌렀을 때 **커서를 둘 칸**.
+ *
+ * 빈 슬롯이 있으면 당연히 그쪽이다. 둘 다 차 있으면 「사용자가 고르지 않은 쪽」을 가리킨다 —
+ * URL 이 `?a=` 로 A 를 시켰고 B 는 초안·레코드가 되살린 상태라면, 사람이 바꾸고 싶은 것은
+ * 십중팔구 B 다(고른 적이 없으니까). 단서가 없으면 A 로 간다.
+ */
+export function slotToChange(state = App.state) {
+  const pending = pendingSlot(state);
+  if (pending) return pending;
+  const asked = (state.ui && state.ui.prefilledSlots) || [];
+  if (asked.length === 1) return asked[0] === 'a' ? 'b' : 'a';
+  return 'a';
+}
+
 /** 덱 버튼·접힘 배선. 부팅에서 한 번만 부른다(렌더는 `renderBenefitsView` 가 따로 한다). */
 export function bindBenefitsView(state = App.state, deps = {}) {
   if (typeof document === 'undefined') return null;
@@ -585,8 +606,7 @@ export function bindBenefitsView(state = App.state, deps = {}) {
     // 회사를 바꾸러 검색 뷰로 — **항목을 쌓지 않는다**(SP-CMP-2). 돌아올 때도 같은 자리를 덮는다.
     btn.addEventListener('click', () => {
       go('search', { replace: true });
-      const pending = pendingSlot(state) || 'a';
-      focusSlotInput(pending);
+      focusSlotInput(slotToChange(state));
     });
   }
   for (const btn of qsAll(view, '[data-cmp-input]')) {

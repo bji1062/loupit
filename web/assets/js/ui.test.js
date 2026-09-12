@@ -547,8 +547,9 @@ describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이�
     assert.ok(btn, '회사를 바꿀 길이 화면 안에 있어야 한다');
     btn.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
     assert.equal(document.getElementById('view-search').hidden, false);
-    assert.ok(document.activeElement && document.activeElement.id.startsWith('search-input-'),
-      '검색 뷰로 가면 입력칸에 커서가 있어야 "여기서 고르면 된다"가 보인다');
+    // 커서는 **고른 적 없는 쪽**에 간다. URL 이 시킨 것은 A 뿐이고 B 는 초안이 되살렸으니,
+    // 사람이 바꾸고 싶은 것은 십중팔구 B 다(`slotToChange`).
+    assert.equal(document.activeElement, document.getElementById('search-input-b'));
     // 입력 뷰의 「회사 변경」 버튼도 그대로 살아 있다(모드 B 로 넘어가면 여전히 쓰인다).
     assert.ok(document.querySelector('#input-slot-b button.in-slot-pick'));
   });
@@ -624,7 +625,7 @@ describe('UI-11 슬롯 머리의 회사 선택·변경 버튼(막다른 골목 �
 // 셋째로 만들지 않는다) · 목적지 판정이 **한 곳**인가 · 회사를 바꿔도 히스토리가 쌓이지 않는가.
 
 const { pairTarget } = await import('./benefits.js');
-const { swapSlots, syncPairUrl, bindBenefitsView, go } = await import('./app.js');
+const { swapSlots, syncPairUrl, bindBenefitsView, go, slotToChange } = await import('./app.js');
 
 describe('SP-CMP-9 compare 셸 계약', () => {
   test('compare 셸은 noindex 다 — 상태 의존 SPA 는 색인 대상이 아니다(가드 0건이었다)', () => {
@@ -703,6 +704,28 @@ describe('SP-CMP-2 목적지·히스토리', () => {
     globalThis.history = dom.window.history;
     syncPairUrl(App.state);
     assert.equal(dom.window.location.search, '?a=a%EC%82%AC&b=b%EC%82%AC');
+  });
+});
+
+describe('SP-CMP-8 slotToChange — 커서는 고른 적 없는 칸에 간다', () => {
+  test('빈 슬롯이 있으면 그쪽이다', () => {
+    const s = createInitialState();
+    s.matched.a = fixtureCompany(1, 'A사');
+    assert.equal(slotToChange(s), 'b');
+  });
+
+  test('둘 다 찼고 URL 이 A 만 시켰으면 B 다 — A 는 사람이 고른 셈이고 B 는 아니다', () => {
+    const s = stateWithMatches();
+    s.ui.prefilledSlots = ['a'];
+    assert.equal(slotToChange(s), 'b');
+  });
+
+  test('URL 이 둘 다 시켰거나 아무것도 안 시켰으면 A 로 간다(단서 없음)', () => {
+    const s = stateWithMatches();
+    s.ui.prefilledSlots = ['a', 'b'];
+    assert.equal(slotToChange(s), 'a');
+    s.ui.prefilledSlots = [];
+    assert.equal(slotToChange(s), 'a');
   });
 });
 

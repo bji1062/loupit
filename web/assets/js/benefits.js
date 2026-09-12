@@ -55,7 +55,8 @@ export function pairTarget() {
   return 'benefits';
 }
 
-export const NONE = '등록 없음';
+// 「등록 없음」의 출처도 `fmt` 하나다(SP-CMP-3) — 리터럴을 따로 두면 한쪽만 바뀌는 날이 온다.
+export const NONE = fmt(0);
 export const NONE_LEGEND = '‘등록 없음’은 이 사이트에 등록되지 않았다는 뜻이며, 제도가 없다는 확인이 아닙니다.';
 
 // ── 순수 계산 ────────────────────────────────────────────────────────────────
