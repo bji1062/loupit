@@ -328,10 +328,24 @@ def test_home_offers_both_compare_modes_as_separate_cards():
     cta = html[html.index('class="home-cta"'):]
     cta = cta[:cta.index("</div>")]
     hrefs = re.findall(r'href="([^"]+)"', cta)
-    assert hrefs == ["/compare/", "/compare/#input", "/find"], hrefs
+    assert hrefs == ["/compare/", "/compare/#input"], hrefs
     assert "복지 비교" in cta and "이직 계산기" in cta
     # 모드 A 는 **입력이 없다**는 것이 핵심이라 카드가 그 사실을 먼저 말한다.
     assert "입력할 필요가 없습니다" in cta
+
+
+def test_home_cta_has_no_find_card():
+    """복지검색은 대문 CTA 로 부르지 않는다(2026-09-13 사용자 결정).
+
+    입구는 이미 둘이다 — GNB 「복지검색」 탭과 대문 「복지 조건으로 찾기」 칩 섹션(9분류 + 12항목 링크).
+    CTA 에 세 번째 카드를 두면 비교 두 모드의 구분이 흐려지고 폰 첫 화면이 길어진다. 칩 섹션은
+    크롤 링크·본문 역할이라 남긴다(이 테스트는 CTA 블록만 본다).
+    """
+    html = _home_html()
+    cta = html[html.index('class="home-cta"'):]
+    cta = cta[:cta.index("</div>")]
+    assert "/find" not in cta
+    assert 'id="home-find"' in html  # 칩 섹션은 그대로다
 
 
 def test_home_calculator_card_says_what_it_takes_before_it_is_clicked():
