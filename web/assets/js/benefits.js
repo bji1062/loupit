@@ -354,6 +354,23 @@ function valueCell(item) {
   return td;
 }
 
+/**
+ * 항목 이름 칸. 두 회사가 같은 코드에 **다른 이름**을 쓰는 일이 흔하다(실측: 공통 행의 다수).
+ * 한쪽 이름만 쓰면 A 의 낱말로 B 의 항목까지 부르게 되고, 「A·B 바꾸기」를 누르면 표의 이름이
+ * 통째로 바뀐다 — 같은 화면이 같은 사실을 두 가지로 말하는 셈이다. 그래서 다르면 병기한다.
+ */
+function nameCell(row) {
+  const td = el('td');
+  const { nmA, nmB } = row;
+  if (nmA && nmB && nmA !== nmB) {
+    td.append(el('span', { text: nmA }));
+    td.append(el('span', { class: 'cmp-nm-b', text: ` / ${nmB}` }));
+  } else {
+    td.append(el('span', { text: nmA || nmB || row.nm }));
+  }
+  return td;
+}
+
 /** 표 하나(머리 + 몸통). 폭이 넘치면 가로 스크롤은 CSS 가 `.cmp-tw` 에서 맡는다. */
 function table(headCells, rows) {
   const wrap = el('div', { class: 'cmp-tw' });
@@ -377,7 +394,30 @@ function companyTh(slot, nm) {
   return th;
 }
 
-const pct = (v, rmax) => `${((rmax ? v / rmax : 0) * 100).toFixed(2)}%`;
+const frac = (v, rmax) => (rmax ? v / rmax : 0);
+const pct = (v, rmax) => `${(frac(v, rmax) * 100).toFixed(2)}%`;
+
+/** 라벨을 막대 안쪽에 넣기 시작하는 지점 — 이보다 길면 바깥에 둘 자리가 없다. */
+export const LABEL_INSIDE_FROM = 0.85;
+
+/**
+ * 나비차트 숫자 라벨의 자리 (SP-CMP-5).
+ *
+ * 규칙 셋, 전부 「겹치면 둘 다 못 읽는다」에서 나온다:
+ *   1. 막대 끝 바깥 6px 이 기본이다.
+ *   2. 그 자리가 **평균 세로 눈금보다 안쪽**이면 눈금 바깥으로 민다 — 막대가 짧은 카테고리에서
+ *      숫자가 눈금 위에 얹혀 둘 다 안 읽혔다(360px 실측: 건강·가족의 B 「2」).
+ *      「등록 없음」이 이미 쓰던 규칙과 **같은 규칙**이다(길이 0 은 이 규칙의 한 경우일 뿐이다).
+ *   3. 막대가 날개를 거의 다 채우면(≥ 85%) 바깥에 자리가 없다 — 날개 밖으로 4px 삐져나갔다
+ *      (복리후생 「7」). 그때는 막대 **안쪽 끝**에 흰 글자로 넣는다.
+ *
+ * 반환 `{ pos, inside }` — `pos` 는 0~1 비율(호출부가 `calc(pos% ± 6px)` 로 쓴다).
+ */
+export function valueLabelPlacement(n, avg, rmax) {
+  const bar = frac(n, rmax);
+  if (n > 0 && bar >= LABEL_INSIDE_FROM) return { pos: bar, inside: true };
+  return { pos: Math.max(bar, frac(avg, rmax)), inside: false };
+}
 
 // ① 한눈 요약 — 9각형 겹침 + 타일 4 + 문장 2
 function renderSummary(vm) {
@@ -516,18 +556,22 @@ function renderButterfly(vm) {
     const wing = (slot, n) => {
       const side = slot === 'a' ? 'right' : 'left';
       const box = el('div', { class: `cmp-bf-${slot === 'a' ? 'l' : 'r'}` });
-      const avgPct = pct(vm.avgs[i], vm.rmax);
       box.append(el('span', {
-        class: 'cmp-bf-avg', style: `${side}:${avgPct}`,
+        class: 'cmp-bf-avg', style: `${side}:${pct(vm.avgs[i], vm.rmax)}`,
         title: `${vm.total}개사 평균 ${vm.avgs[i]}`,
       }));
       if (n > 0) {
         box.append(el('span', { class: `cmp-bf-bar cmp-bf-bar-${slot}`, style: `width:${pct(n, vm.rmax)}` }));
-        box.append(el('span', { class: 'cmp-bf-val num', style: `${side}:calc(${pct(n, vm.rmax)} + 6px)`, text: String(n) }));
-      } else {
-        // 길이 0 막대는 눈에 안 보인다 — **글자로 찍고** 평균 눈금 바깥에 둔다(겹침 실측).
-        box.append(el('span', { class: 'cmp-bf-val cmp-none', style: `${side}:calc(${avgPct} + 6px)`, text: NONE }));
       }
+      // 길이 0 막대는 눈에 안 보인다 — 그때도 **글자는 찍는다**(그 빈칸이 이 화면에서 가장
+      // 흔한 사실이다). 자리는 길이와 무관하게 같은 규칙으로 정한다.
+      const { pos, inside } = valueLabelPlacement(n, vm.avgs[i], vm.rmax);
+      const at = `${(pos * 100).toFixed(2)}%`;
+      box.append(el('span', {
+        class: `cmp-bf-val${n > 0 ? ' num' : ' cmp-none'}${inside ? ' cmp-bf-val-in' : ''}`,
+        style: `${side}:calc(${at} ${inside ? '-' : '+'} 6px)`,
+        text: n > 0 ? String(n) : NONE,
+      }));
       return box;
     };
     const btn = el('button', {
@@ -592,7 +636,7 @@ function renderDuels(vm) {
   sec.append(el('p', { class: 'cmp-say', text: '양쪽 모두 금액이 적힌 항목만 놓습니다.' }));
   const rows = vm.duels.map((d) => {
     const tr = el('tr');
-    tr.append(el('td', { text: d.nm }));
+    tr.append(nameCell(d));
     tr.append(valueCell(d.a));
     tr.append(valueCell(d.b));
     const txt = VERDICT_TEXT[d.verdict] || `${d.verdict === 'a' ? vm.aNm : vm.bNm} 가 큼`;
@@ -618,7 +662,7 @@ function renderMatrix(vm) {
   }
   const rows = vm.rows.map((r) => {
     const tr = el('tr');
-    tr.append(el('td', { text: r.nm }));
+    tr.append(nameCell(r));
     tr.append(valueCell(r.a));
     tr.append(valueCell(r.b));
     return tr;

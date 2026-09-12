@@ -166,10 +166,16 @@ export function matchBenefitRows(benA, benB, { requireChecked = true } = {}) {
     const key = item.benefit_cd || item.benefit_nm;
     let row = map.get(key);
     if (!row) {
-      row = { ctgr: norm(item.benefit_ctgr_cd), key, nm: item.benefit_nm, a: null, b: null };
+      // `nm` 은 **먼저 본 쪽**(= A)의 명칭이다. 예전부터 그랬고 리포트는 그대로 쓴다.
+      row = { ctgr: norm(item.benefit_ctgr_cd), key, nm: item.benefit_nm, nmA: null, nmB: null, a: null, b: null };
       map.set(key, row);
     }
     row[side] = item;
+    // 같은 코드라도 두 회사가 다른 이름을 쓴다(welfare_point = 「개인 업무 지원비」/「복지포인트」).
+    // `nm` 하나만 내보내면 **A 의 이름으로 B 의 항목까지 부르게** 되고, A·B 를 맞바꾸면 표의
+    // 이름이 통째로 바뀐다. 두 이름을 다 실어 보내고 어떻게 보일지는 화면이 정한다.
+    if (side === 'a') row.nmA = item.benefit_nm;
+    else row.nmB = item.benefit_nm;
   };
   for (const it of (benA || [])) add(it, 'a'); // a 먼저 — 공통 행의 이름·카테고리는 A 기준
   for (const it of (benB || [])) add(it, 'b');

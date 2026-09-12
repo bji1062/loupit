@@ -346,7 +346,8 @@ describe('SP-CMP-3 값 표기', () => {
 // 「보기 좋은가」가 아니라 **말이 참인가**다: 0 이 「등록 없음」으로 나가는가 · 한쪽에만 있는
 // 행이 남아 있는가 · 「우세」 어휘가 새지 않는가 · 데이터 문자열이 이스케이프되는가.
 
-const { mountBenefits, buildViewModel, VERDICT_TEXT, WS_YES, WS_UNKNOWN } = await import('./benefits.js');
+const { mountBenefits, buildViewModel, VERDICT_TEXT, WS_YES, WS_UNKNOWN,
+  valueLabelPlacement, LABEL_INSIDE_FROM } = await import('./benefits.js');
 
 const NOW = Date.parse('2026-09-12T00:00:00Z');
 
@@ -515,6 +516,44 @@ describe('SP-CMP-5 카테고리별 나비차트', () => {
   });
 });
 
+describe('SP-CMP-5 숫자 라벨 자리 — 겹치면 둘 다 못 읽는다', () => {
+  test('기본은 막대 끝 바깥이다', () => {
+    assert.deepEqual(valueLabelPlacement(4, 1.0, 8), { pos: 0.5, inside: false });
+  });
+
+  test('막대가 평균 눈금보다 짧으면 **눈금 바깥**으로 민다(숫자가 눈금 위에 얹히던 자리)', () => {
+    // 360px 실측: 건강·가족의 B 「2」가 평균 눈금(2.8·2.5) 위에 찍혔다.
+    const { pos } = valueLabelPlacement(2, 2.8, 8);
+    assert.equal(pos, 2.8 / 8, '평균 눈금 자리까지 밀려야 한다');
+    assert.ok(pos > 2 / 8);
+  });
+
+  test('「등록 없음」과 같은 규칙이다 — 길이 0 은 이 규칙의 한 경우일 뿐', () => {
+    assert.deepEqual(valueLabelPlacement(0, 1.2, 8), valueLabelPlacement(0, 1.2, 8));
+    assert.equal(valueLabelPlacement(0, 1.2, 8).pos, 1.2 / 8);
+  });
+
+  test('막대가 날개를 거의 다 채우면 안쪽으로 넣는다(바깥엔 자리가 없다)', () => {
+    assert.deepEqual(valueLabelPlacement(7, 3.7, 8), { pos: 7 / 8, inside: true });
+    assert.ok(7 / 8 >= LABEL_INSIDE_FROM);
+  });
+
+  test('날개 92px 에서 라벨이 평균 눈금과 안 겹치고 날개 안에 남는다', () => {
+    // 가짜 DOM 은 bbox 를 모른다 — 방출된 자리 계산으로 같은 것을 잰다.
+    const WING = 92;   // 360px 실측 날개 폭
+    const LABEL = 10;  // 한 자리 숫자 + 여백
+    const rmax = 8;
+    for (const [n, avg] of [[0, 1.2], [1, 0.8], [2, 2.8], [3, 1.2], [4, 2.8], [6, 3.7], [7, 3.7], [8, 3.7]]) {
+      const { pos, inside } = valueLabelPlacement(n, avg, rmax);
+      const tick = (avg / rmax) * WING;                    // 평균 눈금의 x(날개 끝 기준)
+      const anchorPx = pos * WING + (inside ? -6 : 6);     // 라벨의 안쪽 모서리
+      const [lo, hi] = inside ? [anchorPx - LABEL, anchorPx] : [anchorPx, anchorPx + LABEL];
+      assert.ok(lo >= -0.01 && hi <= WING + 0.01, `n=${n} 라벨이 날개를 벗어났다 (${lo}~${hi})`);
+      assert.ok(lo >= tick - 0.01 || hi <= tick + 0.01, `n=${n} 라벨이 평균 눈금을 가린다`);
+    }
+  });
+});
+
 describe('SP-CMP-6 금액 맞대결 · 항목 대조표', () => {
   test('양쪽 금액이 있는 공통 코드만 오르고, 판정 문구가 정해져 있다', () => {
     const { root, vm } = mount();
@@ -557,6 +596,49 @@ describe('SP-CMP-6 금액 맞대결 · 항목 대조표', () => {
     const { root } = mount();
     const legends = root.findAll((n) => n.className === 'cmp-legend').map((n) => n.textContent);
     assert.ok(legends.some((t) => t.includes(NONE_LEGEND)));
+  });
+});
+
+describe('SP-CMP-6 항목 이름 — 두 회사가 다르게 부르면 병기한다', () => {
+  function pairWithNames() {
+    const A = company('가사', 'ga', [ben('welfare_point', { nm: '개인 업무 지원비', cat: 'perks', amt: 360, src: 'stated' })]);
+    const B = company('나사', 'na', [ben('welfare_point', { nm: '복지포인트', cat: 'perks', amt: 140, src: 'stated' })]);
+    return { REF: { companies: [A, B] }, matched: { a: A, b: B }, benS: { a: A.benefits, b: B.benefits } };
+  }
+
+  test('이름이 다르면 두 이름이 다 나온다 — A 의 낱말로 B 의 항목을 부르지 않는다', () => {
+    const { root } = mount(pairWithNames());
+    const sec = root.find((n) => (n.className || '').includes('cmp-matrix'));
+    const text = sec.allText();
+    assert.ok(text.includes('개인 업무 지원비'));
+    assert.ok(text.includes('복지포인트'));
+  });
+
+  test('이름이 같으면 한 번만 쓴다(같은 말을 두 번 하지 않는다)', () => {
+    const { root } = mount();
+    const sec = root.find((n) => (n.className || '').includes('cmp-matrix'));
+    const cell = sec.find((n) => n.textContent === '종합건강검진');
+    assert.ok(cell);
+    assert.equal((sec.allText().match(/종합건강검진/g) || []).length, 1);
+  });
+
+  test('A·B 를 맞바꿔도 두 이름이 다 남는다(예전엔 표의 이름이 통째로 바뀌었다)', () => {
+    const s1 = pairWithNames();
+    const before = mount(s1).root.find((n) => (n.className || '').includes('cmp-matrix')).allText();
+    const s2 = pairWithNames();
+    [s2.matched.a, s2.matched.b] = [s2.matched.b, s2.matched.a];
+    [s2.benS.a, s2.benS.b] = [s2.benS.b, s2.benS.a];
+    const after = mount(s2).root.find((n) => (n.className || '').includes('cmp-matrix')).allText();
+    for (const nm of ['개인 업무 지원비', '복지포인트']) {
+      assert.ok(before.includes(nm) && after.includes(nm), nm);
+    }
+  });
+
+  test('금액 맞대결 표도 같은 규칙을 쓴다', () => {
+    const { root } = mount(pairWithNames());
+    const sec = root.find((n) => (n.className || '').includes('cmp-duels'));
+    assert.ok(sec.allText().includes('개인 업무 지원비'));
+    assert.ok(sec.allText().includes('복지포인트'));
   });
 });
 
@@ -662,6 +744,21 @@ describe('UT-CMP-CSS — 덱·색 계약', () => {
 
   test('회사 상세 레이더도 포커스로 라벨이 뜬다(호버 전용은 키보드를 배제한다)', () => {
     assert.match(CSS.replace(/\s+/g, ' '), /\.rd-hit:focus \.rd-hv \{[^}]*display:block/);
+  });
+
+  test('카테고리 라벨이 계열 색을 입지 않는다 — 초록은 이 화면에서 「회사 A」라는 뜻이다', () => {
+    const squashed = CSS.replace(/\s+/g, ' ');
+    assert.match(squashed, /\.cmp-bf-cat \{[^}]*color:var\(--text\)/);
+    assert.ok(!/\.cmp-bf-cat \{[^}]*color:var\(--brand\)/.test(squashed), '라벨이 A 계열색이다');
+    assert.ok(!/\.cmp-bf-cat\[aria-expanded="true"\] \{[^}]*background:var\(--brand\)/.test(squashed),
+      '펼침 상태를 A 계열색 면으로 말하고 있다');
+  });
+
+  test('한눈 요약 두 칸은 스스로 쌓인다 — 고정 2열이면 768~1000 에서 글 칸이 눌린다', () => {
+    const squashed = CSS.replace(/\s+/g, ' ');
+    assert.match(squashed, /\.cmp-sum2 \{[^}]*flex-wrap:wrap/);
+    assert.match(squashed, /\.cmp-sumright \{[^}]*flex:1 1 280px/);
+    assert.ok(!/\.cmp-sum2 \{[^}]*grid-template-columns:320px/.test(squashed), '고정 2열이 남아 있다');
   });
 
   test('겹침 채움은 각 14% 다 — 겹친 곳이 저절로 26% 로 진해진다', () => {
