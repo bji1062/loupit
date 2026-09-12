@@ -785,7 +785,7 @@ export function mountFind(root, ref, opts = {}) {
     if (nodes.cmpB) nodes.cmpB.textContent = b ? b.comp_nm : '고르는 중';
     if (!nodes.cmpLink) return;
     if (a && b) {
-      nodes.cmpLink.setAttribute('href', `/?a=${encodeURIComponent(a.comp_eng_nm)}&b=${encodeURIComponent(b.comp_eng_nm)}`);
+      nodes.cmpLink.setAttribute('href', `/compare/?a=${encodeURIComponent(a.comp_eng_nm)}&b=${encodeURIComponent(b.comp_eng_nm)}`);
       nodes.cmpLink.textContent = `${a.comp_nm} vs ${b.comp_nm} 비교하기 →`;
       nodes.cmpLink.hidden = false;
     } else {

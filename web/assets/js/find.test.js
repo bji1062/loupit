@@ -924,7 +924,7 @@ describe('mountFind — 결과·비교·제안', () => {
     click(env.rows()[1], 1);
     const link = env.q('[data-cmp-link]');
     assert.equal(link.hidden, false);
-    assert.match(link.getAttribute('href'), /^\/\?a=[a-z_]+&b=[a-z_]+$/);
+    assert.match(link.getAttribute('href'), /^\/compare\/\?a=[a-z_]+&b=[a-z_]+$/);
   });
 
   test('검색 제안 — 항목은 조건이 되고 회사는 회사 페이지로', () => {
