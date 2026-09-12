@@ -22,7 +22,13 @@ function makeDocument() {
   };
 }
 globalThis.document = makeDocument();
-globalThis.history = { _calls: [], pushState(state, title, url) { this._calls.push({ state, title, url }); } };
+globalThis.history = {
+  _calls: [], _replaced: [], state: null,
+  pushState(state, title, url) { this._calls.push({ state, title, url }); this.state = state; },
+  // replaceState 도 상태를 들고 있어야 한다 — 부팅 항목의 화면 표식(stampBootEntry)을 재려면
+  // 「무엇이 남았나」를 봐야 하고, 그건 호출 기록만으로는 알 수 없다.
+  replaceState(state, title, url) { this._replaced.push({ state, title, url }); this.state = state; },
+};
 globalThis.location = { origin: 'https://loupit.example', hash: '', search: '' };
 globalThis.window = globalThis;
 // C1 최근 비교 저장/복원 테스트용 in-memory localStorage(store.test/report.test와 동일 패턴).
@@ -39,7 +45,7 @@ const {
   App, createInitialState, SCREENS, parseHash, go, boot, showBootError,
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
   pickTrendingPair, restoreComparison,
-  resolveBootScreen, hasPairState, restoreLatestComparison, onPopState,
+  resolveBootScreen, hasPairState, restoreLatestComparison, onPopState, stampBootEntry,
   snapshotInput, restoreInputDraft, bindDraftPersist, isLandingShell,
 } = await import('./app.js');
 const { recent, inputDraft } = await import('./store.js');
@@ -51,6 +57,8 @@ beforeEach(() => {
   globalThis.location.hash = '';
   globalThis.location.search = '';
   globalThis.history._calls = [];
+  globalThis.history._replaced = [];
+  globalThis.history.state = null;
   globalThis.document.body.dataset.pageType = 'input'; // 기본은 비교 도구 셸(대문 아님)
   for (const id of Object.keys(INITIAL_HIDDEN)) {
     const e = new FakeEl();
@@ -219,6 +227,67 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     assert.equal(state.matched.b.comp_id, 2);
     assert.deepEqual(went, { screen: 'benefits', opts: { push: false } });
     assert.deepEqual(focused, [], '두 슬롯이 다 찼으면 고를 것이 없다');
+  });
+});
+
+// ── SP-CMP-2 정본 주소(해시 없음)에서 뒤로가기 ────────────────────────────
+//
+// 모드 A 의 주소에는 해시가 없다. 그 항목에 표식을 남기지 않으면 `#input` 을 다녀온 뒤
+// 뒤로가기가 **state null + hash 빈 문자열**을 들고 돌아와 검색 뷰로 떨어진다 — 「뒤로가기로
+// 비교 화면에 돌아올 수 있어야 한다」는 약속이 그 자리에서 깨진다.
+describe('SP-CMP-2 부팅 항목 표식(stampBootEntry)', () => {
+  const HOOKS = {
+    loadReferenceFn: async () => ({
+      company_types: [], benefit_presets: {},
+      companies: [
+        { comp_id: 1, comp_nm: 'A사', comp_eng_nm: 'a', comp_tp_cd: 'large', benefits: [] },
+        { comp_id: 2, comp_nm: 'B사', comp_eng_nm: 'b', comp_tp_cd: 'large', benefits: [] },
+      ],
+    }),
+    mountAdsFn: () => {},
+  };
+
+  test('해시 없이 복지 비교로 부팅하면 그 항목에 화면을 적어 둔다', async () => {
+    globalThis.location.search = '?a=1&b=2';
+    globalThis.location.hash = '';
+    globalThis.location.href = 'https://loupit.example/compare/?a=1&b=2';
+    await boot(HOOKS);
+    assert.equal(App.state.ui.screen, 'benefits');
+    assert.deepEqual(globalThis.history.state, { screen: 'benefits' });
+  });
+
+  test('표식이 있으면 뒤로가기가 비교 화면으로 돌아온다(예전엔 검색 뷰로 떨어졌다)', () => {
+    App.state.matched.a = { comp_id: 1, comp_nm: 'A' };
+    App.state.matched.b = { comp_id: 2, comp_nm: 'B' };
+    globalThis.location.hash = '';
+    onPopState({ state: { screen: 'benefits' } });
+    assert.equal(App.state.ui.screen, 'benefits');
+  });
+
+  test('표식도 해시도 없으면 예전 계약대로 검색 뷰다(이 분기를 건드리지 않았다)', () => {
+    App.state.matched.a = { comp_id: 1, comp_nm: 'A' };
+    App.state.matched.b = { comp_id: 2, comp_nm: 'B' };
+    globalThis.location.hash = '';
+    onPopState({ state: null });
+    assert.equal(App.state.ui.screen, 'search');
+  });
+
+  test('해시가 이미 말하고 있으면 표식을 찍지 않는다 — 주소가 정본이다', () => {
+    const win = {
+      history: { state: null, replaceState(st) { this.state = st; } },
+      location: { hash: '#input', href: 'https://loupit.example/compare/?a=1&b=2#input' },
+    };
+    assert.equal(stampBootEntry('input', win), false);
+    assert.equal(win.history.state, null);
+  });
+
+  test('이미 표식이 있으면 덮지 않는다', () => {
+    const win = {
+      history: { state: { screen: 'report' }, replaceState(st) { this.state = st; } },
+      location: { hash: '', href: 'https://loupit.example/compare/' },
+    };
+    assert.equal(stampBootEntry('benefits', win), false);
+    assert.deepEqual(win.history.state, { screen: 'report' });
   });
 });
 

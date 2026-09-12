@@ -815,12 +815,15 @@ main p { margin-top:var(--sp-3); }
 .cmp-chip.est { border-color:var(--badge-est-fg); color:var(--badge-est-fg); }
 .cmp-qual { display:inline-block; margin-left:var(--sp-1); color:var(--t3); font-size:var(--fs-xs); }
 
-.cmp-sum2 { display:flex; flex-direction:column; gap:var(--sp-4); margin-top:var(--sp-3); }
-.cmp-rdwrap { min-width:0; padding:var(--sp-2); border:var(--bw) solid var(--border); border-radius:var(--r-md); background:var(--surface); }
+/* 🚨 그림 320px + 글 칸을 **고정 2열**로 두면 768~1000px 에서 오른쪽이 52~184px 로 눌린다
+   (본문이 레일 300px 을 빼고 388px 뿐이라, 축별 문장이 21줄이 된다). 분기를 더 만들지 않고
+   `flex-wrap` 으로 **스스로 쌓이게** 한다 — 글 칸의 최소 폭(280px)이 안 나오면 줄을 바꾼다. */
+.cmp-sum2 { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--sp-4); margin-top:var(--sp-3); }
+.cmp-rdwrap { flex:0 1 320px; min-width:0; padding:var(--sp-2); border:var(--bw) solid var(--border); border-radius:var(--r-md); background:var(--surface); }
 .cmp-rdkey { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-3); margin-top:var(--sp-1);
   color:var(--t3); font-size:var(--fs-xs); }
 .cmp-rdcap { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-base); }
-.cmp-sumright { min-width:0; }
+.cmp-sumright { flex:1 1 280px; min-width:0; }
 .cmp-stat4 { display:flex; flex-wrap:wrap; gap:var(--bw); background:var(--border); border:var(--bw) solid var(--border); }
 .cmp-stat4 > div { flex:1 1 40%; padding:var(--sp-2) var(--sp-3); background:var(--surface); }
 .cmp-stat-n { display:block; font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
@@ -1411,7 +1414,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .cmp-deckwrap.collapsed:not(.open) .cmp-minibar { display:flex; }
   .cmp-deckwrap.collapsed.open .cmp-minibar { display:none; }
   /* 9각형은 요약 왼쪽 칸(320px)에, 문장·타일은 오른쪽에. 좁은 폭에서는 한 줄씩 쌓인다. */
-  .cmp-sum2 { display:grid; grid-template-columns:320px minmax(0,1fr); gap:var(--sp-4); align-items:start; }
   .cmp-bfp2 { grid-template-columns:1fr 1fr; gap:0 var(--sp-5); }
-  .cmp-bfp-col-a { text-align:right; }
+  /* A 목록은 가운데 축 쪽으로 붙는다(목업). 클래스는 `cmp-bfp-a` 다 — 예전 `-col-a` 는 DOM 에 없었다. */
+  .cmp-bfp-a { text-align:right; }
+  .cmp-bfp-a h4 { direction:rtl; }
 }

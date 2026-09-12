@@ -283,6 +283,7 @@ export async function boot(hooks = {}) {
   let screen = decision.screen;
   if (decision.restore && restoreLatestComparison({ recentCtx, viewDeps: deps })) screen = 'report';
   go(screen, { push: false }); // 부팅 경로의 유일한 go — 정확히 1회, push 금지
+  stampBootEntry(screen);
   // ⚠ go() 는 접근성용으로 뷰의 첫 헤딩에 포커스를 옮긴다(focusFirstHeading). 그래서
   //   restoreFromPrefill 이 빈 슬롯에 잡아 둔 포커스를 **부팅의 마지막 go 가 도로 뺏는다**.
   //   프리필 판정을 restoreFromPrefill 에 두고 이동은 boot 이 독점하는 구조(B-6)를 지키려면
@@ -300,6 +301,28 @@ export async function boot(hooks = {}) {
     }
   }
   bindDraftPersist();
+}
+
+/**
+ * 부팅으로 들어온 **첫 히스토리 항목에 어느 화면인지 적어 둔다** (SP-CMP-2).
+ *
+ * 🚨 왜 필요한가: 모드 A 의 정본 주소는 해시가 없다(`/compare/?a=&b=`). 그래서 그 항목은
+ * `history.state` 도 `location.hash` 도 비어 있고, 거기서 「이직 계산기 →」로 `#input` 을 push 한
+ * 뒤 뒤로가기를 누르면 `onPopState` 가 받는 것은 **state null + hash 빈 문자열**이다 — 둘 다
+ * 없으면 검색 뷰로 보내는 기존 분기에 걸려 비교 화면으로 못 돌아온다(「뒤로가기로 비교 화면에
+ * 돌아올 수 있어야 한다」는 약속이 깨진다).
+ *
+ * 해시를 붙여 해결하지 않는 이유: 그러면 주소가 정본이 아니게 되고, 공유된 링크가 `#benefits` 를
+ * 달고 돌아다닌다. 주소는 그대로 두고 **항목에만** 표식을 남긴다.
+ */
+export function stampBootEntry(screen, win = (typeof globalThis !== 'undefined' ? globalThis : null)) {
+  const h = win && win.history;
+  const loc = win && win.location;
+  if (!h || typeof h.replaceState !== 'function' || !loc) return false;
+  if (h.state && h.state.screen) return false;   // 이미 표식이 있으면 덮지 않는다
+  if (loc.hash) return false;                    // 해시가 말하고 있으면 표식이 필요 없다
+  h.replaceState({ screen }, '', loc.href);
+  return true;
 }
 
 // 페이지를 떠나는 순간 초안을 저장한다(이동·새로고침·탭 닫기 공통).
@@ -538,6 +561,8 @@ export function syncPairUrl(state = App.state) {
   if (url.searchParams.get('a') === a.comp_eng_nm && url.searchParams.get('b') === b.comp_eng_nm) return null;
   url.searchParams.set('a', a.comp_eng_nm);
   url.searchParams.set('b', b.comp_eng_nm);
+  // `history.state` 를 그대로 넘긴다 — 부팅 항목에 찍어 둔 화면 표식(stampBootEntry)을
+  // 여기서 지우면 뒤로가기가 다시 검색 뷰로 떨어진다.
   history.replaceState(history.state, '', url.pathname + url.search + url.hash);
   return url.search;
 }
