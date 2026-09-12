@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import re
+from pathlib import Path
 
 from generator.config import CFG
 from generator.context import build_context
@@ -139,3 +140,70 @@ def test_gc23_self_pair_is_skipped(fake_bundle, fake_now, tmp_path, monkeypatch)
     ctx = build_context(fake_bundle, now=fake_now)
     pages = combo.render_all(env, ctx, CFG)
     assert len(pages) == 0
+
+
+# ── SP-CMP-4 쌍 레이더 (2026-09-12) ─────────────────────────────────────────
+#
+# `/vs` 3쪽은 **Python 이 굽는다**. 도구(모드 A)가 같은 그림을 JS 로 그리지만, 색인되는 쪽은
+# 여기이고 여기가 정본이다 — 둘이 어긋나면 `test_radar.py` 의 골든 픽스처가 잡는다.
+
+
+def test_combo_page_carries_the_pair_radar(fake_bundle, fake_now, fake_combinations_path):
+    pages = _render(fake_bundle, fake_now)
+    p = next(p for p in pages if p.path == "vs/samsung-elec-sk-hynix.html")
+    assert '<svg class="rdp"' in p.html
+    assert 'viewBox="0 34 416 356"' in p.html, "쌍용 viewBox(오른쪽 +16·아래 +26)"
+    assert p.html.count('class="rdp-ax"') == 9, "축 9개 — 카테고리 정본 순서"
+    assert 'class="rdp-a"' in p.html and 'class="rdp-b"' in p.html
+    assert 'class="rdp-avg"' in p.html, "평균 점선이 없으면 '6항목'이 많은지 적은지 말할 수 없다"
+
+
+def test_combo_radar_needs_no_javascript(fake_bundle, fake_now, fake_combinations_path):
+    """조합 페이지의 그림은 좌표가 HTML 에 박혀 있다 — 스크립트가 죽어도 완전하다(NFR24)."""
+    pages = _render(fake_bundle, fake_now)
+    p = next(p for p in pages if p.path.startswith("vs/"))
+    scripts = re.findall(r'<script[^>]*src="([^"]+)"', p.html)
+    assert not any("radar" in s for s in scripts), "정적 페이지에 JS 렌더러가 실렸다"
+
+
+def test_combo_radar_says_zero_as_not_registered(fake_bundle, fake_now, fake_combinations_path):
+    """0 은 「등록 없음」이다 — 도구 화면과 **같은 낱말**로 적는다(SP-CMP-3)."""
+    pages = _render(fake_bundle, fake_now)
+    for p in (x for x in _render(fake_bundle, fake_now) if x.path.startswith("vs/")):
+        svg = p.html[p.html.index('<svg class="rdp"'):]
+        svg = svg[:svg.index("</svg>")]
+        assert "0항목" not in svg
+    assert pages
+
+
+def test_combo_radar_axes_are_keyboard_reachable(fake_bundle, fake_now, fake_combinations_path):
+    p = next(p for p in _render(fake_bundle, fake_now) if p.path.startswith("vs/"))
+    assert p.html.count('class="rdp-hit" tabindex="0" role="img" aria-label="') == 9
+
+
+def test_combo_page_keeps_a_slot_for_handwritten_prose(fake_combinations_path):
+    """🚨 이 3쪽의 색인 가치를 가르는 것은 **손으로 쓴 산문**뿐이다.
+
+    자동 생성 표·그림은 「검색 결과에 매우 가까운 비슷한 페이지」 판정을 바꾸지 못한다. 지금은
+    고유 완결문장 0 + 광고 3자리라 방치가 심사에 최악이고, 못 쓸 것 같으면 폐기(+301)가 낫다.
+    이 테스트는 그 자리를 템플릿에서 **지우지 못하게** 한다(SP-CMP-9).
+    """
+    tpl = (Path(__file__).resolve().parents[1] / "templates" / "combo.html").read_text(encoding="utf-8")
+    assert "{# 산문 #}" in tpl
+
+
+def test_combo_radar_scale_is_the_whole_corpus_not_the_pair(fake_bundle, fake_now, fake_combinations_path):
+    """쌍마다 최댓값을 다시 잡으면 회사를 바꿀 때마다 같은 숫자가 다른 크기로 그려진다."""
+    from generator import corpus as corpus_mod
+    from generator.context import build_context
+    from generator.pages.company import CATEGORY_ORDER
+
+    ctx = build_context(fake_bundle, now=fake_now)
+    rmax = corpus_mod.build(ctx.companies, CATEGORY_ORDER).rmax
+    pages = [p for p in _render(fake_bundle, fake_now) if p.path.startswith("vs/")]
+    # 고리·눈금은 `k <= rmax` 인 것만 그려진다 — 픽스처처럼 rmax 가 작으면 하나도 안 나오는 것이
+    # **정상**이다. 쌍마다 최댓값을 다시 잡았다면 이 목록이 쌍마다 달라진다.
+    expected = [k for k in (2, 4, 6, 8) if k <= rmax]
+    for p in pages:
+        ticks = [int(t) for t in re.findall(r'<text class="rdp-tick"[^>]*>(\d+)</text>', p.html)]
+        assert ticks == expected, f"{p.path}: 눈금이 전 회사 기준이 아니다"

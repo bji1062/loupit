@@ -9,9 +9,11 @@ import json
 import logging
 from pathlib import Path
 
+from generator import corpus as corpus_mod
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, _group_benefits, _truncate
+from generator.radar import radar_pair_svg
 from generator.slug import combo_slug, validate_combo_paths
 
 log = logging.getLogger(__name__)
@@ -72,7 +74,17 @@ def _category_summary(a_benefits: list[dict], b_benefits: list[dict], now) -> li
     return rows
 
 
-def _combo_view(a: dict, b: dict, ctx, pairs) -> dict:
+def _per_category(benefits: list[dict]) -> list[int]:
+    """카테고리 정본 순서의 등록 항목 수. 빈 카테고리는 0 이다(빼지 않는다 — 없는 축도 사실이다)."""
+    per = {k: 0 for k in CATEGORY_ORDER}
+    for x in benefits:
+        cat = x.get("benefit_ctgr_cd")
+        if cat in per:
+            per[cat] += 1
+    return [per[k] for k in CATEGORY_ORDER]
+
+
+def _combo_view(a: dict, b: dict, ctx, pairs, corpus=None) -> dict:
     """사전 계산 비교 요약 (FR-61). 개인화(vdCard)·실효연봉·시간가치는 미렌더(R1)."""
     now = ctx.build_now
     ta = ctx.types_by_cd.get(a["comp_tp_cd"], {})
@@ -85,6 +97,16 @@ def _combo_view(a: dict, b: dict, ctx, pairs) -> dict:
             a.get("work_style_val") or {}, b.get("work_style_val") or {}
         ),
         "category_summary": _category_summary(a["benefits"], b["benefits"], now),
+        # 겹친 9각형 — **Python 이 굽는다**(SP-CMP-4 ①). 색인되는 페이지에 그림이 실리고, 이 쪽
+        # 렌더러가 정본이라 도구(JS 포트)가 어긋나면 골든 테스트가 잡는다. JS 는 여기 0 이다.
+        # ⚠ 자동 생성 그림은 「비슷한 페이지」 판정을 바꾸지 못한다 — 그것을 가르는 것은 산문뿐이다.
+        "radar_pair": None if corpus is None else radar_pair_svg(
+            _per_category(a["benefits"]), _per_category(b["benefits"]),
+            [round(corpus.avgs.get(k, 0.0), 2) for k in CATEGORY_ORDER],
+            [CATEGORY_LABEL[k] for k in CATEGORY_ORDER],
+            corpus.rmax, a["comp_nm"], b["comp_nm"],
+        ),
+        "corpus_total": 0 if corpus is None else corpus.total,
         "compare_href": f"/compare?a={a['comp_eng_nm']}&b={b['comp_eng_nm']}",
     }
 
@@ -159,13 +181,16 @@ def render_all(env, ctx, cfg, pairs=None) -> list[Page]:
     validate_combo_paths(pairs, ctx.slugs)  # 경로 충돌 → BuildError(SP-GEN-3)
 
     tpl = env.get_template("combo.html")
+    # 평균·축 최댓값은 전 회사를 한 번 훑어야 나온다 — 쌍마다 다시 잡으면 도형이 거짓말을 한다.
+    # ⚠ 회사가 하나 늘면 이 값들이 전부 움직인다(정적 재생성 필수, SP-GEN-5.6).
+    corpus = corpus_mod.build(ctx.companies, CATEGORY_ORDER)
     pages: list[Page] = []
     for a, b in pairs:
         path, first, second = combo_slug(a, b, ctx.slugs)
         eng_first = a if ctx.slugs[a] == first else b
         eng_second = b if eng_first == a else a
         url = f"{cfg.site_origin}/vs/{path}"
-        vm = _combo_view(ctx.by_eng[eng_first], ctx.by_eng[eng_second], ctx, pairs)
+        vm = _combo_view(ctx.by_eng[eng_first], ctx.by_eng[eng_second], ctx, pairs, corpus)
         company_links, related = _related(eng_first, eng_second, ctx, pairs)
         vm["company_links"] = company_links
         vm["related"] = related

@@ -869,6 +869,8 @@ main p { margin-top:var(--sp-3); }
 .cmp-t thead th { background:var(--surface-soft); color:var(--t2); font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
 .cmp-t tbody tr:last-child td { border-bottom:none; }
 .cmp-next-row { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-3); }
+/* `/vs` 정적 3쪽의 쌍 레이더 설명 — 도구 화면의 `.cmp-rdcap` 과 같은 말을 한다. */
+.combo-radar-cap { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-base); }
 
 .sc-legend { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-3); margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
 .sc-key { display:inline-block; width:12px; height:12px; margin-right:var(--sp-1); vertical-align:middle; }
