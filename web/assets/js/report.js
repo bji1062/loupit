@@ -152,12 +152,17 @@ export function renderCatButterfly(catDelta, mountEl) {
 // 같은 복지(benefit_cd)를 같은 행에 정렬해 두 회사를 대조한다. checked 항목만
 // 대상(엔진 합계와 동일 모집단). 카테고리 순서는 CATEGORY_LABEL 키 순서(9종 고정,
 // 엔진 BENEFIT_CATEGORIES와 동일 어휘 — calc.js import 금지 규칙 유지).
-export function matchBenefitRows(benA, benB) {
+// `requireChecked:false` 는 **모드 A 「복지 비교」**(SP-CMP-6)가 쓴다. 그 화면에는 체크박스가
+// 없다 — 사용자가 고른 것이 아니라 회사에 등록된 것 전부를 나란히 놓는 자리라, 「체크된 항목만」
+// 이라는 모드 B 의 모집단 규칙이 거기서는 뜻을 잃는다. 기본값은 true 그대로라 리포트 쪽 계약은
+// 한 글자도 바뀌지 않는다(짝짓기 키·정렬 규칙을 두 벌로 만들지 않으려고 옵션으로 열었다).
+export function matchBenefitRows(benA, benB, { requireChecked = true } = {}) {
   const cats = Object.keys(CATEGORY_LABEL);
   const norm = (c) => (cats.includes(c) ? c : 'perks'); // 미지 카테고리 → perks(엔진과 동일 규칙)
   const map = new Map(); // key → row
   const add = (item, side) => {
-    if (!item || item.checked !== true) return;
+    if (!item) return;
+    if (requireChecked && item.checked !== true) return;
     const key = item.benefit_cd || item.benefit_nm;
     let row = map.get(key);
     if (!row) {

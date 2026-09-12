@@ -1,0 +1,235 @@
+{
+ "note": "generator/tests/test_category_stats.py 가 만들고 web/assets/js/benefits.test.js 가 읽는다. 손으로 고치지 마라 — CATEGORY_STATS_WRITE=1 로 다시 뽑고, 뽑은 뒤 JS 테스트도 돌려라.",
+ "category_order": [
+  "compensation",
+  "flexibility",
+  "work_env",
+  "time_off",
+  "health",
+  "family",
+  "growth",
+  "leisure",
+  "perks"
+ ],
+ "cases": [
+  {
+   "name": "mixed_three",
+   "why": "보통 쌍 — 회사마다 카테고리 분포가 다르고 빈 카테고리가 섞인다",
+   "companies": [
+    {
+     "comp_id": 1,
+     "benefits": [
+      {
+       "benefit_cd": "b1_0",
+       "benefit_ctgr_cd": "perks",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b1_1",
+       "benefit_ctgr_cd": "perks",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b1_2",
+       "benefit_ctgr_cd": "health",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b1_3",
+       "benefit_ctgr_cd": "family",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b1_4",
+       "benefit_ctgr_cd": "growth",
+       "qual_yn": true,
+       "benefit_amt": null
+      }
+     ]
+    },
+    {
+     "comp_id": 2,
+     "benefits": [
+      {
+       "benefit_cd": "b2_0",
+       "benefit_ctgr_cd": "perks",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b2_1",
+       "benefit_ctgr_cd": "health",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b2_2",
+       "benefit_ctgr_cd": "health",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b2_3",
+       "benefit_ctgr_cd": "time_off",
+       "qual_yn": true,
+       "benefit_amt": null
+      }
+     ]
+    },
+    {
+     "comp_id": 3,
+     "benefits": [
+      {
+       "benefit_cd": "b3_0",
+       "benefit_ctgr_cd": "compensation",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b3_1",
+       "benefit_ctgr_cd": "flexibility",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b3_2",
+       "benefit_ctgr_cd": "perks",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b3_3",
+       "benefit_ctgr_cd": "perks",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b3_4",
+       "benefit_ctgr_cd": "perks",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b3_5",
+       "benefit_ctgr_cd": "leisure",
+       "qual_yn": true,
+       "benefit_amt": null
+      }
+     ]
+    }
+   ],
+   "avgs": {
+    "compensation": 0.33,
+    "flexibility": 0.33,
+    "work_env": 0.0,
+    "time_off": 0.33,
+    "health": 1.0,
+    "family": 0.33,
+    "growth": 0.33,
+    "leisure": 0.33,
+    "perks": 2.0
+   },
+   "rmax": 3,
+   "total": 3
+  },
+  {
+   "name": "eight_companies_quarter_avg",
+   "why": ".125 · .375 평균 — round(x, 2) 의 짝수 반올림이 JS 와 갈리는 유일한 지점",
+   "companies": [
+    {
+     "comp_id": 10,
+     "benefits": [
+      {
+       "benefit_cd": "b10_0",
+       "benefit_ctgr_cd": "compensation",
+       "qual_yn": true,
+       "benefit_amt": null
+      }
+     ]
+    },
+    {
+     "comp_id": 11,
+     "benefits": [
+      {
+       "benefit_cd": "b11_0",
+       "benefit_ctgr_cd": "health",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b11_1",
+       "benefit_ctgr_cd": "health",
+       "qual_yn": true,
+       "benefit_amt": null
+      },
+      {
+       "benefit_cd": "b11_2",
+       "benefit_ctgr_cd": "health",
+       "qual_yn": true,
+       "benefit_amt": null
+      }
+     ]
+    },
+    {
+     "comp_id": 12,
+     "benefits": []
+    },
+    {
+     "comp_id": 13,
+     "benefits": []
+    },
+    {
+     "comp_id": 14,
+     "benefits": []
+    },
+    {
+     "comp_id": 15,
+     "benefits": []
+    },
+    {
+     "comp_id": 16,
+     "benefits": []
+    },
+    {
+     "comp_id": 17,
+     "benefits": []
+    }
+   ],
+   "avgs": {
+    "compensation": 0.12,
+    "flexibility": 0.0,
+    "work_env": 0.0,
+    "time_off": 0.0,
+    "health": 0.38,
+    "family": 0.0,
+    "growth": 0.0,
+    "leisure": 0.0,
+    "perks": 0.0
+   },
+   "rmax": 3,
+   "total": 8
+  },
+  {
+   "name": "empty_bundle",
+   "why": "회사 0곳(부팅 번들 실패 폴백)에서도 죽지 않고 rmax 는 1 로 선다",
+   "companies": [],
+   "avgs": {
+    "compensation": 0.0,
+    "flexibility": 0.0,
+    "work_env": 0.0,
+    "time_off": 0.0,
+    "health": 0.0,
+    "family": 0.0,
+    "growth": 0.0,
+    "leisure": 0.0,
+    "perks": 0.0
+   },
+   "rmax": 1,
+   "total": 0
+  }
+ ]
+}

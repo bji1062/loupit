@@ -12,19 +12,14 @@ import { slugOf } from './directory.js';
 // 덱 접힘 컨트롤러의 집은 `deck.js` 다(SP-CMP-8). 여기서 가져와 아래에서 다시 내보낸다 —
 // `find.js` 가 그 이름의 원래 집이라 호출부·테스트의 import 경로를 바꾸지 않는다.
 import { initDeckCollapse, DESKTOP_MIN } from './deck.js';
+import { CATEGORY_ORDER, CATEGORY_LABEL } from './categories.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
-// 카테고리 9종. **정본은 `generator/pages/company.py::CATEGORY_ORDER/CATEGORY_LABEL`** 이고 여기는
-// 미러다(번들이 카테고리 라벨을 싣지 않는다 — 회사 페이지·히트맵과 같은 이유). 드리프트는
-// find.test.js 가 company.py 를 읽어 문자열로 잡는다(directory.js `slugOf` 미러와 같은 방식).
-export const CATEGORY_ORDER = [
-  'compensation', 'flexibility', 'work_env', 'time_off', 'health', 'family', 'growth', 'leisure', 'perks',
-];
-export const CATEGORY_LABEL = {
-  compensation: '보상', flexibility: '유연성', work_env: '근무환경', time_off: '휴가', health: '건강',
-  family: '가족', growth: '성장', leisure: '여가', perks: '복리후생',
-};
+// 카테고리 9종의 집은 `categories.js` 다 — 「복지 비교」도 같은 순서를 쓰는데 그 두 상수 때문에
+// 이 파일 전체를 받아 갈 이유가 없어서 뺐다. 여기서 다시 내보내므로 호출부·테스트는 그대로다
+// (드리프트는 find.test.js 가 company.py 를 읽어 문자열로 잡는다 — 미러가 늘지 않았다).
+export { CATEGORY_ORDER, CATEGORY_LABEL };
 
 // 탭 첫 화면에 여는 카테고리. `perks`(복리후생)가 행 수가 가장 많고(470) 검색 의도도 흔하다.
 export const DEFAULT_CATEGORY = 'perks';
