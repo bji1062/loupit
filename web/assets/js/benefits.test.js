@@ -302,3 +302,333 @@ describe('SP-CMP-3 값 표기', () => {
     assert.deepEqual(items.map((i) => i.benefit_cd), ['a']);
   });
 });
+
+// ── 렌더 (SP-CMP-10) ────────────────────────────────────────────────────────
+//
+// 가짜 document 위에 노드를 쌓아 검사한다(report.test.js 와 같은 패턴). 여기서 보는 것은
+// 「보기 좋은가」가 아니라 **말이 참인가**다: 0 이 「등록 없음」으로 나가는가 · 한쪽에만 있는
+// 행이 남아 있는가 · 「우세」 어휘가 새지 않는가 · 데이터 문자열이 이스케이프되는가.
+
+const { mountBenefits, buildViewModel, VERDICT_TEXT, WS_YES, WS_UNKNOWN } = await import('./benefits.js');
+
+const NOW = Date.parse('2026-09-12T00:00:00Z');
+
+function company(nm, eng, benefits, ws = null) {
+  return { comp_id: eng.length, comp_nm: nm, comp_eng_nm: eng, benefits, work_style_val: ws };
+}
+
+/** NAVER·카카오 실측을 줄인 쌍 — 한쪽 0·양쪽 0·동값·금액 맞대결이 한 화면에 다 들어 있다. */
+function stateFor() {
+  const A = company('NAVER', 'naver', [
+    ben('stock', { nm: '전 직원 주식 부여', cat: 'compensation', amt: 1000, src: 'stated' }),
+    ben('flex', { nm: '자율 근무', cat: 'flexibility', desc: 'Type_O/R 선택' }),
+    ben('checkup', { nm: '종합건강검진', cat: 'health', amt: 100, src: 'estimated' }),
+    ben('meal', { nm: '사내식당', cat: 'perks', amt: 432, src: 'estimated' }),
+  ], { remote: true, flex: false, overtime: null });
+  const B = company('카카오 & 친구들', 'kakao', [
+    ben('flex', { nm: '자율 출퇴근제', cat: 'flexibility', desc: '<b>자율</b>' }),
+    ben('checkup', { nm: '종합건강검진', cat: 'health', amt: 100, src: 'estimated' }),
+    ben('meal', { nm: '식대 지원', cat: 'perks', amt: 240, src: 'estimated' }),
+    ben('point', { nm: '복지포인트', cat: 'perks', amt: 140, src: 'stated' }),
+  ], {});
+  return {
+    REF: { companies: [A, B] },
+    matched: { a: A, b: B },
+    benS: { a: A.benefits, b: B.benefits },
+  };
+}
+
+function mount(state = stateFor()) {
+  const root = new FakeElement('div');
+  const calls = [];
+  const vm = mountBenefits(state, { mountEl: root, now: NOW, go: (v) => calls.push(v) });
+  return { root, vm, calls, text: root.allText() };
+}
+
+describe('SP-CMP mountBenefits — 섹션 7개', () => {
+  test('일곱 섹션이 정해진 순서로 나온다', () => {
+    const { root } = mount();
+    const titles = root.findAll((n) => n.tagName === 'h3').map((n) => n.textContent);
+    assert.deepEqual(titles, [
+      '한눈 요약', '카테고리별', '금액 맞대결', '항목 대조표', '근무형태',
+      '이 비교를 얼마나 믿을 수 있나', '다음 행동',
+    ]);
+  });
+
+  test('첫 헤딩은 h3 다 — 뷰의 h2 「복지 비교」에 포커스가 가야 한다', () => {
+    const { root } = mount();
+    assert.equal(root.findAll((n) => n.tagName === 'h2').length, 0);
+  });
+
+  test('두 슬롯이 다 차지 않으면 그리지 않는다 — 반쪽 비교는 비교가 아니다', () => {
+    const s = stateFor();
+    s.matched.b = null;
+    const root = new FakeElement('div');
+    root.append(new FakeElement('p'));
+    assert.equal(mountBenefits(s, { mountEl: root, now: NOW }), null);
+    assert.deepEqual(root.children, []);
+  });
+
+  test('마운트할 자리가 없으면 조용히 아무것도 하지 않는다', () => {
+    assert.equal(mountBenefits(stateFor(), { mountEl: null, doc: { getElementById: () => null } }), null);
+  });
+});
+
+describe('SP-CMP-4 한눈 요약', () => {
+  test('9각형이 실리고 눈금·평균이 전 회사 기준이다', () => {
+    const { root, vm } = mount();
+    const fig = root.find((n) => n.className === 'cmp-rdwrap');
+    assert.ok(fig.innerHTML.includes('<svg class="rdp"'), '9각형이 없다');
+    assert.ok(fig.innerHTML.includes('viewBox="0 34 416 356"'));
+    assert.equal(vm.rmax, 2, '전 회사 통틀어 한 카테고리 최댓값(perks 2)');
+  });
+
+  test('회사명의 & 와 태그가 그림 안에서 이스케이프된다', () => {
+    const { root } = mount();
+    const fig = root.find((n) => n.className === 'cmp-rdwrap');
+    assert.ok(fig.innerHTML.includes('카카오 &amp; 친구들'));
+    assert.ok(!fig.innerHTML.includes('카카오 & 친구들'));
+  });
+
+  test('스탯 타일 4 — A 항목·B 항목·공통·한쪽에만', () => {
+    const { root, vm } = mount();
+    const tiles = root.find((n) => n.className === 'cmp-stat4');
+    const nums = tiles.findAll((n) => (n.className || '').includes('cmp-stat-n')).map((n) => n.textContent);
+    assert.deepEqual(nums, ['4', '4', '3', '2']);
+    assert.equal(vm.counts.union, 5);
+  });
+
+  test('문장 둘이 뷰모델과 같은 값을 말한다(같은 수를 두 곳에서 세지 않는다)', () => {
+    const { root, vm } = mount();
+    const says = root.findAll((n) => n.className === 'cmp-say').map((n) => n.textContent);
+    assert.ok(says.includes(vm.axisLine));
+    assert.ok(says.includes(vm.aggregateLine));
+  });
+});
+
+describe('SP-CMP-5 카테고리별 나비차트', () => {
+  test('행 9개 — 카테고리 정본 순서 그대로', () => {
+    const { root } = mount();
+    const rows = root.findAll((n) => n.className === 'cmp-bf-row');
+    assert.equal(rows.length, 9);
+    assert.deepEqual(rows.map((r) => r.attributes['data-cat']), CATEGORY_ORDER);
+  });
+
+  test('막대 길이는 같은 눈금(0~rmax)에서 나온다', () => {
+    const { root, vm } = mount();
+    const perks = root.findAll((n) => n.className === 'cmp-bf-row')
+      .find((r) => r.attributes['data-cat'] === 'perks');
+    const bars = perks.findAll((n) => (n.className || '').includes('cmp-bf-bar'));
+    assert.equal(bars.length, 2);
+    assert.equal(bars[0].attributes.style, `width:${(1 / vm.rmax * 100).toFixed(2)}%`);
+    assert.equal(bars[1].attributes.style, `width:${(2 / vm.rmax * 100).toFixed(2)}%`);
+  });
+
+  test('0 인 쪽은 막대 대신 「등록 없음」 글자이고, 평균 눈금 **바깥**에 앉는다', () => {
+    const { root, vm } = mount();
+    const comp = root.findAll((n) => n.className === 'cmp-bf-row')
+      .find((r) => r.attributes['data-cat'] === 'compensation');
+    const none = comp.find((n) => (n.className || '').includes('cmp-none') && n.textContent === NONE);
+    assert.ok(none, '「등록 없음」 글자가 없다 — 길이 0 막대는 눈에 안 보인다');
+    const avgPct = (vm.avgs[0] / vm.rmax * 100).toFixed(2);
+    assert.equal(none.attributes.style, `left:calc(${avgPct}% + 6px)`,
+      '평균 눈금과 겹치면 둘 다 못 읽는다');
+    assert.equal(comp.findAll((n) => (n.className || '').includes('cmp-bf-bar')).length, 1);
+  });
+
+  test('카테고리 버튼이 패널을 열고 닫는다(aria-expanded·hidden 이 함께 움직인다)', () => {
+    const { root } = mount();
+    const btn = root.findAll((n) => n.className === 'cmp-bf-cat')[0];
+    const panel = root.find((n) => n.attributes.id === btn.attributes['aria-controls']);
+    assert.equal(btn.getAttribute('aria-expanded'), 'false');
+    assert.equal(panel.hidden, true);
+    btn.dispatch('click');
+    assert.equal(btn.getAttribute('aria-expanded'), 'true');
+    assert.equal(panel.hidden, false);
+    btn.dispatch('click');
+    assert.equal(panel.hidden, true);
+  });
+
+  test('「모두 펼치기」는 아홉을 한 번에 열고 라벨이 「모두 접기」로 바뀐다', () => {
+    const { root } = mount();
+    const all = root.find((n) => (n.className || '').includes('cmp-bf-all'));
+    const panels = root.findAll((n) => n.className === 'cmp-bf-panel');
+    all.dispatch('click');
+    assert.deepEqual(panels.map((p) => p.hidden), Array(9).fill(false));
+    assert.equal(all.textContent, '모두 접기');
+    all.dispatch('click');
+    assert.deepEqual(panels.map((p) => p.hidden), Array(9).fill(true));
+    assert.equal(all.textContent, '모두 펼치기');
+  });
+
+  test('패널 머리는 0 일 때 「등록 없음」이라 적는다(「0항목」이 아니다)', () => {
+    const { root } = mount();
+    const panel = root.find((n) => n.attributes.id === 'cmp-bf-p-compensation');
+    const heads = panel.findAll((n) => n.tagName === 'h4').map((n) => n.allText().trim());
+    assert.ok(heads[0].includes('NAVER · 보상 1항목'));
+    assert.ok(heads[1].includes(`보상 ${NONE}`));
+    assert.ok(!panel.allText().includes('0항목'));
+  });
+
+  test('금액 없는 항목에는 「정성」 표식이 붙는다(금액 출처 칩이 아니다)', () => {
+    const { root } = mount();
+    const panel = root.find((n) => n.attributes.id === 'cmp-bf-p-flexibility');
+    assert.equal(panel.findAll((n) => n.className === 'cmp-qual').length, 2);
+    assert.equal(panel.findAll((n) => (n.className || '').includes('cmp-chip')).length, 0);
+  });
+});
+
+describe('SP-CMP-6 금액 맞대결 · 항목 대조표', () => {
+  test('양쪽 금액이 있는 공통 코드만 오르고, 판정 문구가 정해져 있다', () => {
+    const { root, vm } = mount();
+    const sec = root.find((n) => (n.className || '').includes('cmp-duels'));
+    const body = sec.findAll((n) => n.tagName === 'tbody')[0];
+    assert.equal(body.children.length, 2, 'checkup(같음) · meal(차이) 둘');
+    const texts = body.children.map((tr) => tr.allText());
+    assert.ok(texts.some((t) => t.includes(VERDICT_TEXT.same)));
+    assert.ok(texts.some((t) => t.includes('NAVER 가 큼')), vm.duels.map((d) => d.verdict).join(','));
+  });
+
+  test('맞대결 0건이면 표 대신 문장 하나 — 빈 표를 그리지 않는다', () => {
+    const s = stateFor();
+    s.matched.a = company('가', 'ga', [ben('q1', { nm: '정성1' })]);
+    s.matched.b = company('나', 'na', [ben('q1', { nm: '정성1' })]);
+    s.benS = { a: s.matched.a.benefits, b: s.matched.b.benefits };
+    s.REF.companies = [s.matched.a, s.matched.b];
+    const { root } = mount(s);
+    const sec = root.find((n) => (n.className || '').includes('cmp-duels'));
+    assert.equal(sec.findAll((n) => n.tagName === 'table').length, 0);
+    assert.ok(sec.allText().includes('맞댈 수 있는 숫자가 없습니다'));
+  });
+
+  test('대조표는 합집합이고 한쪽 셀은 「등록 없음」이다 — 행을 숨기지 않는다', () => {
+    const { root, vm } = mount();
+    const sec = root.find((n) => (n.className || '').includes('cmp-matrix'));
+    const body = sec.findAll((n) => n.tagName === 'tbody')[0];
+    assert.equal(body.children.length, vm.counts.union);
+    assert.ok(sec.allText().includes(NONE), '한쪽에만 있는 행의 빈 칸이 비어 있다');
+  });
+
+  test('정성 행의 값은 설명 원문이고, 그 원문이 태그로 새지 않는다', () => {
+    const { root } = mount();
+    const sec = root.find((n) => (n.className || '').includes('cmp-matrix'));
+    const cell = sec.find((n) => n.textContent === '<b>자율</b>');
+    assert.ok(cell, '설명 원문이 textContent 로 들어가야 한다(el() 만 쓴다)');
+  });
+
+  test('범례가 「등록 없음」의 뜻을 못 박는다 — 이 한 줄이 화면의 전제다', () => {
+    const { root } = mount();
+    const legends = root.findAll((n) => n.className === 'cmp-legend').map((n) => n.textContent);
+    assert.ok(legends.some((t) => t.includes(NONE_LEGEND)));
+  });
+});
+
+describe('SP-CMP-3 근무형태 — true 만 사실', () => {
+  test('false·null 은 「표기 없음」이고 「없음」이라고 쓰지 않는다', () => {
+    const { root } = mount();
+    const sec = root.find((n) => (n.className || '').includes('cmp-ws'));
+    const body = sec.findAll((n) => n.tagName === 'tbody')[0];
+    assert.equal(body.children.length, 5);
+    const first = body.children[0].allText();
+    assert.ok(first.includes(WS_YES), '재택근무 true 가 「제공」으로 안 나온다');
+    assert.equal(sec.findAll((n) => n.textContent === WS_UNKNOWN).length, 9);
+    assert.ok(!sec.allText().includes('미제공'));
+  });
+});
+
+describe('SP-CMP 다음 행동 · 광고 없음', () => {
+  test('「이직 계산기 →」가 입력 뷰로 간다', () => {
+    const { root, calls } = mount();
+    const btn = root.find((n) => n.textContent === '이직 계산기 →');
+    btn.dispatch('click');
+    assert.deepEqual(calls, ['input']);
+  });
+
+  test('회사 상세·복지검색으로 나가는 링크가 있다', () => {
+    const { root } = mount();
+    const hrefs = root.findAll((n) => n.attributes.href).map((n) => n.attributes.href);
+    assert.ok(hrefs.includes('/company/naver'));
+    assert.ok(hrefs.includes('/company/kakao'));
+    assert.ok(hrefs.includes('/find'));
+  });
+
+  // 주석에는 「mountAds 를 부르지 않는다」 같은 설명이 있어야 하므로 **코드만** 남겨 검사한다
+  // (calc.test.js 의 CALC_CODE_ONLY 와 같은 방식 — 설명 문장이 금지어로 오탐되면 주석을 못 쓴다).
+  const SRC_CODE_ONLY = readFileSync(new URL('./benefits.js', import.meta.url), 'utf8')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+
+  test('광고 자리를 만들지 않는다 — 모드 A 는 마운트 호출 자체가 없다', () => {
+    const { root } = mount();
+    assert.equal(root.findAll((n) => n.attributes['data-ad-position']).length, 0);
+    assert.ok(!SRC_CODE_ONLY.includes('mountAds'), 'benefits.js 가 광고를 부른다');
+  });
+
+  test('금지 호출이 코드에 없다(D-6) — 부르기 쉬운 자리에 있는 것들이다', () => {
+    for (const banned of ['benTotal', 'renderBenefitHeadline', 'badgeKind', 'badgeClassBem']) {
+      assert.ok(!SRC_CODE_ONLY.includes(banned), `${banned} 를 부르면 안 된다`);
+    }
+  });
+
+  test('화면에 우열 어휘가 없다 — 항목 수도 금액 합도 순위가 되지 않는다', () => {
+    const text = mount().root.allText();
+    for (const banned of ['우세', '더 낫다', '순위', '합계']) {
+      assert.ok(!text.includes(banned), `화면에 「${banned}」가 나왔다`);
+    }
+    // 「총액」이 나오는 곳은 딱 하나 — **만들지 않는다는 선언**이다.
+    const totals = text.split('총액').length - 1;
+    assert.equal(totals, 1);
+    assert.ok(text.includes('총액 판정은 만들지 않습니다'));
+  });
+});
+
+// ── CSS 계약 (UT-CMP-CSS) ───────────────────────────────────────────────────
+//
+// find 쪽에서 배운 것 그대로다: **접힘의 실체는 CSS 다.** 컨트롤러는 class 를 토글할 뿐이고
+// 「접히면 작아진다」를 만드는 것은 스타일이라, 규칙이 통째로 없어도 가짜 window 테스트는 전부
+// 초록으로 남는다(2026-09-06 에 실제로 그 상태가 잡혔다). 여기서 파일을 직접 읽어 지킨다.
+
+const CSS = readFileSync(new URL('../css/styles.css', import.meta.url), 'utf8');
+const CSS_DESKTOP = CSS.slice(CSS.indexOf('@media (min-width: 768px)'));
+
+describe('UT-CMP-CSS — 덱·색 계약', () => {
+  test('접힌 덱은 본체를 숨기고 한 줄을 보인다(없으면 한 줄이 덧붙어 더 커진다)', () => {
+    const squashed = CSS_DESKTOP.replace(/\s+/g, ' ');
+    assert.match(squashed, /\.cmp-deckwrap\.collapsed:not\(\.open\) \.cmp-deck \{[^}]*display:none/);
+    assert.match(squashed, /\.cmp-deckwrap\.collapsed:not\(\.open\) \.cmp-minibar \{[^}]*display:flex/);
+    assert.match(squashed, /\.cmp-deckwrap\.collapsed\.open \.cmp-minibar \{[^}]*display:none/);
+  });
+
+  test('덱은 사이트 헤더 아래에 붙는다 — top:0 이면 한 줄이 헤더에 가린다', () => {
+    assert.match(CSS_DESKTOP, /\.cmp-deckwrap \{[^}]*top:var\(--header-h\)/);
+    assert.ok(!/\.cmp-deckwrap \{[^}]*top:0/.test(CSS_DESKTOP), 'top:0 이 남아 있다');
+  });
+
+  test('접힘 규칙은 768 블록 안에만 있다 — 좁은 화면에는 접힘이 없다', () => {
+    const before = CSS.slice(0, CSS.indexOf('@media (min-width: 768px)'));
+    assert.ok(!before.includes('.cmp-deckwrap.collapsed'), '모바일 기본형에 접힘 규칙이 새어 들어갔다');
+  });
+
+  test('find 절을 재사용하지 않고 복제했다 — 합치면 find 계약 테스트 5개가 깨진다', () => {
+    assert.ok(CSS_DESKTOP.includes('.find-deckwrap.collapsed:not(.open) .find-deck'), 'find 규칙이 사라졌다');
+    assert.ok(!CSS.includes('.find-deckwrap, .cmp-deckwrap'), '두 절을 합쳤다');
+    assert.ok(!CSS.includes('.cmp-deckwrap, .find-deckwrap'), '두 절을 합쳤다');
+  });
+
+  test('슬롯 B 파랑은 **토큰**이다 — 컴포넌트 규칙에 색 리터럴을 두지 않는다', () => {
+    assert.match(CSS, /--slot-b:#2a78d6/);
+    assert.match(CSS, /--slot-b-fill:rgb\(42 120 214 \/ \.14\)/);
+    assert.match(CSS, /\.rdp-b \{[^}]*fill:var\(--slot-b-fill\)/);
+    assert.match(CSS, /\.rdp-b \{[^}]*stroke:var\(--slot-b\)/);
+    assert.match(CSS, /\.cmp-bf-bar-b \{[^}]*background:var\(--slot-b\)/);
+  });
+
+  test('회사 상세 레이더도 포커스로 라벨이 뜬다(호버 전용은 키보드를 배제한다)', () => {
+    assert.match(CSS.replace(/\s+/g, ' '), /\.rd-hit:focus \.rd-hv \{[^}]*display:block/);
+  });
+
+  test('겹침 채움은 각 14% 다 — 겹친 곳이 저절로 26% 로 진해진다', () => {
+    assert.match(CSS, /--slot-a-fill:rgb\(47 125 67 \/ \.14\)/);
+    assert.match(CSS, /--radar-fill:rgb\(47 125 67 \/ \.18\)/, '단일 레이더는 18% 그대로여야 한다');
+  });
+});
