@@ -20,7 +20,7 @@ import { JSDOM } from 'jsdom';
 import {
   mountUI, renderInputView, renderInputSlot, renderPriorityPicker,
   bindSearchView, bindInputView, bindReportNav, reflectSearchUI, reflectSlotLabel, maybeAdvance,
-  missingMessage,
+  missingMessage, notePrefill, clearSearchGoHint,
 } from './ui.js';
 import { createInitialState, boot, App } from './app.js';
 import { setSearchState } from './search.js';
@@ -854,5 +854,72 @@ describe('UI-11 검색 뷰 「비교하기」 — 두 칸이 찬 채로 선 검�
     input.dispatchEvent(new window.Event('input', { bubbles: true }));
     clearTimeout(state.ui.searchTimers.a); // 디바운스 검색이 테스트 뒤에 네트워크로 나가지 않게
     assert.equal(document.getElementById('search-go-hint').textContent, '');
+  });
+});
+
+// ── UI-11 후속(2026-09-13 적대 검증 반영) — 안내 수명 · 설명 연결 · Enter ─────────────────────
+describe('UI-11 후속 — 거부 안내의 수명과 전달, Enter', () => {
+  beforeEach(() => loadShell());
+
+  test('UI-11g: 거부 안내 뒤 목록 선택으로 쌍이 차면 안내가 지워진다(재현된 MED)', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    reflectSlotLabel('a', 'A사');
+    const calls = [];
+    const deps = { go: (v) => calls.push(v) };
+    bindSearchView(state, deps);
+    document.getElementById('btn-search-go').click();
+    assert.match(document.getElementById('search-go-hint').textContent, /이직 후보\(B\)/);
+    // 목록 선택 경로: selectCompany 는 input 이벤트 없이 값을 넣고 maybeAdvance 를 부른다
+    state.matched.b = fixtureCompany(2, 'B사');
+    reflectSlotLabel('b', 'B사');
+    maybeAdvance(state, deps);
+    assert.deepEqual(calls, ['benefits']);
+    assert.equal(document.getElementById('search-go-hint').textContent, '',
+      '두 칸이 찼는데 「골라 주세요」가 남으면 거짓 안내다(회사 바꾸기로 돌아오면 그대로 보인다)');
+    assert.equal(document.getElementById('search-input-b').getAttribute('aria-describedby'), null);
+  });
+
+  test('UI-11h: 거부 안내는 포커스가 갈 칸의 aria-describedby 로 묶인다 — 프리필 안내와 공존', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    reflectSlotLabel('a', 'A사');
+    notePrefill('a', 'A사', 'b'); // B 칸에 프리필 안내가 먼저 걸려 있다
+    bindSearchView(state, { go: () => {} });
+    document.getElementById('btn-search-go').click();
+    const inputB = document.getElementById('search-input-b');
+    assert.equal(document.activeElement, inputB);
+    const ids = inputB.getAttribute('aria-describedby').split(/\s+/);
+    assert.ok(ids.includes('search-go-hint'), '거부 안내가 소리로도 전달돼야 한다');
+    assert.ok(ids.includes('search-prefill-note'), '프리필 안내 연결을 덮어쓰면 안 된다');
+    clearSearchGoHint();
+    assert.equal(inputB.getAttribute('aria-describedby'), 'search-prefill-note', '지울 때도 제 토큰만 뺀다');
+  });
+
+  test('UI-11i: 대상 칸이 바뀌면 설명 연결도 옮겨 간다(두 칸에 동시에 걸리지 않는다)', () => {
+    const state = createInitialState();
+    bindSearchView(state, { go: () => {} });
+    document.getElementById('btn-search-go').click(); // 두 칸 모두 빔 → A
+    assert.equal(document.getElementById('search-input-a').getAttribute('aria-describedby'), 'search-go-hint');
+    state.matched.a = fixtureCompany(1, 'A사');
+    reflectSlotLabel('a', 'A사');
+    document.getElementById('btn-search-go').click(); // 이제 B
+    assert.equal(document.getElementById('search-input-a').getAttribute('aria-describedby'), null);
+    assert.equal(document.getElementById('search-input-b').getAttribute('aria-describedby'), 'search-go-hint');
+  });
+
+  test('UI-11j: 입력칸 Enter = 「비교하기」, 한글 조합 확정 Enter 는 무시', () => {
+    const state = stateWithMatches();
+    reflectSlotLabel('a', 'A사');
+    reflectSlotLabel('b', 'B사');
+    const calls = [];
+    bindSearchView(state, { go: (v) => calls.push(v) });
+    const inputB = document.getElementById('search-input-b');
+    inputB.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', isComposing: true, bubbles: true }));
+    assert.deepEqual(calls, [], '조합 중 Enter 로 넘어가면 입력이 끊긴다');
+    inputB.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'a', bubbles: true }));
+    assert.deepEqual(calls, [], 'Enter 가 아닌 키는 무시');
+    inputB.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    assert.deepEqual(calls, ['benefits']);
   });
 });
