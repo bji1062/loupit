@@ -931,7 +931,7 @@ describe('UI-12 이직 계산기 흐름 — 두 회사를 고르면 복지 비�
   const REF = {
     company_types: [{ comp_tp_cd: 'large', growth_rate_val: 0.04, stability_score_no: 90 }],
     benefit_presets: {},
-    companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사')],
+    companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사'), fixtureCompany(3, 'C사')],
   };
   const hooks = { loadReferenceFn: async () => REF, mountAdsFn: () => {}, navTypeFn: () => 'navigate' };
   async function bootAt(query) {
@@ -980,6 +980,8 @@ describe('UI-12 이직 계산기 흐름 — 두 회사를 고르면 복지 비�
   test('UI-12d: 계산기에서 「회사 변경」으로 검색에 다녀와도 입력 뷰로 돌아온다', async () => {
     await bootAt('?a=1&b=2#input');
     assert.deepEqual(visible(), ['input'], '두 슬롯 + #input 은 곧장 입력 뷰');
+    assert.equal(document.getElementById('benefits-body').children.length, 0,
+      '프리필이 목적지를 흐름으로 정한다 — 복지 비교를 한 번이라도 그리면 안 된다(restoreFromPrefill 고정)');
     document.querySelector('#input-slot-b button.in-slot-pick').click();
     assert.deepEqual(visible(), ['search']);
     assert.equal(App.state.ui.mode, 'calculator', '검색 뷰는 흐름을 바꾸지 않는다');
@@ -1013,5 +1015,51 @@ describe('UI-12 이직 계산기 흐름 — 두 회사를 고르면 복지 비�
     assert.deepEqual(visible(), ['search']);
     document.getElementById('btn-search-go').click();
     assert.deepEqual(visible(), ['input'], '계산기에서 회사를 바꾸러 갔으면 계산기로 돌아온다');
+  });
+});
+
+// ── UI-12 후속(2026-09-13 적대 검증 반영) — 주소·방문 기록·리포트 주소 ─────────────────────
+describe('UI-12 후속 — 계산기 흐름의 주소·방문 기록·리포트 새로고침', () => {
+  const REF = {
+    company_types: [{ comp_tp_cd: 'large', growth_rate_val: 0.04, stability_score_no: 90 }],
+    benefit_presets: {},
+    companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사'), fixtureCompany(3, 'C사')],
+  };
+  const hooks = { loadReferenceFn: async () => REF, mountAdsFn: () => {}, navTypeFn: () => 'navigate' };
+  async function bootAt(query) {
+    const dom = loadShell('https://loupit.example/compare/' + query);
+    globalThis.localStorage = dom.window.localStorage;
+    globalThis.localStorage.clear();
+    App.state = createInitialState();
+    await boot(hooks);
+    return dom;
+  }
+  const visible = () => ['search', 'benefits', 'input', 'report']
+    .filter((v) => !document.getElementById('view-' + v).hidden);
+
+  test('UI-12h: 계산기에서 회사를 바꾸면 주소 ?b= 도 따라간다(새로고침이 옛 회사로 되돌리지 않는다)', async () => {
+    await bootAt('?a=1&b=2#input');
+    document.querySelector('#input-slot-b button.in-slot-pick').click();
+    App.state.matched.b = fixtureCompany(3, 'C사');
+    App.state.benS.b = App.state.matched.b.benefits.map((b) => ({ ...b, checked: true }));
+    reflectSlotLabel('b', 'C사');
+    document.getElementById('btn-search-go').click();
+    assert.deepEqual(visible(), ['input']);
+    assert.equal(new URLSearchParams(location.search).get('b'), 'c사');
+    assert.equal(location.hash, '#input');
+  });
+
+  test('UI-12i: 대문 「이직 계산기」 카드(#input)가 검색 뷰로 강등되면 첫 항목에 { screen:search, mode:calculator } 표식', async () => {
+    await bootAt('#input');
+    assert.deepEqual(visible(), ['search']);
+    assert.deepEqual(history.state, { screen: 'search', mode: 'calculator' },
+      '표식이 없으면 입력 뷰로 넘어간 뒤 뒤로가기가 #input 으로 읽혀 무반응이 된다');
+  });
+
+  test('UI-12j: 리포트 주소(?a&b#report) 새로고침 → 입력 뷰(복지 비교 아님)', async () => {
+    await bootAt('?a=1&b=2#report');
+    assert.deepEqual(visible(), ['input']);
+    assert.equal(App.state.ui.mode, 'calculator');
+    assert.equal(document.getElementById('benefits-body').children.length, 0);
   });
 });
