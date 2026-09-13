@@ -132,7 +132,8 @@ export function searchHooks(state, deps) {
 }
 
 // 양 슬롯 모두 채워지면 전진(회사 검색 기본 경로). 한쪽만이면 검색 뷰 유지.
-// 🚩 목적지는 **pairTarget() 하나**가 정한다(SP-CMP-2, 2026-09-12 개정: input → benefits).
+// 🚩 목적지는 **pairTarget(state) 하나**가 정한다(SP-CMP-2). 2026-09-12: input → benefits,
+// 2026-09-13: 흐름(state.ui.mode)이 계산기면 input — 이직 계산기로 들어온 사람은 복지 비교를 거치지 않는다.
 // 부팅 폴백과 여기가 따로 적으면 "주소로 들어오면 비교, 검색으로 고르면 입력"처럼 경로마다
 // 다른 화면이 뜬다 — 버그가 아니라 설계가 둘인 상태라 고치기 어렵다.
 // 입력 뷰는 **그래도 미리 그린다**: 덱의 「이직 계산기 →」가 그 화면을 바로 연다.
@@ -147,7 +148,7 @@ export function maybeAdvance(state, deps) {
     // 「회사 바꾸기」로 돌아왔을 때 두 칸이 찬 화면에 「골라 주세요」가 남는다(적대 검증 MED, 재현됨).
     clearSearchGoHint();
     renderInputView(state, deps);
-    if (typeof deps.go === 'function') deps.go(pairTarget());
+    if (typeof deps.go === 'function') deps.go(pairTarget(state));
     if (typeof deps.onPairReady === 'function') {
       try { deps.onPairReady(state); } catch { /* 로그 실패는 비교 흐름에 무해 */ }
     }

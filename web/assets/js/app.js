@@ -31,6 +31,10 @@ export function createInitialState() {
     inputMode: { a: 'company', b: 'company' }, // 'company' | 'direct'
     ui: {
       screen: 'search',
+      // 비교 도구의 **흐름**(2026-09-13 사용자 결정): 'benefits'(복지 비교, 기본) | 'calculator'(이직 계산기).
+      // 두 회사가 확정됐을 때의 목적지(pairTarget)를 이것이 정한다 — 계산기로 들어온 사람에게 복지 비교를
+      // 먼저 보여 주지 않는다. 부팅 해시와 go()(입력·리포트·복지 비교 화면 진입)가 갱신한다.
+      mode: 'benefits',
       // URL(`?a=`·`?b=`)이 채운 슬롯. 「회사 바꾸기」가 **어느 칸에 커서를 둘지**를 정하는 데만
       // 쓴다 — 사용자가 고르지 않은 쪽(초안·레코드가 채운 쪽)을 먼저 가리켜야 한다(SP-CMP-8).
       prefilledSlots: [],
@@ -73,6 +77,10 @@ function focusFirstHeading(screenId) {
 export function go(screenId, { push = true, replace = false } = {}) {
   if (!SCREENS.includes(screenId)) screenId = 'search'; // 방어: 미지 뷰 → 검색
   App.state.ui.screen = screenId;
+  // 흐름 갱신: 입력·리포트 = 이직 계산기, 복지 비교 = 복지 비교. 검색·회사 화면은 흐름을 바꾸지 않는다
+  // (계산기에서 「회사 변경」으로 검색 뷰에 다녀와도 계산기로 돌아와야 한다).
+  if (screenId === 'input' || screenId === 'report') App.state.ui.mode = 'calculator';
+  else if (screenId === 'benefits') App.state.ui.mode = 'benefits';
   // 모드 A 본문은 **보이기 직전에** 그린다. 9각형·나비는 viewBox·% 라 hidden 인 채 그려도
   // 깨지지 않는다(실측이 필요한 것은 덱뿐이고, 그건 뷰가 보인 뒤 아래에서 잰다).
   if (screenId === 'benefits') {
@@ -84,11 +92,20 @@ export function go(screenId, { push = true, replace = false } = {}) {
       if (view) view.hidden = (s !== screenId);
     }
   }
+  // 계산기 화면도 **주소가 두 회사를 따라간다**(2026-09-13, 적대 검증 MED). 전에는 복지 비교 렌더에서만
+  // `?a=&b=` 를 맞춰, 계산기에서 회사를 바꾼 뒤 새로고침하면 URL 프리필이 옛 회사로 되돌렸다.
+  // 푸시 **전에** 현재 항목을 고쳐 두면 새 항목의 상대 주소(`#input`)가 새 쿼리를 물려받는다.
+  if (screenId === 'input' || screenId === 'report') {
+    try { syncPairUrl(App.state); } catch { /* 주소 동기화 실패는 화면 전환에 무해 */ }
+  }
   if (typeof history !== 'undefined') {
+    // 항목에 **흐름**도 적는다 — 새로고침·뒤로가기에서 흐름을 되살린다(2026-09-13: `#search` 새로고침이
+    // 흐름을 잃던 한계 해소. history.state 는 새로고침을 넘어 살아 있고, 새 진입은 null 이다).
+    const entry = { screen: screenId, mode: App.state.ui.mode };
     if (replace && typeof history.replaceState === 'function') {
-      history.replaceState({ screen: screenId }, '', '#' + screenId);
+      history.replaceState(entry, '', '#' + screenId);
     } else if (push && typeof history.pushState === 'function') {
-      history.pushState({ screen: screenId }, '', '#' + screenId); // 해시 + History 상태
+      history.pushState(entry, '', '#' + screenId); // 해시 + History 상태
     }
   }
   if (typeof window !== 'undefined' && typeof window.scrollTo === 'function') window.scrollTo(0, 0);
@@ -145,15 +162,20 @@ function hasRenderedReport() {
 // 이겨서, URL 이 시킨 카카오가 최근 레코드의 다른 쌍으로 조용히 덮이고 화면과 주소가 어긋난다.
 export function resolveBootScreen({
   want = null, hasPair: pair = false, hasPrefill: prefill = false, hasReport = false, recentCount = 0,
+  pairScreen = pairTarget(),
 } = {}) {
   // 🚩 2026-09-12(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가 입력 뷰 → **복지 비교**로 바뀌었다.
-  // `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이기 때문이다. 목적지는 `pairTarget()` 하나가
+  // `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이기 때문이다. 목적지는 `pairTarget(state)` 하나가
   // 정한다 — 여기와 `ui.js::maybeAdvance` 가 따로 적으면 경로마다 다른 화면이 뜬다.
-  const fallback = pair ? pairTarget() : 'search';
+  // 🚩 2026-09-13: 이 함수는 순수라 흐름을 모른다 → 호출부(boot·onPopState)가 `pairTarget(App.state)` 를
+  //   `pairScreen` 으로 넘긴다. 인자 없이 부르던 탓에 계산기 흐름의 새로고침이 복지 비교로 샜다(적대 검증 HIGH).
+  const fallback = pair ? pairScreen : 'search';
   if (want === 'search') return { screen: 'search', restore: false };
   if (want === 'report') {
     if (hasReport) return { screen: 'report', restore: false }; // 이미 렌더돼 있음(popstate 경로)
-    if (pair) return { screen: fallback, restore: false };      // 프리필 > 자동 복원(규칙 5)
+    // 프리필 > 자동 복원(규칙 5). `#report` 는 **이직 계산기의 주소**라 쌍이 있으면 흐름과 무관하게 입력 뷰다 —
+    // 리포트는 입력값으로 다시 계산해야 나오고, 복지 비교로 보내면 계산기 사용자가 엉뚱한 화면을 본다(2026-09-13).
+    if (pair) return { screen: 'input', restore: false };
     if (prefill) return { screen: 'search', restore: false };   // 한 슬롯 프리필도 규칙 5 — 덮지 않는다
     if (recentCount > 0) return { screen: 'search', restore: true }; // 복원 시도 후 성공하면 report
     return { screen: 'search', restore: false };                // 복원 재료 없음 → 강등
@@ -172,12 +194,15 @@ export function onPopState(e) {
   // 그 뒤 뒤로가기로 돌아온 report 항목은 보여줄 것이 없다. 신뢰하면 빈 리포트(B-1 재현)가,
   // 비우지 않으면 유령 리포트(오정보)가 된다. → 부팅과 동일한 상태 술어로 판정한다.
   const want = (e && e.state && e.state.screen) || parseHash();
+  // 흐름도 그 항목의 것으로 되돌린다(2026-09-13) — go() 가 항목마다 `{ screen, mode }` 를 적어 둔다.
+  if (e && e.state && (e.state.mode === 'calculator' || e.state.mode === 'benefits')) App.state.ui.mode = e.state.mode;
   // 해시도 상태도 없으면 기존 계약대로 search. resolveBootScreen의 폴백(쌍이 차면 input)은
   // **부팅** 규칙이라 여기 적용하면 뒤로가기가 현재 입력 뷰에 눌러앉아 먹통으로 보인다.
   if (!want) { go('search', { push: false }); return; }
   // recentCount:0 고정 — popstate는 자동 복원하지 않는다(사용자가 뒤로 간 것이지 재진입이 아니다).
   const d = resolveBootScreen({
     want, hasPair: hasPairState(), hasReport: hasRenderedReport(), recentCount: 0,
+    pairScreen: pairTarget(App.state), // 흐름이 정한 목적지(인자 없이 부르면 계산기 사용자가 복지 비교로 샌다)
   });
   go(d.screen, { push: false }); // 뒤로/앞으로 → 재푸시 없이 표시만
 }
@@ -237,6 +262,17 @@ export async function boot(hooks = {}) {
   });
   if (fresh) inputDraft.clear();
   const draftRestored = fresh ? false : restoreInputDraft();
+  // 🚩 2026-09-13(사용자 결정): 이직 계산기로 들어왔으면(`#input` — 대문 「이직 계산기」 카드 · `/vs` 「내 연봉으로
+  //   계산하기」, 또는 `#report`) 처음부터 계산기 흐름이다. 두 회사를 고르면 복지 비교를 거치지 않고 입력 뷰로
+  //   간다(pairTarget). 프리필이 목적지를 쓰기 **전에** 정해야 한다.
+  {
+    const entryHash = parseHash();
+    const saved = (typeof history !== 'undefined' && history && history.state) ? history.state.mode : null;
+    if (entryHash === 'input' || entryHash === 'report') App.state.ui.mode = 'calculator';
+    // 해시가 흐름을 말하지 않으면(`#search`·없음) 이 항목에 적어 둔 흐름을 쓴다 — 새로고침·뒤로가기(비 bfcache)는
+    // history.state 를 보존하고, 새 진입(navigate)은 null 이라 기본 흐름이다.
+    else if (saved === 'calculator' || saved === 'benefits') App.state.ui.mode = saved;
+  }
   // reflectSlotLabel 훅을 넘긴다: 프리필이 검색 뷰에 남을 수 있게 된 뒤로, 훅이 없으면
   // 상태에는 A 가 들어 있는데 #search-input-a 는 비어 보인다(사용자에겐 프리필 실패로 읽힌다).
   const prefilled = restoreFromPrefill(App.state, { reflectSlotLabel }); // SP-FE-11 URL → 슬롯 프리필
@@ -289,6 +325,7 @@ export async function boot(hooks = {}) {
   const urlAsked = prefilled || want != null;
   const decision = resolveBootScreen({
     want,
+    pairScreen: pairTarget(App.state), // 흐름이 정한 목적지(2026-09-13 — 인자 없이 부르면 계산기 새로고침이 복지 비교로 샌다)
     hasPair: hasPairState() && (urlAsked || !draftRestored),
     hasPrefill: prefilled, // 초안이 아니라 **URL 이 시킨 슬롯**만 규칙 5 의 방패가 된다
     hasReport: hasRenderedReport(),
@@ -330,13 +367,16 @@ export async function boot(hooks = {}) {
  * 해시를 붙여 해결하지 않는 이유: 그러면 주소가 정본이 아니게 되고, 공유된 링크가 `#benefits` 를
  * 달고 돌아다닌다. 주소는 그대로 두고 **항목에만** 표식을 남긴다.
  */
-export function stampBootEntry(screen, win = (typeof globalThis !== 'undefined' ? globalThis : null)) {
+export function stampBootEntry(screen, win = (typeof globalThis !== 'undefined' ? globalThis : null), mode = App.state.ui.mode) {
   const h = win && win.history;
   const loc = win && win.location;
   if (!h || typeof h.replaceState !== 'function' || !loc) return false;
   if (h.state && h.state.screen) return false;   // 이미 표식이 있으면 덮지 않는다
-  if (loc.hash) return false;                    // 해시가 말하고 있으면 표식이 필요 없다
-  h.replaceState({ screen }, '', loc.href);
+  // 해시가 **지금 화면을** 말하고 있으면 표식이 필요 없다. 다른 화면을 말하면(부팅이 강등했다 — 대문
+  // 「이직 계산기」 카드 `#input` 인데 쌍이 없어 검색 뷰) 표식을 남긴다. 안 남기면 그 항목이 `#input` 으로
+  // 읽혀, 입력 뷰로 push 한 뒤 뒤로가기가 같은 입력 뷰에 머무는 「무반응」이 된다(2026-09-13, 적대 검증 MED).
+  if (loc.hash && String(loc.hash).replace(/^#/, '') === screen) return false;
+  h.replaceState({ screen, mode }, '', loc.href);
   return true;
 }
 
@@ -412,7 +452,7 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
       goFn('search', { push: false });
       focusSlot(pending);
     } else {
-      goFn(pairTarget(), { push: false }); // 두 슬롯 프리필 = 모드 A 의 정본 주소(SP-CMP-2)
+      goFn(pairTarget(state), { push: false }); // 두 슬롯 프리필 = 흐름의 목적지(기본 모드 A 정본 주소, #input 이면 계산기 — SP-CMP-2)
     }
   }
   return filled; // 부팅 화면 결정에 쓴다 — "URL 이 시킨 것"과 "초안이 되살린 것"을 가른다

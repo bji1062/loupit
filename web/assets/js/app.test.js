@@ -254,7 +254,7 @@ describe('SP-CMP-2 부팅 항목 표식(stampBootEntry)', () => {
     globalThis.location.href = 'https://loupit.example/compare/?a=1&b=2';
     await boot(HOOKS);
     assert.equal(App.state.ui.screen, 'benefits');
-    assert.deepEqual(globalThis.history.state, { screen: 'benefits' });
+    assert.deepEqual(globalThis.history.state, { screen: 'benefits', mode: 'benefits' }); // 2026-09-13: 항목에 흐름도 적는다
   });
 
   test('표식이 있으면 뒤로가기가 비교 화면으로 돌아온다(예전엔 검색 뷰로 떨어졌다)', () => {
@@ -505,7 +505,7 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     assert.deepEqual(
       resolveBootScreen({ want: 'report', hasPair: true, recentCount: 1 }),
-      { screen: 'benefits', restore: false },
+      { screen: 'input', restore: false } /* 2026-09-13 의도된 변경: #report 는 계산기 주소 — 쌍이면 입력 뷰(적대 검증 HIGH) */,
     );
     // #input — 슬롯 없으면 막다른 입력 뷰가 되므로 강등
     assert.deepEqual(resolveBootScreen({ want: 'input' }), { screen: 'search', restore: false });
@@ -540,7 +540,7 @@ describe('T-06.3.3 resolveBootScreen (UT-ROUTE-3·4)', () => {
     // 두 슬롯 프리필은 규칙 5 그대로 — 다만 목적지가 비교 화면이다(SP-CMP-2).
     assert.deepEqual(
       resolveBootScreen({ want: 'report', hasPrefill: true, hasPair: true, recentCount: 1 }),
-      { screen: 'benefits', restore: false },
+      { screen: 'input', restore: false } /* 2026-09-13 의도된 변경: #report 는 계산기 주소 — 쌍이면 입력 뷰(적대 검증 HIGH) */,
     );
   });
 
@@ -641,15 +641,16 @@ describe('B-1 해시 딥링크 강등', () => {
     assert.equal(App.state.ui.screen, 'benefits');
   });
 
-  test('UT-BOOT-5: 프리필 + #report → 복지 비교(프리필 우선, 자동 복원 미시도)', async () => {
-    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 다 찼을 때의 기본 목적지가
-    //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
-    //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
+  test('UT-BOOT-5: 프리필 + #report → 입력 뷰(프리필 우선, 자동 복원 미시도)', async () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 해시 없는 두 슬롯의 기본 목적지는 **복지 비교**다.
+    // ⚠ 2026-09-13 의도된 계약 변경(사용자 결정 + 적대 검증 HIGH): 그러나 `#report` 는 **이직 계산기의 주소**다.
+    //   리포트가 없고 쌍이 있으면 입력 뷰로 간다 — 복지 비교로 보내면 계산기 결과를 새로고침한 사용자가
+    //   엉뚱한 화면을 본다. 프리필 우선·자동 복원 미시도라는 이 케이스의 요지는 그대로다.
     seedRecord();
     globalThis.location.search = '?a=1&b=2';
     globalThis.location.hash = '#report';
     await boot(bootHooks);
-    assert.equal(App.state.ui.screen, 'benefits');
+    assert.equal(App.state.ui.screen, 'input');
     assert.equal(App.state.selectedRate, null, '레코드(10)가 프리필 슬롯을 덮지 않음');
   });
 
@@ -1044,5 +1045,112 @@ describe('boot — 새 진입(navigate)은 초안을 지우고 빈 칸, 새로�
     assert.equal(App.state.matched.a.comp_id, 1, 'A 는 URL');
     assert.equal(App.state.matched.b.comp_id, 2, 'B 는 초안(UI-10f 계약 유지)');
     assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 }, '연봉은 초안');
+  });
+});
+
+// ── 흐름(state.ui.mode) — 이직 계산기로 들어오면 복지 비교를 거치지 않는다(2026-09-13 사용자 결정) ──
+describe('go·boot — 흐름 갱신(입력·리포트 = 계산기, 복지 비교 = 복지 비교, 검색·회사 = 그대로)', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [{ comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] }],
+  };
+
+  test('기본 흐름은 복지 비교', () => {
+    assert.equal(createInitialState().ui.mode, 'benefits');
+  });
+
+  test('입력·리포트 화면에 들어서면 계산기 흐름', () => {
+    go('input', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+    App.state = createInitialState();
+    go('report', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+  });
+
+  test('복지 비교 화면에 들어서면 복지 비교 흐름', () => {
+    App.state.ui.mode = 'calculator';
+    go('benefits', { push: false });
+    assert.equal(App.state.ui.mode, 'benefits');
+  });
+
+  test('검색·회사 화면은 흐름을 바꾸지 않는다(계산기의 「회사 변경」 왕복)', () => {
+    App.state.ui.mode = 'calculator';
+    go('search', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+    go('company', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+  });
+
+  test('부팅: #input·#report 로 들어오면 계산기 흐름, 해시가 없으면 기본', async () => {
+    globalThis.document.body.dataset.pageType = 'input';
+    for (const [hash, want] of [['#input', 'calculator'], ['#report', 'calculator'], ['', 'benefits'], ['#search', 'benefits']]) {
+      App.state = createInitialState();
+      globalThis.location.hash = hash;
+      globalThis.history.state = null; // 새 진입마다 방문 기록 상태는 비어 있다(앞 부팅의 표식이 흐름으로 새지 않게)
+      await boot({ loadReferenceFn: async () => REF, navTypeFn: () => 'navigate' });
+      assert.equal(App.state.ui.mode, want, hash || '(해시 없음)');
+      assert.equal(App.state.ui.screen, 'search', '쌍이 없으면 어느 흐름이든 검색 뷰에서 고른다');
+    }
+  });
+});
+
+// ── 적대 검증(2026-09-13) 반영 — 흐름이 새로고침·뒤로가기·리포트 주소에서 새지 않는다 ─────────────
+describe('흐름 보존 — #report 새로고침 · 방문 기록의 흐름 · 강등된 부팅 항목', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [
+      { comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] },
+      { comp_id: 2, comp_nm: 'SK하이닉스', comp_eng_nm: 'sk_hynix', comp_tp_cd: 'large', benefits: [] },
+    ],
+  };
+
+  test('resolveBootScreen — 흐름 목적지는 호출부가 pairScreen 으로 넘긴다(순수 함수는 흐름을 모른다)', () => {
+    assert.deepEqual(resolveBootScreen({ want: null, hasPair: true, pairScreen: 'input' }), { screen: 'input', restore: false });
+    assert.deepEqual(resolveBootScreen({ want: null, hasPair: true }), { screen: 'benefits', restore: false }, '기본은 복지 비교');
+    assert.deepEqual(resolveBootScreen({ want: 'report', hasPair: true, pairScreen: 'benefits' }), { screen: 'input', restore: false },
+      '#report 는 계산기 주소 — 흐름이 복지 비교여도 입력 뷰');
+  });
+
+  test('부팅: #report + 두 회사(리포트 미렌더) → 입력 뷰 · 계산기 흐름(리포트 새로고침이 복지 비교로 새던 HIGH)', async () => {
+    globalThis.document.body.dataset.pageType = 'input';
+    globalThis.location.search = '?a=samsung_elec&b=sk_hynix';
+    globalThis.location.hash = '#report';
+    await boot({ loadReferenceFn: async () => REF, navTypeFn: () => 'reload' });
+    assert.equal(App.state.ui.screen, 'input');
+    assert.equal(App.state.ui.mode, 'calculator');
+  });
+
+  test('go 는 항목에 흐름을 적는다 — { screen, mode }', () => {
+    go('input');
+    const last = globalThis.history._calls[globalThis.history._calls.length - 1];
+    assert.deepEqual(last.state, { screen: 'input', mode: 'calculator' });
+  });
+
+  test('부팅: 해시가 흐름을 말하지 않으면(#search) 항목에 적힌 흐름을 되살린다(새로고침)', async () => {
+    globalThis.document.body.dataset.pageType = 'input';
+    globalThis.location.hash = '#search';
+    globalThis.history.state = { screen: 'search', mode: 'calculator' };
+    await boot({ loadReferenceFn: async () => REF, navTypeFn: () => 'reload' });
+    assert.equal(App.state.ui.mode, 'calculator', '계산기의 「회사 변경」 화면에서 새로고침해도 계산기 흐름');
+  });
+
+  test('onPopState 는 그 항목의 흐름으로 되돌린다', () => {
+    App.state.ui.mode = 'benefits';
+    onPopState({ state: { screen: 'search', mode: 'calculator' } });
+    assert.equal(App.state.ui.mode, 'calculator');
+    assert.equal(App.state.ui.screen, 'search');
+  });
+
+  test('stampBootEntry — 해시가 다른 화면을 말하면(강등) 표식을 남긴다, 같은 화면이면 남기지 않는다', () => {
+    const mk = (hash) => ({
+      history: { state: null, replaceState(st) { this.state = st; } },
+      location: { hash, href: 'https://loupit.example/compare/' + hash },
+    });
+    const demoted = mk('#input');
+    assert.equal(stampBootEntry('search', demoted, 'calculator'), true, '#input 인데 검색 뷰로 강등 → 표식');
+    assert.deepEqual(demoted.history.state, { screen: 'search', mode: 'calculator' });
+    const same = mk('#input');
+    assert.equal(stampBootEntry('input', same, 'calculator'), false);
+    assert.equal(same.history.state, null);
   });
 });
