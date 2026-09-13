@@ -5,8 +5,9 @@
    ⚠ `page_type = 'landing'` 과 base.html 의 `static-ads.js` 가 한 쌍이다. 둘 중 하나만 있으면 광고는 조용히 0 이 된다.
    ⚠ app.js 는 싣지 않는다(base.html 이 싣지 않는다). 비교 도구는 /compare/ 가 통째로 갖고 있다.
    ⚠ h1 에 `id="main-heading"` 을 달지 않는다 — base.html 이 `<main>` 에 이미 달았다(본문 바로가기 대상, 중복 id 금지).
-   ⚠ 「재직자가 직접 고칩니다」 블록에 링크를 걸지 않는다. /verify·/edit·/edits 로 가는 <a> 는 hidden authnav
-     슬롯 하나만 허용된다(prod 는 그 경로를 nginx 가 404 로 막는다 — test_authnav.py). -#}
+   ⚠ 「재직자가 직접 고칩니다」 블록에 링크를 걸지 않는다. /login·/verify·/edit·/edits 로 가는 <a> 는 hidden authnav
+     슬롯 하나만 허용된다 — 노출 진입점을 정적 HTML 에 두지 않는 것이 정책이다(test_authnav.py).
+   ⓘ `data-home-generated` 는 스모크(SM-1b)가 **생성 대문**과 nginx 폴백(수기 셸)을 가르는 표식이다. 지우지 마라. -#}
 {% extends "base.html" %}
 {% set page_type = 'landing' %}
 {% block head %}
@@ -19,7 +20,7 @@
 {% include "partials/_jsonld_org.html" %}
 {% endblock %}
 {% block main %}
-<div class="home">
+<div class="home" data-home-generated>
   <section class="home-hero" aria-labelledby="home-title">
     <h1 id="home-title">{{ meta_title }}</h1>
     <p class="lede">잡초(jobcho)에 오신 것을 환영합니다.</p>
@@ -69,7 +70,7 @@
   {#- 회사 둘러보기 — 묶음은 히트맵과 같은 KRX 분류(generator/sector.py). 1곳짜리만 「그 밖」으로 합친다. #}
   <section class="home-sec" aria-labelledby="home-companies">
     <h2 id="home-companies">회사 둘러보기</h2>
-    <p class="home-note">등록 회사 {{ view.total_companies }}곳{% if view.types_text %} — {{ view.types_text }}{% endif %}. 이름을 누르면 그 회사의 복지·연봉·재무 페이지로 갑니다. 괄호 안은 등록된 복지 항목 수이며, 묶음마다 항목 수가 많은 {{ view.sector_top }}곳까지 싣습니다. KRX 업종 분류를 그대로 따르므로 사업 내용과 다르게 보이는 자리가 있습니다.</p>
+    <p class="home-note">등록 회사 {{ view.total_companies }}곳{% if view.types_text %} — {{ view.types_text }}{% endif %}. 이름을 누르면 그 회사의 복지·연봉·재무 페이지로 갑니다. 괄호 안은 등록된 복지 항목 수이며, 묶음마다 항목 수가 많은 {{ view.sector_top }}곳까지 싣습니다. KRX 업종 분류를 따르므로 사업 내용과 다르게 보이는 자리가 있습니다.{% if view.has_other_sector %} 회사가 1곳뿐인 업종은 「그 밖」으로 묶었습니다.{% endif %}</p>
 {% for g in view.sectors %}
     <div class="home-grp">
       <h3>{{ g.name }} {{ g.total }}곳</h3>
@@ -102,7 +103,7 @@
   {#- 숫자로 보는 회사 — 회사 페이지 「연도별 추이」 카드와 같은 로더·같은 표기(generator/employ.py). #}
   <section class="home-sec" aria-labelledby="home-numbers">
     <h2 id="home-numbers">숫자로 보는 회사</h2>
-    <p class="home-note">{% if view.numbers.year %}{{ view.numbers.year }} 사업연도 사업보고서(DART) 기준. 평균연봉은 직원 {{ view.numbers.salary_min_head }}명 이상 회사만 순위에 넣었습니다 — 소인원 지주사가 상단을 독식하기 때문입니다. {% endif %}복지 항목 수는 등록된 항목의 개수이며 금액 합계 순위는 만들지 않습니다.</p>
+    <p class="home-note">{% if view.numbers.year %}{{ view.numbers.year }} 사업연도 사업보고서(DART) 기준. {% endif %}{% if view.numbers.salary_note %}평균연봉은 직원 {{ view.numbers.salary_min_head }}명 이상 회사만 순위에 넣었습니다 — 소인원 지주사가 상단을 독식하기 때문입니다. {% endif %}복지 항목 수는 등록된 항목의 개수이며 금액 합계 순위는 만들지 않습니다.</p>
     <div class="home-four">
 {% for axis in view.numbers.axes %}
       <div>

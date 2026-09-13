@@ -35,9 +35,5 @@
 <meta property="og:type" content="{{ og.type }}">
 <meta property="og:url" content="{{ og.url }}">
 <meta property="og:image" content="{{ og.image }}">
-{# 폰트 preload 는 **옵트아웃**이다(2026-09-13, 대문 2단계). 대문만 `font_preload=False` 를 넘긴다 —
-    대문은 첫 방문자의 첫 화면이라 2,057,688 B 폰트를 선점해 받게 하면 본문보다 폰트가 먼저 온다.
-    안 넘긴 페이지는 종전과 **바이트가 같다**(바뀌면 전 페이지 lastmod 가 한꺼번에 움직여 크롤 신호가 흐려진다).
-    ⚠ 이 주석을 `{#-` 로 바꾸지 마라 — 앞줄(og:image) 끝 줄바꿈을 먹어 137개 페이지가 한 바이트씩 달라진다(실측). #}
-{% if font_preload is not defined or font_preload %}<link rel="preload" href="/assets/v2/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
-{% endif %}<link rel="stylesheet" href="/assets/v2/css/styles.css">
+<link rel="preload" href="/assets/v2/fonts/PretendardVariable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="/assets/v2/css/styles.css">

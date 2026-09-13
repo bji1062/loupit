@@ -45,6 +45,7 @@ SECTOR_TOP = 5            # 업종 묶음마다 싣는 회사 수(복지 항목 
 OTHER_SECTOR = "그 밖"     # 회사 1곳짜리 묶음만 여기로 합친다 — 나머지는 KRX 분류(히트맵과 같은 체계) 그대로
 RANK_TOP = 5              # 「숫자로 보는 회사」 축마다 순위 수
 SALARY_MIN_HEAD = 1000    # 평균연봉 순위 문턱 — 소인원 지주사가 상단을 독식한다
+EMPLOY_YEAR_COVERAGE = 0.8  # 직원 순위 연도 = 직원 데이터를 가진 회사의 80% 이상이 보유한 최신 연도(부분 수집 가드)
 TOP_CODES = 12            # 복지 조건 칩(항목) 수
 RECENT_WAVES = 2          # 「새로 등록된 회사」에 싣는 최근 웨이브 수
 
@@ -158,18 +159,33 @@ def _combos(ctx, pairs) -> list[dict]:
     return out
 
 
+def _employ_year(ctx) -> int | None:
+    """직원 순위에 쓸 연도 — 직원 데이터를 가진 회사의 `EMPLOY_YEAR_COVERAGE` 이상이 보유한 **최신** 연도.
+
+    🚨 그냥 최신 연도를 쓰면 공시 시즌 중간(`dart_employ.py --corp` 부분 수집, 기준연도 = 올해-1)에 새 연도를
+      가진 회사 몇 곳만으로 순위가 만들어져 「2026 사업연도 기준 직원 수 1위」가 소수 회사끼리의 거짓 순위가
+      된다. 에러는 나지 않는다(적대 검증 MED, 2026-09-13 실데이터 시뮬레이션으로 확인). 문턱을 넘는 연도가
+      없으면 None — 직원 3축을 통째로 뺀다.
+    """
+    have = [e for e in ctx.employ.values() if e]
+    if not have:
+        return None
+    for year in sorted({y for e in have for y in e}, reverse=True):
+        if sum(1 for e in have if year in e) >= EMPLOY_YEAR_COVERAGE * len(have):
+            return year
+    return None
+
+
 def _numbers(ctx) -> dict:
     """「숫자로 보는 회사」 — 직원 3축(최신 사업연도 **한 해**) + 복지 항목 수 순위.
 
-    ⓘ 연도: 전 회사 직원 데이터의 최신 연도 **하나**만 쓴다. 회사마다 자기 최신 연도를 쓰면 「2025 사업연도
-      기준」이라 적어 놓고 2024 값이 섞인다(1단계 스크립트는 회사별 최신 연도를 썼다 — 여기서 바로잡는다).
+    ⓘ 연도: **한 해**만 쓴다(`_employ_year` — 보유 회사 80% 이상이 가진 최신 연도). 회사마다 자기 최신 연도를
+      쓰면 「2025 사업연도 기준」이라 적어 놓고 2024 값이 섞인다(1단계 스크립트는 회사별 최신 연도를 썼다).
     ⓘ 「공동」은 **정수 항목 수 전용**이다(1단계 handoff 결정 6). 근속·연봉은 소수·원 단위 원값으로 순서를
       정하고 표시만 반올림한다 — 17.42 와 17.35 가 둘 다 17.4년으로 보여도 동률이 아니다.
     """
     axes = []
-    year = None
-    if ctx.employ_loaded:
-        year = max((y for e in ctx.employ.values() for y in e), default=None)
+    year = _employ_year(ctx) if ctx.employ_loaded else None
     if year is not None:
         rows = [(c, (ctx.employ.get(c["comp_id"]) or {}).get(year)) for c in ctx.companies]
         rows = [(c, v) for c, v in rows if v]
@@ -181,9 +197,9 @@ def _numbers(ctx) -> dict:
             return [dict(_link(c, ctx), text=fmt(v[field])) for c, v in picked[:RANK_TOP]]
 
         axes += [
-            {"title": "직원 수", "rows": top("head", lambda h: f"{int(h):,}명")},
-            {"title": "평균 근속", "rows": top("tenure", lambda t: f"{_to_year(t):.1f}년")},
-            {"title": f"평균연봉 ({SALARY_MIN_HEAD:,}명 이상)",
+            {"key": "head", "title": "직원 수", "rows": top("head", lambda h: f"{int(h):,}명")},
+            {"key": "tenure", "title": "평균 근속", "rows": top("tenure", lambda t: f"{_to_year(t):.1f}년")},
+            {"key": "salary", "title": f"평균연봉 ({SALARY_MIN_HEAD:,}명 이상)",
              "rows": top("salary", lambda s: krw_manwon(_to_manwon(s)), SALARY_MIN_HEAD)},
         ]
     corp = corpus_mod.build(ctx.companies, CATEGORY_ORDER)
@@ -194,8 +210,15 @@ def _numbers(ctx) -> dict:
             break
         text = f"공동 {r['item_count']}항목" if r["items_tied"] else f"{r['item_count']}항목"
         items.append(dict(_link(c, ctx), text=text))
-    axes.append({"title": "복지 항목 수", "rows": items})
-    return {"year": year, "salary_min_head": f"{SALARY_MIN_HEAD:,}", "axes": [a for a in axes if a["rows"]]}
+    axes.append({"key": "items", "title": "복지 항목 수", "rows": items})
+    axes = [a for a in axes if a["rows"]]
+    return {
+        "year": year,
+        "salary_min_head": f"{SALARY_MIN_HEAD:,}",
+        # 문턱 문장은 연봉 축이 **실제로 있을 때만** 싣는다 — 없는 순위를 설명하는 문장이 남지 않게(적대 검증 LOW)
+        "salary_note": any(a["key"] == "salary" for a in axes),
+        "axes": axes,
+    }
 
 
 def _trust(ctx) -> dict:
@@ -259,6 +282,7 @@ def build_view(ctx, pairs=None) -> dict:
     )
     recent = _recent_waves(ctx)
     rows = sum(len(_benefits(c)) for c in ctx.companies)
+    sectors = _sector_groups(ctx)
     return {
         "total_companies": len(ctx.companies),
         "total_rows": f"{rows:,}",
@@ -267,7 +291,8 @@ def build_view(ctx, pairs=None) -> dict:
         "year_range": _year_range(ctx),
         "latest_registration": recent[0]["date"] if recent else "",
         "combos": _combos(ctx, pairs),
-        "sectors": _sector_groups(ctx),
+        "sectors": sectors,
+        "has_other_sector": any(g["name"] == OTHER_SECTOR for g in sectors),
         "sector_top": SECTOR_TOP,
         "categories": _category_chips(ctx),
         "codes": _code_chips(codes),
@@ -293,7 +318,7 @@ def render(env, ctx, cfg=CFG, pairs=None) -> Page:
         view=view, meta_title=TITLE, meta_desc=desc, canonical=url,
         og={"title": TITLE, "description": og_desc, "type": "website", "url": url,
             "image": cfg.site_origin + cfg.default_og_image},
-        jsonld=jsonld, naver_site_verification=NAVER_SITE_VERIFICATION, font_preload=False,
+        jsonld=jsonld, naver_site_verification=NAVER_SITE_VERIFICATION,
         cfg=cfg, footer_links=POLICY_FOOTER_LINKS, nav_active="/",
     )
     return Page(path="index.html", url=url, html=html, title=TITLE, description=desc)

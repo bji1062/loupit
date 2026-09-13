@@ -69,13 +69,17 @@ def test_head_keeps_naver_verification_brand_title_and_canonical(fake_bundle, fa
     assert any(d.get("@type") == "WebSite" and d.get("name") == "잡초위키" for d in ld)
 
 
-def test_home_skips_font_preload_other_pages_keep_it(fake_bundle, fake_now, fake_combinations_path):
-    """대문은 첫 방문자의 첫 화면이다 — 2MB 폰트를 선점해 받게 하지 않는다. 다른 페이지는 **그대로**."""
+def test_home_font_preload_matches_other_pages(fake_bundle, fake_now, fake_combinations_path):
+    """대문도 다른 생성 페이지와 **같은** 폰트 preload 를 갖는다(2026-09-13 적대 검증 LOW 반영).
+
+    preload 를 빼도 `styles.css` 의 `@font-face`(font-display: swap)가 같은 2MB 를 받는다 — 전송량은 0 도 줄지
+    않고 폰트 발견만 늦어져 대문만 폴백 글꼴이 더 오래 보인다. 전송량을 줄이려면 서브셋·unicode-range 가 답이다.
+    """
     html = _render(fake_bundle, fake_now)[0].html
-    assert 'rel="preload"' not in html
     env = make_env()
     other = company.render_all(env, build_context(fake_bundle, now=fake_now))[0].html
-    assert '<link rel="preload" href="/assets/v2/fonts/PretendardVariable.woff2"' in other
+    tag = '<link rel="preload" href="/assets/v2/fonts/PretendardVariable.woff2"'
+    assert html.count(tag) == 1 and other.count(tag) == 1
 
 
 # ── 2. 정적 허브 계약 ─────────────────────────────────────────────────────────
@@ -233,11 +237,12 @@ def test_recent_waves_take_latest_two_with_present_companies(fake_bundle, fake_n
 
 
 def _seed_eng_names() -> list[str]:
+    """시드 SQL 의 **모든** 회사 자기등록 문장 — 파일당 첫 문장만 보면 두 회사를 넣은 시드의 둘째가 빠진다."""
     names = []
     for f in sorted(SEED_SQL.glob("*.sql")):
-        m = _SEED_ENG_RE.search(f.read_text(encoding="utf-8"))
-        assert m, f"{f.name}: TCOMPANY 자기등록 문장이 없다"
-        names.append(m.group(1))
+        found = [m.group(1) for m in _SEED_ENG_RE.finditer(f.read_text(encoding="utf-8"))]
+        assert found, f"{f.name}: TCOMPANY 자기등록 문장이 없다"
+        names.extend(found)
     return names
 
 
@@ -254,3 +259,41 @@ def test_registrations_file_lists_every_seed_company_exactly_once():
     dates = [w["date"] for w in waves]
     assert all(re.fullmatch(r"\d{4}-\d{2}-\d{2}", d) for d in dates)
     assert len(set(dates)) == len(dates), "같은 날짜의 웨이브가 둘이면 대문에 같은 제목이 두 번 나온다"
+
+
+# ── 5. 적대 검증 반영(2026-09-13) ─────────────────────────────────────────────
+
+
+def _employ_row(salary=120_000_000, tenure=10.0, head=5_000):
+    return {"salary": salary, "tenure": tenure, "head": head}
+
+
+def test_employ_year_needs_coverage_not_just_the_latest(fake_bundle, fake_now):
+    """공시 시즌 부분 수집 — 새 연도를 가진 회사가 소수면 그 연도로 순위를 만들지 않는다(적대 검증 MED)."""
+    partial = {1: {2025: _employ_row(), 2026: _employ_row(head=9_999)}, 2: {2025: _employ_row()}, 3: {2025: _employ_row()}}
+    ctx = build_context(fake_bundle, now=fake_now, employ=partial)
+    assert home._employ_year(ctx) == 2025, "1/3 만 가진 2026 으로 순위를 만들면 소수 회사끼리의 거짓 순위다"
+    full = {cid: {**years, 2026: _employ_row()} for cid, years in partial.items()}
+    ctx_full = build_context(fake_bundle, now=fake_now, employ=full)
+    assert home._employ_year(ctx_full) == 2026, "다 모이면 새 연도로 넘어간다"
+
+
+def test_salary_note_only_when_salary_axis_exists(fake_bundle, fake_now):
+    """연봉 축이 문턱에 걸려 통째로 빠지면 문턱을 설명하는 문장도 빠진다."""
+    small = {cid: {2025: _employ_row(head=home.SALARY_MIN_HEAD - 1)} for cid in (1, 2, 3)}
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now, employ=small)
+    html = home.render(env, ctx, CFG, pairs=[]).html
+    assert "<h3>직원 수</h3>" in html and "평균연봉 (" not in html
+    assert "명 이상 회사만 순위에 넣었습니다" not in html
+    big = {cid: {2025: _employ_row(head=home.SALARY_MIN_HEAD)} for cid in (1, 2, 3)}
+    html_big = home.render(env, build_context(fake_bundle, now=fake_now, employ=big), CFG, pairs=[]).html
+    assert "명 이상 회사만 순위에 넣었습니다" in html_big
+
+
+def test_generated_marker_for_smoke(fake_bundle, fake_now, fake_combinations_path):
+    """스모크 SM-1b 가 생성 대문과 nginx 폴백(수기 셸)을 가르는 표식 — 수기 셸에는 없어야 의미가 있다."""
+    html = _render(fake_bundle, fake_now)[0].html
+    assert html.count("data-home-generated") == 1
+    assert "data-home-generated" not in (REPO_ROOT / "web" / "index.html").read_text(encoding="utf-8")
+
