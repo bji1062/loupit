@@ -397,6 +397,10 @@ main p { margin-top:var(--sp-3); }
 #view-input input[type="checkbox"], #view-input input[type="radio"] { width:auto; min-height:0; accent-color:var(--accent); }
 .cand-list { max-width:420px; margin-top:var(--sp-1); border:var(--bw) solid var(--border); border-radius:var(--r-md); overflow:hidden; box-shadow:var(--shadow-1); background:var(--bg-1); }
 .cand-list:empty { display:none; }
+/* 검색 뷰 「비교하기」(2026-09-13) — 두 칸이 찬 채로 검색 뷰에 선 경로의 출구. 버튼 모양은 .btn 그대로.
+   안내(role=status)는 비어 있어도 숨기지 않는다 — display:none 이던 live 영역은 첫 갱신을 못 읽는 리더가 있다. */
+.search-go { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-3); margin-top:var(--sp-5); }
+.search-go-hint { margin:0; color:var(--t2); font-size:var(--fs-sm); }
 .cand-list .cand { display:flex; flex-direction:column; gap:2px; padding:var(--sp-3); cursor:pointer; border-bottom:var(--bw) solid var(--border); }
 .cand-list .cand:last-child { border-bottom:0; }
 .cand-list .cand:hover, .cand-list .cand:focus { background:var(--brand-tint); }

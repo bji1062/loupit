@@ -781,3 +781,78 @@ describe('SP-CMP-4 swapSlots — 색은 슬롯을 따른다', () => {
     assert.equal(App.state.selectedRate, 10);
   });
 });
+
+// ── UI-11 검색 뷰 「비교하기」(2026-09-13 사용자 요청) ─────────────────────────────────────
+// 두 칸이 찬 채로 검색 뷰에 서는 경로(「회사 바꾸기」 후 안 바꿈 · 새로고침 초안)에 넘어갈 버튼이 없었다.
+describe('UI-11 검색 뷰 「비교하기」 — 두 칸이 찬 채로 선 검색 뷰의 출구', () => {
+  beforeEach(() => loadShell());
+
+  test('UI-11a: 셸 — #view-search 안에 「비교하기」 버튼과 안내 영역(role=status)', () => {
+    const view = document.getElementById('view-search');
+    const btn = document.getElementById('btn-search-go');
+    assert.ok(btn && view.contains(btn), '검색 뷰 안에 있어야 한다');
+    assert.equal(btn.textContent.trim(), '비교하기');
+    assert.equal(btn.getAttribute('type'), 'button', 'form submit 이 아니다');
+    const hint = document.getElementById('search-go-hint');
+    assert.ok(hint && view.contains(hint));
+    assert.equal(hint.getAttribute('role'), 'status');
+  });
+
+  test('UI-11b: 두 칸 확정 + 클릭 → 선택 경로와 같다(go("benefits") + 입력 뷰 선렌더 + 쌍 로그)', () => {
+    const state = stateWithMatches();
+    reflectSlotLabel('a', 'A사');
+    reflectSlotLabel('b', 'B사');
+    const calls = [];
+    const logged = [];
+    bindSearchView(state, { go: (v) => calls.push(v), onPairReady: () => logged.push(1) });
+    document.getElementById('btn-search-go').click();
+    assert.deepEqual(calls, ['benefits']);
+    assert.ok(document.getElementById('sal-low'), '입력 뷰도 미리 그린다(덱의 「이직 계산기 →」)');
+    assert.equal(logged.length, 1);
+  });
+
+  test('UI-11c: 두 칸 모두 비었으면 → 이동 없음 + A 칸 포커스 + 안내', () => {
+    const state = createInitialState();
+    const calls = [];
+    bindSearchView(state, { go: (v) => calls.push(v) });
+    document.getElementById('btn-search-go').click();
+    assert.deepEqual(calls, []);
+    assert.equal(document.activeElement, document.getElementById('search-input-a'));
+    assert.match(document.getElementById('search-go-hint').textContent, /두 곳/);
+  });
+
+  test('UI-11d: A 만 확정 → B 칸 포커스 + B 를 부르는 안내', () => {
+    const state = stateWithMatches();
+    state.matched.b = null;
+    reflectSlotLabel('a', 'A사');
+    const calls = [];
+    bindSearchView(state, { go: (v) => calls.push(v) });
+    document.getElementById('btn-search-go').click();
+    assert.deepEqual(calls, []);
+    assert.equal(document.activeElement, document.getElementById('search-input-b'));
+    assert.match(document.getElementById('search-go-hint').textContent, /이직 후보\(B\)/);
+  });
+
+  test('UI-11e: 글자를 지운 칸은 확정이 아니다 — 빈 칸이 보이는데 옛 회사로 넘어가면 안 된다', () => {
+    const state = stateWithMatches(); // matched.a 는 남아 있다(onSearchInput 은 선택을 풀지 않는다)
+    reflectSlotLabel('a', '');
+    reflectSlotLabel('b', 'B사');
+    const calls = [];
+    bindSearchView(state, { go: (v) => calls.push(v) });
+    document.getElementById('btn-search-go').click();
+    assert.deepEqual(calls, []);
+    assert.equal(document.activeElement, document.getElementById('search-input-a'));
+  });
+
+  test('UI-11f: 안내는 타이핑을 시작하면 지워진다', () => {
+    const state = createInitialState();
+    bindSearchView(state, { go: () => {} });
+    document.getElementById('btn-search-go').click();
+    assert.notEqual(document.getElementById('search-go-hint').textContent, '');
+    const input = document.getElementById('search-input-a');
+    input.value = '삼';
+    input.dispatchEvent(new window.Event('input', { bubbles: true }));
+    clearTimeout(state.ui.searchTimers.a); // 디바운스 검색이 테스트 뒤에 네트워크로 나가지 않게
+    assert.equal(document.getElementById('search-go-hint').textContent, '');
+  });
+});

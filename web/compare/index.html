@@ -74,6 +74,12 @@
         <p class="search-empty" data-slot="b" hidden>검색 결과가 없습니다. 현재는 등록된 회사끼리만 비교할 수 있어요.</p>
         <p class="search-error" data-slot="b" hidden>검색에 실패했습니다. <button type="button" data-retry="b">다시 시도</button></p>
       </div>
+      <!-- 「비교하기」(2026-09-13): 두 칸이 이미 찬 채로 이 화면에 서는 경로(「회사 바꾸기」에서 안 바꾸고 돌아가기 ·
+           새로고침으로 되살아난 두 칸)에 넘어갈 문이 없었다. 전진은 ui.js searchGo → maybeAdvance 한 경로다. -->
+      <div class="search-go">
+        <button id="btn-search-go" type="button" class="btn">비교하기</button>
+        <p id="search-go-hint" class="search-go-hint" role="status" aria-live="polite"></p>
+      </div>
     </section>
 
     <!-- 모드 A 「복지 비교」(SP-CMP). 입력 없음·광고 없음·새 URL 0 — `/compare/?a=&b=` 가 이 화면이다.

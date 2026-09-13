@@ -200,6 +200,7 @@ export async function boot(hooks = {}) {
   const {
     loadReferenceFn = loadReference, bindGlobalUIFn = bindGlobalUI,
     mountAdsFn = mountAds,
+    navTypeFn = navigationType, // 새 진입인가(navigate) — 테스트는 주입한다(node 에는 navigation 항목이 없다)
   } = hooks;
   bindGlobalUIFn();
   try {
@@ -214,15 +215,25 @@ export async function boot(hooks = {}) {
   // 된다 — 복지를 보러 다녀오는 동안 입력이 사라지지 않는다.
   // 대문(`/`)은 **항상 처음부터** 시작한다(2026-07-31 사용자 결정). 초안이 랜딩에서까지
   // 되살아나면 "새로고침했는데 회사가 이미 골라져 있다"가 된다 — 대문은 신규 방문자의 첫
-  // 화면이지 이어하기 화면이 아니다. 이어서 하려면 비교 도구(`/compare/`)로 간다.
+  // 화면이지 이어하기 화면이 아니다. (2026-09-13 부터 비교 도구도 **새 진입**이면 처음부터다 — 아래 🚩)
   // ⚠ 복원을 생략하는 데 그치지 않고 **지운다**. 남겨 두면 대문에서 새로고침해 "초기화"한
   //   사용자가 `/compare/` 로 갔을 때 방금 지운 값이 되살아나 약속이 깨진다.
   // ⓘ 이래도 1단계의 핵심 왕복은 그대로다: 대문에서 입력 → (pagehide 저장) → 회사 페이지 →
   //   "이 회사로 비교하기" → `/compare/?a=…` 는 **대문을 다시 로드하지 않으므로** 복원된다.
   //   지워지는 것은 "이전에 하다 만 것"뿐이고, 지금 대문에서 쓰던 입력은 지켜진다.
-  const landing = isLandingShell();
-  if (landing) inputDraft.clear();
-  const draftRestored = landing ? false : restoreInputDraft();
+  // 🚩 2026-09-13 확장(사용자 결정): 대문이 비교 도구를 품지 않게 된 뒤로(대문 1단계) 대문의 「복지 비교」·
+  //   「이직 계산기」 카드가 `/compare/` 로 **새로 들어오는** 문이 됐다. 그 문으로 들어왔는데 24시간 초안이
+  //   두 회사 칸을 채워 두면 「누르자마자 어제 본 회사가 골라져 있고, 넘어갈 버튼도 없는」 검색 뷰가 된다
+  //   (라이브 재현). 그래서 「처음부터」의 자격을 셸만이 아니라 **진입 방식**으로도 준다.
+  //   · 새 진입(navigate) + URL 이 회사를 지정하지 않음 → 대문과 같이 초안을 지우고 빈 칸에서 시작
+  //   · 새로고침·뒤로/앞으로(reload·back_forward) → 종전대로 이어하기
+  //   · `?a=`/`?b=` 가 있으면 → 종전대로(회사 페이지 「이 회사로 비교하기」 왕복이 초안의 존재 이유다)
+  const fresh = isLandingShell() || isFreshEntry({
+    navType: navTypeFn(),
+    search: typeof location !== 'undefined' ? (location.search || '') : '',
+  });
+  if (fresh) inputDraft.clear();
+  const draftRestored = fresh ? false : restoreInputDraft();
   // reflectSlotLabel 훅을 넘긴다: 프리필이 검색 뷰에 남을 수 있게 된 뒤로, 훅이 없으면
   // 상태에는 A 가 들어 있는데 #search-input-a 는 비어 보인다(사용자에겐 프리필 실패로 읽힌다).
   const prefilled = restoreFromPrefill(App.state, { reflectSlotLabel }); // SP-FE-11 URL → 슬롯 프리필
@@ -441,6 +452,31 @@ export function snapshotInput(state = App.state) {
 export function isLandingShell(doc = (typeof document !== 'undefined' ? document : null)) {
   const body = doc && doc.body;
   return !!(body && body.dataset && body.dataset.pageType === 'landing');
+}
+
+/**
+ * 이 문서가 어떻게 열렸는가 — Navigation Timing 의 `type`(navigate · reload · back_forward · prerender).
+ * 알 수 없으면(구형 브라우저·테스트 환경) `null` 이고, 부팅은 null 을 **종전 동작(이어하기)** 으로 읽는다
+ * — 모르는 환경에서 사용자의 입력을 지우는 쪽으로 틀리지 않기 위해서다.
+ */
+export function navigationType(perf = (typeof performance !== 'undefined' ? performance : null)) {
+  try {
+    const entry = perf && typeof perf.getEntriesByType === 'function' ? perf.getEntriesByType('navigation')[0] : null;
+    return entry && typeof entry.type === 'string' ? entry.type : null;
+  } catch { return null; }
+}
+
+/**
+ * 비교 도구에 **새로 들어왔는가** = 초안을 되살리지 않고 빈 칸에서 시작할 진입인가(순수 함수, 2026-09-13).
+ * - URL 이 회사를 지정했으면(`?a=`·`?b=`) 새 진입이 아니다 — 회사 페이지 왕복이 초안을 쓴다.
+ * - navigate·prerender 만 새 진입이다. reload·back_forward·null(모름)은 이어하기.
+ * - 해시는 보지 않는다: 대문 「이직 계산기」 카드(`/compare/#input`)도 새 진입이고, 계산기 화면의
+ *   새로고침은 reload 라 이어진다 — 둘을 가르는 것은 해시가 아니라 진입 방식이다.
+ */
+export function isFreshEntry({ navType = null, search = '' } = {}) {
+  const p = new URLSearchParams(search || '');
+  if (p.get('a') || p.get('b')) return false;
+  return navType === 'navigate' || navType === 'prerender';
 }
 
 // 초안 → 상태. 슬롯은 REF 로 다시 해석하므로 초안이 낡아도(회사 삭제 등) 조용히 건너뛴다.

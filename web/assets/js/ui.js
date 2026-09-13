@@ -140,6 +140,48 @@ export function maybeAdvance(state, deps) {
   }
 }
 
+// ── 검색 뷰 「비교하기」(2026-09-13 사용자 요청) ──────────────────────────────
+// 목록에서 두 번째 회사를 고르면 곧바로 전진한다(maybeAdvance). 그런데 **두 칸이 이미 찬 채로** 검색 뷰에
+// 서는 경로가 있다 — 복지 비교의 「회사 바꾸기」로 왔다가 안 바꾸기로 한 경우, 새로고침으로 초안이 두 칸을
+// 되살린 경우. 그 화면에는 넘어갈 버튼이 없어 막다른 골목이었다(라이브 재현).
+// 전진은 **maybeAdvance 한 경로**로만 한다 — 목적지(pairTarget)·입력 뷰 선렌더·쌍 로그가 선택 경로와
+// 같아야 「고르면 가는 곳」과 「눌러서 가는 곳」이 갈리지 않는다.
+const GO_HINT_ID = 'search-go-hint';
+
+// 슬롯이 **확정**됐는가 = 회사가 골라져 있고, 입력칸에 보이는 글자가 그 회사명이다.
+// 글자를 지우거나 고쳐도 matched 는 남는다(onSearchInput 은 선택을 풀지 않는다) — 글자를 보지 않으면
+// 빈 칸이 보이는데 옛 회사로 넘어가는 화면이 된다.
+export function slotConfirmed(state, slot) {
+  const m = state.matched && state.matched[slot];
+  if (!m) return false;
+  const input = byId('search-input-' + slot);
+  if (!input) return true; // 셸 밖(구 호출부) — 상태만으로 판정
+  return String(input.value || '').trim() === String(m.comp_nm || '').trim();
+}
+
+export function clearSearchGoHint() {
+  const hint = byId(GO_HINT_ID);
+  if (hint) hint.textContent = '';
+}
+
+// 두 칸이 확정이면 전진, 아니면 이동하지 않고 **첫 미확정 칸**으로 커서를 옮겨 무엇이 모자란지 말한다.
+export function searchGo(state, deps = {}) {
+  const missing = ['a', 'b'].filter((slot) => !slotConfirmed(state, slot));
+  if (missing.length) {
+    const hint = byId(GO_HINT_ID);
+    if (hint) {
+      hint.textContent = missing.length === 2
+        ? '비교할 회사 두 곳을 목록에서 골라 주세요.'
+        : SLOT_LABEL[missing[0]] + ' 회사를 목록에서 골라 주세요.';
+    }
+    focusSlotInput(missing[0]);
+    return false;
+  }
+  clearSearchGoHint();
+  maybeAdvance(state, deps);
+  return true;
+}
+
 // ── 검색 뷰 배선 ────────────────────────────────────────────────────────────
 export function bindSearchView(state, deps) {
   if (typeof document === 'undefined') return;
@@ -148,6 +190,7 @@ export function bindSearchView(state, deps) {
     const input = byId('search-input-' + slot);
     if (input) {
       input.addEventListener('input', (e) => {
+        clearSearchGoHint(); // 고치기 시작했으면 안내는 제 역할을 다했다
         onSearchInput(state, slot, e.target.value, hooks);
         reflectSearchUI(state, slot);
       });
@@ -161,6 +204,8 @@ export function bindSearchView(state, deps) {
       });
     }
   }
+  const goBtn = byId('btn-search-go');
+  if (goBtn) goBtn.addEventListener('click', () => searchGo(state, deps));
 }
 
 // ── 입력 뷰 컨트롤 렌더(빈 #input-slot-a/b·#priority-picker 채움) ──────────────
