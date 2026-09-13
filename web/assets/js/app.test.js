@@ -1046,3 +1046,48 @@ describe('boot — 새 진입(navigate)은 초안을 지우고 빈 칸, 새로�
     assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 }, '연봉은 초안');
   });
 });
+
+// ── 흐름(state.ui.mode) — 이직 계산기로 들어오면 복지 비교를 거치지 않는다(2026-09-13 사용자 결정) ──
+describe('go·boot — 흐름 갱신(입력·리포트 = 계산기, 복지 비교 = 복지 비교, 검색·회사 = 그대로)', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [{ comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] }],
+  };
+
+  test('기본 흐름은 복지 비교', () => {
+    assert.equal(createInitialState().ui.mode, 'benefits');
+  });
+
+  test('입력·리포트 화면에 들어서면 계산기 흐름', () => {
+    go('input', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+    App.state = createInitialState();
+    go('report', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+  });
+
+  test('복지 비교 화면에 들어서면 복지 비교 흐름', () => {
+    App.state.ui.mode = 'calculator';
+    go('benefits', { push: false });
+    assert.equal(App.state.ui.mode, 'benefits');
+  });
+
+  test('검색·회사 화면은 흐름을 바꾸지 않는다(계산기의 「회사 변경」 왕복)', () => {
+    App.state.ui.mode = 'calculator';
+    go('search', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+    go('company', { push: false });
+    assert.equal(App.state.ui.mode, 'calculator');
+  });
+
+  test('부팅: #input·#report 로 들어오면 계산기 흐름, 해시가 없으면 기본', async () => {
+    globalThis.document.body.dataset.pageType = 'input';
+    for (const [hash, want] of [['#input', 'calculator'], ['#report', 'calculator'], ['', 'benefits'], ['#search', 'benefits']]) {
+      App.state = createInitialState();
+      globalThis.location.hash = hash;
+      await boot({ loadReferenceFn: async () => REF, navTypeFn: () => 'navigate' });
+      assert.equal(App.state.ui.mode, want, hash || '(해시 없음)');
+      assert.equal(App.state.ui.screen, 'search', '쌍이 없으면 어느 흐름이든 검색 뷰에서 고른다');
+    }
+  });
+});

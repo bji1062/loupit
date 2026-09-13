@@ -44,15 +44,19 @@ export const AMT_SOURCE_LABEL = { stated: '공식 수치', estimated: '추정치
 /**
  * **두 슬롯이 확정되면 어디로 가는가** — 이 판정의 집은 여기 하나다 (SP-CMP-2).
  *
- * 부팅 폴백(`app.js::resolveBootScreen`)과 검색 뷰 전진(`ui.js::maybeAdvance`)이 같은 답을 써야
- * 한다. 두 곳에 따로 적으면 「주소로 들어오면 비교, 검색으로 고르면 입력」처럼 경로마다 다른
+ * 부팅 폴백(`app.js::resolveBootScreen`)·프리필(`restoreFromPrefill`)·검색 뷰 전진(`ui.js::maybeAdvance`)이
+ * 같은 답을 써야 한다. 두 곳에 따로 적으면 「주소로 들어오면 비교, 검색으로 고르면 입력」처럼 경로마다 다른
  * 화면이 뜨고, 그런 화면은 버그가 아니라 **설계가 둘**인 상태라 고치기 어렵다.
  *
+ * 🚩 2026-09-13(사용자 결정): 목적지는 **흐름**(`state.ui.mode`)이 정한다. 기본은 복지 비교(모드 A)이고,
+ * 이직 계산기 흐름(`#input`·`#report` 로 들어왔거나 입력·리포트 화면을 거쳤다)이면 **입력 뷰**다 —
+ * 「이직 계산기로 들어왔는데 복지 비교 화면이 먼저 뜬다」(사용자 신고)를 막는다. 흐름을 모르면 기본.
+ *
  * `ui.js` 가 `app.js` 를 import 하면 순환이 되므로(앱이 UI 를 부른다) 집을 이 모듈에 둔다 —
- * 목적지가 곧 이 화면이기도 하다.
+ * 기본 목적지가 곧 이 화면이기도 하다.
  */
-export function pairTarget() {
-  return 'benefits';
+export function pairTarget(state) {
+  return state && state.ui && state.ui.mode === 'calculator' ? 'input' : 'benefits';
 }
 
 // 「등록 없음」의 출처도 `fmt` 하나다(SP-CMP-3) — 리터럴을 따로 두면 한쪽만 바뀌는 날이 온다.

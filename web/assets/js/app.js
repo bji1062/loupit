@@ -31,6 +31,10 @@ export function createInitialState() {
     inputMode: { a: 'company', b: 'company' }, // 'company' | 'direct'
     ui: {
       screen: 'search',
+      // 비교 도구의 **흐름**(2026-09-13 사용자 결정): 'benefits'(복지 비교, 기본) | 'calculator'(이직 계산기).
+      // 두 회사가 확정됐을 때의 목적지(pairTarget)를 이것이 정한다 — 계산기로 들어온 사람에게 복지 비교를
+      // 먼저 보여 주지 않는다. 부팅 해시와 go()(입력·리포트·복지 비교 화면 진입)가 갱신한다.
+      mode: 'benefits',
       // URL(`?a=`·`?b=`)이 채운 슬롯. 「회사 바꾸기」가 **어느 칸에 커서를 둘지**를 정하는 데만
       // 쓴다 — 사용자가 고르지 않은 쪽(초안·레코드가 채운 쪽)을 먼저 가리켜야 한다(SP-CMP-8).
       prefilledSlots: [],
@@ -73,6 +77,10 @@ function focusFirstHeading(screenId) {
 export function go(screenId, { push = true, replace = false } = {}) {
   if (!SCREENS.includes(screenId)) screenId = 'search'; // 방어: 미지 뷰 → 검색
   App.state.ui.screen = screenId;
+  // 흐름 갱신: 입력·리포트 = 이직 계산기, 복지 비교 = 복지 비교. 검색·회사 화면은 흐름을 바꾸지 않는다
+  // (계산기에서 「회사 변경」으로 검색 뷰에 다녀와도 계산기로 돌아와야 한다).
+  if (screenId === 'input' || screenId === 'report') App.state.ui.mode = 'calculator';
+  else if (screenId === 'benefits') App.state.ui.mode = 'benefits';
   // 모드 A 본문은 **보이기 직전에** 그린다. 9각형·나비는 viewBox·% 라 hidden 인 채 그려도
   // 깨지지 않는다(실측이 필요한 것은 덱뿐이고, 그건 뷰가 보인 뒤 아래에서 잰다).
   if (screenId === 'benefits') {
@@ -237,6 +245,13 @@ export async function boot(hooks = {}) {
   });
   if (fresh) inputDraft.clear();
   const draftRestored = fresh ? false : restoreInputDraft();
+  // 🚩 2026-09-13(사용자 결정): 이직 계산기로 들어왔으면(`#input` — 대문 「이직 계산기」 카드 · `/vs` 「내 연봉으로
+  //   계산하기」, 또는 `#report`) 처음부터 계산기 흐름이다. 두 회사를 고르면 복지 비교를 거치지 않고 입력 뷰로
+  //   간다(pairTarget). 프리필이 목적지를 쓰기 **전에** 정해야 한다.
+  {
+    const entryHash = parseHash();
+    if (entryHash === 'input' || entryHash === 'report') App.state.ui.mode = 'calculator';
+  }
   // reflectSlotLabel 훅을 넘긴다: 프리필이 검색 뷰에 남을 수 있게 된 뒤로, 훅이 없으면
   // 상태에는 A 가 들어 있는데 #search-input-a 는 비어 보인다(사용자에겐 프리필 실패로 읽힌다).
   const prefilled = restoreFromPrefill(App.state, { reflectSlotLabel }); // SP-FE-11 URL → 슬롯 프리필
@@ -412,7 +427,7 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
       goFn('search', { push: false });
       focusSlot(pending);
     } else {
-      goFn(pairTarget(), { push: false }); // 두 슬롯 프리필 = 모드 A 의 정본 주소(SP-CMP-2)
+      goFn(pairTarget(state), { push: false }); // 두 슬롯 프리필 = 흐름의 목적지(기본 모드 A 정본 주소, #input 이면 계산기 — SP-CMP-2)
     }
   }
   return filled; // 부팅 화면 결정에 쓴다 — "URL 이 시킨 것"과 "초안이 되살린 것"을 가른다
