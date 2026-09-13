@@ -5,7 +5,7 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, policy, sitemap
+from generator.pages import combo, company, home, policy, sitemap
 from generator.render import make_env
 
 
@@ -15,7 +15,8 @@ def _build_all(fake_bundle, fake_now):
     company_pages = company.render_all(env, ctx)
     combo_pages = combo.render_all(env, ctx, CFG)
     policy_pages = policy.render_all(env, ctx)
-    all_pages = company_pages + combo_pages + policy_pages
+    home_pages = [home.render(env, ctx, CFG, pairs=[])]  # 대문은 2026-09-13 부터 생성 페이지(extra_sitemap_paths 에서 빠짐)
+    all_pages = company_pages + combo_pages + policy_pages + home_pages
     site_urls = [p.url for p in all_pages if p.in_sitemap] + [
         CFG.site_origin + path for path in CFG.extra_sitemap_paths
     ]
@@ -38,7 +39,9 @@ def test_gc18_sitemap_includes_all_company_combo_policy_and_landing(
     # 2026-08-27 부터 랜딩 + 커뮤니티 허브(/community/, SC15) 두 개다.
     for path in CFG.extra_sitemap_paths:
         expected.add(f"{CFG.site_origin}{path}")
-    assert "/" in CFG.extra_sitemap_paths and "/community/" in CFG.extra_sitemap_paths
+    # 대문 `/` 는 생성 페이지라 extra 에 **없어야** 한다 — 있으면 sitemap 에 두 번 실린다(2026-09-13).
+    assert "/" not in CFG.extra_sitemap_paths and "/community/" in CFG.extra_sitemap_paths
+    assert CFG.site_origin + "/" in locs
     assert locs == expected
 
 

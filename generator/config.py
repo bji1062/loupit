@@ -96,7 +96,9 @@ class GenConfig:
     lang: str = "ko"
     desc_max: int = 155  # meta description 절단 상한
     # sitemap에 포함되는 비-생성 정적 URL(랜딩 등). /compare(툴 셸)는 색인 대상 제외.
-    extra_sitemap_paths: tuple = ("/", "/community/")  # 커뮤니티 허브(정적 h1·lede, SC15 2026-08-27)
+    # 생성기가 만들지 않는 URL 만 싣는다. 대문 `/` 는 2026-09-13(대문 2단계)부터 **생성 페이지**(`pages/home.py`)라
+    # 여기서 뺐다 — 남기면 sitemap 에 `/` 가 두 번 실리고, lastmod 지문이 서빙되지 않는 수기 셸 파일을 본다.
+    extra_sitemap_paths: tuple = ("/community/",)  # 커뮤니티 허브(정적 h1·lede, SC15 2026-08-27)
     # 정책 페이지 4종 (문안 소유 = SP-POL, 렌더·SEO = 본 생성기)
     policy_pages: tuple = field(
         default=(

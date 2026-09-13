@@ -21,7 +21,7 @@ from generator.employ import coverage as employ_coverage
 from generator.employ import is_loaded as employ_is_loaded
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, find, heatmap, policy
+from generator.pages import combo, company, company_index, find, heatmap, home, policy
 from generator.pages import sitemap as sitemap_page
 from generator import indexnow
 from generator.release import lastmod_index, stage_and_swap, write_manifest
@@ -70,6 +70,7 @@ def run(
     pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages.append(heatmap.render(env, ctx, CFG))  # 복지·실적 히트맵 (SP-HEAT, 2026-08-27)
     pages.append(find.render(env, ctx, CFG))  # 복지검색 (SP-FIND, 2026-09-06)
+    pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     if only:  # 개발용 경로 접두 필터

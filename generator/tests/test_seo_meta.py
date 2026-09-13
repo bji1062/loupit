@@ -6,7 +6,7 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, find, heatmap, policy
+from generator.pages import combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
 
 _TAG_COUNT_PATTERNS = {
@@ -143,6 +143,7 @@ def _all_indexable_pages(fake_bundle, fake_now):
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
         + [find.render(env, ctx, CFG)]
+        + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
         + combo.render_all(env, ctx, CFG, pairs=pairs)
         + policy.render_all(env, ctx)
     )
