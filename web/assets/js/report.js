@@ -152,19 +152,30 @@ export function renderCatButterfly(catDelta, mountEl) {
 // 같은 복지(benefit_cd)를 같은 행에 정렬해 두 회사를 대조한다. checked 항목만
 // 대상(엔진 합계와 동일 모집단). 카테고리 순서는 CATEGORY_LABEL 키 순서(9종 고정,
 // 엔진 BENEFIT_CATEGORIES와 동일 어휘 — calc.js import 금지 규칙 유지).
-export function matchBenefitRows(benA, benB) {
+// `requireChecked:false` 는 **모드 A 「복지 비교」**(SP-CMP-6)가 쓴다. 그 화면에는 체크박스가
+// 없다 — 사용자가 고른 것이 아니라 회사에 등록된 것 전부를 나란히 놓는 자리라, 「체크된 항목만」
+// 이라는 모드 B 의 모집단 규칙이 거기서는 뜻을 잃는다. 기본값은 true 그대로라 리포트 쪽 계약은
+// 한 글자도 바뀌지 않는다(짝짓기 키·정렬 규칙을 두 벌로 만들지 않으려고 옵션으로 열었다).
+export function matchBenefitRows(benA, benB, { requireChecked = true } = {}) {
   const cats = Object.keys(CATEGORY_LABEL);
   const norm = (c) => (cats.includes(c) ? c : 'perks'); // 미지 카테고리 → perks(엔진과 동일 규칙)
   const map = new Map(); // key → row
   const add = (item, side) => {
-    if (!item || item.checked !== true) return;
+    if (!item) return;
+    if (requireChecked && item.checked !== true) return;
     const key = item.benefit_cd || item.benefit_nm;
     let row = map.get(key);
     if (!row) {
-      row = { ctgr: norm(item.benefit_ctgr_cd), key, nm: item.benefit_nm, a: null, b: null };
+      // `nm` 은 **먼저 본 쪽**(= A)의 명칭이다. 예전부터 그랬고 리포트는 그대로 쓴다.
+      row = { ctgr: norm(item.benefit_ctgr_cd), key, nm: item.benefit_nm, nmA: null, nmB: null, a: null, b: null };
       map.set(key, row);
     }
     row[side] = item;
+    // 같은 코드라도 두 회사가 다른 이름을 쓴다(welfare_point = 「개인 업무 지원비」/「복지포인트」).
+    // `nm` 하나만 내보내면 **A 의 이름으로 B 의 항목까지 부르게** 되고, A·B 를 맞바꾸면 표의
+    // 이름이 통째로 바뀐다. 두 이름을 다 실어 보내고 어떻게 보일지는 화면이 정한다.
+    if (side === 'a') row.nmA = item.benefit_nm;
+    else row.nmB = item.benefit_nm;
   };
   for (const it of (benA || [])) add(it, 'a'); // a 먼저 — 공통 행의 이름·카테고리는 A 기준
   for (const it of (benB || [])) add(it, 'b');

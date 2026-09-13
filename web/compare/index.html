@@ -76,6 +76,32 @@
       </div>
     </section>
 
+    <!-- 모드 A 「복지 비교」(SP-CMP). 입력 없음·광고 없음·새 URL 0 — `/compare/?a=&b=` 가 이 화면이다.
+         본문은 benefits.js 가 #benefits-body 에 그리고, 덱은 이름·버튼만 담는다(검색은 #view-search 소유).
+         ⚠ 첫 헤딩이 h2 「복지 비교」다 — go() 가 뷰 전환 때 여기로 포커스를 옮긴다(회사명은 덱이 말한다). -->
+    <section id="view-benefits" class="view" data-screen="benefits" hidden>
+      <h2>복지 비교</h2>
+      <div class="cmp-deckwrap" data-cmp-deck>
+        <!-- 접히면 이 한 줄만 고정된다(모바일 실측: 펼친 덱 고정 시 본문 35%, 한 줄 고정 시 74%) -->
+        <div class="cmp-minibar" data-cmp-minibar hidden>
+          <span class="cmp-hero" data-cmp-hero></span>
+          <button type="button" class="cmp-btn" data-cmp-search>회사 바꾸기</button>
+          <button type="button" class="cmp-btn" data-cmp-input>이직 계산기 →</button>
+        </div>
+        <div class="cmp-deck">
+          <div class="cmp-slots" data-cmp-slots></div>
+          <div class="cmp-acts">
+            <button type="button" class="cmp-btn" data-cmp-swap>A·B 바꾸기</button>
+            <button type="button" class="cmp-btn" data-cmp-search>회사 바꾸기</button>
+            <button type="button" class="cmp-btn cmp-btn-primary" data-cmp-input>이직 계산기 →</button>
+          </div>
+        </div>
+      </div>
+      <!-- 슬롯을 맞바꾸면 색·표식이 회사를 따라 움직이지 않는다(색은 슬롯을 따른다) — 그 사실을 말해 준다 -->
+      <p class="sr-only" role="status" aria-live="polite" data-cmp-live></p>
+      <div id="benefits-body"></div>
+    </section>
+
     <section id="view-input" class="view" data-screen="input" hidden>
       <h2>비교 입력</h2>
       <div id="input-slot-a" class="input-slot" data-slot="a"></div>

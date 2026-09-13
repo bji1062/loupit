@@ -30,6 +30,12 @@
   /* 스탯 카드(SP-GEN-5.6) — 레이더 면(반투명이라 눈금 고리가 비쳐야 한다)·앵커 도착 강조.
      `--brand-tint` 는 불투명이라 면으로 쓰면 고리를 덮는다. */
   --radar-fill:rgb(47 125 67 / .18); --target-bg:#dcefe2;
+  /* 비교 화면 슬롯 색(SP-CMP-4). A 는 브랜드 그린 그대로, B 는 파랑 — dataviz 검증기로 골랐다:
+     적록색약 ΔE 22.3 / 정상시 23.1 로 둘 다 하한(8·15)을 넘는다. 주황 후보는 적록색약에서
+     ΔE 4.7 로 초록과 갈라지지 않아 탈락했다. 채움은 **각 14%** 라 겹친 곳이 26% 로 저절로
+     진해진다(단일 레이더의 18% 와 다른 값인 이유). 색만으로 정체성을 주지 않는다 — A 는 원,
+     B 는 네모라는 두 번째 채널이 항상 함께 간다. */
+  --slot-b:#2a78d6; --slot-b-fill:rgb(42 120 214 / .14); --slot-a-fill:rgb(47 125 67 / .14);
   --brand-bar:var(--brand); --on-brand:#ffffff; --on-brand-soft:rgb(255 255 255 / .85);
   --surface-card:#eef0f2; --surface-soft:#f3f5f6;
   --surface-dark:#1d2620; --surface-dark-elevated:#2a352d;
@@ -369,6 +375,10 @@ main p { margin-top:var(--sp-3); }
 .cta p { color:var(--accent-ink); }
 .cta a { display:inline-flex; align-items:center; justify-content:center; min-height:var(--tap-min); margin-top:var(--sp-4); padding:var(--sp-3) var(--sp-5); background:var(--bg-0); color:var(--t1); font-weight:var(--fw-medium); border-radius:var(--r-md); }
 .cta a:hover { text-decoration:none; background:var(--bg-1); }
+/* 두 모드로 갈린 착지점(SP-CMP-2) — 한 콜아웃 안에 링크 둘. 둘째는 보조라 테두리만 준다
+   (녹색 블록을 두 개 쌓으면 무엇을 먼저 눌러야 하는지가 사라진다). */
+.cta a + .cta-second { margin-left:var(--sp-3); background:none; border:var(--bw) solid var(--bg-0); color:var(--accent-ink); }
+.cta a + .cta-second:hover { background:var(--accent-hover); }
 
 /* ═══════════════════════════════════════ COMPARE TOOL(셸 3뷰 + ui.js) ══ */
 /* hidden 은 항상 display 규칙을 이겨야 한다(뷰 전환 정확성). */
@@ -721,9 +731,170 @@ main p { margin-top:var(--sp-3); }
 /* 꼭짓점 호버 — 투명 히트 원(r=14)이 포인터를 받고 라벨이 즉시 뜬다. `fill:transparent` 는 `none` 과
    달리 페인트로 취급돼 포인터를 받는다(charts.py 히트 칸과 같은 장치). */
 .rd-hitc { fill:transparent; pointer-events:all; }
+/* 탭으로 꼭짓점을 짚었을 때 **어디를 짚었는지** 보이게 한다 — 라벨만 뜨고 자리가 안 보이면
+   축이 아홉이라 어느 것인지 알 수 없다. 모양은 쌍 레이더(`.rdp-hit`)와 같다. */
+.rd-hit { outline:none; }
+.rd-hit:focus-visible .rd-hitc { fill:var(--surface-soft); stroke:var(--t3); stroke-width:1; }
 .rd-hv { display:none; pointer-events:none; fill:var(--t1); font-size:14px; font-weight:var(--fw-semibold); font-family:var(--font-sans);
   paint-order:stroke; stroke:var(--bg-1); stroke-width:4px; stroke-linejoin:round; }
-.rd-hit:hover .rd-hv { display:block; }
+/* 호버 전용 라벨은 값을 키보드·보조기기 사용자에게서 통째로 감춘다 — `:focus` 까지 넓힌다.
+   `.rd-hl`·`.rd-hvbg` 는 쌍 레이더(`.rdp-*`)와 **같은 규칙**을 쓰도록 여기 함께 선언한다. */
+.rd-hit:hover .rd-hv, .rd-hit:focus .rd-hv { display:block; }
+.rd-hl, .rdp-hl { display:none; fill:none; stroke:var(--t3); stroke-width:2; }
+.rd-hvbg, .rdp-hvbg { display:none; fill:var(--bg-1); }
+.rd-hv0, .rdp-hv0 { fill:var(--t3); font-size:15px; font-family:var(--font-sans); }
+
+/* ══════════════════════════════════════════════ 복지 비교 (모드 A · SP-CMP) ══ */
+/* 🚨 덱 규칙은 `find` 절에서 **복제**한다. 합치면 find 의 CSS 계약 테스트 5개가 깨진다 —
+   셀렉터 문자열 자체가 그 테스트의 검사 대상이기 때문이다. 중복은 알고 쓰는 비용이다. */
+
+/* 9각형 겹침 — 회사 상세(.rd-*)와 같은 기하·같은 눈금. 다른 것은 도형이 둘이라는 점뿐이다. */
+.rdp { display:block; width:100%; height:auto; overflow:visible; }
+.rdp-ring, .rdp-ax { fill:none; stroke:var(--border); stroke-width:1; }
+/* SVG 안의 font-size 는 **사용자 단위**라 viewBox(416) 스케일을 탄다 — 360px 화면에서 그림이
+   약 310px 로 줄면 13 이 9.7px 로 렌더된다(회사 상세가 라벨 17 을 고른 것과 같은 이유).
+   눈금·판독문을 16 으로 올린다. 판독문은 폭 상한(viewBox 90%)을 넘지 않는 선까지만. */
+.rdp-tick { fill:var(--t3); font-size:16px; font-family:var(--font-sans); }
+.rdp-lb { fill:var(--t2); font-size:17px; font-weight:var(--fw-medium); font-family:var(--font-sans); }
+/* 평균은 **선 모양**으로 구분한다(색 아님) — 겹친 채움 위에서 밝은 회색은 2.1:1 로 잠긴다. */
+.rdp-avg { fill:none; stroke:var(--t3); stroke-width:1.5; stroke-dasharray:4 3; }
+.rdp-a { fill:var(--slot-a-fill); stroke:var(--brand); stroke-width:2.5; stroke-linejoin:round; }
+.rdp-b { fill:var(--slot-b-fill); stroke:var(--slot-b); stroke-width:2.5; stroke-linejoin:round; }
+.rdp-da { fill:var(--brand); stroke:var(--bg-1); stroke-width:2.5; }
+/* 같은 값이면 A 원을 속 빈 링으로 — 꽉 찬 원이 네모를 덮으면 두 번째 채널이 사라진다. */
+.rdp-tie { fill:none; stroke:var(--brand); stroke-width:2.5; }
+.rdp-db { fill:var(--slot-b); stroke:var(--bg-1); stroke-width:2.5; }
+.rdp-hitc { fill:transparent; pointer-events:all; }
+.rdp-hit { cursor:default; outline:none; }
+.rdp-hit:hover .rdp-hitc, .rdp-hit:focus-visible .rdp-hitc { fill:var(--surface-soft); stroke:var(--t3); stroke-width:1; }
+.rdp-hv { display:none; pointer-events:none; fill:var(--t1); font-size:16px; font-weight:var(--fw-semibold);
+  font-family:var(--font-sans); paint-order:stroke; stroke:var(--bg-1); stroke-width:4px; stroke-linejoin:round; }
+.rdp-hit:hover .rdp-hv, .rdp-hit:hover .rdp-hl, .rdp-hit:hover .rdp-hvbg,
+.rdp-hit:focus .rdp-hv, .rdp-hit:focus .rdp-hl, .rdp-hit:focus .rdp-hvbg { display:block; }
+/* 기본 안내 글은 어느 축이든 잡히면 숨는다. `:has()` 가 없는 브라우저에서는 안 숨지만, 판독문
+   뒤의 표면색 rect(`.rdp-hvbg`)가 그 위를 덮어 **겹쳐 읽히는 일은 없다**. */
+.rdp:has(.rdp-hit:hover) .rdp-hv0, .rdp:has(.rdp-hit:focus) .rdp-hv0 { display:none; }
+/* 호버가 포커스보다 앞선다 — 다른 축에 포커스가 남아 있어도 판독문은 하나만 뜬다. */
+.rdp:has(.rdp-hit:hover) .rdp-hit:focus:not(:hover) .rdp-hv,
+.rdp:has(.rdp-hit:hover) .rdp-hit:focus:not(:hover) .rdp-hl,
+.rdp:has(.rdp-hit:hover) .rdp-hit:focus:not(:hover) .rdp-hvbg { display:none; }
+
+/* 덱(회사 A/B) — 좁은 폭에서는 그냥 문서의 일부다(고정도 접힘도 768 분기 안에만 있다). */
+.cmp-deckwrap { display:flex; flex-direction:column; gap:var(--sp-2); background:var(--bg-0); }
+.cmp-deck, .cmp-minibar { background:var(--surface); border:var(--bw) solid var(--border); border-radius:var(--r-md); }
+.cmp-deck { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-3); padding:var(--sp-3) var(--sp-4); }
+.cmp-minibar { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-2) var(--sp-3); padding:var(--sp-2) var(--sp-4); }
+.cmp-slots { display:flex; flex:1 1 auto; flex-wrap:wrap; align-items:center; gap:var(--sp-2) var(--sp-3); min-width:0; }
+.cmp-slot { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.cmp-slot-l { color:var(--t3); font-size:var(--fs-xs); }
+.cmp-slot-nm { font-weight:var(--fw-semibold); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.cmp-vs { color:var(--t3); font-weight:var(--fw-semibold); }
+.cmp-hero { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:var(--fw-semibold); }
+.cmp-acts { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+.cmp-btn { display:inline-flex; align-items:center; min-height:var(--tap-min); padding:var(--sp-1) var(--sp-3);
+  border:var(--bw) solid var(--border); border-radius:var(--r-md); background:var(--surface); color:var(--text);
+  font-size:var(--fs-sm); white-space:nowrap; cursor:pointer; }
+.cmp-btn:hover { border-color:var(--brand); background:var(--brand-tint); text-decoration:none; }
+.cmp-btn-primary { border-color:var(--brand); background:var(--brand-tint); font-weight:var(--fw-medium); }
+
+/* 슬롯 표식 — 덱·범례·표 머리·타일이 **같은 모양**을 단다(색만으로 정체성을 주지 않는다). */
+.cmp-key { display:inline-block; width:11px; height:11px; margin-right:var(--sp-1); vertical-align:-1px; }
+.cmp-key-a { background:var(--slot-a-fill); border:1.5px solid var(--brand); border-radius:50%; }
+.cmp-key-b { background:var(--slot-b-fill); border:1.5px solid var(--slot-b); }
+.cmp-key-avg { height:0; border-top:1.5px dashed var(--t3); width:14px; vertical-align:3px; }
+.cmp-key-avg-v { width:0; height:11px; border-left:1.5px solid var(--t3); }
+.cmp-key-tie { background:var(--slot-b); border:2.5px solid var(--brand); border-radius:50%; }
+
+.cmp-sec { margin-top:var(--sp-6); }
+.cmp-sec h3 { margin:0 0 var(--sp-2); padding-bottom:var(--sp-1); border-bottom:var(--bw) solid var(--border);
+  font-family:var(--font-sans); font-size:var(--fs-base); font-weight:var(--fw-semibold); }
+.cmp-say { margin-top:var(--sp-2); color:var(--t2); font-size:var(--fs-sm); line-height:var(--lh-base); }
+.cmp-legend { margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3); border-left:2px solid var(--border);
+  background:var(--surface-soft); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-base); }
+/* 「등록 없음」은 **흐리게** 두되 지우지 않는다 — 이 화면에서 가장 흔한 사실이다(중앙 71.4%). */
+.cmp-none { color:var(--t3); }
+.cmp-chip { display:inline-block; margin-left:var(--sp-1); padding:0 var(--sp-1); border:var(--bw) solid var(--border);
+  border-radius:var(--r-xs); color:var(--t3); font-size:var(--fs-xs); white-space:nowrap; }
+.cmp-chip.est { border-color:var(--badge-est-fg); color:var(--badge-est-fg); }
+.cmp-qual { display:inline-block; margin-left:var(--sp-1); color:var(--t3); font-size:var(--fs-xs); }
+
+/* 🚨 그림 320px + 글 칸을 **고정 2열**로 두면 768~1000px 에서 오른쪽이 52~184px 로 눌린다
+   (본문이 레일 300px 을 빼고 388px 뿐이라, 축별 문장이 21줄이 된다). 분기를 더 만들지 않고
+   `flex-wrap` 으로 **스스로 쌓이게** 한다 — 글 칸의 최소 폭(280px)이 안 나오면 줄을 바꾼다. */
+.cmp-sum2 { display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--sp-4); margin-top:var(--sp-3); }
+.cmp-rdwrap { flex:0 1 320px; min-width:0; padding:var(--sp-2); border:var(--bw) solid var(--border); border-radius:var(--r-md); background:var(--surface); }
+.cmp-rdkey { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-3); margin-top:var(--sp-1);
+  color:var(--t3); font-size:var(--fs-xs); }
+.cmp-rdcap { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-base); }
+.cmp-sumright { flex:1 1 280px; min-width:0; }
+.cmp-stat4 { display:flex; flex-wrap:wrap; gap:var(--bw); background:var(--border); border:var(--bw) solid var(--border); }
+.cmp-stat4 > div { flex:1 1 40%; padding:var(--sp-2) var(--sp-3); background:var(--surface); }
+.cmp-stat-n { display:block; font-size:var(--fs-lg); font-weight:var(--fw-semibold); }
+.cmp-stat-l { display:block; color:var(--t3); font-size:var(--fs-xs); }
+
+/* 나비차트 — 좌 A · 우 B, 눈금은 양쪽 0~rmax 로 **같다**(같은 자가 아니면 길이를 못 비교한다). */
+.cmp-bf { margin-top:var(--sp-3); border:var(--bw) solid var(--border); background:var(--surface); }
+.cmp-bf-head, .cmp-bf-scale, .cmp-bf-row { display:grid; grid-template-columns:minmax(0,1fr) 118px minmax(0,1fr);
+  align-items:center; padding:0 var(--sp-3); }
+.cmp-bf-head { padding:var(--sp-1) var(--sp-3); background:var(--surface-soft); border-bottom:var(--bw) solid var(--border);
+  color:var(--t2); font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
+.cmp-bf-hl { text-align:right; padding-right:var(--sp-2); }
+.cmp-bf-hr { text-align:left; padding-left:var(--sp-2); }
+.cmp-bf-hc { text-align:center; color:var(--t3); font-weight:var(--fw-regular); }
+.cmp-bf-scale { padding-top:2px; color:var(--t3); font-size:var(--fs-xs); font-variant-numeric:tabular-nums; }
+.cmp-bf-sl, .cmp-bf-sr { position:relative; height:13px; }
+.cmp-bf-sl span, .cmp-bf-sr span { position:absolute; top:0; }
+.cmp-bf-sl span { transform:translateX(50%); }
+.cmp-bf-sr span { transform:translateX(-50%); }
+.cmp-bf-sc { text-align:center; color:var(--t3); font-size:var(--fs-xs); }
+.cmp-bf-row { border-top:var(--bw) solid var(--border); }
+.cmp-bf-l, .cmp-bf-r { position:relative; height:32px; }
+.cmp-bf-bar { position:absolute; top:9px; height:14px; }
+.cmp-bf-l .cmp-bf-bar { right:0; }
+.cmp-bf-r .cmp-bf-bar { left:0; }
+.cmp-bf-bar-a { background:var(--brand); }
+.cmp-bf-bar-b { background:var(--slot-b); }
+.cmp-bf-val { position:absolute; top:0; line-height:32px; font-size:var(--fs-sm); font-weight:var(--fw-semibold);
+  font-variant-numeric:tabular-nums; white-space:nowrap; }
+.cmp-bf-val.cmp-none { font-size:var(--fs-xs); font-weight:var(--fw-regular); }
+/* 막대가 날개를 거의 다 채우면 숫자를 **막대 안쪽 끝**에 넣는다 — 바깥에 두면 날개를 넘는다.
+   두 슬롯 색 모두 충분히 어두워 흰 글자가 읽힌다(A #2f7d43 · B #2a78d6). */
+.cmp-bf-val-in { color:var(--on-brand); }
+.cmp-bf-avg { position:absolute; top:4px; bottom:4px; width:0; border-left:1.5px solid var(--t3); }
+/* 🚨 카테고리 라벨에 **계열 색을 입히지 않는다**. 이 화면에서 초록은 「회사 A」라는 뜻이라,
+   가운데 축 글자가 초록이면 카테고리가 A 소속인 것처럼 읽힌다(dataviz: 텍스트는 계열 색을
+   입지 않는다). 브랜드색은 눌림이 아니라 **조작 가능성**(hover 테두리·포커스 링)에만 쓴다. */
+.cmp-bf-cat { margin:3px var(--sp-2); padding:var(--sp-1); border:var(--bw) solid var(--border); border-radius:var(--r-xs);
+  background:var(--surface); color:var(--text); font-size:var(--fs-sm); font-weight:var(--fw-semibold); cursor:pointer; }
+.cmp-bf-cat:hover { background:var(--surface-soft); border-color:var(--brand); }
+/* 펼친 상태는 **색이 아니라 면과 셰브론**으로 말한다 — 아래 패널이 열려 있다는 사실은 패널
+   자신이 이미 보여 주고 있고, 여기서 필요한 것은 「이 줄이 그 패널의 머리」라는 표시뿐이다. */
+.cmp-bf-cat[aria-expanded="true"] { background:var(--surface-soft); border-color:var(--border-strong); }
+.cmp-bf-chev { display:inline-block; margin-left:var(--sp-1); font-size:var(--fs-xs); }
+.cmp-bf-cat[aria-expanded="true"] .cmp-bf-chev { transform:rotate(180deg); }
+.cmp-bf-panel { padding:var(--sp-2) var(--sp-3) var(--sp-3); border-top:var(--bw) dashed var(--border); background:var(--surface-soft); }
+.cmp-bfp2 { display:grid; grid-template-columns:1fr; gap:var(--sp-3); }
+.cmp-bfp-col h4 { margin:0 0 var(--sp-1); padding-bottom:2px; border-bottom:var(--bw) solid var(--border);
+  font-family:var(--font-sans); font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--t2); }
+.cmp-bfp-col li { padding:3px 0; border-bottom:var(--bw) solid var(--border); font-size:var(--fs-sm); line-height:var(--lh-base); }
+.cmp-bfp-col li:last-child { border-bottom:none; }
+.cmp-amt { margin-left:var(--sp-1); font-variant-numeric:tabular-nums; }
+/* 병기한 B 쪽 이름 — 같은 행의 보조 정보라 한 단계 흐리게 둔다(둘이 같은 무게면 둘 다 읽힌다). */
+.cmp-nm-b { color:var(--t3); }
+.cmp-bf-foot { display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-3); align-items:flex-start;
+  padding:var(--sp-2) var(--sp-3); border-top:var(--bw) solid var(--border); }
+.cmp-bf-note { flex:1 1 220px; color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-base); }
+
+/* 표 — 넘치면 표 자체가 가로로 구른다(본문은 절대 가로 스크롤하지 않는다). */
+.cmp-tw { margin-top:var(--sp-2); overflow-x:auto; border:var(--bw) solid var(--border); }
+.cmp-t { width:100%; border-collapse:collapse; background:var(--surface); font-size:var(--fs-sm); }
+.cmp-t th, .cmp-t td { padding:var(--sp-1) var(--sp-3); border-bottom:var(--bw) solid var(--border);
+  text-align:left; vertical-align:top; }
+.cmp-t thead th { background:var(--surface-soft); color:var(--t2); font-size:var(--fs-xs); font-weight:var(--fw-semibold); }
+.cmp-t tbody tr:last-child td { border-bottom:none; }
+.cmp-next-row { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-3); }
+/* `/vs` 정적 3쪽의 쌍 레이더 설명 — 도구 화면의 `.cmp-rdcap` 과 같은 말을 한다. */
+.combo-radar-cap { margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); line-height:var(--lh-base); }
 
 .sc-legend { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-3); margin-top:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); }
 .sc-key { display:inline-block; width:12px; height:12px; margin-right:var(--sp-1); vertical-align:middle; }
@@ -1247,4 +1418,17 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .home-intro { font-size:var(--fs-base); }
   .home-four { grid-template-columns:repeat(auto-fit, minmax(max(40%, 220px), 1fr)); column-gap:var(--sp-6); }
   .home-sec { margin-top:var(--sp-8); }
+
+  /* 복지 비교(SP-CMP-8) — find 절과 **같은 모양의 규칙을 복제**한다. 합치면 find 의 CSS 계약
+     테스트 5개가 깨진다(그 테스트는 셀렉터 문자열 자체를 본다). top 은 토큰으로 두되 deck.js 가
+     헤더 높이를 **실측해 덮어쓴다** — 360px 에서 GNB 가 두 줄(97px)이 되면 이 57px 은 거짓이다. */
+  .cmp-deckwrap { position:sticky; top:var(--header-h); z-index:15; padding:var(--sp-2) 0; }
+  .cmp-deckwrap.collapsed:not(.open) .cmp-deck { display:none; }
+  .cmp-deckwrap.collapsed:not(.open) .cmp-minibar { display:flex; }
+  .cmp-deckwrap.collapsed.open .cmp-minibar { display:none; }
+  /* 9각형은 요약 왼쪽 칸(320px)에, 문장·타일은 오른쪽에. 좁은 폭에서는 한 줄씩 쌓인다. */
+  .cmp-bfp2 { grid-template-columns:1fr 1fr; gap:0 var(--sp-5); }
+  /* A 목록은 가운데 축 쪽으로 붙는다(목업). 클래스는 `cmp-bfp-a` 다 — 예전 `-col-a` 는 DOM 에 없었다. */
+  .cmp-bfp-a { text-align:right; }
+  .cmp-bfp-a h4 { direction:rtl; }
 }

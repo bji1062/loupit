@@ -490,14 +490,22 @@ def test_robots_keeps_the_login_shell_out_of_the_crawl_budget():
 
 
 def test_radar_vertices_have_hover_hit_areas_with_labels(fake_bundle, fake_now):
-    """r=4 점은 마우스를 올리기 어렵다 — 꼭짓점마다 투명 히트 원(r=14) + 즉시 뜨는 CSS 라벨."""
+    """r=4 점은 마우스를 올리기 어렵다 — 꼭짓점마다 투명 히트 원(r=14) + 즉시 뜨는 CSS 라벨.
+
+    ⚠ 2026-09-12(SP-CMP-4) 기대값 갱신: 히트 그룹이 `tabindex="0"` + `role="img"` + 축별
+    `aria-label` 을 갖게 됐다. 호버 전용 라벨은 값을 키보드·보조기기 사용자에게서 통째로 감춘다 —
+    비교 화면(`rdp-hit`)과 상세를 **같이** 열었다. 라벨 문형도 0 을 「0항목」이 아니라 「등록 없음」
+    으로 적는다(`radar.fmt` 하나에서 나온다, SP-CMP-3).
+    """
     html = _samsung(fake_bundle, fake_now)
     svg = html[html.index('<svg class="rd"'):]
     svg = svg[:svg.index("</svg>")]
-    hits = re.findall(r'<g class="rd-hit"><circle class="rd-hitc" [^>]*r="14"></circle>'
+    hits = re.findall(r'<g class="rd-hit" tabindex="0" role="img" aria-label="[^"]*">'
+                      r'<circle class="rd-hitc" [^>]*r="14"></circle>'
                       r'<text class="rd-hv" [^>]*>([^<]*)</text></g>', svg)
     assert len(hits) == 9
     assert any(t.startswith("복리후생 ") and "평균 " in t for t in hits)
+    assert "0항목" not in svg, "0 은 「등록 없음」이다 — 비교 화면과 같은 낱말로 적는다"
     assert "<title>" not in svg  # role="img" 아래 title 은 안 읽히고, SEO <title> 카운트만 흐린다
     # 히트 원이 마지막에 그려져야 포인터를 받는다(최상단 페인트)
     assert svg.rindex('class="rd-hit"') > svg.rindex('class="rd-lb"')

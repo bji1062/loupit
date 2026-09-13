@@ -310,6 +310,36 @@ export function bandCoeff(item, now) {
   return base + (expired ? BAND_EXPIRE : 0);
 }
 
+/**
+ * **항목 하나**의 금액 맞대결 판정 (SP-CMP-6). 반환 `'same' | 'a' | 'b' | 'unsure'`.
+ *
+ * 두 밴드 `[amt×(1−c), amt×(1+c)]` 가 겹치면 「말할 수 없음」이고, 겹치지 않으면 큰 쪽이다.
+ * 계수 `c` 는 **새로 만들지 않는다** — `bandCoeff`(공식 ±5% · 추정 ±20% · 만료 +15%p)를 그대로
+ * 쓴다. 계수를 문서와 JS 두 곳에 적으면 한쪽만 바뀌는 날이 오고, 그날 판정이 조용히 갈린다.
+ *
+ * 🚨 **총액 판정은 만들지 않는다.** 등록 금액에는 대출 한도(1억)·일회성 포상처럼 연간 환산이
+ * 아닌 값이 섞여 있어 그 합의 우열은 무엇으로 표현하든 거짓이다(D-6). 이 함수는 **항목 단위**
+ * 로만 쓰고, 결과를 더하거나 세어 「종합 우세」를 만들지 마라.
+ *
+ * 금액이 한쪽이라도 없으면 `'unsure'` 다 — 「금액 맞대결」 표는 애초에 양쪽 금액이 있는 공통
+ * 코드만 싣지만, 없는 값을 0 으로 취급해 「큰 쪽」을 말하는 경로를 열어 두지 않는다.
+ */
+export function pairVerdict(a, b, now) {
+  // ⚠ `Number(null)` 은 0 이고 0 은 유한하다 — `!= null` 로 먼저 거르지 않으면 「금액 미기재」가
+  // 「0원」이 되어 상대가 무조건 큰 쪽으로 판정된다(없는 값을 0 으로 세지 않는다, SP-CMP-3).
+  const amt = (it) => (it && !it.qual_yn && it.benefit_amt != null ? Number(it.benefit_amt) : NaN);
+  const amtA = amt(a);
+  const amtB = amt(b);
+  if (!Number.isFinite(amtA) || !Number.isFinite(amtB)) return 'unsure';
+  if (amtA === amtB) return 'same';
+  const ca = bandCoeff(a, now);
+  const cb = bandCoeff(b, now);
+  const loA = amtA * (1 - ca), hiA = amtA * (1 + ca);
+  const loB = amtB * (1 - cb), hiB = amtB * (1 + cb);
+  if (loA <= hiB && loB <= hiA) return 'unsure'; // 밴드가 겹친다 = 차이를 말할 수 없다
+  return amtA > amtB ? 'a' : 'b';
+}
+
 /** 체크·비정성 항목의 ± 절대 합(만원). = Σ |amt| × bandCoeff (항목별 산정 후 합산, 일괄 % 금지). */
 export function sumBand(list, now) {
   return (list || [])

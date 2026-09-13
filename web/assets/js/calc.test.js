@@ -16,7 +16,7 @@ import {
   // 함수
   parseSalRange, deriveOfferRange, benTotal, benByCat, benCatCompare, qualCompare,
   effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks, commuteCompare,
-  bandCoeff, sumBand, buildVdCard, sacrificeCost,
+  bandCoeff, pairVerdict, sumBand, buildVdCard, sacrificeCost,
   compare, calc, restSummary,
 } from './calc.js';
 
@@ -65,7 +65,7 @@ describe('T-05.1.1 모듈 골격·상수 스모크', () => {
   test('함수 전량 export', () => {
     for (const fn of [parseSalRange, deriveOfferRange, benTotal, benByCat, benCatCompare,
       qualCompare, effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks,
-      commuteCompare, bandCoeff, sumBand, buildVdCard,
+      commuteCompare, bandCoeff, pairVerdict, sumBand, buildVdCard,
       sacrificeCost, compare, calc, restSummary]) {
       assert.equal(typeof fn, 'function');
     }
@@ -257,6 +257,59 @@ describe('T-05.6 복지 불확실성 밴드 DEC-2', () => {
   test('T-ENGINE-24: bandCoeff stated 만료 → 0.20(0.05+0.15)', () => {
     const result = bandCoeff({ amt_source: 'stated', expires_dtm: PAST_EXPIRED }, NOW);
     assert.ok(Math.abs(result - 0.20) < 1e-9, `기대 0.20, 실제 ${result}`);
+  });
+
+  // ── SP-CMP-6 pairVerdict — 항목 하나의 금액 맞대결 ────────────────────────
+  //
+  // 계수를 여기 다시 적지 않는다: `bandCoeff` 를 그대로 쓰는지 자체를 검사한다. 계수가 두 곳에
+  // 적히면 한쪽만 바뀌는 날이 오고, 그날 화면과 문서가 다른 판정을 말한다.
+
+  test('T-CMP-1: 값이 같으면 「같음」 — 밴드를 보기 전에 결정된다', () => {
+    const a = { amt_source: 'stated', benefit_amt: 100 };
+    const b = { amt_source: 'estimated', benefit_amt: 100 };
+    assert.equal(pairVerdict(a, b, NOW), 'same');
+  });
+
+  test('T-CMP-2: 밴드가 겹치면 「말할 수 없음」 — 기본값이 여기다(실측 중앙 66.7%)', () => {
+    // 100 추정 → [80,120], 110 추정 → [88,132]. 겹친다.
+    assert.equal(pairVerdict(
+      { amt_source: 'estimated', benefit_amt: 100 },
+      { amt_source: 'estimated', benefit_amt: 110 }, NOW), 'unsure');
+  });
+
+  test('T-CMP-3: 겹치지 않으면 큰 쪽', () => {
+    const big = { amt_source: 'stated', benefit_amt: 400 };
+    const small = { amt_source: 'stated', benefit_amt: 100 };
+    assert.equal(pairVerdict(big, small, NOW), 'a');
+    assert.equal(pairVerdict(small, big, NOW), 'b');
+  });
+
+  test('T-CMP-4: 만료는 밴드를 넓혀 판정을 「말할 수 없음」으로 되돌린다(+15%p)', () => {
+    // 만료 전: 100 공식[95,105] vs 130 공식[123.5,136.5] → 안 겹쳐 B 가 큼.
+    const fresh = { amt_source: 'stated', benefit_amt: 100, expires_dtm: null };
+    const other = { amt_source: 'stated', benefit_amt: 130, expires_dtm: null };
+    assert.equal(pairVerdict(fresh, other, NOW), 'b');
+    // 만료 후: 100 → 0.05+0.15 = 0.20 → [80,120]. 130 쪽 하한 123.5 보다 낮지만 위쪽이 닿는다.
+    const stale = { amt_source: 'stated', benefit_amt: 100, expires_dtm: PAST_EXPIRED };
+    const otherStale = { amt_source: 'stated', benefit_amt: 130, expires_dtm: PAST_EXPIRED };
+    assert.equal(pairVerdict(stale, otherStale, NOW), 'unsure');
+  });
+
+  test('T-CMP-5: 금액이 없거나 정성이면 「말할 수 없음」 — 없는 값을 0 으로 세지 않는다', () => {
+    const amt = { amt_source: 'stated', benefit_amt: 100 };
+    assert.equal(pairVerdict(amt, { qual_yn: true, benefit_amt: null }, NOW), 'unsure');
+    assert.equal(pairVerdict(amt, { amt_source: 'stated', benefit_amt: null }, NOW), 'unsure');
+    assert.equal(pairVerdict(null, amt, NOW), 'unsure');
+  });
+
+  test('T-CMP-6: 계수를 amt_source 에서 읽는다 — 같은 금액 쌍이 출처에 따라 다르게 판정된다', () => {
+    // 100 대 125 는 공식(±5%)이면 [95,105] vs [118.75,131.25] 로 안 겹치고,
+    // 추정(±20%)이면 [80,120] vs [100,150] 으로 겹친다. 계수를 여기 상수로 적지 않고도
+    // 「bandCoeff 를 그대로 쓴다」가 검사된다 — 계수를 두 곳에 적으면 한쪽만 바뀐다.
+    const pair = (src) => pairVerdict(
+      { amt_source: src, benefit_amt: 100 }, { amt_source: src, benefit_amt: 125 }, NOW);
+    assert.equal(pair('stated'), 'b');
+    assert.equal(pair('estimated'), 'unsure');
   });
 
   test('T-ENGINE-25: bandCoeff estimated 만료 → 0.35(0.20+0.15)', () => {

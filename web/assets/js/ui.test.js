@@ -158,12 +158,15 @@ describe('UI-3 입력 뷰 컨트롤 렌더·상태 배선(MB-5·15)', () => {
 describe('UI-4 선택 → 입력뷰 전진 + 비교하기 배선(MB-8·15)', () => {
   beforeEach(() => loadShell());
 
-  test('maybeAdvance: 양 슬롯 matched → 입력뷰 렌더 + go("input")', () => {
+  test('maybeAdvance: 양 슬롯 matched → 입력뷰 렌더 + go("benefits")', () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 두 슬롯이 차면 **복지 비교**로 간다.
+    //   목적지는 `pairTarget()` 하나가 정한다 — 여기와 부팅 폴백이 따로 적으면 경로마다
+    //   다른 화면이 뜬다. 입력 뷰는 그래도 미리 그린다(덱의 「이직 계산기 →」가 바로 연다).
     const state = stateWithMatches();
     const calls = [];
     maybeAdvance(state, { go: (v) => calls.push(v) });
-    assert.deepEqual(calls, ['input']);
-    assert.ok(document.getElementById('sal-low'), '입력뷰 컨트롤이 렌더됨');
+    assert.deepEqual(calls, ['benefits']);
+    assert.ok(document.getElementById('sal-low'), '입력뷰 컨트롤은 그래도 렌더된다');
   });
 
   test('한쪽만 matched → 전진 안 함(검색뷰 유지)', () => {
@@ -198,7 +201,7 @@ describe('UI-4 선택 → 입력뷰 전진 + 비교하기 배선(MB-8·15)', () 
       go: (v) => calls.push(v),
       onPairReady: () => { throw new Error('네트워크'); },
     }));
-    assert.deepEqual(calls, ['input']);
+    assert.deepEqual(calls, ['benefits']);
   });
 
   test('btn-compare 클릭 → runReport 호출 + go("report")', () => {
@@ -450,7 +453,7 @@ describe('UI-9 해시 딥링크 강등·부팅 자동 복원(B-1)', () => {
 // 머리가 "이직 후보(B) — 직접 입력"이고 회사를 고를 컨트롤이 화면에 하나도 없었다.
 // 회사 선택 UI(#search-input-a/b + 후보 목록)는 검색 뷰에만 있고, 입력 뷰에서 검색 뷰로
 // 돌아갈 길도 없다("새 비교"는 리포트 뷰 소유). → 입력 뷰 진입 자격 = 두 슬롯.
-describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이면 입력 뷰', () => {
+describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이면 복지 비교', () => {
   const REF = {
     company_types: [{ comp_tp_cd: 'large', growth_rate_val: 0.04, stability_score_no: 90 }],
     benefit_presets: {},
@@ -480,11 +483,16 @@ describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이�
     );
   });
 
-  test('UI-10b: ?a=1&b=2 → 입력 뷰(두 슬롯이 다 찼다)', async () => {
+  test('UI-10b: ?a=1&b=2 → 복지 비교 뷰(두 슬롯이 다 찼다)', async () => {
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): `/compare/?a=&b=`(해시 없음) = 모드 A 의 주소다.
+    //   내 숫자를 넣는 화면은 `#input` 이나 덱의 「이직 계산기 →」로 **명시할 때만** 뜬다.
     loadPrefillShell('?a=1&b=2');
     await boot(hooks);
-    assert.equal(document.getElementById('view-input').hidden, false);
+    assert.equal(document.getElementById('view-benefits').hidden, false);
+    assert.equal(document.getElementById('view-input').hidden, true);
     assert.equal(document.getElementById('view-search').hidden, true);
+    assert.ok(document.getElementById('benefits-body').children.length > 0, '본문이 그려져야 한다');
+    // 입력 뷰는 **그래도 준비돼 있다** — 덱의 「이직 계산기 →」가 바로 그 화면을 연다.
     assert.ok(document.getElementById('input-slot-b').children.length > 0, 'B 슬롯 컨트롤 렌더');
   });
 
@@ -519,7 +527,7 @@ describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이�
   // 초안(24h)이 B 를 들고 있으면 ?a= 는 사용자가 고른 적 없는 쌍으로 입력 뷰를 띄운다.
   // 초안은 "상태만 복원하고 화면은 URL 이 정한다"는 결정을 지키므로 화면은 그대로 두되,
   // **그 B 를 바꿀 길**이 화면 안에 있어야 한다(hash 가 '' 이라 뒤로가기는 사이트 밖이다).
-  test('UI-10f: 초안 B + ?a=1 → 입력 뷰지만 B 를 "회사 변경"으로 바꿀 수 있다', async () => {
+  test('UI-10f: 초안 B + ?a=1 → 비교 뷰지만 회사를 바꿀 길이 화면 안에 있다', async () => {
     const dom = loadPrefillShell('?a=1');
     const { inputDraft } = await import('./store.js');
     inputDraft.save({
@@ -531,12 +539,19 @@ describe('UI-10 프리필 부팅 — 한 슬롯이면 검색 뷰, 두 슬롯이�
     App.state = createInitialState();
     await boot(hooks);
     assert.equal(App.state.matched.b.comp_id, 2, '사전조건: 초안이 B 를 되살렸다');
-    assert.equal(document.getElementById('view-input').hidden, false, '쌍이 찼으므로 입력 뷰');
-    const btn = document.querySelector('#input-slot-b button.in-slot-pick');
-    assert.ok(btn, '고른 적 없는 B 를 바꿀 길이 화면 안에 있어야 한다');
+    // ⚠ 2026-09-12 의도된 계약 변경(SP-CMP-2): 쌍이 차면 복지 비교 뷰다. 이 케이스의 요지는
+    //   변하지 않았다 — **고른 적 없는 회사를 바꿀 길이 그 화면 안에 있어야 한다**. 예전에는
+    //   입력 슬롯의 「회사 변경」 버튼이, 지금은 덱의 「회사 바꾸기」가 그 길이다.
+    assert.equal(document.getElementById('view-benefits').hidden, false, '쌍이 찼으므로 비교 뷰');
+    const btn = document.querySelector('#view-benefits [data-cmp-search]');
+    assert.ok(btn, '회사를 바꿀 길이 화면 안에 있어야 한다');
     btn.dispatchEvent(new dom.window.Event('click', { bubbles: true }));
     assert.equal(document.getElementById('view-search').hidden, false);
+    // 커서는 **고른 적 없는 쪽**에 간다. URL 이 시킨 것은 A 뿐이고 B 는 초안이 되살렸으니,
+    // 사람이 바꾸고 싶은 것은 십중팔구 B 다(`slotToChange`).
     assert.equal(document.activeElement, document.getElementById('search-input-b'));
+    // 입력 뷰의 「회사 변경」 버튼도 그대로 살아 있다(모드 B 로 넘어가면 여전히 쓰인다).
+    assert.ok(document.querySelector('#input-slot-b button.in-slot-pick'));
   });
 
   test('UI-10c: ?a=없는회사 → 검색 뷰·빈 상태(해석 실패는 정상 검색 진입)', async () => {
@@ -601,5 +616,168 @@ describe('UI-11 슬롯 머리의 회사 선택·변경 버튼(막다른 골목 �
     renderInputView(state, {});
     const title = document.querySelector('#input-slot-b .in-slot-title');
     assert.doesNotMatch(title.textContent, /직접 입력/);
+  });
+});
+
+// ── SP-CMP 모드 A 「복지 비교」 셸·라우팅 ────────────────────────────────────
+//
+// 이 묶음이 지키는 것은 세 가지다: 셸이 모드 A 를 실제로 담고 있는가(진입점 없는 죽은 화면을
+// 셋째로 만들지 않는다) · 목적지 판정이 **한 곳**인가 · 회사를 바꿔도 히스토리가 쌓이지 않는가.
+
+const { pairTarget } = await import('./benefits.js');
+const { swapSlots, syncPairUrl, bindBenefitsView, go, slotToChange, noteBorrowedSlot } = await import('./app.js');
+
+describe('SP-CMP-9 compare 셸 계약', () => {
+  test('compare 셸은 noindex 다 — 상태 의존 SPA 는 색인 대상이 아니다(가드 0건이었다)', () => {
+    assert.match(SHELL, /<meta name="robots" content="noindex, follow">/);
+  });
+
+  test('셸에 모드 A 뷰가 있다 — 진입점 없는 죽은 화면을 셋째로 만들지 않는다', () => {
+    assert.match(SHELL, /id="view-benefits"[^>]*data-screen="benefits"/);
+    assert.ok(SHELL.includes('id="benefits-body"'));
+    assert.ok(SHELL.includes('data-cmp-deck'));
+    assert.ok(SHELL.includes('data-cmp-minibar'));
+  });
+
+  test('모드 A 뷰에 광고 자리가 없다 — 리포트 슬롯 1개는 모드 B 의 것이다', () => {
+    const view = SHELL.slice(SHELL.indexOf('id="view-benefits"'), SHELL.indexOf('id="view-input"'));
+    assert.ok(!view.includes('data-ad-position'));
+    assert.match(SHELL, /<body data-page-type="input">/, '무광고 page_type 이 그대로여야 한다');
+  });
+
+  test('뷰의 첫 헤딩은 「복지 비교」다 — go() 가 여기로 포커스를 옮긴다(회사명은 덱이 말한다)', () => {
+    const view = SHELL.slice(SHELL.indexOf('id="view-benefits"'), SHELL.indexOf('id="view-input"'));
+    assert.match(view, /<h2>복지 비교<\/h2>/);
+  });
+});
+
+describe('SP-CMP-2 목적지·히스토리', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사')],
+  };
+
+  function benefitsShell() {
+    const dom = loadShell('https://loupit.example/compare/?a=a사&b=b사');
+    globalThis.localStorage = dom.window.localStorage;
+    App.state = stateWithMatches();
+    App.state.REF = REF;
+    bindBenefitsView(App.state, {});
+    go('benefits', { push: false });
+    return dom;
+  }
+
+  test('목적지 판정의 집은 pairTarget() 하나다', () => {
+    assert.equal(pairTarget(), 'benefits');
+  });
+
+  test('「회사 바꾸기」는 항목을 쌓지 않는다 — 다섯 번 눌러야 나가는 뒤로가기를 만들지 않는다', () => {
+    const dom = benefitsShell();
+    const pushed = [];
+    const replaced = [];
+    dom.window.history.pushState = (...a) => pushed.push(a);
+    dom.window.history.replaceState = (...a) => replaced.push(a);
+    globalThis.history = dom.window.history;
+    document.querySelector('#view-benefits [data-cmp-search]')
+      .dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(document.getElementById('view-search').hidden, false);
+    assert.equal(pushed.length, 0, 'pushState 가 쌓였다');
+    assert.equal(replaced.length, 1, 'replaceState 로 같은 자리를 덮어야 한다');
+  });
+
+  test('「이직 계산기 →」는 항목을 남긴다 — 뒤로가기로 비교 화면에 돌아올 수 있어야 한다', () => {
+    const dom = benefitsShell();
+    const pushed = [];
+    dom.window.history.pushState = (...a) => pushed.push(a);
+    globalThis.history = dom.window.history;
+    document.querySelector('#view-benefits [data-cmp-input]')
+      .dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(document.getElementById('view-input').hidden, false);
+    assert.equal(pushed.length, 1);
+    assert.equal(pushed[0][2], '#input');
+  });
+
+  test('주소가 화면을 따라간다 — ?a=&b= 가 지금 보이는 두 회사를 가리킨다', () => {
+    const dom = loadShell('https://loupit.example/compare/?a=zzz&b=zzz');
+    App.state = stateWithMatches();
+    App.state.REF = REF;
+    globalThis.history = dom.window.history;
+    syncPairUrl(App.state);
+    assert.equal(dom.window.location.search, '?a=a%EC%82%AC&b=b%EC%82%AC');
+  });
+});
+
+describe('SP-CMP-8 빌려온 슬롯을 말해 준다', () => {
+  test('주소가 한 슬롯만 시켰으면 나머지가 어디서 왔는지 알린다', () => {
+    loadShell('https://loupit.example/compare/?a=a사');
+    App.state = stateWithMatches();
+    App.state.ui.prefilledSlots = ['a'];
+    const said = noteBorrowedSlot(App.state);
+    assert.match(said, /회사 B 는 이전 비교에서 가져온 B사 입니다/);
+    assert.match(said, /회사 바꾸기/);
+    const live = document.querySelector('[data-cmp-live]');
+    assert.equal(live.getAttribute('aria-live'), 'polite');
+  });
+
+  test('주소가 둘 다 시켰으면 아무 말도 하지 않는다 — 사용자가 고른 것이다', () => {
+    loadShell('https://loupit.example/compare/?a=a사&b=b사');
+    App.state = stateWithMatches();
+    App.state.ui.prefilledSlots = ['a', 'b'];
+    assert.equal(noteBorrowedSlot(App.state), null);
+    assert.equal(document.querySelector('[data-cmp-live]').textContent, '');
+  });
+});
+
+describe('SP-CMP-8 slotToChange — 커서는 고른 적 없는 칸에 간다', () => {
+  test('빈 슬롯이 있으면 그쪽이다', () => {
+    const s = createInitialState();
+    s.matched.a = fixtureCompany(1, 'A사');
+    assert.equal(slotToChange(s), 'b');
+  });
+
+  test('둘 다 찼고 URL 이 A 만 시켰으면 B 다 — A 는 사람이 고른 셈이고 B 는 아니다', () => {
+    const s = stateWithMatches();
+    s.ui.prefilledSlots = ['a'];
+    assert.equal(slotToChange(s), 'b');
+  });
+
+  test('URL 이 둘 다 시켰거나 아무것도 안 시켰으면 A 로 간다(단서 없음)', () => {
+    const s = stateWithMatches();
+    s.ui.prefilledSlots = ['a', 'b'];
+    assert.equal(slotToChange(s), 'a');
+    s.ui.prefilledSlots = [];
+    assert.equal(slotToChange(s), 'a');
+  });
+});
+
+describe('SP-CMP-4 swapSlots — 색은 슬롯을 따른다', () => {
+  test('두 회사가 자리를 맞바꾸고, 색이 바뀐 사실을 소리로도 알린다', () => {
+    const dom = loadShell('https://loupit.example/compare/?a=a사&b=b사');
+    App.state = stateWithMatches();
+    App.state.REF = { company_types: [], benefit_presets: {}, companies: [fixtureCompany(1, 'A사'), fixtureCompany(2, 'B사')] };
+    globalThis.history = dom.window.history;
+    bindBenefitsView(App.state, {});
+    go('benefits', { push: false });
+    document.querySelector('#view-benefits [data-cmp-swap]')
+      .dispatchEvent(new dom.window.Event('click', { bubbles: true }));
+    assert.equal(App.state.matched.a.comp_nm, 'B사');
+    assert.equal(App.state.matched.b.comp_nm, 'A사');
+    const live = document.querySelector('[data-cmp-live]');
+    // 화면을 보는 사람에겐 이름이 자리를 옮긴 것이 보이지만, 안 보는 사람에겐 아무 일도
+    // 일어나지 않은 것과 같다 — 색·표식이 슬롯을 따라간다는 사실을 말로 준다.
+    assert.match(live.textContent, /회사 A 는 B사\(초록 원\)/);
+    assert.match(live.textContent, /회사 B 는 A사\(파랑 네모\)/);
+    assert.equal(live.getAttribute('aria-live'), 'polite');
+  });
+
+  test('내 숫자는 슬롯이 아니라 사람을 따라간다 — 연봉·상승률은 그대로다', () => {
+    const dom = loadShell('https://loupit.example/compare/');
+    App.state = stateWithMatches();
+    App.state.salS.a = { low: 5000, high: 7000 };
+    App.state.selectedRate = 10;
+    globalThis.history = dom.window.history;
+    swapSlots(App.state, {});
+    assert.deepEqual(App.state.salS.a, { low: 5000, high: 7000 });
+    assert.equal(App.state.selectedRate, 10);
   });
 });
