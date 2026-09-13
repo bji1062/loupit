@@ -1,0 +1,153 @@
+{#- home.html — 대문 `/` (SCR-01·SCR-10, 대문 재설계 2단계 2026-09-13). 뷰모델 = `pages/home.py::build_view`.
+
+   1단계 수기 셸(web/index.html)의 마크업·문안을 그대로 옮기고 **숫자·회사·링크만** 뷰모델에서 받는다.
+   ⚠ 여기서 숫자를 손으로 적지 마라 — 웨이브가 공개되는 날 거짓이 되는 것이 1단계의 한계였다.
+   ⚠ `page_type = 'landing'` 과 base.html 의 `static-ads.js` 가 한 쌍이다. 둘 중 하나만 있으면 광고는 조용히 0 이 된다.
+   ⚠ app.js 는 싣지 않는다(base.html 이 싣지 않는다). 비교 도구는 /compare/ 가 통째로 갖고 있다.
+   ⚠ h1 에 `id="main-heading"` 을 달지 않는다 — base.html 이 `<main>` 에 이미 달았다(본문 바로가기 대상, 중복 id 금지).
+   ⚠ 「재직자가 직접 고칩니다」 블록에 링크를 걸지 않는다. /verify·/edit·/edits 로 가는 <a> 는 hidden authnav
+     슬롯 하나만 허용된다(prod 는 그 경로를 nginx 가 404 로 막는다 — test_authnav.py). -#}
+{% extends "base.html" %}
+{% set page_type = 'landing' %}
+{% block head %}
+{% include "partials/_head_meta.html" %}
+{#- 네이버 서치어드바이저 소유확인(2026-07-21). 루트 문서 전용 — 🚨 지우면 서치어드바이저 소유권을 잃는다. #}
+<meta name="naver-site-verification" content="{{ naver_site_verification }}">
+{#- og:site_name 은 CFG.site_name('jobcho.wiki') — 브랜드 문자열 「잡초위키」는 h1·title·JSON-LD name 이 싣는다. #}
+<meta property="og:site_name" content="{{ cfg.site_name }}">
+<meta property="og:locale" content="ko_KR">
+{% include "partials/_jsonld_org.html" %}
+{% endblock %}
+{% block main %}
+<div class="home">
+  <section class="home-hero" aria-labelledby="home-title">
+    <h1 id="home-title">{{ meta_title }}</h1>
+    <p class="lede">잡초(jobcho)에 오신 것을 환영합니다.</p>
+    {#- 데이터 띠 — 이름-값 쌍이라 <dl>. DOM 은 dt → dd(스크린리더 「등록 회사, 126곳」), 화면만 뒤집는다. #}
+    <dl class="home-strip">
+      <div><dt>등록 회사</dt><dd>{{ view.total_companies }}곳</dd></div>
+      <div><dt>복지 · 표준 항목 {{ view.total_codes }}종</dt><dd>{{ view.total_rows }}건</dd></div>
+{% if view.year_range %}
+      <div><dt>재무·직원 사업연도</dt><dd>{{ view.year_range }}</dd></div>
+{% endif %}
+{% if view.latest_registration %}
+      <div><dt>최근 등록</dt><dd>{{ view.latest_registration }}</dd></div>
+{% endif %}
+    </dl>
+{% if view.trust.latest %}
+    <p class="home-asof">복지 항목 최근 확인 {{ view.trust.latest }}</p>
+{% endif %}
+
+    {#- 비교 도구의 두 모드(SPEC 19 SP-CMP). 진짜 차이는 **내 숫자를 넣는가**라 카드도 둘이다.
+        「복지 조건으로 회사 찾기」 카드는 두지 않는다(2026-09-13 사용자 결정 — 입구는 GNB 탭과 아래 칩 섹션). #}
+    <div class="home-cta">
+      <a href="/compare/">복지 비교 — 두 회사 복지를 나란히 <span aria-hidden="true">→</span><span class="home-cta-d">회사 이름 두 개만 고르면 9개 카테고리 복지 항목과 연 환산 금액, 근무형태를 항목별로 맞대어 보여줍니다. 연봉이나 근무시간을 입력할 필요가 없습니다.</span></a>
+      <a href="/compare/#input">이직 계산기 — 내 연봉으로 따져 보기 <span aria-hidden="true">→</span><span class="home-cta-d">지금 연봉과 이직 후 인상률, 야근·통근 시간을 넣으면 두 회사의 실효연봉과 시간당 가치를 계산해 연봉·워라밸·복지 가운데 내가 고른 기준으로 판정합니다. 계산은 브라우저 안에서만 이뤄지고 서버에 저장되지 않습니다.</span></a>
+    </div>
+
+    {#- 인트로는 운영자 확정 문안(2026-09-08) — 띠·CTA 뒤에 둔다(2026-09-12 사용자 결정 (b): 폰 첫 화면에 CTA). #}
+    <p class="home-intro">jobcho는 Job Choice, 더 나은 직장 선택을 뜻합니다.</p>
+    <p class="home-intro">직장을 비교할 때 우리는 흔히 연봉부터 봅니다. 하지만 복지도 연봉의 일부입니다.</p>
+    <p class="home-intro">채용공고에 적힌 ‘각종 복지 제도’가 실제로 얼마의 가치가 있는지, 함께 따져봐야 합니다.</p>
+    <p class="home-intro">잡초위키는 흩어진 기업 복지 정보를 한곳에 모으고, 실제 구성원들의 경험을 더해 연봉만으로는 보이지 않는 회사의 가치를 비교할 수 있도록 돕습니다.</p>
+    <p class="home-intro-note">(복지는 회사 공식 채용·복지 페이지에서 수집해 {{ view.total_codes }}종의 표준 항목으로 다시 분류하고, 항목마다 연간 환산 금액과 금액의 성격(회사 공식 수치/추정치)을 적습니다.)</p>
+    <p class="home-intro">여러분들이 남긴 한 줄의 경험이 누군가의 더 나은 직장 선택을 만듭니다.</p>
+  </section>
+
+{% if view.combos %}
+  <section class="home-sec" aria-labelledby="home-vs">
+    <h2 id="home-vs">비교 예시</h2>
+    <p class="home-note">두 회사를 나란히 본 정적 리포트입니다.</p>
+    <ul class="home-list">
+{% for c in view.combos %}
+      <li><a href="{{ c.href }}">{{ c.label }}</a>{% if c.note %} <span class="home-c">{{ c.note }}</span>{% endif %}</li>
+{% endfor %}
+    </ul>
+  </section>
+{% endif %}
+
+  {#- 회사 둘러보기 — 묶음은 히트맵과 같은 KRX 분류(generator/sector.py). 1곳짜리만 「그 밖」으로 합친다. #}
+  <section class="home-sec" aria-labelledby="home-companies">
+    <h2 id="home-companies">회사 둘러보기</h2>
+    <p class="home-note">등록 회사 {{ view.total_companies }}곳{% if view.types_text %} — {{ view.types_text }}{% endif %}. 이름을 누르면 그 회사의 복지·연봉·재무 페이지로 갑니다. 괄호 안은 등록된 복지 항목 수이며, 묶음마다 항목 수가 많은 {{ view.sector_top }}곳까지 싣습니다. KRX 업종 분류를 그대로 따르므로 사업 내용과 다르게 보이는 자리가 있습니다.</p>
+{% for g in view.sectors %}
+    <div class="home-grp">
+      <h3>{{ g.name }} {{ g.total }}곳</h3>
+      <ul class="home-row">
+{% for r in g.top %}
+        <li><a href="{{ r.href }}">{{ r.name }}</a> <span class="home-c">({{ r.n }})</span></li>
+{% endfor %}
+      </ul>
+    </div>
+{% endfor %}
+    <p class="home-more"><a href="/companies">전체 {{ view.total_companies }}곳 보기 <span aria-hidden="true">→</span></a><a href="/heatmap">업종별 히트맵 <span aria-hidden="true">→</span></a></p>
+  </section>
+
+  <section class="home-sec" aria-labelledby="home-find">
+    <h2 id="home-find">복지 조건으로 찾기</h2>
+    <p class="home-note">표준 항목 {{ view.total_codes }}종을 {{ view.categories|length }}개 분류로 나눠 보유 회사 수와 함께 보여 줍니다. 항목을 누르면 그 복지가 있는 회사 목록으로 갑니다.</p>
+    <ul class="home-chips">
+{% for c in view.categories %}
+      <li><a href="/find#cat-{{ c.key }}">{{ c.label }} <b>{{ c.n }}</b></a></li>
+{% endfor %}
+    </ul>
+    <ul class="home-chips">
+{% for c in view.codes %}
+      <li><a href="/find?b={{ c.code }}">{{ c.label }} <b>{{ c.n }}</b></a></li>
+{% endfor %}
+    </ul>
+  </section>
+
+{% if view.numbers.axes %}
+  {#- 숫자로 보는 회사 — 회사 페이지 「연도별 추이」 카드와 같은 로더·같은 표기(generator/employ.py). #}
+  <section class="home-sec" aria-labelledby="home-numbers">
+    <h2 id="home-numbers">숫자로 보는 회사</h2>
+    <p class="home-note">{% if view.numbers.year %}{{ view.numbers.year }} 사업연도 사업보고서(DART) 기준. 평균연봉은 직원 {{ view.numbers.salary_min_head }}명 이상 회사만 순위에 넣었습니다 — 소인원 지주사가 상단을 독식하기 때문입니다. {% endif %}복지 항목 수는 등록된 항목의 개수이며 금액 합계 순위는 만들지 않습니다.</p>
+    <div class="home-four">
+{% for axis in view.numbers.axes %}
+      <div>
+        <h3>{{ axis.title }}</h3>
+        <ul class="home-rank">
+{% for r in axis.rows %}
+          <li><a href="{{ r.href }}">{{ r.name }}</a> <span class="home-c">{{ r.text }}</span></li>
+{% endfor %}
+        </ul>
+      </div>
+{% endfor %}
+    </div>
+  </section>
+{% endif %}
+
+{% if view.recent %}
+  {#- 새로 등록된 회사 — 정본은 generator/data/company_registrations.json(날짜 = 서빙 반영일). #}
+  <section class="home-sec" aria-labelledby="home-new">
+    <h2 id="home-new">새로 등록된 회사</h2>
+    <p class="home-note">가장 최근에 등록해 복지를 확인한 회사입니다. 항목별 확인일은 각 회사 페이지에 적혀 있습니다.</p>
+{% for w in view.recent %}
+    <div class="home-grp">
+      <h3>{{ w.date }} 등록 {{ w.companies|length }}곳</h3>
+      <ul class="home-chips">
+{% for r in w.companies %}
+        <li><a href="{{ r.href }}">{{ r.name }}</a></li>
+{% endfor %}
+      </ul>
+    </div>
+{% endfor %}
+  </section>
+{% endif %}
+
+  <section class="home-sec home-edit" aria-labelledby="home-edit-h">
+    <h2 id="home-edit-h">재직자가 직접 고칩니다</h2>
+    <p>회사 공식 페이지에 없는 복지, 바뀐 금액, 없어진 제도를 알고 계시다면 직접 고쳐 주세요. 회사 이메일로 재직을 확인하면 그 회사의 복지 항목을 수정하거나 추가할 수 있습니다. 회사 이메일은 확인에만 쓰고 저장하지 않습니다. 모든 편집은 공개 이력에 남고, 재직자가 고친 항목에는 「재직자 확인」 배지가 붙습니다. 회사가 아직 등록되어 있지 않으면 등록을 요청할 수 있습니다.</p>
+  </section>
+
+  <section class="home-sec" aria-labelledby="home-trust-h">
+    <h2 id="home-trust-h">읽기 전에 알아 둘 것</h2>
+    {%- set t = view.trust %}
+    <p class="home-trust">복지 {{ t.total }}건은 모두 회사 공식 페이지를 근거로 하지만, 회사가 금액을 직접 밝힌 항목은 <strong>{{ t.stated }}건({{ t.stated_pct }}%)</strong>입니다. {{ t.estimated }}건은 공개된 조건을 바탕으로 계산한 추정치이며 「추정」 표시와 함께 ±20% 범위로 보여 줍니다. 나머지 {{ t.qual }}건은 금액으로 환산하지 않는 정성 항목입니다.{% if t.no_amount %} 금액이 아직 적히지 않은 항목은 {{ t.no_amount }}건입니다.{% endif %}{% if t.pivot %} 항목마다 확인일을 적어 두었고, {{ t.on_pivot }}건은 {{ t.pivot }}에, {{ t.after }}건은 그 뒤에, {{ t.before }}건은 그 전에 확인했습니다.{% endif %}{% if t.undated %} 확인일이 없는 항목은 {{ t.undated }}건입니다.{% endif %} 만료된 항목은 「재확인 필요」로 표시합니다. 채용·이직처럼 중요한 결정 전에는 회사 공식 자료로 다시 확인하세요.</p>
+  </section>
+
+  {#- SP-ADS: 랜딩 콘텐츠 하단 광고 슬롯(런타임 ads.js 마운트). page_type 'landing' 과 한 쌍이다. #}
+  <div data-ad-position="content_bottom"></div>
+</div>
+{% endblock %}

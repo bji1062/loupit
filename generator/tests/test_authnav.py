@@ -22,7 +22,7 @@ import re
 from pathlib import Path
 
 from generator.context import build_context
-from generator.pages import combo, company, policy
+from generator.pages import combo, company, home, policy
 from generator.render import make_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -42,7 +42,7 @@ def _slot_tag(html: str) -> str:
 def _rendered_pages(fake_bundle, fake_now, fake_combinations_path=None):
     env = make_env()
     ctx = build_context(fake_bundle, now=fake_now)
-    pages = list(company.render_all(env, ctx)) + list(policy.render_all(env, ctx))
+    pages = list(company.render_all(env, ctx)) + list(policy.render_all(env, ctx)) + [home.render(env, ctx, pairs=[])]  # 대문(2단계)
     return pages
 
 

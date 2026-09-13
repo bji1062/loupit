@@ -11,11 +11,13 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, find, heatmap, policy
+from generator.pages import combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
 
 # /community/ 는 수기 셸(web/community/index.html) + nginx ^~ 블록이 서빙하는 정적 라우트다(SC15, 2026-08-27).
-_ALLOWED_STATIC_ROUTES = {"/", "/compare", "/community/", "/privacy", "/terms", "/disclaimer", "/ads"}
+# `/compare/`(끝 슬래시) — nginx 가 `location = /compare/` 로 직접 서빙한다. 대문 CTA 는 301 한 홉을 아끼려고
+# 이쪽을 쓴다(2026-09-13, 대문이 생성 페이지가 되어 GC-20 그물에 들어오면서 추가).
+_ALLOWED_STATIC_ROUTES = {"/", "/compare", "/compare/", "/community/", "/privacy", "/terms", "/disclaimer", "/ads"}
 
 # 문서 루트의 **실파일**(페이지가 아니라 자산). 허용목록에 문자열로 넣고 끝내지 않고
 # **파일 존재를 확인**한다 — 선언만 있고 파일이 없으면 브라우저는 404 를 받는다.
@@ -66,6 +68,7 @@ def _build_all_pages(fake_bundle, fake_now):
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
         + [find.render(env, ctx, CFG)]
+        + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
         + combo.render_all(env, ctx, CFG, pairs=pairs)
         + policy.render_all(env, ctx)
     )
