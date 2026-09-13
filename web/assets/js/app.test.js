@@ -47,7 +47,7 @@ const {
   resolveCompanyToken, restoreFromPrefill, assembleCompareState, salToStr, PRI_KEY, runReport,
   pickTrendingPair, restoreComparison,
   resolveBootScreen, hasPairState, restoreLatestComparison, onPopState, stampBootEntry,
-  snapshotInput, restoreInputDraft, bindDraftPersist, isLandingShell,
+  snapshotInput, restoreInputDraft, bindDraftPersist, isLandingShell, isFreshEntry, navigationType,
 } = await import('./app.js');
 const { recent, inputDraft } = await import('./store.js');
 const { COMPARE_LOG_URL } = await import('./trending.js');
@@ -950,5 +950,99 @@ describe('boot — 대문(landing) 셸은 초안을 복원하지 않고 지운�
     await boot({ loadReferenceFn: async () => REF });
     assert.equal(App.state.matched.a.comp_id, 1);
     assert.equal(App.state.ui.screen, 'search', '한 슬롯 프리필은 검색 뷰(2026-09-05 개정)');
+  });
+});
+
+// ── 비교 도구에 새로 들어오면 빈 칸에서 시작(2026-09-13 사용자 결정) ─────────────────────
+// 대문 「복지 비교」 카드 → `/compare/` 가 어제 본 두 회사(NAVER·카카오)를 채운 검색 뷰로 떨어졌고,
+// 그 화면에는 넘어갈 버튼도 없었다(라이브 재현). 「처음부터」의 자격을 셸(대문)만이 아니라 **진입 방식**
+// (Navigation Timing type)으로도 준다. 새로고침·뒤로가기는 이어하기 — 계산기 입력을 지키던 약속은 그대로다.
+describe('boot — 새 진입(navigate)은 초안을 지우고 빈 칸, 새로고침·뒤로가기는 이어하기', () => {
+  const REF = {
+    company_types: [], benefit_presets: {},
+    companies: [
+      { comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large', benefits: [] },
+      { comp_id: 2, comp_nm: 'SK하이닉스', comp_eng_nm: 'sk_hynix', comp_tp_cd: 'large', benefits: [] },
+    ],
+  };
+  function seedPairDraft() {
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(),
+      draft: { slots: { a: { comp_id: 1 }, b: { comp_id: 2 } }, salS: { a: { low: 4000, high: 5000 } } },
+    }));
+  }
+  async function bootCompare(navType) {
+    globalThis.document.body.dataset.pageType = 'input'; // 비교 도구 셸(대문 판정은 앞 describe 가 본다)
+    await boot({ loadReferenceFn: async () => REF, navTypeFn: () => navType });
+  }
+
+  test('isFreshEntry — navigate·prerender 만 새 진입, URL 이 회사를 지정하면 아니다', () => {
+    assert.equal(isFreshEntry({ navType: 'navigate', search: '' }), true);
+    assert.equal(isFreshEntry({ navType: 'prerender', search: '' }), true);
+    assert.equal(isFreshEntry({ navType: 'reload', search: '' }), false);
+    assert.equal(isFreshEntry({ navType: 'back_forward', search: '' }), false);
+    assert.equal(isFreshEntry({ navType: null, search: '' }), false, '모르면 지우지 않는다');
+    assert.equal(isFreshEntry({ navType: 'navigate', search: '?a=naver' }), false);
+    assert.equal(isFreshEntry({ navType: 'navigate', search: '?b=kakao' }), false);
+    assert.equal(isFreshEntry({ navType: 'navigate', search: '?utm_source=x' }), true, '회사와 무관한 쿼리는 지정이 아니다');
+    assert.equal(isFreshEntry(), false, '인자 없음 무크래시');
+  });
+
+  test('navigationType — Navigation Timing 의 type, 없거나 깨지면 null', () => {
+    assert.equal(navigationType({ getEntriesByType: () => [{ type: 'reload' }] }), 'reload');
+    assert.equal(navigationType({ getEntriesByType: () => [] }), null);
+    assert.equal(navigationType({ getEntriesByType: () => { throw new Error('x'); } }), null);
+    assert.equal(navigationType({}), null);
+    assert.equal(navigationType(null), null);
+  });
+
+  test('대문 카드 → `/compare/`(navigate) → 두 칸 비움 + 초안 삭제 + 검색 뷰', async () => {
+    seedPairDraft();
+    await bootCompare('navigate');
+    assert.equal(App.state.matched.a, null, '누르자마자 어제의 회사가 골라져 있으면 안 된다');
+    assert.equal(App.state.matched.b, null);
+    assert.deepEqual(App.state.salS.a, { low: null, high: null });
+    assert.equal(App.state.ui.screen, 'search');
+    assert.equal(globalThis.localStorage.getItem('loupit.inputDraft'), null,
+      '남겨 두면 다음 새로고침에서 되살아나 「빈 칸에서 시작」이 한 번짜리가 된다');
+  });
+
+  test('`/compare/#input`(navigate, 이직 계산기 카드) → 어제의 쌍으로 계산기에 들어가지 않는다', async () => {
+    seedPairDraft();
+    globalThis.location.hash = '#input';
+    await bootCompare('navigate');
+    assert.equal(App.state.matched.a, null);
+    assert.equal(App.state.ui.screen, 'search', '쌍이 없으면 #input 은 검색 뷰로 강등(규칙 3)');
+  });
+
+  test('새로고침(reload) → 종전대로 이어하기', async () => {
+    seedPairDraft();
+    await bootCompare('reload');
+    assert.equal(App.state.matched.a.comp_id, 1);
+    assert.equal(App.state.matched.b.comp_id, 2);
+    assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 });
+  });
+
+  test('뒤로/앞으로(back_forward) → 종전대로 이어하기', async () => {
+    seedPairDraft();
+    await bootCompare('back_forward');
+    assert.equal(App.state.matched.a.comp_id, 1);
+    assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 });
+  });
+
+  test('진입 방식을 모르면(null) → 종전 동작(지우는 쪽으로 틀리지 않는다)', async () => {
+    seedPairDraft();
+    await bootCompare(null);
+    assert.equal(App.state.matched.a.comp_id, 1);
+    assert.notEqual(globalThis.localStorage.getItem('loupit.inputDraft'), null);
+  });
+
+  test('`?a=` 가 있으면 navigate 여도 초안을 쓴다(회사 페이지 「이 회사로 비교하기」 왕복)', async () => {
+    seedPairDraft();
+    globalThis.location.search = '?a=samsung_elec';
+    await bootCompare('navigate');
+    assert.equal(App.state.matched.a.comp_id, 1, 'A 는 URL');
+    assert.equal(App.state.matched.b.comp_id, 2, 'B 는 초안(UI-10f 계약 유지)');
+    assert.deepEqual(App.state.salS.a, { low: 4000, high: 5000 }, '연봉은 초안');
   });
 });
