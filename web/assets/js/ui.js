@@ -51,15 +51,25 @@ const PREFILL_NOTE_ID = 'search-prefill-note';
 const SLOT_LABEL = { a: '현재 직장(A)', b: '이직 후보(B)' };
 const SLOT_TOPIC = { a: '현재 직장(A)은', b: '이직 후보(B)는' };
 
+// aria-describedby 는 **공백으로 구분한 id 목록**이다. 프리필 안내와 「비교하기」 거부 안내가 한 칸에 같이
+// 걸릴 수 있어(2026-09-13), 통째로 덮거나 지우면 다른 쪽 설명이 조용히 끊긴다 — 토큰 단위로만 더하고 뺀다.
+export function addDescribedBy(input, id) {
+  if (!input || typeof input.getAttribute !== 'function' || typeof input.setAttribute !== 'function') return;
+  const ids = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+  if (!ids.includes(id)) ids.push(id);
+  input.setAttribute('aria-describedby', ids.join(' '));
+}
+export function removeDescribedBy(input, id) {
+  if (!input || typeof input.getAttribute !== 'function' || typeof input.removeAttribute !== 'function') return;
+  const ids = (input.getAttribute('aria-describedby') || '').split(/\s+/).filter((t) => t && t !== id);
+  if (ids.length) input.setAttribute('aria-describedby', ids.join(' '));
+  else input.removeAttribute('aria-describedby');
+}
+
 export function clearPrefillNote() {
   const note = byId(PREFILL_NOTE_ID);
   if (note && note.remove) note.remove();
-  for (const slot of ['a', 'b']) {
-    const input = byId('search-input-' + slot);
-    if (input && input.getAttribute && input.getAttribute('aria-describedby') === PREFILL_NOTE_ID) {
-      input.removeAttribute('aria-describedby');
-    }
-  }
+  for (const slot of ['a', 'b']) removeDescribedBy(byId('search-input-' + slot), PREFILL_NOTE_ID);
 }
 
 // filled: 이미 정해진 슬롯, pending: 사용자가 이제 골라야 할 슬롯.
@@ -75,7 +85,7 @@ export function notePrefill(filled, name, pending) {
   });
   const h2 = view.querySelector ? view.querySelector('h2') : null;
   if (h2 && h2.after) h2.after(note); else view.prepend(note);
-  input.setAttribute('aria-describedby', PREFILL_NOTE_ID);
+  addDescribedBy(input, PREFILL_NOTE_ID);
   // 사용자가 타이핑을 시작하면 안내는 제 역할을 다했다. 남겨 두면 A 를 바꾸는 순간 거짓이 된다.
   for (const slot of ['a', 'b']) {
     const box = byId('search-input-' + slot);
@@ -132,6 +142,10 @@ export function searchHooks(state, deps) {
 // 이미 관심 신호다. 훅이 없으면(구 호출부·위젯 클릭) 아무 일도 하지 않는다.
 export function maybeAdvance(state, deps) {
   if (state.matched.a && state.matched.b) {
+    // 「비교하기」 거부 안내는 **어느 경로로 전진하든** 여기서 수명이 끝난다. 목록 선택(selectCompany)은
+    // input 이벤트 없이 값을 넣어 「타이핑하면 지운다」를 비껴가므로, 지우는 곳이 여기가 아니면
+    // 「회사 바꾸기」로 돌아왔을 때 두 칸이 찬 화면에 「골라 주세요」가 남는다(적대 검증 MED, 재현됨).
+    clearSearchGoHint();
     renderInputView(state, deps);
     if (typeof deps.go === 'function') deps.go(pairTarget());
     if (typeof deps.onPairReady === 'function') {
@@ -162,23 +176,30 @@ export function slotConfirmed(state, slot) {
 export function clearSearchGoHint() {
   const hint = byId(GO_HINT_ID);
   if (hint) hint.textContent = '';
+  for (const slot of ['a', 'b']) removeDescribedBy(byId('search-input-' + slot), GO_HINT_ID);
 }
 
 // 두 칸이 확정이면 전진, 아니면 이동하지 않고 **첫 미확정 칸**으로 커서를 옮겨 무엇이 모자란지 말한다.
 export function searchGo(state, deps = {}) {
   const missing = ['a', 'b'].filter((slot) => !slotConfirmed(state, slot));
   if (missing.length) {
+    const target = missing[0];
     const hint = byId(GO_HINT_ID);
     if (hint) {
       hint.textContent = missing.length === 2
         ? '비교할 회사 두 곳을 목록에서 골라 주세요.'
-        : SLOT_LABEL[missing[0]] + ' 회사를 목록에서 골라 주세요.';
+        : SLOT_LABEL[target] + ' 회사를 목록에서 골라 주세요.';
+      // 포커스 **전에** 그 칸의 설명으로 묶는다 — notePrefill 과 같은 이유다. 같은 틱의 live 갱신은 포커스
+      // 낭독과 경합해 탈락하는 리더가 있고, label + description 은 포커스 순간 확실히 읽힌다.
+      for (const slot of ['a', 'b']) {
+        const box = byId('search-input-' + slot);
+        if (slot === target) addDescribedBy(box, GO_HINT_ID); else removeDescribedBy(box, GO_HINT_ID);
+      }
     }
-    focusSlotInput(missing[0]);
+    focusSlotInput(target);
     return false;
   }
-  clearSearchGoHint();
-  maybeAdvance(state, deps);
+  maybeAdvance(state, deps); // 안내 정리는 maybeAdvance 가 한다(전진 경로 공통)
   return true;
 }
 
@@ -193,6 +214,13 @@ export function bindSearchView(state, deps) {
         clearSearchGoHint(); // 고치기 시작했으면 안내는 제 역할을 다했다
         onSearchInput(state, slot, e.target.value, hooks);
         reflectSearchUI(state, slot);
+      });
+      // Enter = 「비교하기」(적대 검증 LOW): <form> 이 아니라 submit 이 없어 키보드 사용자는 버튼까지 탭해야 했다.
+      // ⚠ 한글 조합을 끝내는 Enter 는 무시한다(isComposing · keyCode 229) — 「카카오」를 치고 Enter 로 조합을
+      //   확정하는 순간 거부 안내가 튀어나오거나 화면이 넘어가면 입력이 끊긴다.
+      input.addEventListener('keydown', (e) => {
+        if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229) return;
+        searchGo(state, deps);
       });
     }
     const retry = qs('[data-retry="' + slot + '"]');
