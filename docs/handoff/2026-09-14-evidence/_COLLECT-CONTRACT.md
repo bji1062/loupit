@@ -43,4 +43,4 @@
 
 ## 예절
 
-UA 일반 브라우저(`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36` — `curl` 기본 UA 는 차단되는 사이트가 있다) · `--max-time 20` · 요청 간 ≥1초 · 회사당 요청 ≤60회 · HEAD 대신 GET · 내려받은 파일은 `…/scratchpad/wave3/<eng>/` 아래. Playwright 가능(`from playwright.sync_api import sync_playwright`).
+**robots.txt 는 호스트마다 단독으로 먼저 받아 경로 허용을 판정한 뒤에만 본문을 요청한다**(웨이브 3 프로브 3곳이 robots 와 본문을 한 배치로 보내 금지 호스트에 1회씩 샜다) · UA 일반 브라우저(`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36` — `curl` 기본 UA 는 차단되는 사이트가 있다) · `--max-time 20` · 요청 간 ≥1초 · 회사당 요청 ≤60회 · HEAD 대신 GET · 내려받은 파일은 `…/scratchpad/wave3/<eng>/` 아래. Playwright 가능(`from playwright.sync_api import sync_playwright`).
