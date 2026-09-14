@@ -115,6 +115,22 @@ WAVE2_ALIASES: dict[str, list[str]] = {
     "samyang_foods": ["삼양식품", "Samyang Foods"],
     "kai": ["한국항공우주산업", "한국항공우주", "KAI", "카이", "Korea Aerospace Industries"],
 }
+
+# 확장 웨이브 3(2026-09-14) — 구명(대우인터내셔널·포스코케미칼)·DART 음차명(에스케이바이오팜)·영문. 그룹명(키움·더존)은 타 법인과 겹쳐 뺐다.
+WAVE3_ALIASES: dict[str, list[str]] = {
+    "posco_intl": ["포스코인터내셔널", "포스코인터", "POSCO INTERNATIONAL", "대우인터내셔널"],
+    "posco_futurem": ["포스코퓨처엠", "POSCO FUTURE M", "포스코케미칼"],
+    "kiwoom": ["키움증권", "Kiwoom Securities"],
+    "samsung_sec": ["삼성증권", "Samsung Securities"],
+    "sk_biopharm": ["SK바이오팜", "에스케이바이오팜", "SK Biopharm"],
+    "taihan": ["대한전선", "Taihan Cable", "TAIHAN"],
+    "stpharm": ["에스티팜", "ST Pharm"],
+    "robotis": ["로보티즈", "ROBOTIS"],
+    "lunit": ["루닛", "Lunit"],
+    "seegene": ["씨젠", "Seegene"],
+    "douzone": ["더존비즈온", "Douzone Bizon"],
+    "gaon_cable": ["가온전선", "Gaon Cable"],
+}
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -275,6 +291,9 @@ def build_company_meta() -> dict:
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
     for eng, extra_aliases in WAVE2_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE3_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

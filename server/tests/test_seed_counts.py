@@ -32,7 +32,7 @@ def test_SD2_benefit_preset_total_count(seeded_db):
 def test_SD3_company_count_is_102(seeded_db):
     """정확 카운트 핀. 회사 추가는 **의도적으로만** 가능해야 한다(시드 유실·중복 조기 발견).
     회사를 늘리거나 줄일 땐 이 값과 SI-8·멱등성 스냅샷을 함께 갱신하라."""
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 126
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 138
 
 
 # ── SD-4: 복지 총행 1553(=1330-모비스13+CJ계열148+파일럿22+배치1 66), 하한 1200 방어 ──

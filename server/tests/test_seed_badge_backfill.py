@@ -182,6 +182,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "samsung_heavy", "lg_innotek", "daeduck", "samsung_fire", "samsung_sds",
         "samsung_ena", "isu_petasys", "celltrion_pharm", "netmarble",
         "dongjin_semichem", "hanwha_life", "samyang_foods", "kai",
+        # 확장 웨이브 3(2026-09-14, 12) — 신규 등록, 전부 실 URL 헤더
+        "posco_intl", "posco_futurem", "kiwoom", "samsung_sec", "sk_biopharm", "taihan",
+        "stpharm", "robotis", "lunit", "seegene", "douzone", "gaon_cable",
     }
     rows = _rows(
         seeded_db,
