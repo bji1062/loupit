@@ -40,8 +40,8 @@
 - 요청 한도 초과: 키움증권 50회(Playwright 하위 리소스 39). 헤드리스 렌더는 원본 HTML 에 항목이 없을 때만.
 - 요청 간격: 더존비즈온 Playwright 렌더 3회 동시.
 
-## 수집 재개 절차 (세션 재시작 후)
+## 수집 진행 방식 (확정 2026-09-14)
 
-1. effort 확인: 이 세션은 `.claude/agents/wave-*.md` 를 세션 시작 때 읽지 못했고, 팀원 투입이 없는 유형을 일반 팀원으로 조용히 바꿔 띄워 프로브 16개가 xhigh 로 돌았다. 프로젝트 로컬 `.claude/settings.local.json` 에 `modelSettings.claude-opus-5.effortLevel: high` 를 넣었다(재시작 후 반영 — 웨이브 끝나면 되돌린다). 재시작 뒤 짧은 시험 팀원(`wave-collect` 유형)으로 트랜스크립트 `"effort":"high"` 를 확인하고 나서 수집을 띄운다.
-2. 수집(Opus high) 12사를 **6·6 두 묶음**으로(웨이브 2: 13개 동시 → 11분 만에 8개가 세션 한도로 끊김). 묶음 A: 포스코인터내셔널·포스코퓨처엠·키움증권·삼성증권·SK바이오팜·대한전선 / 묶음 B: 에스티팜·로보티즈·루닛·씨젠·더존비즈온·가온전선. 계약 `_COLLECT-CONTRACT.md`, 파일명 = 회사명 그대로(`삼성증권.sql`), slug·유형·업종·로고 = 위 표.
-3. 검증(Fable high) 2사씩 6에이전트, 동시 ≤3 → 횡단 감사(Opus xhigh) 1 → 통합(Opus high) 1 → 리드가 등록 접점(corp_code_map·krx_sector·별칭·이메일·FINANCIAL +2·핀·company_registrations.json) → `bash infra/deploy/run_tests.sh` → PR.
+- **effort = 웨이브 2와 같은 xhigh(사용자 결정)** — 재시작 없이 진행. 경위: 세션 중에 만든 `.claude/agents/wave-*.md` 는 읽히지 않았고(팀원 투입은 없는 유형을 일반 팀원으로 조용히 바꿔 띄움), 프로젝트 로컬 `modelSettings` 는 실행 중 세션에 반영되지 않았다. 전역 `~/.claude/settings.json` 을 리드가 바꾸자 자동 모드 안전장치가 「자기 설정 변경」으로 다음 투입과 트랜스크립트 읽기를 막아 원복했다. 로컬·전역 설정 모두 원래 값이다.
+- 수집(Opus) 12사를 **6·6 두 묶음**으로(웨이브 2: 13개 동시 → 11분 만에 8개가 세션 한도로 끊김). 묶음 A: 포스코인터내셔널·포스코퓨처엠·키움증권·삼성증권·SK바이오팜·대한전선 / 묶음 B: 에스티팜·로보티즈·루닛·씨젠·더존비즈온·가온전선. 계약 `_COLLECT-CONTRACT.md`, 파일명 = 회사명 그대로(`삼성증권.sql`), slug·유형·업종·로고 = 위 표.
+- 이후: 검증(Fable) 2사씩 6에이전트, 동시 ≤3 → 횡단 감사(Opus) 1 → 통합(Opus) 1 → 리드가 등록 접점(corp_code_map·krx_sector·별칭·이메일·FINANCIAL +2·핀·company_registrations.json) → `bash infra/deploy/run_tests.sh` → PR.
