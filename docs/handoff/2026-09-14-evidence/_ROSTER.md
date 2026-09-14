@@ -1,6 +1,6 @@
 # 웨이브 3 프로브 결과 · 선발표 (W-0 → W-1, 2026-09-14)
 
-프로브 16 → **가능 10 · 조건부 3 · 불가 2 · 대기 1(가온전선)** → 수집 진입 **11 + 가온전선 판정에 따라 1**.
+프로브 16 → **가능 11 · 조건부 3 · 불가 2** → 수집 진입 **12**(가능 11 + 조건부 더존비즈온). 프로브 통과율 12/16(75%, 웨이브 1 73% · 웨이브 2 88%).
 선발 규칙(웨이브 2 그대로): 데이터랩 수요 순 · 업종 균형 · 금융 ≤3 · HD그룹 ≤2 · 공기업 제외 · 지주는 채용 주체 등재 먼저.
 대기열에서 뺀 것: 대우건설(erecruit robots `Disallow: /` 26B 재확인 2026-09-14) · 한화솔루션(법인 전용 페이지 없음, 재프로브 조건 미충족) · 테스(수요 표 오염) · OCI홀딩스(지주 ≠ 사업회사) · 삼성에피스홀딩스(2025-11 설립, 재무 이력 부족).
 
@@ -19,7 +19,7 @@
 | 9 | 루닛 | KOSDAQ 328130 | 01397620 | 가능 | www.lunit.io/ko/careers/ | 9(채택 7~8) | SSR | lunit | mid | AI/의료 | L |
 | 10 | 씨젠 | KOSDAQ 096530 | 00788773 | 가능 | seegene.recruiter.co.kr/career/welfare | 20(법정 1 제외) | CSR + 빌더 JSON(KAI 선례) | seegene | mid | 의료기기 | S |
 | 11 | 더존비즈온 | KOSPI 012510 | 00172291 | **조건부 → 진입** | www.douzone.com/job/benefits.jsp (+공고 REM2026048 이미지, 09-16 마감 — 원본·해시 확보) | 8(+공고 9) | SSR + PNG | douzone | mid | IT서비스 | D |
-| 12 | 가온전선 | KOSPI 000500 | 00104768 | (대기) | — | — | — | gaon_cable | mid | 전선/전력 | G |
+| 12 | 가온전선 | KOSPI 000500 | 00104768 | 가능 | gaoncable.recruiter.co.kr/appsite/company/callSubPage?code1=4000&code2=4600 (데이터 = POST getMainView menuCode 4600) | 13 | JS 렌더(잡플렉스 appsite) | gaon_cable | mid | 전선/전력 | G |
 | — | HD현대일렉트릭 | KOSPI 267260 | 01205851 | **조건부 → 보류** | recruit.hd.com 그룹 공통 복지(HD현대와 청크 바이트 동일, 「계열사간 일부 상이」) | 18 | JS 청크 | — | — | — | — |
 | — | 두산밥캣 | KOSPI 241560 | 01032486 | **조건부 → 보류** | career.doosan.com benefit1·2(그룹 공통, 「계열사 별 상이」 면책) | 7+9 | SSR | — | — | — | — |
 | — | 한국금융지주 | KOSPI 071050 | 00432102 | **불가**(법인 일치) | 그룹 포털에 지주 등재는 있으나 복지 메뉴 없음 · 그룹 SR 표는 증권 전용 항목 혼입 | 0 | — | — | — | — | — |
@@ -38,3 +38,9 @@
 - robots 확인 전 금지 호스트에 1회 요청: 에스티팜(donga.recruiter.co.kr `/career/benefit` 500·0B) · 대한전선(hoban.recruiter.co.kr `/` 301→로그인 0B) · 포스코퓨처엠(recruit.posco.com `/` 85B, robots 요청 TLS 리셋 후). 본문 근거로 쓴 것 0. → **robots.txt 를 단독으로 먼저 받고 판정한 뒤 본문 요청**을 계약 문구로 명시.
 - 요청 한도 초과: 키움증권 50회(Playwright 하위 리소스 39). 헤드리스 렌더는 원본 HTML 에 항목이 없을 때만.
 - 요청 간격: 더존비즈온 Playwright 렌더 3회 동시.
+
+## 수집 재개 절차 (세션 재시작 후)
+
+1. effort 확인: 이 세션은 `.claude/agents/wave-*.md` 를 세션 시작 때 읽지 못했고, 팀원 투입이 없는 유형을 일반 팀원으로 조용히 바꿔 띄워 프로브 16개가 xhigh 로 돌았다. 프로젝트 로컬 `.claude/settings.local.json` 에 `modelSettings.claude-opus-5.effortLevel: high` 를 넣었다(재시작 후 반영 — 웨이브 끝나면 되돌린다). 재시작 뒤 짧은 시험 팀원(`wave-collect` 유형)으로 트랜스크립트 `"effort":"high"` 를 확인하고 나서 수집을 띄운다.
+2. 수집(Opus high) 12사를 **6·6 두 묶음**으로(웨이브 2: 13개 동시 → 11분 만에 8개가 세션 한도로 끊김). 묶음 A: 포스코인터내셔널·포스코퓨처엠·키움증권·삼성증권·SK바이오팜·대한전선 / 묶음 B: 에스티팜·로보티즈·루닛·씨젠·더존비즈온·가온전선. 계약 `_COLLECT-CONTRACT.md`, 파일명 = 회사명 그대로(`삼성증권.sql`), slug·유형·업종·로고 = 위 표.
+3. 검증(Fable high) 2사씩 6에이전트, 동시 ≤3 → 횡단 감사(Opus xhigh) 1 → 통합(Opus high) 1 → 리드가 등록 접점(corp_code_map·krx_sector·별칭·이메일·FINANCIAL +2·핀·company_registrations.json) → `bash infra/deploy/run_tests.sh` → PR.
