@@ -7,7 +7,7 @@
 `…/scratchpad/wave3/<회사>.sql` · `<회사>.evidence.md` · 프로브 `docs/handoff/2026-09-14-evidence/probe/<회사>.md` · 수집 계약 `docs/handoff/2026-09-14-evidence/_COLLECT-CONTRACT.md`(규칙 1~9) · 어휘표 `docs/handoff/2026-09-14-evidence/_VOCAB.md`.
 
 ## 절차
-1. **evidence 를 읽기 전에** 프로브의 정본 URL 을 직접 가져와 **독립 항목 목록**을 만든다(이미지면 직접 판독, `__NEXT_DATA__`/번들이면 직접 추적, CSR 이면 Playwright, CSS 숨김 탭이면 원본 HTML). UA 는 일반 브라우저 문자열, HEAD 대신 GET, 요청 간 ≥1초, 회사당 ≤40회. robots.txt 는 호스트마다 단독으로 먼저 받아 판정한 뒤 본문을 요청한다(헤드리스 렌더는 원본 HTML·데이터 JSON 에 항목이 없을 때만 — 하위 리소스도 요청 수에 든다).
+1. **evidence 를 읽기 전에** 프로브의 정본 URL 을 직접 가져와 **독립 항목 목록**을 만든다(이미지면 직접 판독, `__NEXT_DATA__`/번들이면 직접 추적, CSR 이면 Playwright, CSS 숨김 탭이면 원본 HTML). UA 는 일반 브라우저 문자열, HEAD 대신 GET, 요청 간 ≥1초, 회사당 ≤40회. robots.txt 는 호스트마다 단독으로 먼저 받아 RFC 9309 기준(가장 긴 일치 우선 — `urllib.robotparser` 금지)으로 판정한 뒤 본문을 요청한다(헤드리스 렌더는 원본 HTML·데이터 JSON 에 항목이 없을 때만 — 하위 리소스도 요청 수에 든다).
 2. 그 다음 SQL 행 하나하나를 독립 목록·원문과 대조해 판정한다:
    - **CONFIRMED** 원문이 그 행을 그 코드·그 조건으로 뒷받침한다.
    - **SUSPECT** 원문은 있으나 코드 선택·조건·귀속·금액·문안이 의심스럽다(검수자 결정 필요) — 이유와 대안을 적는다.

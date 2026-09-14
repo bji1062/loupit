@@ -36,6 +36,7 @@
 ## 프로브가 스스로 보고한 절차 이탈 (다음 계약에 반영)
 
 - robots 확인 전 금지 호스트에 1회 요청: 에스티팜(donga.recruiter.co.kr `/career/benefit` 500·0B) · 대한전선(hoban.recruiter.co.kr `/` 301→로그인 0B) · 포스코퓨처엠(recruit.posco.com `/` 85B, robots 요청 TLS 리셋 후). 본문 근거로 쓴 것 0. → **robots.txt 를 단독으로 먼저 받고 판정한 뒤 본문 요청**을 계약 문구로 명시.
+- 가온전선: robots 판독 전 같은 묶음으로 금지 경로 3건(`/sitemap.xml`·`/career/home`·`/career/benefit`, 전부 500) · Playwright 4회의 하위 리소스가 robots 금지 경로(`/resources-2.0.3a/*.js`·`/app/*`) 포함. 수집은 `POST /appsite/company/getMainView`(appsiteSn=2331, settingType=B) 직접 호출로만, **메뉴 4600 만**(비활성 4400·4500 에 ATS 벤더 샘플 문구 — 「2014년 대졸 최소 4,000만원」·자동승진·종신고용 — 유령).
 - 요청 한도 초과: 키움증권 50회(Playwright 하위 리소스 39). 헤드리스 렌더는 원본 HTML 에 항목이 없을 때만.
 - 요청 간격: 더존비즈온 Playwright 렌더 3회 동시.
 
