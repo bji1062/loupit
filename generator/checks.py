@@ -1,4 +1,4 @@
-"""generator/checks.py — 생성물 검증 게이트 (SP-GEN-12, Tier-0 GC-2·GC-10).
+"""generator/checks.py — 생성물 검증 게이트 (SP-GEN-12, Tier-0 GC-2·GC-10·GC-28).
 
 `run_generated_checks(out_dir, pages)`는 pytest(RED→GREEN 테스트)와 릴리스
 게이트(SP-GEN-11 `stage_and_swap` 4단계)가 **동일 호출**한다(검증 로직
@@ -45,7 +45,26 @@ def _check_non_js_body(pages: list[Page]) -> None:
             raise BuildError(f"GC-10: 비-JS 본문 가독 실패 — {p.path}")
 
 
+def _check_home_present(pages: list[Page]) -> None:
+    """GC-28(Tier-0) — 생성 대문 `index.html` 정확히 1개 + 비-JS 표식.
+
+    2026-09-15 후속 정리(PR #55)로 수기 셸 `web/index.html` 과 nginx 폴백
+    (`try_files /dist/index.html /index.html`)을 걷었다. 그 전까지는 대문 생성이
+    빠져도 수기 셸이 `/` 를 받아 줬지만, 이제 `/` 를 떠받치는 건 생성 대문 **하나**뿐이라
+    대문이 빠진 산출물을 스왑하는 순간 대문이 404 가 된다. 스모크 SM-1b 는 **스왑이 끝난 뒤**
+    보므로 그때는 이미 라이브가 죽어 있다 — 스왑 전 게이트(SP-ARCH-9, 실패 시 이전 산출물 유지)에서 세운다.
+
+    표식은 `<script>` 제거 후에 찾는다(INV-3) — JS 로만 심긴 표식은 크롤러에게 없는 것과 같다.
+    """
+    homes = [p for p in pages if p.path == "index.html"]
+    if len(homes) != 1:
+        raise BuildError(f"GC-28: 대문 index.html {len(homes)}개(정확히 1개여야 한다)")
+    if "data-home-generated" not in _strip_scripts(homes[0].html):
+        raise BuildError("GC-28: 대문에 생성 표식 data-home-generated 없음(비-JS 본문 기준)")
+
+
 def run_generated_checks(out_dir: str, pages: list[Page]) -> None:
     """생성물 검증 게이트 — 실패 시 `BuildError`. `stage_and_swap` 4단계 소비."""
     _check_company_count(pages)
     _check_non_js_body(pages)
+    _check_home_present(pages)
