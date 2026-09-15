@@ -76,6 +76,7 @@ BETA_DOCROOT="${BETA_DOCROOT:-${ROOT_DIR}/web}"
 BETA_CHECKOUT="$(dirname "${BETA_DOCROOT}")"   # web/ 의 형제 경로(infra/beta-test) 기준
 
 # nginx -t 가 못 잡는 것을 여기서 잡는다: docroot 에 실제로 페이지가 있는가.
+# ⚠ 대문은 생성물(dist/index.html)이다(2026-09-15 수기 셸·폴백 삭제) — 워크트리 docroot 로 베타를 선검증하려면 그 워크트리에서 먼저 빌드해 dist 를 만들어라.
 _miss=0
 for _f in dist/index.html login.html mypage.html verify.html edit.html edits.html; do  # 대문 = 생성 대문(2026-09-15 수기 셸 삭제)
   if [ ! -f "${BETA_DOCROOT}/${_f}" ]; then

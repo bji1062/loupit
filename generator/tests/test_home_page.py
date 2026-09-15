@@ -111,7 +111,7 @@ def test_cta_offers_two_compare_modes_and_no_find_card(fake_bundle, fake_now, fa
     cta = _cta(html)
     assert re.findall(r'href="([^"]+)"', cta) == ["/compare/", "/compare/#input"]
     assert "입력할 필요가 없습니다" in cta and "브라우저 안에서만" in cta
-    for word in ("연봉", "인상률"):  # 넣어야 하는 것을 누르기 전에 말한다(옛 셸 계약에서 옮김)
+    for word in ("복지 비교", "이직 계산기", "연봉", "인상률"):  # 두 모드 이름 + 넣어야 하는 것(옛 셸 계약에서 옮김)
         assert word in cta, word
     assert 'id="home-find"' in html, "복지검색 입구는 칩 섹션이 맡는다"
 
@@ -302,9 +302,15 @@ def test_generated_marker_for_smoke(fake_bundle, fake_now, fake_combinations_pat
 # ── 옮겨 온 가드(2026-09-15 수기 셸 삭제 — 옛 test_home_shell.py) ───────────────
 
 
-def test_home_does_not_point_to_404_page(fake_bundle, fake_now, fake_combinations_path):
-    html = _render(fake_bundle, fake_now)[0].html
-    assert not re.findall(r'href="/404[^"]*"', html)
+def test_home_links_every_company_page_one_hop(fake_bundle, fake_now, fake_combinations_path):
+    """대문 → 회사 상세 **1홉** 경로(옛 셸 계약 「회사 직링크 ≥60」). 픽스처는 3사라 개수 대신 전 회사가 링크되는지 본다.
+
+    GC-20 은 링크의 *유효성*만 본다 — 템플릿에서 업종·순위 블록의 href 가 빠져도 뷰모델은 그대로라 초록인 채 통과한다.
+    """
+    page, ctx = _render(fake_bundle, fake_now)
+    linked = set(re.findall(r'href="/company/([^"]+)"', page.html))
+    expected = {ctx.slugs[c["comp_eng_nm"]] for c in ctx.companies}
+    assert expected and expected <= linked, f"대문에서 링크되지 않은 회사: {sorted(expected - linked)}"
 
 
 def test_home_body_is_readable_without_js(fake_bundle, fake_now, fake_combinations_path):

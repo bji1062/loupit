@@ -318,8 +318,7 @@ def test_find_tab_exists_in_every_hand_written_shell():
 
 def test_find_template_emits_category_anchors():
     """`/find#cat-…` 링크의 도착지 절반 — 템플릿이 `id="cat-…"` 를 실제로 찍는가(안 찍으면 링크가 맨 위로 떨어진다)."""
-    from pathlib import Path
-    tpl = (Path(__file__).resolve().parents[2] / "generator" / "templates" / "find.html").read_text(encoding="utf-8")
+    tpl = FIND_TEMPLATE.read_text(encoding="utf-8")
     assert 'id="cat-{{ cat.key }}"' in tpl
 
 
@@ -332,8 +331,6 @@ def test_derive_codes_keys_are_benefit_codes(fake_bundle):
 
 def test_find_compare_prefill_points_at_compare_route():
     """복지검색의 「A vs B 비교하기」가 `/compare/` 로 간다 — 구현과 그 테스트를 함께 본다."""
-    from pathlib import Path
-    root = Path(__file__).resolve().parents[2]
     for rel in ("web/assets/js/find.js", "web/assets/js/find.test.js"):
-        src = (root / rel).read_text(encoding="utf-8").replace("\\", "")
+        src = (REPO_ROOT / rel).read_text(encoding="utf-8").replace("\\", "")
         assert "/compare/?a=" in src, f"{rel}: 비교 프리필이 도구가 없는 곳을 가리킨다"
