@@ -25,7 +25,7 @@ from generator.render import make_env
 from generator.tests.test_gnb_tabs import SHELLS, _header_links
 
 # 상단 메뉴로 **오가는** 셸 — 생성 페이지와 함께 헤더가 완전히 같아야 한다(사용자 신고의 범위).
-NAV_SHELL_NAMES = frozenset({"index.html", "compare/index.html", "community/index.html"})
+NAV_SHELL_NAMES = frozenset({"compare/index.html", "community/index.html"})  # 대문은 생성 페이지(2026-09-15 수기 셸 삭제)
 # 인증 흐름 안의 셸 — GNB 탭으로 도달하지 않는다(로그인 슬롯 경유). 브랜드·탭은 같게 두되
 # 보조 링크(본문 바로가기·비교 조합·로그인 슬롯)는 의도적으로 줄인 상태다. 그 의도를 고정한다.
 AUTH_SHELL_NAMES = frozenset(SHELLS) - NAV_SHELL_NAMES

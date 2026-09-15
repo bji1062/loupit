@@ -12,7 +12,7 @@
   정책 문안(`/privacy`·`/terms`)이 "로그인·계정 기능 없음"을 선언 중이라, 눌리는 진입점이
   공개되면 고지 위반이 된다. 이 테스트가 그 회귀를 막는다.
 
-(b) 수기 셸(`web/index.html`·`web/compare/index.html`)은 생성기를 거치지 않는 하드코딩
+(b) 수기 셸(`web/compare/index.html` — 대문 수기 셸은 2026-09-15 삭제)은 생성기를 거치지 않는 하드코딩
     HTML 이라 상수를 import 할 수 없다 → 마크업 **동기화**를 문자열로 검증한다
     (`test_footer_links.py` 가 같은 방식을 쓴다).
 """
@@ -26,7 +26,7 @@ from generator.pages import combo, company, home, policy
 from generator.render import make_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SHELLS = (REPO_ROOT / "web" / "index.html", REPO_ROOT / "web" / "compare" / "index.html")
+SHELLS = (REPO_ROOT / "web" / "compare" / "index.html",)  # 대문 수기 셸은 2026-09-15 삭제 — 생성 대문은 위 렌더 검사가 진다
 PARTIAL = REPO_ROOT / "generator" / "templates" / "partials" / "_authnav.html"
 
 _SLOT_RE = re.compile(r"<a\b[^>]*\bdata-authnav\b[^>]*>", re.I)
