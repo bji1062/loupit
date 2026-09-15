@@ -65,12 +65,16 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          'samsung_life','samsung_electro','samsung_card',
                          -- 확장 웨이브 2(2026-09-05): 관측 주소가 전부 @samsung.com
                          -- (shi.is@ · 그룹 채용문의 · sdsjobs@/joinsds@ · recruit.sena@)
-                         'samsung_heavy','samsung_fire','samsung_sds','samsung_ena');
+                         'samsung_heavy','samsung_fire','samsung_sds','samsung_ena',
+                         -- 확장 웨이브 3(2026-09-14): 삼성증권 관측 주소 ss.recruit@samsung.com(자기 도메인 경력채용·samsungcareers E40)
+                         'samsung_sec');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'sk.com', TRUE FROM TCOMPANY
-   WHERE COMP_ENG_NM IN ('sk_hynix','skt','sk_innovation');
+   WHERE COMP_ENG_NM IN ('sk_hynix','skt','sk_innovation',
+                         -- 확장 웨이브 3(2026-09-14): SK바이오팜 관측 주소 skbp_comm@sk.com(skbp.com 푸터, MX spmail.sk.com)
+                         'sk_biopharm');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -393,3 +397,31 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'samyangfoods.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'samyang_foods';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'koreaaero.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kai';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 2026-09-14 확장 웨이브 3 — 신규 12개사 중 회사 전용 도메인 8 (삼성증권·SK바이오팜은 위 그룹 줄에 병합)
+-- 근거는 각사 evidence(docs/handoff/2026-09-14-evidence/wave3/) 의 「이메일 도메인 관측」 절 — 공식 사이트에 게시된 주소만.
+-- 미관측 2: 포스코인터내셔널(poscointl.com MX 는 있으나 게시 주소 0) · 대한전선(taihan.com MX 는 있으나 게시 주소 0) → 수동 승인 폴백.
+-- @rejected: ihoban.co.kr — 대한전선. 호반그룹 메일 게이트웨이(taihan.com MX) — 그룹 전 계열사가 인증될 수 있음
+-- @rejected: posco.com — 포스코퓨처엠·포스코인터내셔널. POSCO 그룹 도메인(MX antispam.posco.net 공용)
+-- @rejected: donga.co.kr — 에스티팜. 동아쏘시오그룹 메일 게이트웨이(stpharm.co.kr MX mailgw.donga.co.kr)
+-- @rejected: lsworkplace.com — 가온전선. LS 그룹 공용 메일 게이트웨이(gaoncable.com·ls-electric.com·lsholdings.com MX 공통)
+-- ⚠ douzone.com 은 채용 포털이 계열사(키컴·더존비앤씨티·더존에듀캠) 공고도 받는 구조라 계열사 직원 사용 여부 미확인 ·
+--    lunit.io·seegene.com 은 해외 자회사 직원도 같은 도메인을 쓸 수 있음 · kiwoom.com 은 형제 법인 사용 여부 미확인.
+-- ═══════════════════════════════════════════════════════════════════════════════
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kiwoom.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kiwoom';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'poscofuturem.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'posco_futurem';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'stpharm.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'stpharm';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'seegene.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'seegene';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'douzone.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'douzone';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'robotis.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'robotis';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lunit.io', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lunit';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'gaoncable.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gaon_cable';
