@@ -29,7 +29,8 @@ import load_corp  # noqa: E402  # db/seed/load_corp.py
 
 FINANCIAL_7 = {"DB손해보험", "NH투자증권", "기업은행", "삼성생명", "삼성카드", "카카오뱅크", "카카오페이",
                "KB금융",  # 확장 웨이브 1(2026-09-01): 금융지주 추가 — 이름은 역사적 이유로 FINANCIAL_7 유지
-               "삼성화재", "한화생명"}  # 확장 웨이브 2(2026-09-05): 손보·생보 추가(총 10)
+               "삼성화재", "한화생명",  # 확장 웨이브 2(2026-09-05): 손보·생보 추가
+               "키움증권", "삼성증권"}  # 확장 웨이브 3(2026-09-14): 증권 추가(총 12)
 CJ_ENM_CORP = "00265324"
 
 
@@ -51,8 +52,8 @@ def test_FN1_seed_populates_mapping_at_last_step(seeded_db):
     """`load.main(fresh=True)` 만으로 TCORP·TCOMPANY_CORP 가 채워진다(재시드 후 매핑 소실 방지)."""
     rows = load_corp.read_map()
     mapped = [r for r in rows if r["status"] != "UNMAPPED"]
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 125
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 124
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 137
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 136
     # 매핑된 회사는 전부 실재하는 TCOMPANY 를 가리킨다(고아 0)
     assert _scalar(
         seeded_db,
@@ -73,7 +74,7 @@ def test_FN1_reapply_is_idempotent(seeded_db):
     seeded_db.commit()
     assert _rows(seeded_db, "SELECT COMP_ID, CORP_CODE, MATCH_CD FROM TCOMPANY_CORP ORDER BY COMP_ID") == before
     assert _rows(seeded_db, "SELECT CORP_CODE, CORP_NM, STOCK_CD, ACCT_SET_CD, FS_DIV_CD FROM TCORP ORDER BY CORP_CODE") == corps_before
-    assert stats["mapped"] == 125 and stats["unmatched"] == []
+    assert stats["mapped"] == 137 and stats["unmatched"] == []
     assert all(db_id == dict((nm, cid) for cid, nm in _rows(seeded_db, "SELECT COMP_ID, COMP_NM FROM TCOMPANY"))[nm]
                for nm, _csv_id, db_id in stats["id_drift"]), "드리프트가 이름으로 해소되지 않았다"
     drift_lines = [ln for ln in lines if "드리프트" in ln]

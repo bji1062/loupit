@@ -49,7 +49,7 @@ def test_SM1_repeated_full_run_is_stable(seeded_db):
     seed_load.main(fresh=True)
     snap2 = _snapshot(seeded_db)
     assert snap1 == snap2, f"재실행 전후 분포 불일치: {snap1} != {snap2}"
-    assert snap2["TCOMPANY"] == 126  # 113 + 확장 웨이브 2 13개사(2026-09-05)
+    assert snap2["TCOMPANY"] == 138  # 126 + 확장 웨이브 3 12개사(2026-09-14)
     assert snap2["badge_est"] == 0
 
 

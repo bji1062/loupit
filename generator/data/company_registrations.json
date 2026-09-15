@@ -9,6 +9,24 @@
   ],
   "waves": [
     {
+      "date": "2026-09-15",
+      "label": "회사 확장 웨이브 3",
+      "companies": [
+        "douzone",
+        "gaon_cable",
+        "kiwoom",
+        "lunit",
+        "posco_futurem",
+        "posco_intl",
+        "robotis",
+        "samsung_sec",
+        "seegene",
+        "sk_biopharm",
+        "stpharm",
+        "taihan"
+      ]
+    },
+    {
       "date": "2026-09-06",
       "label": "회사 확장 웨이브 2",
       "companies": [
