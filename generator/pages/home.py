@@ -306,9 +306,9 @@ def render(env, ctx, cfg=CFG, pairs=None) -> Page:
     view = build_view(ctx, pairs=pairs)
     url = f"{cfg.site_origin}/"
     n, rows, codes = view["total_companies"], view["total_rows"], view["total_codes"]
-    desc = (f"잡초위키는 {n}곳 회사의 복지 {rows}건·연봉·재무를 로그인 없이 열람하고 두 회사를 비교합니다. "
+    desc = (f"잡초위키는 {n}곳 회사의 복지 {rows}건을 로그인 없이 열람하고 두 회사를 비교합니다. "
             f"복지는 회사 공식 페이지에서 수집해 표준 항목 {codes}종으로 분류합니다.")
-    og_desc = f"회사 {n}곳의 복지 {rows}건·연봉·재무를 로그인 없이 열람하고 두 회사를 비교합니다."
+    og_desc = f"회사 {n}곳의 복지 {rows}건을 로그인 없이 열람하고 두 회사를 비교합니다."
     jsonld = {
         "@context": "https://schema.org", "@type": "WebSite", "name": "잡초위키",
         "alternateName": [cfg.site_name, "잡초"], "url": url, "inLanguage": "ko",
