@@ -38,7 +38,7 @@ REGISTRATIONS_PATH = Path(__file__).resolve().parents[1] / "data" / "company_reg
 NAVER_SITE_VERIFICATION = "db7956bfac6b387b3c03f707dd526a763d420a7d"
 
 # 브랜드가 첫 어절이어야 한다 — 구글 사이트 이름 신호는 홈 한 장의 h1·title·JSON-LD 에서만 읽힌다.
-TITLE = "잡초위키 — 회사 복지·연봉·재무를 로그인 없이 열람·비교"
+TITLE = "잡초위키 — 회사 복지를 로그인 없이 열람·비교"
 SITE_DESCRIPTION = "로그인 없이 열람하는 한국 상장사 복지·연봉·재무 위키"
 
 SECTOR_TOP = 5            # 업종 묶음마다 싣는 회사 수(복지 항목 수 상위)
