@@ -209,3 +209,29 @@ def test_gc28_real_generated_home_passes(fake_bundle, fake_now, fake_combination
     env = make_env()
     ctx = build_context(fake_bundle, now=fake_now)
     _check_home_present([home.render(env, ctx, CFG, pairs=combo.load_pairs(ctx))])  # 예외 없어야 GREEN
+
+
+def test_gc28_shell_home_without_body_rejected():
+    """표식만 있고 본문이 없는 껍데기 대문 — 표식은 최외곽 래퍼라 데이터가 전부 빠져도 찍힌다."""
+    with pytest.raises(BuildError, match="GC-28"):
+        _check_home_present([_home_page("<html><body><div data-home-generated></div></body></html>")])
+
+
+def test_gc28_home_h1_check_accepts_attributed_tag():
+    """대문 h1 은 `<h1 id="home-title">` 이다 — 리터럴 `"<h1>"` 로 찾으면 상시 오탐이었다."""
+    _check_home_present([_home_page('<div data-home-generated><h1 id="home-title">잡초위키</h1></div>')])
+
+
+def test_only_filter_keeps_home_so_partial_build_still_passes_gate(
+    fake_bundle, fake_now, fake_combinations_path, tmp_path
+):
+    """`--only company` 부분 빌드도 대문을 싣는다 — 안 그러면 GC-28 이 부분 빌드를 전부 막는다.
+
+    부분 빌드도 out_dir 를 원자적으로 통째 교체하므로 그 dist 역시 `/` 를 서빙해야 한다.
+    """
+    out_dir = tmp_path / "dist-only"
+    rc = build_module.run(str(out_dir), fake_bundle, lastmod="2026-07-11", only=["company"])
+    assert rc == 0
+    assert (out_dir / "index.html").exists()  # 접두가 안 맞아도 남는다
+    assert (out_dir / "company").is_dir()
+    assert not (out_dir / "heatmap.html").exists()  # 필터 자체는 그대로 작동

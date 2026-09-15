@@ -26,7 +26,8 @@ def _valid_page(path="company/x.html", html=_GOOD_HTML):
     )
 
 
-_HOME_HTML = "<html><body><div data-home-generated>대문</div></body></html>"
+# 실제 대문 모양 그대로 — 표식은 최외곽 래퍼, h1 은 속성 있는 `<h1 id="home-title">`(GC-28).
+_HOME_HTML = '<html><body><div class="home" data-home-generated><h1 id="home-title">잡초위키</h1></div></body></html>'
 
 
 def _home_page(html=_HOME_HTML):
@@ -107,7 +108,9 @@ def test_gc25_validation_failure_aborts_swap_and_keeps_previous_dist(tmp_path):
     before = (tmp_path / "dist" / "company" / "x.html").read_bytes()
 
     # GC-2 검증 강제 실패 주입: 회사 페이지 0개(전량 제거)
-    with pytest.raises(BuildError):
+    # match 로 원인을 고정한다 — 고정하지 않으면 게이트 순서가 바뀌어 GC-28 이 먼저 터져도
+    # 초록이라 GC-2 회귀를 아무도 모른다. `"GC-2"` 는 re.search 라 `GC-28` 에도 걸리니 콜론 필수.
+    with pytest.raises(BuildError, match="GC-2:"):
         stage_and_swap(out_dir, [], incremental=False, gzip=True)
 
     after = (tmp_path / "dist" / "company" / "x.html").read_bytes()
@@ -121,7 +124,7 @@ def test_gc25_non_js_body_check_failure_also_aborts_swap(tmp_path):
     before_files = sorted((tmp_path / "dist").rglob("*"))
 
     broken_page = _valid_page(path="company/y.html", html="<html><body>no h1 no keyword</body></html>")
-    with pytest.raises(BuildError):
+    with pytest.raises(BuildError, match="GC-10"):
         stage_and_swap(out_dir, [broken_page, good_page, _home_page()], incremental=False, gzip=True)
 
     after_files = sorted((tmp_path / "dist").rglob("*"))

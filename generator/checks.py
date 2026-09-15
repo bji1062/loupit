@@ -15,6 +15,7 @@ from generator.context import Page
 from generator.slug import BuildError
 
 _SCRIPT_RE = re.compile(r"<script\b[^>]*>.*?</script>", re.IGNORECASE | re.DOTALL)
+_H1_RE = re.compile(r"<h1[\s>]", re.IGNORECASE)  # 속성 있는 `<h1 id=…>` 도 잡는다(대문이 그렇다)
 
 
 def _strip_scripts(html: str) -> str:
@@ -55,12 +56,19 @@ def _check_home_present(pages: list[Page]) -> None:
     보므로 그때는 이미 라이브가 죽어 있다 — 스왑 전 게이트(SP-ARCH-9, 실패 시 이전 산출물 유지)에서 세운다.
 
     표식은 `<script>` 제거 후에 찾는다(INV-3) — JS 로만 심긴 표식은 크롤러에게 없는 것과 같다.
+    표식만으로는 "템플릿이 렌더됐다"까지만 증명된다(표식이 최외곽 래퍼에 달려 있다) — `home.py` 는
+    없는 데이터를 블록째 빼므로 껍데기 대문도 표식은 낸다. 그래서 본문 h1 도 함께 본다.
+    ⚠ h1 은 리터럴 `"<h1>"` 로 찾으면 안 된다 — 대문은 `<h1 id="home-title">` 이라 상시 오탐이다
+    (GC-10 의 회사·조합 페이지는 속성 없는 `<h1>` 이라 그쪽 리터럴 검사는 유효하다).
     """
     homes = [p for p in pages if p.path == "index.html"]
     if len(homes) != 1:
         raise BuildError(f"GC-28: 대문 index.html {len(homes)}개(정확히 1개여야 한다)")
-    if "data-home-generated" not in _strip_scripts(homes[0].html):
+    stripped = _strip_scripts(homes[0].html)
+    if "data-home-generated" not in stripped:
         raise BuildError("GC-28: 대문에 생성 표식 data-home-generated 없음(비-JS 본문 기준)")
+    if not _H1_RE.search(stripped):
+        raise BuildError("GC-28: 대문 본문 없음 — 비-JS 본문에 <h1> 부재(껍데기 대문)")
 
 
 def run_generated_checks(out_dir: str, pages: list[Page]) -> None:

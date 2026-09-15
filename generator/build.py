@@ -73,8 +73,12 @@ def run(
     pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체, 셸은 2026-09-15 삭제)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
-    if only:  # 개발용 경로 접두 필터
-        pages = [p for p in pages if any(p.path.startswith(o) for o in only)]
+    if only:  # 개발용 경로 접두 필터 — 대문은 예외로 항상 남긴다
+        # `--only company` 같은 부분 빌드도 out_dir 를 원자적으로 통째 교체한다. 그 dist 역시
+        # `/` 를 서빙해야 하고(수기 셸·nginx 폴백은 2026-09-15 에 걷었다), GC-28 이 대문을 요구한다.
+        # 접두로 거르면 `"index.html".startswith("company")` 가 거짓이라 대문이 탈락해 부분 빌드가
+        # 전부 BuildError 가 된다 — 필터의 의도(회사 페이지만 빨리 다시 그린다)와 무관한 사고다.
+        pages = [p for p in pages if p.path == "index.html" or any(p.path.startswith(o) for o in only)]
     resolved_lastmod = lastmod or _today_iso()
     # 비-생성 URL(대문·커뮤니티 허브)은 SPA 셸 파일이 원본이다. dist 의 형제 디렉터리(web/)에서
     # 찾고, 없으면(테스트·다른 out_dir) 날짜를 지어내지 않고 오늘로 둔다(`lastmod_index`).
