@@ -23,7 +23,6 @@ from generator.render import make_env
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WEB = REPO_ROOT / "web"
 SHELLS = {
-    "index.html": WEB / "index.html",
     "compare/index.html": WEB / "compare" / "index.html",
     "login.html": WEB / "login.html",
     "mypage.html": WEB / "mypage.html",
@@ -107,7 +106,10 @@ def test_hand_written_shells_carry_gnb_tabs_in_order():
 
 def test_every_tab_target_exists(fake_bundle, fake_now, fake_combinations_path):
     """탭 href 는 생성 페이지 라우트이거나 문서 루트의 셸이어야 한다."""
-    generated = {"/" + p.path[: -len(".html")] for p in _all_pages(fake_bundle, fake_now) if p.path.endswith(".html")}
+    pages = _all_pages(fake_bundle, fake_now)
+    generated = {"/" + p.path[: -len(".html")] for p in pages if p.path.endswith(".html")}
+    if any(p.path == "index.html" for p in pages):
+        generated.add("/")  # 홈 탭 = 생성 대문(2026-09-15 수기 셸 삭제)
     for _, href in GNB_TABS:
         if href in generated:
             continue
@@ -138,9 +140,8 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
             assert cur == [], f"{p.path}: 속한 탭이 없는 페이지에 aria-current 가 붙었다"
 
 
-def test_landing_shell_marks_home_as_current():
-    html = SHELLS["index.html"].read_text(encoding="utf-8")
-    assert _current_hrefs(html) == ["/"]
+def test_hand_written_shells_mark_only_their_own_tab():
+    """홈 탭 표시는 생성 대문이 진다(`test_aria_current_marks_only_the_owning_tab` — 2026-09-15 수기 셸 삭제)."""
     assert _current_hrefs(SHELLS["community/index.html"].read_text(encoding="utf-8")) == ["/community/"]
     for name in ("compare/index.html", "login.html", "mypage.html", "verify.html", "edit.html", "edits.html"):
         assert _current_hrefs(SHELLS[name].read_text(encoding="utf-8")) == [], f"{name}: 잘못된 현재 탭"

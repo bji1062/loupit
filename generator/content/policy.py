@@ -128,7 +128,7 @@ DRAFT_BANNER = (
 
 # 전역 푸터 정책 4종 링크 정본 상수 (SP-POL-9.1). 소비처: SP-GEN
 # `templates/partials/_footer.html`(생성 페이지 순회 렌더) · SP-FE 수기 셸
-# `web/index.html`·`web/compare/index.html`(무빌드 정적 HTML이라 하드코딩,
+# `web/compare/index.html`(무빌드 정적 HTML이라 하드코딩 — 대문 수기 셸은 2026-09-15 삭제,
 # 본 상수를 정본으로 PC-5가 양측 일치를 강제).
 POLICY_FOOTER_LINKS = (
     ("개인정보처리방침", "/privacy"),

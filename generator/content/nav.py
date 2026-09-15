@@ -2,7 +2,7 @@
 
 상단 탭은 **모든 헤더**에 같은 순서로 실려야 한다. 2026-09-01 부로 헤더는 한 종류다 —
 초록 gnb(`data-global class="gnb"` + `.brand` 로고):
-  · 수기 셸 8개(web/index.html·compare·community·login·mypage·verify·edit·edits)
+  · 수기 셸 7개(compare·community·login·mypage·verify·edit·edits — 대문 수기 셸은 2026-09-15 삭제)
   · 생성기 `partials/_header.html`(회사·회사인덱스·히트맵·조합·정책·404 전 페이지)
 그전엔 생성기만 `.site-logo` 텍스트 헤더를 내서 **메뉴로 오갈 때 헤더가 바뀌고 로고가
 사라졌다**(사용자 신고). 마크업 동일성은 `generator/tests/test_header_markup.py` 가 지킨다.

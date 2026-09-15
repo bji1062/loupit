@@ -18,8 +18,8 @@ code(){ curl -s -o /dev/null -w '%{http_code}' "$1"; }
 
 # ── 기본 라우팅(SM-1·2·3·6·13) ──
 chk "SM-1 landing 200"      "[ \"\$(code ${BASE}/)\" = 200 ]"
-# SM-1b(2026-09-13 대문 2단계): `/` 가 **생성 대문**인가. nginx `location = /` 는 dist 가 없으면 수기 셸로 폴백하므로
-# SM-1(200)만으로는 빌드가 대문을 내지 못한 회귀를 못 잡는다 — 생성 템플릿에만 있는 표식을 본다.
+# SM-1b(2026-09-13 대문 2단계): `/` 가 **생성 대문**인가. 수기 셸·폴백은 2026-09-15 에 걷었다(대문이 없으면 404 →
+# SM-1 이 잡는다). 엉뚱한 문서가 200 으로 나가는 회귀는 SM-1 로 못 잡으므로 생성 템플릿에만 있는 표식을 본다.
 chk "SM-1b landing = generated home" "curl -s ${BASE}/ -o ${SMOKE_TMP}/home.html && grep -q 'data-home-generated' ${SMOKE_TMP}/home.html"
 chk "SM-2 http->https 301"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' http://jobcho.wiki/)\" = 301 ]"
 # SM-3: release.sh가 [5/7] API 재시작 직후 스모크를 호출하므로 uvicorn 기동 창(1~2초)을

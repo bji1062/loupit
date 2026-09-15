@@ -29,7 +29,7 @@ FIND_TEMPLATE = REPO_ROOT / "generator" / "templates" / "find.html"
 LABEL_CASES = REPO_ROOT / "generator" / "tests" / "data" / "find_label_cases.json"
 WEB = REPO_ROOT / "web"
 SHELLS = [
-    "index.html", "compare/index.html", "login.html", "mypage.html",
+    "compare/index.html", "login.html", "mypage.html",
     "verify.html", "edit.html", "edits.html", "community/index.html",
 ]
 
@@ -311,3 +311,26 @@ def test_find_tab_exists_in_every_hand_written_shell():
     for name in SHELLS:
         html = (WEB / name).read_text(encoding="utf-8")
         assert '<a href="/find" class="gnb-link"' in html, f"{name}: 복지검색 탭이 없다"
+
+
+# ── 옮겨 온 가드(2026-09-15 수기 셸 삭제 — 옛 test_home_shell.py) ───────────────
+
+
+def test_find_template_emits_category_anchors():
+    """`/find#cat-…` 링크의 도착지 절반 — 템플릿이 `id="cat-…"` 를 실제로 찍는가(안 찍으면 링크가 맨 위로 떨어진다)."""
+    tpl = FIND_TEMPLATE.read_text(encoding="utf-8")
+    assert 'id="cat-{{ cat.key }}"' in tpl
+
+
+def test_derive_codes_keys_are_benefit_codes(fake_bundle):
+    """`/find?b=` 칩 게이트의 전제 — `derive_codes` 의 키가 복지 행의 `benefit_cd` 다."""
+    from generator.pages.find import derive_codes
+    expected = {b["benefit_cd"] for c in fake_bundle["companies"] for b in c["benefits"]}
+    assert set(derive_codes(fake_bundle["companies"])) == expected
+
+
+def test_find_compare_prefill_points_at_compare_route():
+    """복지검색의 「A vs B 비교하기」가 `/compare/` 로 간다 — 구현과 그 테스트를 함께 본다."""
+    for rel in ("web/assets/js/find.js", "web/assets/js/find.test.js"):
+        src = (REPO_ROOT / rel).read_text(encoding="utf-8").replace("\\", "")
+        assert "/compare/?a=" in src, f"{rel}: 비교 프리필이 도구가 없는 곳을 가리킨다"
