@@ -70,7 +70,7 @@ def run(
     pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages.append(heatmap.render(env, ctx, CFG))  # 복지·실적 히트맵 (SP-HEAT, 2026-08-27)
     pages.append(find.render(env, ctx, CFG))  # 복지검색 (SP-FIND, 2026-09-06)
-    pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체)
+    pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체, 셸은 2026-09-15 삭제)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     if only:  # 개발용 경로 접두 필터
@@ -107,8 +107,8 @@ def _is_serving_dist(out_dir: str) -> bool:
 
 
 def _extra_source(out_dir: str, path: str) -> str | None:
-    """sitemap 의 비-생성 URL 경로 → SPA 셸 원본 파일. `/` → web/index.html, `/community/` →
-    web/community/index.html. dist 의 부모(web/)를 기준으로 찾는다 — 있으면 그 파일의 지문으로
+    """sitemap 의 비-생성 URL 경로 → SPA 셸 원본 파일. `/community/` → web/community/index.html
+    (`/` 는 2026-09-13 부터 생성 대문이라 여기 오지 않는다). dist 의 부모(web/)를 기준으로 찾는다 — 있으면 그 파일의 지문으로
     "바뀌었는지"를 판정하고, 없으면 None(= 오늘)."""
     base = os.path.dirname(os.path.abspath(out_dir))
     rel = path.strip("/")

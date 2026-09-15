@@ -2,7 +2,7 @@
 
 (a) SP-GEN 생성 페이지(company/combo/policy) 푸터가 `POLICY_FOOTER_LINKS`를
     순회 렌더해 라벨·라우트가 일치하는지(SP-GEN 소유, 본 세션이 구현·검증).
-(b) SP-FE 수기 셸 `web/index.html`·`web/compare/index.html` 푸터 4정책
+(b) SP-FE 수기 셸 `web/compare/index.html` 푸터 4정책(대문 수기 셸은 2026-09-15 삭제 — 생성 대문은 (a))
     링크가 `POLICY_FOOTER_LINKS`와 일치하는지(무빌드 정적 HTML — 하드코딩,
     상수 import 불가. SP-FE(M6) 소유 파일이며 본 세션은 web/ 코드를
     수정하지 않는다 — 검증만).
@@ -10,7 +10,7 @@
 (b)는 저장소 현재 상태를 있는 그대로 검증한다. `web/compare/index.html`은
 M0 스캐폴드가 남긴 자리표시자 라우트(`/policy/privacy` 등)를 쓰고 있어
 `POLICY_FOOTER_LINKS`(`/privacy` 등)와 **불일치**하며, `web/index.html`은
-아직 존재하지 않는다(SP-FE M6 본체 셸 미착수). 이 두 실패는 SP-GEN(07)
+당시 존재하지 않았다(SP-FE M6 본체 셸 미착수 — 2026-09-12 생겼다가 2026-09-15 생성 대문으로 대체돼 삭제). 이 두 실패는 SP-GEN(07)
 구현 결함이 아니라 **SP-FE(06, M6) 핸드오프 블로커**이며, 해당 파일을
 고치는 것은 본 세션의 범위(web/ 코드 금지) 밖이다 — 의도적으로 실패
 상태로 남겨 다음 SP-FE 세션이 정확히 무엇을 맞춰야 하는지 드러낸다
@@ -24,11 +24,10 @@ from pathlib import Path
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import build_context
-from generator.pages import combo, company, policy
+from generator.pages import combo, company, home, policy
 from generator.render import make_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-LANDING_SHELL = REPO_ROOT / "web" / "index.html"
 COMPARE_SHELL = REPO_ROOT / "web" / "compare" / "index.html"
 
 _FOOTER_BLOCK_RE = re.compile(r"<footer[^>]*>(.*?)</footer>", re.S | re.I)
@@ -75,6 +74,14 @@ def test_pc5_combo_page_footer_matches_policy_footer_links(fake_bundle, fake_now
     assert links == list(POLICY_FOOTER_LINKS)
 
 
+def test_pc5_home_page_footer_matches_policy_footer_links(fake_bundle, fake_now, fake_combinations_path):
+    """생성 대문(2026-09-13) — 수기 셸(2026-09-15 삭제)이 지던 푸터 계약을 넘겨받는다."""
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    p = home.render(env, ctx, CFG, pairs=combo.load_pairs(ctx))
+    assert _extract_footer_links(p.html) == list(POLICY_FOOTER_LINKS)
+
+
 def test_pc5_policy_pages_footer_matches_policy_footer_links_including_self(fake_bundle, fake_now):
     """정책 페이지 자신도 포함해 4링크 전부(자기 자신 포함) 순회 렌더돼야 한다."""
     env = make_env()
@@ -113,18 +120,6 @@ def test_pc5_compare_shell_footer_matches_policy_footer_links():
     )
 
 
-def test_pc5_landing_shell_footer_matches_policy_footer_links():
-    """`web/index.html`(랜딩)은 아직 생성되지 않았다(SP-FE M6 본체 셸 미착수,
-    TASK/06 진행 롤업: 원시 6/46). PC-5 landing 측은 M6 착지 후 검증 가능."""
-    assert LANDING_SHELL.exists(), (
-        "web/index.html 미존재 — SP-FE(06, M6) 본체 셸 착수 후 재검증 필요 "
-        "(SP-GEN·SP-POL 범위 밖, web/ 코드 작성 금지)"
-    )
-    html = LANDING_SHELL.read_text(encoding="utf-8")
-    links = _extract_footer_links(html)
-    assert links == list(POLICY_FOOTER_LINKS)
-
-
 # ── GC-27b: 회사 인덱스 진입문이 전 페이지 푸터에 있는가 (2026-07-19) ────────
 # 검수 반증: 회사 페이지끼리는 이어졌으나 랜딩·비교툴에서 그 덩어리로 들어가는
 # 정적 링크가 0건이라 진입 경로가 sitemap 뿐이었다. 푸터 진입문이 그 문이다.
@@ -135,7 +130,8 @@ _INDEX_LINK = ("등록 회사 목록", "/companies")
 def test_gc27b_generated_pages_footer_has_company_index_link(fake_bundle, fake_now, fake_combinations_path):
     env = make_env()
     ctx = build_context(fake_bundle, now=fake_now)
-    pages = company.render_all(env, ctx) + combo.render_all(env, ctx, CFG) + policy.render_all(env, ctx)
+    pages = (company.render_all(env, ctx) + combo.render_all(env, ctx, CFG) + policy.render_all(env, ctx)
+             + [home.render(env, ctx, CFG, pairs=combo.load_pairs(ctx))])  # 대문(2026-09-15 수기 셸 삭제)
     for p in pages:
         assert _INDEX_LINK in _extract_site_nav_links(p.html), f"{p.path}: 회사 인덱스 진입문 없음"
 
@@ -143,6 +139,6 @@ def test_gc27b_generated_pages_footer_has_company_index_link(fake_bundle, fake_n
 def test_gc27b_hand_written_shells_have_company_index_link():
     """수기 셸(랜딩·비교툴)은 상수 import가 불가한 무빌드 HTML이라 하드코딩 —
     크롤러가 루트로 들어왔을 때의 유일한 정적 진입문이므로 여기서 강제한다."""
-    for shell in (LANDING_SHELL, COMPARE_SHELL):
+    for shell in (COMPARE_SHELL,):  # 랜딩은 생성 대문 — 위 생성 페이지 검사가 진다(2026-09-15)
         html = shell.read_text(encoding="utf-8")
         assert _INDEX_LINK in _extract_site_nav_links(html), f"{shell.name}: 회사 인덱스 진입문 없음"

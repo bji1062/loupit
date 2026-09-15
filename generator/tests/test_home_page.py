@@ -1,7 +1,7 @@
 """대문 생성 페이지 계약 (대문 재설계 2단계, 2026-09-13) — `generator/pages/home.py`.
 
-1단계 수기 셸 계약(`test_home_shell.py`)을 **생성 페이지**로 옮긴다. 수기 셸은 nginx 폴백으로만 남았다가
-후속 PR 에서 지운다. 링크 드리프트는 이제 GC-20(`test_links.py::_build_all_pages` 에 대문 포함)이 모든
+1단계 수기 셸 계약(`test_home_shell.py`)을 **생성 페이지**로 옮긴다. 수기 셸·셸 계약·nginx 폴백은
+2026-09-15 후속 정리에서 지웠다(생성 대문에 없던 가드는 이 파일 끝과 `test_find_page.py` 로 옮겼다). 링크 드리프트는 이제 GC-20(`test_links.py::_build_all_pages` 에 대문 포함)이 모든
 생성 페이지와 같은 그물로 잡는다 — 대문만 따로 검사하던 이유(수기 HTML)가 사라졌다.
 """
 from __future__ import annotations
@@ -111,6 +111,8 @@ def test_cta_offers_two_compare_modes_and_no_find_card(fake_bundle, fake_now, fa
     cta = _cta(html)
     assert re.findall(r'href="([^"]+)"', cta) == ["/compare/", "/compare/#input"]
     assert "입력할 필요가 없습니다" in cta and "브라우저 안에서만" in cta
+    for word in ("연봉", "인상률"):  # 넣어야 하는 것을 누르기 전에 말한다(옛 셸 계약에서 옮김)
+        assert word in cta, word
     assert 'id="home-find"' in html, "복지검색 입구는 칩 섹션이 맡는다"
 
 
@@ -292,8 +294,23 @@ def test_salary_note_only_when_salary_axis_exists(fake_bundle, fake_now):
 
 
 def test_generated_marker_for_smoke(fake_bundle, fake_now, fake_combinations_path):
-    """스모크 SM-1b 가 생성 대문과 nginx 폴백(수기 셸)을 가르는 표식 — 수기 셸에는 없어야 의미가 있다."""
+    """스모크 SM-1b 가 보는 생성 대문 표식 — 폴백은 2026-09-15 에 걷었지만 엉뚱한 문서가 200 으로 나가는 회귀는 SM-1 로 못 잡는다."""
     html = _render(fake_bundle, fake_now)[0].html
     assert html.count("data-home-generated") == 1
-    assert "data-home-generated" not in (REPO_ROOT / "web" / "index.html").read_text(encoding="utf-8")
 
+
+# ── 옮겨 온 가드(2026-09-15 수기 셸 삭제 — 옛 test_home_shell.py) ───────────────
+
+
+def test_home_does_not_point_to_404_page(fake_bundle, fake_now, fake_combinations_path):
+    html = _render(fake_bundle, fake_now)[0].html
+    assert not re.findall(r'href="/404[^"]*"', html)
+
+
+def test_home_body_is_readable_without_js(fake_bundle, fake_now, fake_combinations_path):
+    """크롤러가 보는 것이 이 페이지의 전부다 — 애드센스 거절 사유(콘텐츠 부족)의 1차 방어선."""
+    body = _main(_render(fake_bundle, fake_now)[0].html)
+    body = re.sub(r"<!--.*?-->", " ", body, flags=re.S)
+    body = re.sub(r"<(script|style)\b.*?</\1>", " ", body, flags=re.S | re.I)
+    chars = len(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip())
+    assert chars >= 1500, f"무JS 가시 본문 {chars}자 — 1,500자 미만"

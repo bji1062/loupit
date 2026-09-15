@@ -77,7 +77,7 @@ BETA_CHECKOUT="$(dirname "${BETA_DOCROOT}")"   # web/ 의 형제 경로(infra/be
 
 # nginx -t 가 못 잡는 것을 여기서 잡는다: docroot 에 실제로 페이지가 있는가.
 _miss=0
-for _f in index.html login.html mypage.html verify.html edit.html edits.html; do
+for _f in dist/index.html login.html mypage.html verify.html edit.html edits.html; do  # 대문 = 생성 대문(2026-09-15 수기 셸 삭제)
   if [ ! -f "${BETA_DOCROOT}/${_f}" ]; then
     echo "  ✗ 없음: ${BETA_DOCROOT}/${_f}" >&2
     _miss=1
