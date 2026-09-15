@@ -751,6 +751,31 @@ def test_MET5_known_total_actually_changes_the_aggregate():
     assert de.find_hidden_totals(de.extract_rows(payload, "00261443")) == []
 
 
+def test_MET5_stpharm_total_row_named_jeonche_is_marked_by_a_human():
+    """에스티팜은 매년 `전체` 행을 부문행과 함께 낸다(확장 웨이브 3 수집에서 10개 연도 모두 정확 일치).
+
+    2025 전체 남 559 + 여 221 = 780 == 사무/영업 89 + 연구/개발 104 + 품질/생산 587. 표식이 없으면 1,560 명.
+    `전체` 를 이름 규칙에 넣지 않고 회사 단위 예외로 둔다 — NC `전사` 와 같은 이유다.
+    """
+    assert ("00871833", "전체") in de.KNOWN_TOTAL
+    assert de.is_total_row("전체", "00871833") is True
+    assert de.is_total_row("전체") is False, "corp_code 없이는 이름 규칙 그대로다"
+    payload = _ok([
+        _emp("사무/영업", "남", "47", "5.0", "107,000,000"),
+        _emp("사무/영업", "여", "42", "5.0", "51,000,000"),
+        _emp("연구/개발", "남", "51", "5.0", "74,000,000"),
+        _emp("연구/개발", "여", "53", "5.0", "52,000,000"),
+        _emp("품질/생산", "남", "461", "5.0", "72,000,000"),
+        _emp("품질/생산", "여", "126", "5.0", "49,000,000"),
+        _emp("전체", "남", "559", "5.0", "75,000,000"),
+        _emp("전체", "여", "221", "5.0", "50,000,000"),
+    ])
+    plain = de.aggregation_rows(de.extract_rows(payload))
+    marked = de.aggregation_rows(de.extract_rows(payload, "00871833"))
+    assert sum(r["headcount"] for r in plain) == 1560, "예외 없이는 정확히 두 배다"
+    assert sum(r["headcount"] for r in marked) == 780
+
+
 def test_MET5_every_waiver_carries_evidence_a_human_can_recheck():
     """근거 없는 예외는 다음 사람이 지울 수도 늘릴 수도 없다 — 두 목록 다 같은 규약이다."""
     for table in (de.KNOWN_NOT_TOTAL, de.KNOWN_TOTAL):
