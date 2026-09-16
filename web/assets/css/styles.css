@@ -346,7 +346,12 @@ main p { margin-top:var(--sp-3); }
 .benefit-name { font-weight:var(--fw-semibold); color:var(--t1); }
 .benefit-amount { color:var(--brand); font-weight:var(--fw-semibold); white-space:nowrap; }
 .benefit-note { color:var(--t3); }
-.benefit-verified { color:var(--t4); font-size:var(--fs-xs); }  /* .benefit-src 는 출처 열 제거로 삭제(2026-07-30) */
+.benefit-verified { color:var(--t4); font-size:var(--fs-xs); }
+/* 법정 제도 배지(SP-LEGAL-5) — 근로기준법 등이 모든 회사에 강제하는 행. 지우지 않고 표시만 하며
+   복지 항목 수에서는 빠진다. 「공식/추정」 출처 배지와 다른 축이라 색을 빌려 쓰지 않는다. */
+.benefit-legal { color:var(--t3); font-size:var(--fs-xs); font-weight:var(--fw-medium);
+  border:1px solid var(--line); border-radius:3px; padding:0 .35em; white-space:nowrap; }
+.led-legal .benefit-name { color:var(--t3); }  /* .benefit-src 는 출처 열 제거로 삭제(2026-07-30) */
 
 /* ── 넓은 표는 **자기 상자 안에서만** 스크롤한다(SPEC 10 MD-4, 2026-09-05) ──────────
    실측(390px, iPhone Safari UA): 재무 11개년 표(7열)가 회사 상세 110/113 페이지에서

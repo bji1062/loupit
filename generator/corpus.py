@@ -21,6 +21,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from generator import legal
+
 
 def _amount(benefits) -> int:
     """정량 복지 금액 합(만원). 정성·금액 미기재는 0 — 없는 값을 0 으로 **더하는** 것은 사실이다
@@ -68,15 +70,20 @@ def build(companies: list[dict], category_order: list[str]) -> Corpus:
     rmax = 0
     items, amounts = {}, {}
     for c in companies:
+        # 법정 제도만 담은 행은 **집계에서 뺀다**(SP-LEGAL-5). 근로기준법을 지키는 것이 복지로
+        # 세어지면 순위가 그만큼 부풀고(SK이노베이션 6→9번째), 화면의 「N개사 중 몇 번째」가 거짓이 된다.
+        # 행 자체는 지우지 않는다 — 원장에는 「법정」 배지를 달아 남는다.
+        countable = [b for b in c["benefits"]
+                     if not legal.is_legal_row(c.get("comp_eng_nm") or "", b.get("benefit_cd"), b.get("benefit_nm") or "")]
         per: dict[str, int] = {k: 0 for k in category_order}
-        for b in c["benefits"]:
+        for b in countable:
             cat = b["benefit_ctgr_cd"]
             if cat in per:
                 per[cat] += 1
         for k, v in per.items():
             counts[k].append(v)
             rmax = max(rmax, v)
-        items[c["comp_id"]] = len(c["benefits"])
-        amounts[c["comp_id"]] = _amount(c["benefits"])
+        items[c["comp_id"]] = len(countable)
+        amounts[c["comp_id"]] = _amount(countable)
     avgs = {k: (sum(v) / len(v) if v else 0.0) for k, v in counts.items()}
     return Corpus(total=total, avgs=avgs, rmax=max(rmax, 1), items=items, amounts=amounts)

@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import re
 
-from generator import charts, corpus as corpus_mod
+from generator import charts, corpus as corpus_mod, legal
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -171,7 +171,8 @@ def _amount_tier(amt) -> str:
     return "lo"
 
 
-def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> list[tuple[str, str, list[dict]]]:
+def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
+                    comp_eng_nm: str | None = None) -> list[tuple[str, str, list[dict]]]:
     """9카테고리 그룹·정렬·정성/금액·출처 스킴 (FR-53·54).
 
     비지 않은 카테고리만 `(key, label, items)`로 반환한다. 알 수 없는
@@ -211,6 +212,8 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None) -> li
             "no_amt_label": ("정성" if b["qual_yn"] else ("금액 미기재" if kind == "none" else "")),
             # 렌즈 키 — 카드 행과 원장 행이 **같은 문자열**을 갖는다(둘이 갈리면 한 화면만 띠가 깔린다).
             "lens": " ".join(lens_keys(kind, bool(b["qual_yn"]), badge["code"])),
+            # 법정 제도만 담은 행(SP-LEGAL-5) — 화면에는 배지를 달아 남기고 **집계에서만** 뺀다.
+            "legal": bool(comp_eng_nm) and legal.is_legal_row(comp_eng_nm, b.get("benefit_cd"), b["benefit_nm"]),
             "src_text": AMOUNT_SOURCE_TEXT[kind],
             "ask_q": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[0],
             "ask_a": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[1],
@@ -247,7 +250,8 @@ def _card_view(c: dict, groups, corpus) -> dict:
             "amount": stated + est, "amount_text": krw_manwon(stated + est) if stated + est else "",
             "stated": stated, "est": est,
         })
-    flat = [i for _, _, items in groups for i in items]
+    # 법정 행은 세지 않는다 — 원장에는 남지만 항목 수·렌즈·레이더의 분모가 아니다(SP-LEGAL-5).
+    flat = [i for _, _, items in groups for i in items if not i["legal"]]
     # 사이드 「항목 구성」의 숫자와 렌즈 칩의 숫자는 **같은 곳에서 나온다** — 행이 지닌 렌즈 키를
     # 셀 뿐이다. 두 곳에서 따로 세면 칩이 "추정치 8" 이라 말하고 띠는 7행에만 깔리는 날이 온다.
     # (정성 = 환산 **불가**, 금액 미기재 = 환산 가능하지만 **모른다** — 갈라 센다, DEC-B.)
@@ -263,7 +267,7 @@ def _card_view(c: dict, groups, corpus) -> dict:
     # 없는 축은 "모른다"가 아니라 "없다"이고, 그 사실이 모양의 절반을 만든다).
     per_cat = {k: 0 for k in CATEGORY_ORDER}
     for key, _, items in groups:
-        per_cat[key] = len(items)
+        per_cat[key] = sum(1 for i in items if not i["legal"])
     counts_list = [per_cat[k] for k in CATEGORY_ORDER]
     avgs = [round(corpus.avgs.get(k, 0.0), 2) for k in CATEGORY_ORDER]
     labels = [CATEGORY_LABEL[k] for k in CATEGORY_ORDER]
@@ -313,7 +317,7 @@ def _card_view(c: dict, groups, corpus) -> dict:
 def _company_view(c: dict, ctx, now, corpus) -> dict:
     """뷰모델 파생 — 기업정보·유형지표·근무형태·복지·CTA (SP-GEN-5.2)."""
     t = ctx.types_by_cd.get(c["comp_tp_cd"], {})
-    groups = _group_benefits(c["benefits"], now, comp_id=c["comp_id"])
+    groups = _group_benefits(c["benefits"], now, comp_id=c["comp_id"], comp_eng_nm=c.get("comp_eng_nm"))
     ws = c.get("work_style_val") or {}
     return {
         "card": _card_view(c, groups, corpus),
