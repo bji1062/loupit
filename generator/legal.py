@@ -22,6 +22,7 @@ import os
 from functools import lru_cache
 
 _PATH = os.path.join(os.path.dirname(__file__), "data", "legal_baseline.json")
+_ROWS_PATH = os.path.join(os.path.dirname(__file__), "data", "legal_rows.json")
 
 # calc.js MONTHLY_STD_HRS 와 같은 값. 정본이 아니라 **기본값**이다 —
 # 호출자가 넘기면 그쪽이 이긴다(테스트가 두 값의 일치를 강제한다).
@@ -123,3 +124,36 @@ def annual_leave_value(company_days: float | None,
         "value_manwon": value,
         "basis": "입사 1년차 기준" if tenure_years in (None, 1) else f"근속 {tenure_years}년 기준",
     }
+
+
+# ── 법정 제도만 담은 복지 행 (SP-LEGAL-5) ───────────────────────────────────
+
+
+@lru_cache(maxsize=1)
+def _rows_raw() -> dict:
+    with open(_ROWS_PATH, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@lru_cache(maxsize=1)
+def _rows_index() -> frozenset:
+    return frozenset((r["comp_eng_nm"], r["benefit_cd"], r["benefit_nm"])
+                     for r in _rows_raw()["rows"])
+
+
+def legal_rows() -> list[dict]:
+    """법정 제도만 담고 있어 복지로 셀 수 없는 행 목록(전수)."""
+    return _rows_raw()["rows"]
+
+
+def is_legal_row(comp_eng_nm: str, benefit_cd: str | None, benefit_nm: str) -> bool:
+    """이 복지 행이 「법정 제도만」인가.
+
+    **행을 지우지는 않는다.** 화면에는 「법정」 배지를 달아 남기고 복지 항목 수 집계에서만 뺀다 —
+    「이 회사가 연차·육아휴직을 준다」는 사실 자체는 정보이기 때문이다(사용자 결정 2026-09-16).
+
+    판정은 (회사, 항목코드, 항목명) 3튜플이다. 항목명까지 보는 이유는 같은 코드(`parenting`·
+    `leave_general`)에 법정 행과 진짜 복지 행이 섞여 있기 때문이다 — 코드만 보면 멀쩡한 복지가
+    통째로 빠진다.
+    """
+    return (comp_eng_nm, benefit_cd, benefit_nm) in _rows_index()

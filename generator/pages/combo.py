@@ -49,10 +49,14 @@ def _work_style_compare(ws_a: dict, ws_b: dict) -> list[tuple[str, str, bool, bo
     ]
 
 
-def _category_summary(a_benefits: list[dict], b_benefits: list[dict], now) -> list[dict]:
-    """M3 9카테고리별 항목수·대표복지·정량금액+배지 대조."""
-    groups_a = {k: (label, items) for k, label, items in _group_benefits(a_benefits, now)}
-    groups_b = {k: (label, items) for k, label, items in _group_benefits(b_benefits, now)}
+def _category_summary(a_benefits: list[dict], b_benefits: list[dict], now,
+                      a_eng: str | None = None, b_eng: str | None = None) -> list[dict]:
+    """M3 9카테고리별 항목수·대표복지·정량금액+배지 대조.
+
+    회사 eng 이름을 받는 이유는 법정 제도 행 판정(SP-LEGAL-5)이 (회사, 코드, 항목명) 3튜플이기
+    때문이다 — 없으면 판정이 조용히 전부 False 가 되어 조합 화면만 법정 행을 복지로 센다."""
+    groups_a = {k: (label, items) for k, label, items in _group_benefits(a_benefits, now, comp_eng_nm=a_eng)}
+    groups_b = {k: (label, items) for k, label, items in _group_benefits(b_benefits, now, comp_eng_nm=b_eng)}
     rows = []
     for k in CATEGORY_ORDER:
         la = groups_a.get(k)
@@ -96,7 +100,8 @@ def _combo_view(a: dict, b: dict, ctx, pairs, corpus=None) -> dict:
         "work_style_compare": _work_style_compare(
             a.get("work_style_val") or {}, b.get("work_style_val") or {}
         ),
-        "category_summary": _category_summary(a["benefits"], b["benefits"], now),
+        "category_summary": _category_summary(a["benefits"], b["benefits"], now,
+                                              a_eng=a.get("comp_eng_nm"), b_eng=b.get("comp_eng_nm")),
         # 겹친 9각형 — **Python 이 굽는다**(SP-CMP-4 ①). 색인되는 페이지에 그림이 실리고, 이 쪽
         # 렌더러가 정본이라 도구(JS 포트)가 어긋나면 골든 테스트가 잡는다. JS 는 여기 0 이다.
         # ⚠ 자동 생성 그림은 「비슷한 페이지」 판정을 바꾸지 못한다 — 그것을 가르는 것은 산문뿐이다.

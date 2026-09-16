@@ -24,9 +24,13 @@
   <section class="benefit-group" id="cat-{{ key }}" data-category="{{ key }}">
     <h3>{{ label }}</h3>
     {% for item in items %}
-    <article class="led-row" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}" data-lens="{{ item.lens }}">
+    {#- `legal` = 근로기준법 등이 모든 회사에 강제하는 제도만 담은 행(SP-LEGAL-5). **지우지 않고**
+        배지를 달아 남긴다 — 「이 회사가 연차·육아휴직을 준다」는 사실은 정보이기 때문이다.
+        다만 복지 항목 수·렌즈·레이더의 분모에서는 빠진다(집계는 `_card_view` 가 이미 걸렀다). -#}
+    <article class="led-row{% if item.legal %} led-legal{% endif %}" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}" data-lens="{{ item.lens }}"{% if item.legal %} data-legal="1"{% endif %}>
       <div class="led-head">
         <h4 class="benefit-name">{{ item.name }}</h4>
+        {% if item.legal %}<span class="benefit-legal" title="근로기준법 등이 모든 회사에 강제하는 제도입니다. 복지 항목 수에서 제외됩니다.">법정</span>{% endif %}
         {% if item.amount %}<span class="benefit-amount{% if item.est %} est{% endif %}">{{ item.amount }}</span>{% endif %}
         <span class="led-src">{{ item.src_text }}</span>
         <span class="led-badges">{{ badge(item.badge) }}{% if item.verified %}<span class="benefit-verified">확인일 {{ item.verified }}</span>{% endif %}{% if item.expires %}<span class="benefit-expires">만료 {{ item.expires }}</span>{% endif %}</span>

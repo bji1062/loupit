@@ -171,3 +171,86 @@ def test_benefit_cd_lookup_flags_statutory_codes():
     assert legal.benefit_cd_is_legal("leave_general")
     assert legal.benefit_cd_is_legal("parenting")
     assert not legal.benefit_cd_is_legal("meal")
+
+
+# ── 법정 행 — 표시는 남기고 집계에서만 뺀다 (SP-LEGAL-5) ────────────────────
+
+
+def test_legal_rows_lookup_is_by_company_code_and_name():
+    """같은 코드(`parenting`·`leave_general`)에 법정 행과 진짜 복지 행이 섞여 있다.
+    코드만 보고 판정하면 멀쩡한 복지가 통째로 빠진다."""
+    assert legal.is_legal_row("rainbow_robotics", "leave_general", "연차/반차/반반차")
+    assert not legal.is_legal_row("yuhan", "leave_general", "연차휴가 (법정 상회)")
+    assert not legal.is_legal_row("rainbow_robotics", "leave_general", "다른 이름")
+
+
+def test_legal_rows_all_exist_in_seed_sql():
+    """참조 파일이 낡으면 빌드를 깨뜨린다.
+
+    이 목록은 시드 SQL 이 아니라 생성기 참조 파일이다(`company_registrations.json` 선례).
+    시드에서 행이 사라지거나 항목명이 바뀌면 판정이 조용히 False 가 되어 법정 행이 다시
+    복지로 세어진다 — 그 침묵을 여기서 막는다.
+    """
+    from pathlib import Path
+
+    seed_dir = Path(__file__).resolve().parents[2] / "db" / "seed" / "benefit" / "sql"
+    blob = "\n".join(p.read_text(encoding="utf-8") for p in seed_dir.glob("*.sql"))
+    missing = [f"{r['comp_eng_nm']}/{r['benefit_nm']}" for r in legal.legal_rows()
+               if f"'{r['benefit_nm']}'" not in blob]
+    assert not missing, f"시드에서 사라진 법정 행: {missing}"
+
+
+def test_legal_rows_cover_the_audited_companies():
+    rows = legal.legal_rows()
+    assert len(rows) == 16
+    assert len({r["comp_eng_nm"] for r in rows}) == 13
+    for r in rows:
+        assert r["desc_at_review"] and r["why"], f"{r['comp_eng_nm']} 판정 근거가 비었다"
+
+
+def _fake_company(eng, benefit_names, ctgr="leave_general"):
+    return {
+        "comp_id": 1, "comp_eng_nm": eng, "comp_nm": eng,
+        "benefits": [{"benefit_cd": ctgr, "benefit_nm": nm, "benefit_amt": None,
+                      "benefit_ctgr_cd": "time_off", "qual_yn": True,
+                      "qual_desc_ctnt": nm, "badge_cd": "est"} for nm in benefit_names],
+    }
+
+
+def test_corpus_excludes_legal_rows_from_item_count():
+    """법정 행이 항목 수에 들어가면 근로기준법을 지키는 것만으로 순위가 오른다."""
+    from generator import corpus as corpus_mod
+    from generator.pages.company import CATEGORY_ORDER
+
+    c = _fake_company("rainbow_robotics", ["연차/반차/반반차", "하계휴가"])
+    built = corpus_mod.build([c], CATEGORY_ORDER)
+    assert built.items[1] == 1, "법정 행 1개가 항목 수에서 빠져야 한다"
+
+
+def test_corpus_counts_normal_rows_of_the_same_code():
+    """같은 코드의 진짜 복지 행까지 빠지면 안 된다."""
+    from generator import corpus as corpus_mod
+    from generator.pages.company import CATEGORY_ORDER
+
+    c = _fake_company("yuhan", ["연차휴가 (법정 상회)", "하계휴가"])
+    assert corpus_mod.build([c], CATEGORY_ORDER).items[1] == 2
+
+
+def test_ledger_keeps_the_legal_row_but_flags_it(fake_now):
+    """행은 남는다 — 「이 회사가 연차를 준다」는 사실은 정보다. 배지만 붙는다."""
+    from generator.pages.company import _group_benefits
+
+    c = _fake_company("rainbow_robotics", ["연차/반차/반반차", "하계휴가"])
+    groups = _group_benefits(c["benefits"], fake_now, comp_eng_nm="rainbow_robotics")
+    items = [i for _, _, its in groups for i in its]
+    assert len(items) == 2, "원장에서 행을 지우지 않는다"
+    assert [i["legal"] for i in items].count(True) == 1
+
+
+def test_group_benefits_without_company_name_flags_nothing(fake_now):
+    """회사 이름이 없으면 판정이 전부 False 가 된다 — 조합 페이지가 eng 를 꼭 넘겨야 하는 이유."""
+    from generator.pages.company import _group_benefits
+
+    c = _fake_company("rainbow_robotics", ["연차/반차/반반차"])
+    groups = _group_benefits(c["benefits"], fake_now)
+    assert all(not i["legal"] for _, _, its in groups for i in its)
