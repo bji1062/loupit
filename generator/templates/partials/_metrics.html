@@ -28,7 +28,11 @@
     카드 6장(평균연봉·평균근속·직원수 + 금액 3종)이 스스로 말한다. -#}
 <section class="metrics" aria-label="연도별 추이">
   <h2>연도별 추이</h2>
-  <p class="metrics-basis-line">{% if m.basis %}<span class="badge finance-basis">{{ m.basis }}</span> {% endif %}금액 단위 {{ m.money_unit }} · 큰 숫자는 각 지표의 가장 최근 공시 연도 값입니다 · 직원 현황은 법인 1벌이라 연결·별도 구분이 없습니다.</p>
+  {#- A안(2026-09-16): 각주 세 절 중 「큰 숫자는 각 지표의 가장 최근 공시 연도 값입니다」만 걷었다
+      (카드가 연도를 함께 보여주므로 말로 또 할 필요가 없다). **「직원 현황은 법인 1벌」은 남긴다** —
+      이건 필러가 아니라 표를 잘못 읽는 것을 막는 문장이다(배지가 두 벌이면 근속에도 연결 기준이
+      있다고 오해한다, `employ.company_metrics` 주석). 반복된다고 다 빼면 안 되는 예다. -#}
+  <p class="metrics-basis-line">{% if m.basis %}<span class="badge finance-basis">{{ m.basis }}</span> {% endif %}금액 단위 {{ m.money_unit }} · 직원 현황은 법인 1벌이라 연결·별도 구분이 없습니다.</p>
   {#- 라디오·라벨·카드가 **형제**여야 `:checked ~ .metric-cards` 가 닿는다. 카드를 다른 상자로 한 겹
       더 감싸는 순간 전환이 조용히 죽으므로(에러 없이 두 벌이 다 보인다) 이 구조를 지켜라. -#}
   <fieldset class="mshape">

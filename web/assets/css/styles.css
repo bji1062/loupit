@@ -1006,8 +1006,11 @@ main p { margin-top:var(--sp-3); }
 .sc-lens-chip b { font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
 .sc-lens-chip:hover { border-color:var(--brand); color:var(--t1); }
 .sc-lens-chip[aria-pressed="true"] { background:var(--brand); border-color:var(--brand); color:var(--on-brand); font-weight:var(--fw-semibold); }
-/* 설명 띠 — 고른 통의 것 하나만 드러난다. 문장은 `company.py::LENS_BUCKETS` 가 만든다. */
-.sc-lens-bar { display:none; margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3);
+/* 설명 띠 — 하나뿐이고 `lens.js` 가 고른 통의 문장을 넣는다(A안 2026-09-16: 6벌을 본문에 박던
+   것을 걷었다 — 사람은 하나씩 보지만 크롤러는 전부 읽어 필러가 됐다).
+   문장은 여전히 `company.py::LENS_BUCKETS` 가 만든다. */
+.sc-lens-bar[hidden] { display:none; }
+.sc-lens-bar { display:block; margin-top:var(--sp-2); padding:var(--sp-2) var(--sp-3);
   background:var(--brand-tint); border-radius:var(--r-sm); color:var(--t2); font-size:var(--fs-xs); line-height:var(--lh-snug); }
 
 /* 감쇠는 **0.8** 이다. 착수 문서의 시안 값은 0.45 였는데, 흐려진 행 안의 텍스트 대비를 전부
@@ -1036,27 +1039,21 @@ main p { margin-top:var(--sp-3); }
    6통 × 3 줄을 그대로 적는다. `[data-lens~=]` 는 공백 목록 매칭이라 "est expired" 처럼 두 통에
    드는 행도 양쪽에서 잡힌다 — 통은 서로 배타적이지 않다(그래서 필터가 아니라 강조다).
    카드 행과 원장 행이 같은 속성을 쓰므로 한 규칙이 두 화면을 함께 칠한다. */
-[data-lens-on="stated"] .sc-lens-bar[data-lens-for="stated"] { display:block; }
 [data-lens-on="stated"] [data-lens~="stated"] { box-shadow:inset 3px 0 0 0 var(--brand); }
 [data-lens-on="stated"] .sc-row[data-lens~="stated"] { background:var(--brand-tint); }
 [data-lens-on="stated"] [data-lens]:not([data-lens~="stated"]) { opacity:.8; }
-[data-lens-on="est"] .sc-lens-bar[data-lens-for="est"] { display:block; }
 [data-lens-on="est"] [data-lens~="est"] { box-shadow:inset 3px 0 0 0 var(--brand); }
 [data-lens-on="est"] .sc-row[data-lens~="est"] { background:var(--brand-tint); }
 [data-lens-on="est"] [data-lens]:not([data-lens~="est"]) { opacity:.8; }
-[data-lens-on="qual"] .sc-lens-bar[data-lens-for="qual"] { display:block; }
 [data-lens-on="qual"] [data-lens~="qual"] { box-shadow:inset 3px 0 0 0 var(--brand); }
 [data-lens-on="qual"] .sc-row[data-lens~="qual"] { background:var(--brand-tint); }
 [data-lens-on="qual"] [data-lens]:not([data-lens~="qual"]) { opacity:.8; }
-[data-lens-on="blank"] .sc-lens-bar[data-lens-for="blank"] { display:block; }
 [data-lens-on="blank"] [data-lens~="blank"] { box-shadow:inset 3px 0 0 0 var(--brand); }
 [data-lens-on="blank"] .sc-row[data-lens~="blank"] { background:var(--brand-tint); }
 [data-lens-on="blank"] [data-lens]:not([data-lens~="blank"]) { opacity:.8; }
-[data-lens-on="edited"] .sc-lens-bar[data-lens-for="edited"] { display:block; }
 [data-lens-on="edited"] [data-lens~="edited"] { box-shadow:inset 3px 0 0 0 var(--brand); }
 [data-lens-on="edited"] .sc-row[data-lens~="edited"] { background:var(--brand-tint); }
 [data-lens-on="edited"] [data-lens]:not([data-lens~="edited"]) { opacity:.8; }
-[data-lens-on="expired"] .sc-lens-bar[data-lens-for="expired"] { display:block; }
 [data-lens-on="expired"] [data-lens~="expired"] { box-shadow:inset 3px 0 0 0 var(--brand); }
 [data-lens-on="expired"] .sc-row[data-lens~="expired"] { background:var(--brand-tint); }
 [data-lens-on="expired"] [data-lens]:not([data-lens~="expired"]) { opacity:.8; }

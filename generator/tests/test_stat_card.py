@@ -617,14 +617,26 @@ def test_lens_keys_are_a_projection_of_the_two_existing_judgments(fake_now):
 
 def test_lens_bar_says_the_same_number_as_its_chip(fake_bundle, fake_now):
     """띠 설명은 **행이 사라진 게 아니라 흐려졌을 뿐**이라고 말해야 한다 — 그 말이 없으면
-    사용자는 '복지가 1개뿐'으로 읽는다. 숫자는 칩과 같은 곳에서 나온다."""
+    사용자는 '복지가 1개뿐'으로 읽는다. 숫자는 칩과 같은 곳에서 나온다.
+
+    A안(2026-09-16) 이후 문장은 **본문이 아니라 칩의 `data-lens-bar`** 에 실려 나가고
+    `lens.js` 가 고른 통의 것만 띠에 넣는다. 계약(칩 숫자 == 띠 숫자)은 그대로다."""
     html = _samsung(fake_bundle, fake_now)
-    bars = dict(re.findall(r'data-lens-for="([a-z]+)">([^<]+)<', html))
+    bars = dict(re.findall(r'data-lens-key="([a-z]+)" data-lens-bar="([^"]+)"', html))
     chips = _chips(html)
     assert set(bars) == set(chips) - {"all"}, bars
     for key, text in bars.items():
         assert f"{chips[key]}항목" in text, text
         assert "사라지지 않습니다" in text, text
+
+
+def test_lens_bar_is_empty_in_the_static_body(fake_bundle, fake_now):
+    """띠가 **비어서** 나가야 한다. 6벌을 본문에 박으면 사람은 하나씩 보지만 크롤러는 전부 읽어
+    회사 138쪽에서 반복 문장 717개가 된다(A안 2026-09-16, 거절 사유 「필러」)."""
+    html = _samsung(fake_bundle, fake_now)
+    assert '<p class="sc-lens-bar" data-lens-bar-out aria-live="polite" hidden></p>' in html
+    assert "항목에 띠를 표시했습니다." not in re.sub(r'data-lens-bar="[^"]*"', "", html), \
+        "띠 문장이 본문 텍스트에 남아 있다"
 
 
 def test_every_lens_bucket_is_wired_in_the_js_whitelist_and_the_css(fake_bundle, fake_now):

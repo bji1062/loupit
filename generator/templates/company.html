@@ -36,7 +36,10 @@
 
   <section class="benefits" id="benefit-ledger">
     <h2>복지 상세 <span class="h2-sub">— 항목별 설명·근거</span></h2>
-    <p class="ledger-lead">항목마다 설명과 금액의 성격(회사 공식 수치 / 추정치)·출처 배지·확인일을 싣습니다. 회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}{% if card.counts.blank %} · 금액 미기재 {{ card.counts.blank }}{% endif %}. 이 회사 재직 인증을 마친 분은 항목별로 금액을 수정하거나 추가할 수 있습니다.</p>
+    {#- A안(2026-09-16): 설명 문장 두 개를 걷었다. 「항목마다 …싣습니다」는 화면이 이미 배지·확인일로
+        보여주고, 「재직 인증을 마친 분은 …」은 행마다 있는 「수정 →」 링크가 이미 하는 말이다.
+        138쪽에 똑같이 실려 인스턴스 276개였다. 회사별 숫자는 사실이므로 남긴다. -#}
+    <p class="ledger-lead">회사 공식 수치 {{ card.counts.stated }} · 추정치 {{ card.counts.est }} · 정성 {{ card.counts.qual }}{% if card.counts.blank %} · 금액 미기재 {{ card.counts.blank }}{% endif %}</p>
     {{ benefit_table(benefit_groups) }}
   </section>
   {#- 실적(SP-FIN-5, 2026-08-27): 복지 **뒤**, CTA 앞 — 복지가 이 사이트의 본체다. `finance` 는

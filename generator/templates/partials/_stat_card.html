@@ -64,17 +64,17 @@
     <div class="sc-lens" hidden data-lens-chips>
       <ul class="sc-lens-chips" aria-label="출처 렌즈">
         <li><button class="sc-lens-chip" type="button" data-lens-key="all" aria-pressed="true">전체 <b>{{ card.counts.total }}</b></button></li>
-        {% for l in card.lens %}<li><button class="sc-lens-chip" type="button" data-lens-key="{{ l.key }}" aria-pressed="false">{{ l.label }} <b>{{ l.count }}</b></button></li>
+        {% for l in card.lens %}<li><button class="sc-lens-chip" type="button" data-lens-key="{{ l.key }}" data-lens-bar="{{ l.bar }}" aria-pressed="false">{{ l.label }} <b>{{ l.count }}</b></button></li>
         {% endfor %}
       </ul>
-      {#- 설명 띠는 고른 통의 것만 CSS 가 드러낸다(JS 는 최상위 `data-lens-on` 한 글자만 세팅).
+      {#- 설명 띠는 **비어서 나간다.** 문장은 칩의 `data-lens-bar` 에 실려 오고 `lens.js` 가 고른
+          통의 것을 여기 넣는다. 예전에는 6벌을 모두 본문에 박아 CSS 로 하나만 드러냈는데,
+          사람은 하나씩 보지만 크롤러는 전부 읽어 **회사 138쪽에서 반복 문장 717개**가 됐다
+          (A안 2026-09-16, 거절 사유 「필러」). 문장 출처는 여전히 `company.py::LENS_BUCKETS` 하나다.
           `aria-live` 는 **보이는 변화가 소리로도 가야** 하기 때문이다 — 스크린리더는 칩의
           `aria-pressed` 변화만 듣고, "나머지 19항목은 흐려질 뿐 사라지지 않습니다"라는 정작
           중요한 사실은 못 듣는다(리뷰 지적 2026-09-04). -#}
-      <div class="sc-lens-bars" aria-live="polite">
-      {% for l in card.lens %}<p class="sc-lens-bar" data-lens-for="{{ l.key }}">{{ l.bar }}</p>
-      {% endfor %}
-      </div>
+      <p class="sc-lens-bar" data-lens-bar-out aria-live="polite" hidden></p>
     </div>
     {% endif %}
     <div class="sc-cats">
@@ -121,7 +121,9 @@
         <div data-lens-row="edited"><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
         <div data-lens-row="expired"><dt>만료·재확인 필요<span>밴드 +15%p 가산</span></dt><dd>{{ card.counts.expired }}</dd></div>
       </dl>
-      <p class="sc-note">밴드는 비교 리포트가 금액에 두는 불확실성 폭입니다. 출처 배지가 공식이어도 금액이 추정치이면 ±20%가 유지됩니다.</p>
+      {#- A안(2026-09-16): 밴드 설명 두 문장은 회사마다 **한 글자도 다르지 않아** 138쪽에 그대로
+          실렸다(인스턴스 276). 설명은 면책 페이지 한 곳에 두고 여기서는 링크만 건다. -#}
+      <p class="sc-note"><a href="/disclaimer">밴드 설명</a></p>
     </div>
     {% if card.top_ratio %}
     <div class="sc-block">
