@@ -9,7 +9,12 @@ import re
 import pytest
 
 from generator import build as build_module
-from generator.checks import _check_company_count, _check_non_js_body, run_generated_checks
+from generator.checks import (
+    _check_company_count,
+    _check_home_present,
+    _check_non_js_body,
+    run_generated_checks,
+)
 from generator.context import build_context
 from generator.pages import combo, company, policy
 from generator.render import make_env
@@ -90,11 +95,18 @@ def test_gc2_zero_company_pages_rejected():
 def test_gc2_run_generated_checks_passes_for_fake_bundle_pipeline(
     fake_bundle, fake_now, fake_combinations_path
 ):
+    """게이트는 **실제 빌드가 내는 페이지 집합**으로 통과해야 한다 — 대문 포함(GC-28)."""
     env = make_env()
     ctx = build_context(fake_bundle, now=fake_now)
     from generator.config import CFG
+    from generator.pages import home
 
-    pages = company.render_all(env, ctx) + combo.render_all(env, ctx, CFG) + policy.render_all(env, ctx)
+    pages = (
+        company.render_all(env, ctx)
+        + combo.render_all(env, ctx, CFG)
+        + policy.render_all(env, ctx)
+        + [home.render(env, ctx, CFG, pairs=combo.load_pairs(ctx))]
+    )
     run_generated_checks("unused", pages)  # 예외 없어야 GREEN
 
 
@@ -136,3 +148,90 @@ def test_gc10_check_non_js_body_rejects_missing_content():
     )
     with pytest.raises(BuildError):
         _check_non_js_body([bad_page])
+
+
+# ── GC-28 (Tier-0): 생성 대문 필수 ─────────────────────────────────────────
+#
+# 2026-09-15 후속 정리(PR #55)로 수기 셸 `web/index.html` 과 nginx 폴백
+# (`try_files /dist/index.html /index.html`)을 걷었다. 이제 `/` 를 떠받치는 건
+# 생성 대문 하나뿐이라, 대문이 빠진 산출물을 스왑하면 대문이 즉시 404 가 된다.
+# 스모크(SM-1b)는 **스왑이 끝난 뒤** 보므로 그때는 이미 라이브가 죽어 있다 —
+# 스왑 **전** 게이트에서 세운다.
+
+
+def _home_page(html: str):
+    from generator.context import Page
+
+    return Page(path="index.html", url="https://jobcho.wiki/", html=html, title="t", description="d")
+
+
+def _one_company():
+    from generator.context import Page
+
+    return Page(
+        path="company/c1.html",
+        url="https://jobcho.wiki/company/c1",
+        html="<h1>회사</h1>복지",
+        title="t",
+        description="d",
+    )
+
+
+def test_gc28_missing_home_page_rejected():
+    """대문이 통째로 빠진 산출물 — 다른 검사는 전부 통과해도 여기서 막혀야 한다."""
+    with pytest.raises(BuildError, match="GC-28"):
+        run_generated_checks("unused", [_one_company()])
+
+
+def test_gc28_home_without_generated_marker_rejected():
+    """경로만 맞고 내용이 엉뚱한 문서(옛 수기 셸·빈 셸)도 대문이 아니다."""
+    with pytest.raises(BuildError, match="GC-28"):
+        _check_home_present([_home_page("<html><body><div class='home'>대문 비슷한 것</div></body></html>")])
+
+
+def test_gc28_marker_only_inside_script_rejected():
+    """표식이 `<script>` 안에만 있으면 비-JS 크롤러에겐 없는 것과 같다(INV-3)."""
+    with pytest.raises(BuildError, match="GC-28"):
+        _check_home_present([_home_page("<html><body><script>var x='data-home-generated';</script></body></html>")])
+
+
+def test_gc28_duplicate_home_pages_rejected():
+    """대문 2개 = 어느 쪽이 스왑되는지 모른다. 개수 계약은 정확히 1이다."""
+    with pytest.raises(BuildError, match="GC-28"):
+        _check_home_present([_home_page("<div data-home-generated>x</div>")] * 2)
+
+
+def test_gc28_real_generated_home_passes(fake_bundle, fake_now, fake_combinations_path):
+    """실제 생성 대문은 통과해야 한다 — 게이트가 릴리스를 상시 막으면 안 된다."""
+    from generator.config import CFG
+    from generator.pages import home
+
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    _check_home_present([home.render(env, ctx, CFG, pairs=combo.load_pairs(ctx))])  # 예외 없어야 GREEN
+
+
+def test_gc28_shell_home_without_body_rejected():
+    """표식만 있고 본문이 없는 껍데기 대문 — 표식은 최외곽 래퍼라 데이터가 전부 빠져도 찍힌다."""
+    with pytest.raises(BuildError, match="GC-28"):
+        _check_home_present([_home_page("<html><body><div data-home-generated></div></body></html>")])
+
+
+def test_gc28_home_h1_check_accepts_attributed_tag():
+    """대문 h1 은 `<h1 id="home-title">` 이다 — 리터럴 `"<h1>"` 로 찾으면 상시 오탐이었다."""
+    _check_home_present([_home_page('<div data-home-generated><h1 id="home-title">잡초위키</h1></div>')])
+
+
+def test_only_filter_keeps_home_so_partial_build_still_passes_gate(
+    fake_bundle, fake_now, fake_combinations_path, tmp_path
+):
+    """`--only company` 부분 빌드도 대문을 싣는다 — 안 그러면 GC-28 이 부분 빌드를 전부 막는다.
+
+    부분 빌드도 out_dir 를 원자적으로 통째 교체하므로 그 dist 역시 `/` 를 서빙해야 한다.
+    """
+    out_dir = tmp_path / "dist-only"
+    rc = build_module.run(str(out_dir), fake_bundle, lastmod="2026-07-11", only=["company"])
+    assert rc == 0
+    assert (out_dir / "index.html").exists()  # 접두가 안 맞아도 남는다
+    assert (out_dir / "company").is_dir()
+    assert not (out_dir / "heatmap.html").exists()  # 필터 자체는 그대로 작동
