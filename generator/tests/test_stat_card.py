@@ -54,7 +54,7 @@ def test_every_benefit_appears_once_in_card_and_once_in_ledger(fake_bundle, fake
 def test_benefit_description_lives_only_in_the_ledger(fake_bundle, fake_now):
     """정성 설명·비고의 집은 원장 하나다(SEO 본문이자 중복 방지)."""
     html = _samsung(fake_bundle, fake_now)
-    desc = "3년 근속마다 2주 부여"
+    desc = "3년 근속마다 2주를 부여합니다."   # 표기 정리(SP-GEN-4.4) 후 형태 — 원문은 "…2주 부여"
     assert html.count(desc) == 1
     ledger_start = html.index('id="benefit-ledger"')
     assert html.index(desc) > ledger_start, "설명이 카드 쪽에 새어 있다"
@@ -383,7 +383,8 @@ def test_note_and_qual_desc_are_both_kept(fake_now):
         }],
     }
     html = company.render_all(make_env(), build_context(bundle, now=fake_now))[0].html
-    assert "연차, 반차, 경조휴가" in html and "휴가비 지원" in html
+    # 표기 정리(SP-GEN-4.4): 「연차, 반차, 경조휴가」는 서술어가 없어 그대로, 「휴가비 지원」은 문장이 된다.
+    assert "연차, 반차, 경조휴가" in html and "휴가비를 지원합니다." in html
 
 
 def _sc_rank_rows(html: str) -> list[tuple[str, str]]:
@@ -674,3 +675,66 @@ def test_card_hint_tells_the_truth_on_both_widths(fake_bundle, fake_now):
     html = _samsung(fake_bundle, fake_now)
     assert '<span class="sc-hint-wide">' in html and "항목을 누르면" in html
     assert '<span class="sc-hint-narrow">' in html and "카테고리를 누르면" in html
+
+
+# ── 복지 설명 표기 정리 (SP-GEN-4.4, A안 3단계 2026-09-16) ───────────────────
+
+
+def test_desc_drops_the_estimate_tail_because_the_amount_axis_already_says_it():
+    """꼬리 `(추정)` 은 **금액 축**이 이미 말한다 — 원장의 `추정치 · 밴드 ±20%`, 금액 점선,
+    「추정치」 렌즈 통, 비교 리포트 밴드까지 네 곳. 본문은 다섯 번째로 같은 말을 한다.
+    ⚠ 전수 확인(2026-09-16): `(추정)` 이 든 481행 중 금액이 `stated` 인 행은 0개였다."""
+    from generator.format import benefit_desc
+
+    # 서술어가 없으면 꼬리만 걷고 그대로 둔다
+    assert benefit_desc("종합검진 (추정)", "estimated") == "종합검진"
+    # 서술어가 있으면 꼬리를 걷은 뒤 문장이 된다
+    assert benefit_desc("본인/가족 의료비 지원 (추정)", "estimated") == "본인/가족 의료비를 지원합니다."
+
+
+def test_desc_never_touches_a_qualitative_row_marked_estimate():
+    """🚨 금액이 없는데 `(추정)` 이 붙은 행은 **통째로 건드리지 않는다**(DB손해보험 9행).
+
+    금액이 없으니 「금액이 추정」일 수가 없고, 수집자가 「이 복지가 있다는 것 자체가 불확실하다」는
+    뜻으로 적은 것이다. 걷어내면 그 유일한 표시가 사라진다 — 배지(`official`)와의 모순은
+    원문 재확인으로 풀 일이지 여기서 지울 일이 아니다."""
+    from generator.format import benefit_desc
+
+    t = "사내 동호회 지원 (추정)"
+    assert benefit_desc(t, "none") == t
+
+
+def test_desc_makes_a_sentence_only_when_a_predicate_is_already_there():
+    """서술어가 **없는** 문구에 「제공합니다」를 붙이지 않는다 — 그 동사는 회사가 한 말이 아니다."""
+    from generator.format import benefit_desc
+
+    assert benefit_desc("건강검진 지원", "estimated") == "건강검진을 지원합니다."
+    assert benefit_desc("상담포유 심리상담서비스", "none") == "상담포유 심리상담서비스"
+    assert benefit_desc("주 2일 이상 재택근무 지향", "none") == "주 2일 이상 재택근무를 지향합니다."
+
+
+def test_desc_puts_the_particle_on_the_noun_not_the_adverb():
+    """`성과급 별도 지급` → `성과급을 별도 지급합니다`. 초안에서 「별**도**」의 끝 글자를 조사로
+    오인해 조사가 통째로 빠진 문장이 나왔다 — 한 글자로 조사를 판정하려 한 것이 원인이었다."""
+    from generator.format import benefit_desc
+
+    assert benefit_desc("성과급 별도 지급", "estimated") == "성과급을 별도 지급합니다."
+    assert benefit_desc("여름휴가 별도 지원", "estimated") == "여름휴가를 별도 지원합니다."
+    assert benefit_desc("경조금 및 경조휴가 지원", "estimated") == "경조금 및 경조휴가를 지원합니다."
+
+
+def test_desc_skips_risky_tails_instead_of_guessing():
+    """꼬리가 구두점·괄호면 변환하지 않는다. 규칙 기반 한국어 변환은 조용히 틀리므로
+    건너뛰는 쪽이 항상 안전하다 — 원문이 그대로 화면에 남는다."""
+    from generator.format import benefit_desc
+
+    for t in ("본인, 지원", "(사내) 지원", "지원"):
+        assert benefit_desc(t, "estimated") == t.strip()
+
+
+def test_desc_is_empty_safe():
+    from generator.format import benefit_desc
+
+    assert benefit_desc(None) == ""
+    assert benefit_desc("   ") == ""
+    assert benefit_desc("(추정)", "estimated") == ""
