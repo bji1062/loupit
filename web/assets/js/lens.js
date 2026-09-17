@@ -24,14 +24,28 @@ export const ROOT_ATTR = 'data-lens-on';
 const LIST_SEL = '[data-lens-chips]';
 const CHIP_SEL = '[data-lens-key]';
 const KEY_ATTR = 'data-lens-key';
+const BAR_ATTR = 'data-lens-bar';
+const OUT_SEL = '[data-lens-bar-out]';
 
-// 켠 렌즈(null = 전체). 최상위 속성 하나와 칩의 `aria-pressed` 만 만진다.
-function apply(root, chips, key) {
+// 켠 렌즈(null = 전체). 최상위 속성 하나와 칩의 `aria-pressed`, 그리고 설명 띠 한 줄만 만진다.
+//
+// 설명 띠는 **비어서 나간다**(A안 2026-09-16). 예전에는 6벌을 본문에 박고 CSS 로 하나만
+// 드러냈는데, 사람은 하나씩 보지만 크롤러는 전부 읽어 회사 138쪽에서 반복 문장 717개가 됐다.
+// 문장은 여기서 짓지 않는다 — 칩의 `data-lens-bar` 에 실려 온 것을 옮길 뿐이고,
+// 출처는 여전히 `company.py::LENS_BUCKETS` 하나다(판정도 문장도 이 모듈이 만들지 않는다).
+function apply(root, chips, key, out) {
   if (key) root.setAttribute(ROOT_ATTR, key);
   else root.removeAttribute(ROOT_ATTR);
+  let bar = '';
   for (const c of chips) {
     const k = c.getAttribute(KEY_ATTR);
-    c.setAttribute('aria-pressed', String(key ? k === key : k === 'all'));
+    const on = key ? k === key : k === 'all';
+    c.setAttribute('aria-pressed', String(on));
+    if (on && key) bar = c.getAttribute(BAR_ATTR) || '';
+  }
+  if (out) {
+    out.textContent = bar;                   // '전체'면 빈 문자열 — 띠가 사라진다
+    out.hidden = !bar;
   }
 }
 
@@ -43,6 +57,7 @@ export function initLens(doc) {
     const chips = [...list.querySelectorAll(CHIP_SEL)];
     if (!chips.length) return 0;
     const root = d.documentElement;
+    const out = d.querySelector(OUT_SEL);   // 없어도 돈다(띠 없는 마크업 허용)
     list.hidden = false;                       // 여기서 처음 드러난다
     let on = null;
     for (const c of chips) {
@@ -51,7 +66,7 @@ export function initLens(doc) {
         if (k !== 'all' && !LENS_KEYS.includes(k)) return;
         // 켠 칩을 다시 누르면 전체로 — 렌즈는 조합이 아니라 관점이라 한 번에 하나만 켜진다.
         on = (k === 'all' || k === on) ? null : k;
-        apply(root, chips, on);
+        apply(root, chips, on, out);
       });
     }
     return chips.length;

@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import json
+import re
 from datetime import date, datetime
 
 
@@ -153,3 +154,74 @@ def pct_delta(prev, cur) -> str | None:
     if abs(d) < 0.05:  # 소수 첫째 자리에서 0 이 되는 값은 '-0.0%' 가 아니라 '+0.0%'
         d = 0.0
     return f"{d:+.1f}%"
+
+
+# ── 복지 설명 표기 정리 (SP-GEN-4.4, A안 3단계 2026-09-16) ───────────────────
+#
+# **저장하지 않는다.** 정본은 시드 SQL 원문이고 여기서 만드는 문장은 빌드마다 파생된다 —
+# 원문이 바뀌면 다음 빌드에 새 문장이 나오므로 둘이 갈라질 수가 없다(갱신 배치 없음).
+# 규칙을 끄면 원래 문구로 돌아오고 데이터는 한 글자도 변하지 않는다.
+
+_EST_TAIL = re.compile(r"\s*\(추정\)\s*$")
+
+# 이미 서술어가 있는 문구만 어미를 맞춘다. 서술어가 **없는** 문구에 「제공합니다」를 붙이는 일은
+# 하지 않는다 — 그 동사는 회사가 한 말이 아니라 우리가 고르는 말이라, 실제로는 「제휴」인데
+# 「제공」이라 쓰면 과장이 된다(2026-09-16 결정).
+_PREDICATES = ("지원", "제공", "운영", "지급", "부여", "실시", "보장", "운용", "지향")
+# 서술어 앞 부사 — 조사는 그 **앞 명사**에 붙는다(`성과급 별도 지급` → `성과급을 별도 지급합니다`).
+_ADVERBS = ("별도", "무료", "무상", "전액", "일부", "추가", "전원", "상시")
+# 꼬리가 구두점·괄호면 손대지 않는다. 규칙 기반 한국어 변환은 조용히 틀리므로 건너뛰는 쪽이 안전하다.
+_RISKY_TAIL = re.compile(r"[,·/]\s*$|[)\]」』]$")
+
+
+def _josa_eul_reul(word: str) -> str:
+    ch = word[-1]
+    if not ("가" <= ch <= "힣"):
+        return "를"
+    return "를" if (ord(ch) - 0xAC00) % 28 == 0 else "을"
+
+
+def benefit_desc(text: str | None, amt_source: str | None = None) -> str:
+    """복지 설명을 화면에 실을 형태로 정리한다.
+
+    1. 꼬리 `(추정)` 제거 — **금액 축이 이미 말한다.** 원장의 `추정치 · 밴드 ±20%`, 금액 점선,
+       「추정치」 렌즈 통, 비교 리포트 밴드까지 네 곳이다. 본문은 다섯 번째로 같은 말을 한다.
+       ⚠ 전수 확인(2026-09-16): `(추정)` 이 든 481행 중 금액이 `stated` 인 행은 **0개**였다.
+    2. 서술어로 끝나면 완결문장으로 — 구글이 요구하는 조항이 「완전한 문장이나 구문」이다
+       (`answer/81904`). 어미만 맞추고 내용은 더하지 않는다.
+
+    🚨 **`amt_source == "none"` 인데 `(추정)` 이 붙은 행은 통째로 건드리지 않는다.**
+       금액이 없으니 「금액이 추정」일 수가 없고, 수집자가 「이 복지가 있다는 것 자체가
+       불확실하다」는 뜻으로 적은 것이다(DB손해보험 9행). 배지는 `official` 이라 화면과 어긋나 있는데,
+       걷어내면 그 유일한 표시가 사라지고 두면 모순이 남는다 — **원문 재확인이 먼저다.**
+    """
+    t = (text or "").strip()
+    if not t:
+        return t
+    if amt_source == "none" and "(추정)" in t:
+        return t                                   # 보류 — 손대지 않는다
+    t = _EST_TAIL.sub("", t).strip()
+    if not t:
+        return t
+    return _to_sentence(t) or t
+
+
+def _to_sentence(text: str) -> str | None:
+    """서술어로 끝나는 명사구 → 완결문장. 만들 수 없으면 `None`(호출자가 원문을 그대로 쓴다)."""
+    t = text.rstrip(".")
+    for v in _PREDICATES:
+        if not (t.endswith(" " + v) or (t.endswith(v) and len(t) > len(v))):
+            continue
+        head = t[: -len(v)].rstrip()
+        if not head:
+            return None
+        adv = ""
+        for a in _ADVERBS:
+            if head.endswith(a):
+                adv, head = a, head[: -len(a)].rstrip()
+                break
+        if not head or len(head) < 2 or _RISKY_TAIL.search(head):
+            return None
+        tail = f"{adv} {v}합니다." if adv else f"{v}합니다."
+        return f"{head}{_josa_eul_reul(head)} {tail}"
+    return None

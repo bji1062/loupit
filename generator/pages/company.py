@@ -14,7 +14,7 @@ from generator.context import Page
 from generator.employ import company_metrics
 from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
-from generator.format import amount_kind, badge_state, iso_date, krw_manwon
+from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon
 from generator.radar import radar_svg
 from generator.slug import combo_slug
 
@@ -195,8 +195,10 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
             "amount": krw_manwon(b["benefit_amt"]) if not b["qual_yn"] else "",
             "amt": None if b["qual_yn"] else b.get("benefit_amt"),
             "qual": b["qual_yn"],
-            "qual_desc": b.get("qual_desc_ctnt"),
-            "note": b.get("note_ctnt"),
+            # 표기 정리(SP-GEN-4.4) — 꼬리 `(추정)` 제거 + 서술어가 있으면 완결문장으로.
+            # **저장하지 않는다**: 정본은 시드 원문이고 이 문장은 빌드마다 파생된다.
+            "qual_desc": benefit_desc(b.get("qual_desc_ctnt"), b.get("amt_source")),
+            "note": benefit_desc(b.get("note_ctnt"), b.get("amt_source")),
             "badge": badge,
             "src_cd": b.get("badge_src_cd"),
             "src_url": _safe_http(b.get("badge_src_url_ctnt")),

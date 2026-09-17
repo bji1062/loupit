@@ -20,11 +20,11 @@ const HTML = `<section class="stat-card">
   <div class="sc-lens" hidden data-lens-chips>
     <ul class="sc-lens-chips" aria-label="출처 렌즈">
       <li><button class="sc-lens-chip" type="button" data-lens-key="all" aria-pressed="true">전체 <b>4</b></button></li>
-      <li><button class="sc-lens-chip" type="button" data-lens-key="stated" aria-pressed="false">회사 공식 수치 <b>1</b></button></li>
-      <li><button class="sc-lens-chip" type="button" data-lens-key="est" aria-pressed="false">추정치 <b>1</b></button></li>
-      <li><button class="sc-lens-chip" type="button" data-lens-key="qual" aria-pressed="false">정성 <b>2</b></button></li>
+      <li><button class="sc-lens-chip" type="button" data-lens-key="stated" data-lens-bar="회사 공식 수치 1항목에 띠를 표시했습니다." aria-pressed="false">회사 공식 수치 <b>1</b></button></li>
+      <li><button class="sc-lens-chip" type="button" data-lens-key="est" data-lens-bar="추정치 1항목에 띠를 표시했습니다." aria-pressed="false">추정치 <b>1</b></button></li>
+      <li><button class="sc-lens-chip" type="button" data-lens-key="qual" data-lens-bar="정성 2항목에 띠를 표시했습니다." aria-pressed="false">정성 <b>2</b></button></li>
     </ul>
-    <p class="sc-lens-bar" data-lens-for="est">추정치 1항목을…</p>
+    <p class="sc-lens-bar" data-lens-bar-out aria-live="polite" hidden></p>
   </div>
   <ul><li><a class="sc-row has-amt" href="#b-meal" data-lens="est"><span class="sc-nm">식대</span></a></li>
       <li><a class="sc-row" href="#b-rest" data-lens="qual"><span class="sc-nm">휴가</span></a></li></ul>
@@ -153,5 +153,39 @@ describe('렌즈가 하지 않는 일', () => {
       else Object.defineProperty(globalThis, 'localStorage', { value: prev, configurable: true });
     }
     assert.equal(touched, 0);
+  });
+});
+
+// ── 설명 띠 (A안 2026-09-16) ────────────────────────────────────────────────
+// 6벌을 본문에 박던 것을 걷었다. 문장은 칩의 `data-lens-bar` 에 실려 오고 여기서 옮기기만 한다.
+describe('설명 띠는 비어서 나가고 JS 가 채운다', () => {
+  const out = (d) => d.querySelector('[data-lens-bar-out]');
+
+  test('정적 본문에서는 비어 있다 — 크롤러가 6벌을 읽지 않는다', () => {
+    const d = doc();
+    assert.equal(out(d).textContent, '');
+    assert.equal(out(d).hasAttribute('hidden'), true);
+  });
+
+  test('칩을 누르면 그 통의 문장만 들어간다', () => {
+    const d = doc();
+    initLens(d);
+    chip(d, 'qual').dispatchEvent(new d.defaultView.Event('click'));
+    assert.equal(out(d).textContent, '정성 2항목에 띠를 표시했습니다.');
+    assert.equal(out(d).hidden, false);
+  });
+
+  test("'전체'로 돌아오면 띠가 사라진다", () => {
+    const d = doc();
+    initLens(d);
+    chip(d, 'est').dispatchEvent(new d.defaultView.Event('click'));
+    chip(d, 'all').dispatchEvent(new d.defaultView.Event('click'));
+    assert.equal(out(d).textContent, '');
+    assert.equal(out(d).hidden, true);
+  });
+
+  test('띠가 없는 마크업에서도 죽지 않는다', () => {
+    const d = doc(HTML.replace(/<p class="sc-lens-bar"[^>]*><\/p>/, ''));
+    assert.equal(initLens(d), 4);
   });
 });
