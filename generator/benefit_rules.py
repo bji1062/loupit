@@ -204,6 +204,10 @@ def validate(cfg: dict) -> list[str]:
         for k in (*o.get("facets_add", []), *o.get("facets_remove", [])):
             if k not in facet_keys:
                 errs.append(f"{code}: override {o.get('comp')} facet {k!r} 가 정의되지 않았다")
+    # 같은 회사 예외가 둘이면 `classify` 의 dict 가 뒤의 것만 남긴다 — 앞의 판정이 조용히 사라진다.
+    dup = [c for c, n in Counter(o.get("comp") for o in cfg.get("overrides", [])).items() if n > 1]
+    if dup:
+        errs.append(f"{code}: override 회사가 겹친다 {dup} — 한 회사에 예외 하나로 합칠 것")
     return errs
 
 
@@ -238,6 +242,8 @@ def validate_all(cfgs: dict[str, dict]) -> list[str]:
     """설정 전부 — 각자의 `validate` + slug 중복(URL 이 겹치면 한 페이지가 다른 페이지를 덮는다)
     + 설정 사이의 같은 사람 글 문장(`repeated_sentences`)."""
     errs = [e for cfg in cfgs.values() for e in validate(cfg)]
+    # 수량어(대부분·많은…)는 숫자처럼 데이터가 바뀌는 날 거짓이 된다 — pytest 뿐 아니라 빌드도 막는다.
+    errs += [e for cfg in cfgs.values() for e in check_quantifiers(cfg)]
     slugs = Counter(cfg.get("slug") for cfg in cfgs.values())
     errs += [f"slug {s!r} 가 {n}개 설정에 겹친다" for s, n in slugs.items() if n > 1]
     errs += repeated_sentences(cfgs)

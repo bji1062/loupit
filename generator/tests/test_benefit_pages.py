@@ -552,3 +552,15 @@ def test_blank_rows_are_disclosed_with_a_label_not_a_sentence():
 def test_no_blank_label_when_every_row_has_text():
     pages, *_ = _render(HOUSING, {"housing_loan": _housing_cfg()})
     assert "bn-blank" not in pages[0].html
+
+
+def test_duplicate_override_company_is_rejected():
+    cfg = copy.deepcopy(_housing_cfg())
+    cfg["overrides"] = cfg["overrides"] + [dict(cfg["overrides"][0])]
+    assert any("override 회사가 겹친다" in e for e in br.validate(cfg))
+
+
+def test_quantifier_in_human_text_fails_the_build_gate_too():
+    cfg = copy.deepcopy(_housing_cfg())
+    cfg["intro"] = ["대부분의 회사가 빌려줍니다."]
+    assert br.validate_all({"housing_loan": cfg}), "수량어가 빌드 게이트(validate_all)를 통과했다"
