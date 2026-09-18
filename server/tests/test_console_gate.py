@@ -5,9 +5,10 @@
 콘솔은 이 코드베이스에 처음 생기는 "회원 위" 권한이고, 잘못 열리면 인터넷에 관리 화면이
 노출된다. 그래서 여기서 재는 축은 셋이다.
 
-1. **터널 밖에서는 보이지도 않는가** — nginx 를 거친 요청은 404(403·401 이 아니다).
+1. **허락된 입구 밖에서는 보이지도 않는가** — nginx 를 거친 요청은 404(403·401 이 아니다).
+   예외는 비밀번호 뒤의 관리 호스트 하나(SP-AUTH-19.8) — 그 매트릭스는 `test_admin_host_gate.py` 가 소유한다.
 2. **그 판정의 전제가 살아 있는가** — "프록시 헤더가 없으면 터널"이라는 규칙은
-   `infra/nginx/loupit.conf` 가 모든 `proxy_pass` 블록에 헤더를 붙인다는 사실에 기댄다.
+   `infra/nginx/*.conf`(본·베타·관리) 가 모든 `proxy_pass` 블록에 헤더를 붙인다는 사실에 기댄다.
    CO-11 이 그 사실을 직접 검사한다. **전제를 검사하지 않는 보안 판정은 가정이다.**
 3. **감사가 자율신고를 벗어났는가** — `DECIDED_BY_ID` 를 요청 본문으로 받을 수 없어야 한다.
    CO-12 는 입력 모델에 그 필드가 **없다**는 것을 못박는다(있으면 언젠가 쓰인다).
@@ -25,7 +26,12 @@ from server import deps
 from server.services import operator
 
 ROOT = Path(__file__).resolve().parents[2]
-NGINX_CONF = ROOT / "infra" / "nginx" / "loupit.conf"
+# 앱 포트(:8000·:8001)로 프록시하는 vhost **전부** — 하나라도 표식을 빠뜨리면 그 경로가 터널로 위장한다.
+# 손으로 적은 목록은 새 vhost 를 놓친다(2026-09-18 적대 검토) → proxy_pass 가 있는 conf 를 모은다.
+NGINX_CONFS = tuple(sorted(
+    p for p in (ROOT / "infra" / "nginx").glob("*.conf")
+    if re.search(r"^\s*proxy_pass\s", p.read_text(encoding="utf-8"), re.M)
+))
 
 
 # ── CO-1~4: 화이트리스트 (순수 함수) ──────────────────────────────────────────
@@ -96,13 +102,13 @@ async def test_CO7_프록시_요청은_404로_끊긴다():
         headers = {"x-real-ip": "203.0.113.9"}
 
     with pytest.raises(HTTPException) as exc:
-        await deps.require_loopback(_Req())
+        await deps.require_console_access(_Req())
     assert exc.value.status_code == 404
 
     class _Tunnel:
         headers = {"host": "127.0.0.1:8000"}
 
-    assert await deps.require_loopback(_Tunnel()) is None  # 터널은 통과
+    assert await deps.require_console_access(_Tunnel()) is None  # 터널은 통과
 
 
 # ── CO-8~10: 등록 조건 (fail-closed) ─────────────────────────────────────────
@@ -155,6 +161,15 @@ def test_CO10_표면은_정확히_이_집합이다(monkeypatch):
         ("/api/v1/console/suppressions/{target_hash}/release", "POST"),
         # SC15(2026-08-27): 신고 처리 — hide(대상 hidden, 되돌릴 수 있다)/dismiss 뿐. 하드 삭제 없음.
         ("/api/v1/console/reports/{report_id}/decide", "POST"),
+        # SP-AUTH-19.7(2026-09-18): 조회 화면 4종(전부 GET) + 게시판 숨김/복구 2. 복구는 hidden→active 만 —
+        # 하드 삭제·되돌리기(복지 편집)는 여전히 없다.
+        ("/api/v1/console/overview", "GET"),
+        ("/api/v1/console/members", "GET"),
+        ("/api/v1/console/posts", "GET"),
+        ("/api/v1/console/comments", "GET"),
+        ("/api/v1/console/benefit-edits", "GET"),
+        ("/api/v1/console/posts/{post_id}/visibility", "POST"),
+        ("/api/v1/console/comments/{comment_id}/visibility", "POST"),
     }
 
 
@@ -167,8 +182,8 @@ def test_CO10b_노출범위_관문이_라우터_레벨에_있다(monkeypatch):
     for r in app.routes:
         if isinstance(r, APIRoute) and "/console" in r.path:
             names = [d.call.__name__ for d in r.dependant.dependencies if d.call]
-            assert "require_loopback" in names, f"{r.path} 에 노출범위 관문이 없다"
-            assert names.index("require_loopback") == 0, (
+            assert "require_console_access" in names, f"{r.path} 에 노출범위 관문이 없다"
+            assert names.index("require_console_access") == 0, (
                 f"{r.path}: 노출범위 판정이 첫 관문이 아니다 — 세션 검사가 먼저 돌면 "
                 "비로그인 외부 요청에 401 이 나가 존재가 새어 나간다"
             )
@@ -181,22 +196,26 @@ def test_CO11_nginx의_모든_프록시_블록이_식별_헤더를_붙인다():
 
     누군가 `proxy_pass` 블록을 추가하면서 `X-Real-IP` 를 빠뜨리면, **그 경로로 들어온 인터넷
     요청이 터널로 위장**해 콘솔이 공개된다. 전제를 검사하지 않는 보안 판정은 가정이다.
+
+    2026-09-18: 본 사이트 하나만 보던 검사를 **베타·관리 vhost 까지** 넓혔다. 베타 API(:8001)에도
+    콘솔이 있고, 관리 vhost 는 콘솔로 가는 바로 그 경로다 — 거기서 표식이 빠지면 비밀번호도 게이트
+    비밀도 없이 통과 A(터널)로 열린다. 블록 단위 정밀 검사는 test_admin_host_gate AH-7·AH-9 가 한다.
     """
-    conf = NGINX_CONF.read_text()
-    blocks = [m.start() for m in re.finditer(r"^\s*proxy_pass\s+http://127\.0\.0\.1", conf, re.M)]
-    assert blocks, "loupit.conf 에서 proxy_pass 를 찾지 못했다 — 이 검사가 무력화됐다"
-    lines = conf.splitlines()
-    line_of = {}
-    for i, ln in enumerate(lines):
-        line_of[i] = ln
-    # 각 proxy_pass 라인 뒤 12줄 안에 X-Real-IP 설정이 있어야 한다(현행 conf 는 3줄 뒤).
-    idxs = [i for i, ln in enumerate(lines) if re.match(r"\s*proxy_pass\s+http://127\.0\.0\.1", ln)]
-    for i in idxs:
-        window = "\n".join(lines[i:i + 12])
-        assert "proxy_set_header X-Real-IP" in window, (
-            f"loupit.conf:{i + 1} 의 proxy_pass 블록이 X-Real-IP 를 설정하지 않는다 — "
-            "이 경로로 온 인터넷 요청이 SSH 터널로 위장해 운영 콘솔이 공개된다"
-        )
+    assert {"loupit.conf", "loupit-beta.conf", "loupit-admin.conf"} <= {p.name for p in NGINX_CONFS}, (
+        "알려진 vhost 가 목록에 없다 — glob 이 비어 이 검사가 공회전한다"
+    )
+    for path in NGINX_CONFS:
+        conf = path.read_text()
+        lines = conf.splitlines()
+        # 각 proxy_pass 라인 뒤 12줄 안에 X-Real-IP 설정이 있어야 한다(현행 conf 는 3줄 뒤).
+        idxs = [i for i, ln in enumerate(lines) if re.match(r"\s*proxy_pass\s+http://127\.0\.0\.1", ln)]
+        assert idxs, f"{path.name} 에서 proxy_pass 를 찾지 못했다 — 이 검사가 무력화됐다"
+        for i in idxs:
+            window = "\n".join(lines[i:i + 12])
+            assert "proxy_set_header X-Real-IP" in window, (
+                f"{path.name}:{i + 1} 의 proxy_pass 블록이 X-Real-IP 를 설정하지 않는다 — "
+                "이 경로로 온 인터넷 요청이 SSH 터널로 위장해 운영 콘솔이 공개된다"
+            )
 
 
 # ── CO-12: 감사 — 결정자는 세션에서만 온다 ────────────────────────────────────
@@ -206,9 +225,9 @@ def test_CO12_결정_입력에_결정자_필드가_없다():
 
     모델에 필드를 **두지 않는 것**이 가장 강한 방어다 — 실수로 쓸 수가 없다. 이 테스트는
     나중에 누군가 편의를 이유로 필드를 추가하는 것을 막는다."""
-    from server.routers.console import CompanyDecisionIn, DecisionIn
+    from server.routers.console import CompanyDecisionIn, DecisionIn, ReportDecisionIn, VisibilityIn
 
-    for model in (DecisionIn, CompanyDecisionIn):
+    for model in (DecisionIn, CompanyDecisionIn, ReportDecisionIn, VisibilityIn):
         fields = set(model.model_fields)
         for banned in ("decided_by", "by", "decided_by_id", "operator_id", "mbr_id"):
             assert banned not in fields, f"{model.__name__} 이 결정자를 본문으로 받는다: {banned}"
@@ -227,10 +246,18 @@ def test_CO13_콘솔_페이지는_innerHTML_과_자동링크를_쓰지_않는다
 
     for banned in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write"):
         assert banned not in code, f"{banned} 사용 — 사용자 입력 원문이 HTML 로 해석된다"
-    assert "createElement('a')" not in code and 'createElement("a")' not in code, (
-        "앵커를 만들고 있다 — 증빙 URL 이 클릭 가능해지면 관리자가 표적이 된다"
+    # 앵커를 만드는 모든 모양 — 이 페이지는 `$('a', …)` 헬퍼로도 요소를 만든다. `x.href = url`(공백 포함)·
+    # `setAttribute('href', …)` 도 링크다(2026-09-18 적대 검토: 옛 검사는 이 셋을 못 봤다).
+    link_makers = (
+        r"createElement\(\s*['\"]a['\"]",   # document.createElement('a')
+        r"\$\(\s*['\"]a['\"]",              # $('a', …) 헬퍼
+        r"\.href\b",                          # el.href = …
+        r"setAttribute\(\s*['\"]href['\"]",  # el.setAttribute('href', …)
+        r"<a[\s>]",                           # 정적 마크업
+        r"href\s*=",
     )
-    assert "<a " not in code and "href=" not in code, "정적 마크업에도 링크가 없어야 한다"
+    for pat in link_makers:
+        assert not re.search(pat, code), f"링크를 만든다({pat}) — 증빙 URL 이 클릭 가능해지면 관리자가 표적이 된다"
     assert "noindex" in _PAGE, "검색엔진 차단 메타가 없다"
     # 자기검증 — 위 어서션들이 실제로 무언가를 보고 있는지(빈 문자열이면 전부 통과한다).
     assert "textContent" in code and len(code) > 2000, "페이지 본문을 못 읽었다 — 어서션이 공회전한다"
@@ -257,3 +284,60 @@ def test_CO14_콘솔에_로그인_단계가_있다():
     )
     # 코드 발송 응답은 균일 204 다(계정 열거 방지). 억제 409 만 예외로 안내한다(SP-AUTH-16).
     assert "409" in code, "억제된 주소 안내가 없다 — 그 사용자는 영영 이유를 모른다"
+    # 비운영자 세션도 막다른 길이다(2026-09-18 적대 검토) — 404 를 받으면 로그아웃·다시 로그인 단계로 보낸다.
+    assert "notAllowed" in code and "renderLogin(" in code and "지금 세션 로그아웃" in code, (
+        "비운영자 세션으로 들어오면 쿠키를 손으로 지워야만 빠져나갈 수 있다"
+    )
+
+
+# ── CO-15~17: SP-AUTH-19.7 화면 확장(2026-09-18) — 방어 심층 ───────────────────────
+
+@pytest.mark.asyncio
+async def test_CO15_콘솔_페이지는_인라인_블록_해시_CSP_를_싣는다():
+    """규칙 ①(노드 조립)이 언젠가 한 군데서 깨지더라도 주입된 스크립트는 **돌지 않고**(해시 script-src),
+    돌더라도 **밖으로 못 보낸다**(connect-src 'self', img-src 없음 = 이미지 비콘 차단).
+
+    `'unsafe-inline'` 을 쓰면 이 방어가 통째로 사라진다 — 해시는 `_PAGE` 에서 계산하므로 페이지를 고쳐도
+    따라오지만, 여기서 실제 블록과 대조해 "계산이 엉뚱한 곳을 가리키는" 경우까지 잡는다."""
+    import base64
+    import hashlib
+
+    from server.routers import console
+
+    csp = console._CSP
+    for needed in ("default-src 'none'", "connect-src 'self'", "frame-ancestors 'none'",
+                   "base-uri 'none'", "form-action 'none'"):
+        assert needed in csp, f"CSP 에 {needed} 가 없다"
+    assert "unsafe-inline" not in csp and "unsafe-eval" not in csp
+    for tag in ("script", "style"):
+        body = re.search(rf"<{tag}>(.*?)</{tag}>", console._PAGE, re.S).group(1)
+        digest = base64.b64encode(hashlib.sha256(body.encode("utf-8")).digest()).decode()
+        assert f"{tag}-src 'sha256-{digest}'" in csp, f"{tag} 해시가 실제 블록과 다르다 — 화면이 통째로 안 뜬다"
+    assert "<script src" not in console._PAGE, "외부 스크립트 — CSP 가 막아 화면이 깨진다(그리고 공급망 위험)"
+
+    resp = await console.console_page()
+    assert resp.headers["content-security-policy"] == csp
+    assert resp.headers["cache-control"] == "no-store"
+
+
+def test_CO16_콘솔_JSON_응답은_전부_no_store_다(monkeypatch):
+    """회원 탭은 로그인 이메일을 싣는다 — 브라우저·중간 캐시에 남으면 안 된다. 라우트마다 붙이면 새 라우트
+    하나를 빠뜨리는 날 그 응답만 캐시되므로 **라우터 레벨** 의존성으로 건다(관문과 같은 이유)."""
+    app = _build(monkeypatch, m9="1", ops_emails="ops@example.com")
+    for r in app.routes:
+        if isinstance(r, APIRoute) and "/console" in r.path and r.path != "/api/v1/console":
+            names = [d.call.__name__ for d in r.dependant.dependencies if d.call]
+            assert "_no_store" in names, f"{r.path} 응답에 no-store 가 걸리지 않는다"
+
+
+def test_CO17_콘솔에_새_탭_4종이_있고_탭은_링크가_아니다():
+    """현황·회원·게시판·복지 수정 이력 — 사용자 요청 화면(2026-09-18). 탭 전환은 버튼이다(`<a>` 0 — CO-13)."""
+    from server.routers.console import _PAGE
+
+    code = "\n".join(ln for ln in _PAGE.splitlines() if not ln.lstrip().startswith("//"))
+    for fn, path in (("renderOverview", "/overview"), ("renderMembers", "/members"),
+                     ("renderBoard", "/posts"), ("renderEdits", "/benefit-edits")):
+        assert fn in code and f"'{path}" in code, f"{fn}({path}) 가 없다"
+    assert "/visibility" in code, "게시판 숨김/복구 버튼이 없다"
+    assert "overflow-x: auto" in code, "표가 자기 상자 안에서 가로 스크롤하지 않는다 — 폰에서 페이지 전체가 밀린다"
+    assert 'name="viewport"' in _PAGE

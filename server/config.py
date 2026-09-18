@@ -10,6 +10,7 @@ from __future__ import annotations
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # server/config.py 기준 상대경로 — cwd(리포 루트/서버 기동 위치)에 무관하게
@@ -104,6 +105,22 @@ class Settings(BaseSettings):
     # 서버 접근이 필요하다는 사실 자체가 방어**다. `TMEMBER` 에 권한 컬럼을 넣으면 가입 경로와
     # 권한 경로가 한 테이블을 공유해 실수 하나가 권한 상승이 된다. 운영자가 늘면 `TOPERATOR` 로.
     operator_emails: str = ""
+
+    # 관리 호스트 경유 콘솔 관문 (SP-AUTH-19.8, 2026-09-18) — **둘 다 비면 닫힌다**(기본값).
+    #
+    # 콘솔은 원래 SSH 터널로만 열린다(통과 A). 휴대폰에서도 보려고 관리 전용 vhost 를 하나
+    # 더 연다(통과 B): 요청의 `Host` 가 `admin_host` 와 같고, nginx 가 그 vhost 에서만 붙이는
+    # `X-Loupit-Admin-Gate` 헤더가 `admin_gate_secret` 과 같을 때만 통과한다. 관리 vhost 는
+    # 서버 레벨 `auth_basic` 뒤에서만 헤더를 붙이므로 "헤더가 맞다 = 비밀번호를 통과했다"다.
+    #
+    # 비밀이 비었거나 32자 미만이면 통과 B 는 **닫힌다**(fail-closed) — 짧은 값은 추측·실수
+    # (자리 표시자를 그대로 둔 것 등)의 신호다. 발급은 `openssl rand -hex 32`(64자).
+    # 🚨 비밀 값은 리포 어디에도 두지 않는다 — nginx 스니펫(서버 전용)과 이 `.env` 두 곳뿐이다
+    #    (test_admin_host_gate 가 리포 전수를 검사한다). 로그에도 찍지 않는다.
+    # `SecretStr` 인 이유: 설정 객체의 repr·검증 오류 메시지에 값이 찍히지 않게 한다. 평문은
+    # `deps._secret_value` 한 곳에서만 꺼낸다.
+    admin_host: str = ""
+    admin_gate_secret: SecretStr = SecretStr("")
 
     # 세션·코드 TTL·시도 상한 (SP-AUTH-4·5·12, FR-101·112)
     session_ttl_days: int = 30  # 세션 만료(FR-101)

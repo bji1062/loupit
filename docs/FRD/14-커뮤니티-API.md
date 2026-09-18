@@ -94,7 +94,7 @@
 
 - `GET /console/queues` 응답에 `reports:[{report_id, target_type, target_id, excerpt(≤80자·이스케이프), reason, detail, reporter_nickname, created_at}]` 추가(pending 만, 최대 100).
 - `POST /console/reports/{report_id}/decide` `{action ∈ {hide, dismiss}, note ≤500}` → 200. `hide` = 대상 `STATUS_CD=hidden`(글이면 상세 404, 댓글이면 자리만). `DECIDED_BY_ID`·`DECIDED_DTM` 자동. 같은 대상의 다른 pending 신고는 함께 `actioned`.
-- 관문은 SP-AUTH-19 그대로(`require_loopback` + `require_operator`, 둘 다 404).
+- 관문은 SP-AUTH-19 그대로(`require_console_access`(2026-09-18 전 이름 `require_loopback`) + `require_operator`, 둘 다 404).
 
 ## FR-132 입력 신뢰 경계·리밋
 

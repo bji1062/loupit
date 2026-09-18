@@ -76,7 +76,7 @@ def test_TS1_participation_surface_exact(app_instance):
         # 인증은 세션·CSRF 헤더가 아니라 **HMAC 서명**이다 — 익명 쓰기가 하나 더 늘었다는 사실을
         # Tier-0 표면에 정직하게 선언해 둔다.
         ("/api/v1/webhooks/resend", "POST"),
-        # SP-AUTH-19(2026-07-30): SSH 터널 전용 운영 콘솔. 인터넷에서는 `require_loopback` 가
+        # SP-AUTH-19(2026-07-30): 운영 콘솔(터널·관리 호스트). 인터넷에서는 `require_console_access` 가
         # 404 로 끊지만, **라우트가 존재한다는 사실 자체는 표면에 정직하게 선언**한다 —
         # "안 보이니까 없는 것"으로 세면 감시망에 구멍이 생긴다.
         # 되돌릴 수 없는 조작(복지 하드 삭제·인증 폐기)이 여기 **없다**는 것도 이 집합이 지킨다.
@@ -95,6 +95,10 @@ def test_TS1_participation_surface_exact(app_instance):
         ("/api/v1/posts/{post_id}/like", "PUT"),                      # FR-129 좋아요 토글(멱등)
         ("/api/v1/reports", "POST"),                                  # FR-130 신고 접수(202)
         ("/api/v1/console/reports/{report_id}/decide", "POST"),       # FR-131 신고 처리(hide/dismiss, 터널)
+        # SP-AUTH-19.7(2026-09-18): 콘솔 게시판 직접 숨김/복구 — 상태 한 줄(active↔hidden)만, 하드 삭제 없음.
+        # 결정자는 세션(`MOD_ID`), 본문에 결정자 필드 없음(CO-12). 노출 범위는 콘솔 관문(터널·관리 호스트).
+        ("/api/v1/console/posts/{post_id}/visibility", "POST"),
+        ("/api/v1/console/comments/{comment_id}/visibility", "POST"),
     }, f"참여 쓰기 표면 불일치(계획 밖 쓰기 금지): {write_routes}"
 
     expected_get_paths = {
@@ -108,6 +112,12 @@ def test_TS1_participation_surface_exact(app_instance):
         "/api/v1/companies/{comp_id}/benefits",  # FR-109 편집용 조회(재직 게이트·base_dtm 부트스트랩)
         "/api/v1/console",                       # SP-AUTH-19 콘솔 화면(터널 전용·noindex)
         "/api/v1/console/queues",                # SP-AUTH-19 큐 3종 + SC15 신고 큐(운영자 세션 필수)
+        # SP-AUTH-19.7(2026-09-18) 콘솔 조회 화면 — 전부 운영자 세션 필수·no-store. 회원 목록만 로그인 이메일을 싣는다.
+        "/api/v1/console/overview",
+        "/api/v1/console/members",
+        "/api/v1/console/posts",
+        "/api/v1/console/comments",
+        "/api/v1/console/benefit-edits",
         # SC15 커뮤니티 열람 3종(FR-121~123) — 익명·no-store. 상세·댓글은 `optional_member` 로 세션을
         # 선택적으로 읽되 401 을 내지 않는다(AU-2: dependant 트리에 require_member 부재, test_community_api CM-7.4).
         "/api/v1/posts",

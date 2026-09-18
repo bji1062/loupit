@@ -10,6 +10,10 @@
 *.key
 secrets.*
 server/.env
+# 관리 호스트 게이트 비밀 스니펫(SP-AUTH-19.8) — 실파일은 서버 /etc/nginx/snippets/ 에만 둔다.
+# 리포에는 `.example`(자리 표시자)만 있다. 누가 실수로 리포 안에 실파일을 만들어도 커밋되지 않게 막는다.
+infra/nginx/snippets/loupit-admin-gate.conf
+*.htpasswd
 
 # ── Python ──
 __pycache__/

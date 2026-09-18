@@ -28,7 +28,7 @@ loupit SPEC은 FRD가 정의한 각 기능요구(FR-*)를 **개발자가 추측 
 | [SPEC/19-복지-비교.md](SPEC/19-복지-비교.md) | **SP-CMP** | 비교 2모드(모드 A 복지 비교 / 모드 B 이직 계산기): 9각형 겹침(색·눈금·판독문·렌더러 2개 골든 테스트)·**카테고리별 나비차트 + 클릭 펼침(2026-09-12 확정)**·항목 대조표 유지·`pairVerdict` 밴드 판정·「등록 없음」 규약·덱 재사용 함정·새 URL 0 |
 | [SPEC/20-복지-항목-페이지.md](SPEC/20-복지-항목-페이지.md) | **SP-BEN** | `/benefit/{slug}` 복지 항목 페이지(2026-09-18): 항목 설정 JSON 1개 = 페이지 1개 · 원문 분류 규칙(`benefit_rules.py` — 수집자 메모 걷기·예외는 원문 해시에 묶음) · 법정 행 표 유지·집계 제외 · 20곳 문턱 · 사람 글 숫자·수량어 금지(GC-29) · 템플릿 완결문장 0(필러 규칙) · sitemap + `/find` 링크(GC-30) · nginx `^~ /benefit/` |
 | [SPEC/15-회사정보-재무.md](SPEC/15-회사정보-재무.md) | **SP-FIN** | 회사정보 탭(DART 재무): corp_code 적재·`account_id` 수집기(결측 검사)·생성기 전용 로더(번들 무접촉)·회사 '실적' 섹션·`/companies` 인덱스 확장·표현 규약(사실만, 등급·전망·'성장성' 금지)·기준(연결/별도)·출처 접수번호 |
-| [SPEC/13-참여-로그인.md](SPEC/13-참여-로그인.md) | **SP-AUTH** | 무비밀번호 이메일 코드 로그인·세션(불투명 토큰·SHA-256·라우트 의존성)·회사 도메인 재직 인증(HMAC·원문 파기·수동 폴백)·복지 등록/수정(배지 강제·낙관적 동시성 `base_dtm`·원자 트랜잭션)·편집 이력 공개·CSRF(`X-Loupit-Client`)·메일러(Console/SMTP)·발송/시도 리밋·운영자 CLI(SC14, 참여 7테이블 DDL은 SP-DB 소유) |
+| [SPEC/13-참여-로그인.md](SPEC/13-참여-로그인.md) | **SP-AUTH** | 무비밀번호 이메일 코드 로그인·세션(불투명 토큰·SHA-256·라우트 의존성)·회사 도메인 재직 인증(HMAC·원문 파기·수동 폴백)·복지 등록/수정(배지 강제·낙관적 동시성 `base_dtm`·원자 트랜잭션)·편집 이력 공개·CSRF(`X-Loupit-Client`)·메일러(Console/SMTP)·발송/시도 리밋·운영자 CLI·**운영 콘솔**(SSH 터널 + 관리 호스트 `admin.jobcho.wiki` 두 겹 잠금, 현황·회원·게시판·복지 이력 탭 — SP-AUTH-19)(SC14, 참여 7테이블 DDL은 SP-DB 소유) |
 
 > 대역 별칭·계획 매핑(SP-ARCH-8·SP-TEST-6.2 정합): **SP-CALC ≡ SP-ENGINE**(`calc.js`), **SP-DSN ≡ SP-DS**(디자인 토큰), 구 **SP-RPT는 별도 파일 없이 SP-ENGINE(값)+SP-FE(렌더·저장)로 흡수**. 상호 인용은 파일 번호가 아니라 **안정 ID 대역**으로 해석한다.
 
@@ -48,7 +48,7 @@ loupit SPEC은 FRD가 정의한 각 기능요구(FR-*)를 **개발자가 추측 
 | **SP-ADS** | 광고·제휴 통합 | `adsConfig`·`adPolicy`/`mountAds`·자동/수동 슬롯·`affiliate.json`·동의 배너·"광고" 표기·통합 DOM 계약 | FR-70~79 |
 | **SP-POL** | 정책·고지 콘텐츠 | `content/policy.py`(4종 문안)·필수 섹션표·정정 경로·동의↔정책 단일 진실·`POLICY_FOOTER_LINKS` | FR-80~87 |
 | **SP-DS** | 디자인 토큰·CSS 시스템 | `styles.css` `:root` 토큰(색·타이포·간격·반경·모션·배지/광고 라벨 색)·`@font-face`·대비 AA 계약 | NFR2·5·13·15·19 |
-| **SP-INFRA** | 인프라·배포·운영 | `nginx/loupit.conf`·`systemd/loupit-api.service`·`mysql/loupit.cnf`·`release.sh`·`smoke.sh`·방화벽·TLS·백업 | AS1·AS2, NFR22·23·27·28 |
+| **SP-INFRA** | 인프라·배포·운영 | `nginx/loupit.conf`·`nginx/loupit-admin.conf`(관리 호스트)·`systemd/loupit-api.service`·`mysql/loupit.cnf`·`release.sh`·`smoke.sh`·방화벽·TLS·백업 | AS1·AS2, NFR22·23·27·28 |
 | **SP-TEST** | 테스트 전략·게이트(횡단) | TDD 규약·러너 매트릭스·`run_tests.sh`·스위트 매핑·Tier 0/1/2·FR/INV 역추적·메타 검증(MT) | 전 FR·NFR(횡단) |
 | **SP-AUTH** | 참여·로그인·재직인증(SC14) | `member`/`employment`/`benefit_edit` 라우터·`session`/`auth_code`/`employment`/`benefit_edit` 서비스·`require_member`/`require_employment` 의존성·`mailer`(Console/SMTP)·`ops` CLI·config 확장(금지 substring 재명세) | FR-100~115, NFR16·17·20·21·30·31 |
 

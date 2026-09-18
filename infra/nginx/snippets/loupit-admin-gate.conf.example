@@ -1,0 +1,14 @@
+# /etc/nginx/snippets/loupit-admin-gate.conf — 관리 호스트 게이트 비밀 (SP-AUTH-19.8)
+#
+# ⚠ 이 파일은 **예시**다. 실파일은 서버의 /etc/nginx/snippets/loupit-admin-gate.conf 에만 두고
+#   (root:root, 600) 리포에 커밋하지 않는다(.gitignore 가 리포 안 실파일 이름을 막는다).
+#
+# 값 = server/.env 의 ADMIN_GATE_SECRET 과 **바이트까지 같은** 문자열 — `openssl rand -hex 32`(64자).
+# 두 값이 다르면 관리 호스트의 콘솔은 전부 404 다(앱이 경고 로그만 남긴다 — 값은 찍지 않는다).
+#
+# 아래 자리 표시자는 일부러 32자보다 짧다: 바꾸는 것을 잊고 .env 에 그대로 옮겨도 앱은
+# "32자 미만 = 닫힘"으로 처리한다(fail-closed). 절차: docs/handoff/2026-09-18-관리화면-admin-호스트.md
+#
+# 이 줄은 loupit-admin.conf 의 **proxy_pass 블록 안에서만** include 된다. auth_basic(비밀번호)이
+# server 레벨에 걸려 있어, 비밀번호를 넘은 요청에만 이 헤더가 실린다 = "헤더가 맞다 = 비밀번호를 통과했다".
+proxy_set_header X-Loupit-Admin-Gate "__ADMIN_GATE_SECRET__";
