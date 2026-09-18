@@ -232,7 +232,9 @@ def test_SC3_verified_by_id_absent(schema_db, db_name):
 # 입력 주체도 언제나 제공자(Resend) 하나라 INS_ID 가 담을 정보가 없다. 부재 자체는 SC-4d 가
 # 적극 검증한다. 반면 TMAIL_SUPPRESSION 은 **해제(RELEASED_DTM)로 상태가 바뀌므로 면제하지
 # 않는다** — 누가 언제 억제를 풀었는지는 감사 대상이다.
-AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG", "TMAIL_EVENT"}
+# TPOST_ACTION_LOG 면제(SP-AUTH-19.7, 2026-09-18): 운영자 조치 이력 — TBENEFIT_EDIT_LOG 와 같은 불변
+# append-only 라 `INS_DTM` 하나만 두고, 주체는 도메인 FK `ACTOR_MBR_ID` 가 든다. 부재는 SC-4f 가 적극 검증한다.
+AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG", "TMAIL_EVENT", "TPOST_ACTION_LOG"}
 
 
 @pytest.mark.parametrize("table", [t for t in TABLE_CREATE_ORDER if t not in AUDIT_EXEMPT_TABLES])
@@ -267,6 +269,18 @@ def test_SC4c_edit_log_append_only_contract(schema_db, db_name):
     )
     # 편집 주체는 감사 컬럼이 아니라 도메인 FK 가 보유한다(탈퇴 시 SET NULL, 이력 존치).
     assert "ACTOR_MBR_ID" in cols, "편집 주체 컬럼(ACTOR_MBR_ID) 부재"
+
+
+def test_SC4f_post_action_log_append_only_contract(schema_db, db_name):
+    """SP-AUTH-19.7: TPOST_ACTION_LOG 는 운영자 조치의 **전체 이력**이다 — 사후 수정이 가능하면 이력이 아니다.
+
+    대상 행의 `MOD_ID` 는 마지막 조작자만 남긴다(2026-09-18 적대 검토 L8). 그 공백을 메우는 표가 스스로
+    덮어쓸 수 있으면(MOD_*) 같은 공백이 다시 생긴다. 주체·메모·전후 상태가 한 행에 있어야 한다."""
+    cols = set(_columns(schema_db, db_name, "TPOST_ACTION_LOG"))
+    assert "INS_DTM" in cols
+    forbidden = {"INS_ID", "MOD_ID", "MOD_DTM"} & cols
+    assert not forbidden, f"TPOST_ACTION_LOG 는 append-only 인데 수정 감사 컬럼 발견: {sorted(forbidden)}"
+    assert {"ACTOR_MBR_ID", "NOTE_CTNT", "FROM_STATUS_CD", "TO_STATUS_CD", "ACTION_CD", "SOURCE_CD"} <= cols
 
 
 def test_SC4d_mail_event_ledger_contract(schema_db, db_name):

@@ -1,4 +1,4 @@
-"""SP-AUTH-19.7·19.8 운영 콘솔 확장 — **실 DB** 조회 화면·숨김/복구 감사·관문 매트릭스 (CV-1~CV-11).
+"""SP-AUTH-19.7·19.8 운영 콘솔 확장 — **실 DB** 조회 화면·숨김/복구 감사·관문 매트릭스 (CV-1~CV-15).
 
 `test_console_gate.py` 가 관문과 표면을 순수 함수로, `test_admin_host_gate.py` 가 관리 호스트 판정과
 nginx 전제를 잰다. 여기서 재는 것은 그 뒤 — 세션이 실제로 발급된 상태에서:
@@ -16,6 +16,7 @@ httpx ASGITransport 로 앱을 직접 두드린다(test_community_api 와 같은
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 from pathlib import Path
@@ -49,6 +50,8 @@ async def _clean() -> None:
     mbrs = [r["MBR_ID"] for r in await database.fetch_all("SELECT MBR_ID FROM TMEMBER WHERE NICKNAME_NM LIKE 'cv-%%'")]
     if mbrs:
         marks = ",".join(["%s"] * len(mbrs))
+        # 조치 이력은 추가 전용이라 앱에는 지우는 경로가 없다 — 테스트 정리만 여기서 직접 지운다.
+        await database.execute(f"DELETE FROM TPOST_ACTION_LOG WHERE ACTOR_MBR_ID IN ({marks})", tuple(mbrs))
         await database.execute(f"DELETE FROM TPOST_REPORT WHERE MBR_ID IN ({marks})", tuple(mbrs))
         # 글을 지우면 댓글·반응은 CASCADE. 글의 작성자 FK 는 SET NULL 이라 회원보다 **먼저** 지워야 찾을 수 있다.
         await database.execute(f"DELETE FROM TPOST WHERE MBR_ID IN ({marks})", tuple(mbrs))
@@ -58,6 +61,7 @@ async def _clean() -> None:
         await database.execute("DELETE FROM TCOMPANY WHERE COMP_ID=%s", (comp["COMP_ID"],))
     await database.execute("DELETE FROM TCOMPANY_TYPE WHERE COMP_TP_CD='cv_tp'")
     await database.execute("DELETE FROM TMAIL_SUPPRESSION WHERE TARGET_HASH_VAL=%s", ("d" * 64,))
+    await database.execute("DELETE FROM TPOST_ACTION_LOG WHERE NOTE_CTNT LIKE 'cv-%%' OR ACTOR_MBR_ID IS NULL")
 
 
 @pytest_asyncio.fixture
@@ -401,3 +405,133 @@ async def test_CV11_게시판_숨김과_신고_처리의_잠금_충돌은_409다
     monkeypatch.setattr(report_svc, "set_visibility", gone)
     r = await c.post(f"/console/posts/{cv['posts'][0]}/visibility", json={"action": "hide"}, headers=CSRF, cookies=op)
     assert r.status_code == 500, "잠금 충돌이 아닌 DB 오류까지 409 로 삼켰다"
+
+
+# ── CV-12~15: 조치 이력(L8)·잠금 순서(L3) — 2026-09-18 적대 검토 반영 ─────────────────────
+
+def test_CV12_조치_이력_마이그레이션은_schema_와_같은_DDL_이다():
+    """마이그레이션은 기존 서빙 DB 용 사본이다 — 두 DDL 이 갈라지면 운영과 테스트가 다른 표를 본다."""
+    from server.tests.conftest import MIGRATIONS_DIR, SCHEMA_SQL
+
+    def ddl(text: str) -> str:
+        m = re.search(r"CREATE TABLE IF NOT EXISTS TPOST_ACTION_LOG \(.*?\) ENGINE=InnoDB[^;]*;", text, re.S)
+        assert m, "TPOST_ACTION_LOG DDL 을 찾지 못했다"
+        return m.group(0)
+
+    mig = (MIGRATIONS_DIR / "20260918_add_post_action_log.sql").read_text(encoding="utf-8")
+    assert ddl(mig) == ddl(SCHEMA_SQL.read_text(encoding="utf-8"))
+
+
+async def _log_rows(target_type: str, target_id: int) -> list[dict]:
+    return list(await database.fetch_all(  # 빈 결과는 () 로 온다 — 목록 비교가 되게 list 로
+        "SELECT ACTION_CD, FROM_STATUS_CD, TO_STATUS_CD, SOURCE_CD, REPORT_ID, REPORTS_ACTIONED_CNT, NOTE_CTNT, "
+        "ACTOR_MBR_ID FROM TPOST_ACTION_LOG WHERE TARGET_TYPE_CD=%s AND TARGET_ID=%s ORDER BY ACTION_LOG_ID",
+        (target_type, target_id)))
+
+
+@pytest.mark.asyncio
+async def test_CV13_숨김_복구는_메모와_주체를_잃지_않고_이력으로_쌓인다(cv):
+    """대상 행의 `MOD_ID` 는 마지막 조작자만 남는다 — 숨김→복구 뒤에도 "누가 왜 숨겼나"가 이력에 남아야 한다."""
+    c, op, pid, me = cv["c"], cv["ck"]["op"], cv["posts"][0], cv["ids"]["cv-op"]
+    for action, note in (("hide", "cv-스팸 의심"), ("restore", "cv-오판이었다")):
+        r = await c.post(f"/console/posts/{pid}/visibility", json={"action": action, "note": note},
+                         headers=CSRF, cookies=op)
+        assert r.status_code == 200
+    rows = await _log_rows("post", pid)
+    assert rows == [
+        {"ACTION_CD": "hide", "FROM_STATUS_CD": "active", "TO_STATUS_CD": "hidden", "SOURCE_CD": "board",
+         "REPORT_ID": None, "REPORTS_ACTIONED_CNT": 1, "NOTE_CTNT": "cv-스팸 의심", "ACTOR_MBR_ID": me},
+        {"ACTION_CD": "restore", "FROM_STATUS_CD": "hidden", "TO_STATUS_CD": "active", "SOURCE_CD": "board",
+         "REPORT_ID": None, "REPORTS_ACTIONED_CNT": 0, "NOTE_CTNT": "cv-오판이었다", "ACTOR_MBR_ID": me},
+    ], "숨김→복구 이력이 두 행으로 남지 않았다(메모·주체 소실)"
+    # 거부된 조작(409)은 이력에 남지 않는다 — 상태를 바꾸지 않았으니까.
+    await c.post(f"/console/posts/{pid}/visibility", json={"action": "restore"}, headers=CSRF, cookies=op)
+    assert len(await _log_rows("post", pid)) == 2
+    # 게시판 화면이 이력을 보여 준다(건수 + 마지막 1건).
+    item = next(p for p in (await c.get("/console/posts", params={"limit": 5}, cookies=op)).json()["items"]
+                if p["post_id"] == pid)
+    assert item["action_cnt"] == 2
+    assert item["last_action"]["action"] == "restore" and item["last_action"]["actor_id"] == me
+    assert item["last_action"]["note"] == "cv-오판이었다" and re.match(r"^\d{4}-\d\d-\d\d \d\d:\d\d:\d\d$",
+                                                                     item["last_action"]["at"])
+
+
+@pytest.mark.asyncio
+async def test_CV14_신고_처리의_hide_도_같은_이력에_남고_dismiss_는_남지_않는다(cv):
+    from server.services import report as report_svc
+
+    pid, me = cv["posts"][0], cv["ids"]["cv-op"]
+    rid = (await database.fetch_one(
+        "SELECT REPORT_ID FROM TPOST_REPORT WHERE TARGET_TYPE_CD='post' AND TARGET_ID=%s", (pid,)))["REPORT_ID"]
+    assert await report_svc.decide_report(rid, "hide", me, "cv-신고 확인") == "hidden"
+    assert await _log_rows("post", pid) == [
+        {"ACTION_CD": "hide", "FROM_STATUS_CD": "active", "TO_STATUS_CD": "hidden", "SOURCE_CD": "report",
+         "REPORT_ID": rid, "REPORTS_ACTIONED_CNT": 1, "NOTE_CTNT": "cv-신고 확인", "ACTOR_MBR_ID": me}]
+
+    # 이미 숨긴 대상을 가리키는 새 신고의 hide — 대상 상태가 안 바뀌므로 이력도 없다(신고 행만 닫힌다).
+    await database.execute(
+        "INSERT INTO TPOST_REPORT (TARGET_TYPE_CD, TARGET_ID, MBR_ID, REASON_CD) VALUES ('post', %s, %s, 'abuse')",
+        (pid, cv["ids"]["cv-alice"]))
+    rid2 = (await database.fetch_one("SELECT MAX(REPORT_ID) AS m FROM TPOST_REPORT"))["m"]
+    assert await report_svc.decide_report(rid2, "hide", me, None) == "hidden"
+    # 기각은 대상 불변 — 이력 없음.
+    await database.execute(
+        "INSERT INTO TPOST_REPORT (TARGET_TYPE_CD, TARGET_ID, MBR_ID, REASON_CD) VALUES ('comment', %s, %s, 'spam')",
+        (cv["comment"], cv["ids"]["cv-alice"]))
+    rid3 = (await database.fetch_one("SELECT MAX(REPORT_ID) AS m FROM TPOST_REPORT"))["m"]
+    assert await report_svc.decide_report(rid3, "dismiss", me, None) == "dismissed"
+    assert len(await _log_rows("post", pid)) == 1 and await _log_rows("comment", cv["comment"]) == []
+
+
+@pytest.mark.asyncio
+async def test_CV14b_이력_기록이_실패하면_상태_변경도_되돌린다(cv, monkeypatch):
+    """상태는 바뀌었는데 이력이 없는 순간이 없어야 한다 — 같은 트랜잭션이라 이력 INSERT 가 실패하면 숨김도 없다."""
+    from server.services import report as report_svc
+
+    monkeypatch.setattr(report_svc, "SQL_INSERT_ACTION_LOG", "INSERT INTO TPOST_ACTION_LOG_NOPE (X) VALUES (%s)")
+    with pytest.raises(Exception):
+        await report_svc.set_visibility("post", cv["posts"][0], "hide", cv["ids"]["cv-op"], None)
+    assert (await _status("TPOST", "POST_ID", cv["posts"][0]))["STATUS_CD"] == "active", "이력 없이 상태만 바뀌었다"
+
+
+async def _assert_target_locked_before_reports(pid: int, run) -> object:
+    """대상 글 행을 다른 트랜잭션이 쥔 채로 `run()` 을 돌린다 → run 은 대상 잠금에서 **기다려야** 하고,
+    그동안 그 대상의 신고 행은 **아무도 잠그지 않은** 상태여야 한다(`FOR UPDATE NOWAIT` 가 성공).
+    옛 순서(신고 행 → 대상)였다면 run 이 신고 행을 먼저 쥐고 대상에서 멈춰, NOWAIT 가 3572 로 실패한다."""
+    pool = database.get_pool()
+    async with pool.acquire() as holder:
+        await holder.begin()
+        async with holder.cursor() as cur:
+            await cur.execute("SELECT POST_ID FROM TPOST WHERE POST_ID=%s FOR UPDATE", (pid,))
+        task = asyncio.create_task(run())
+        try:
+            await asyncio.sleep(0.5)
+            assert not task.done(), "대상 잠금을 기다리지 않았다 — 대상 행을 먼저 잠그지 않는다"
+            async with pool.acquire() as prober:
+                await prober.begin()
+                try:
+                    async with prober.cursor() as cur:
+                        await cur.execute(
+                            "SELECT REPORT_ID FROM TPOST_REPORT WHERE TARGET_TYPE_CD='post' AND TARGET_ID=%s "
+                            "FOR UPDATE NOWAIT", (pid,))
+                finally:
+                    await prober.rollback()
+        finally:
+            await holder.commit()
+    return await asyncio.wait_for(task, 10)
+
+
+@pytest.mark.asyncio
+async def test_CV15_두_숨김_경로는_같은_잠금_순서다_대상_먼저(cv):
+    """L3(2026-09-18 적대 검토): 신고 처리는 신고 행 → 대상, 게시판 숨김은 대상 → 신고 행이라 동시에 돌면
+    교착이 났다. 두 경로 모두 **대상 먼저**여야 순환 대기가 없다 — 실제 잠금으로 순서를 잰다."""
+    from server.services import report as report_svc
+
+    pid, me = cv["posts"][0], cv["ids"]["cv-op"]
+    rid = (await database.fetch_one(
+        "SELECT REPORT_ID FROM TPOST_REPORT WHERE TARGET_TYPE_CD='post' AND TARGET_ID=%s", (pid,)))["REPORT_ID"]
+    assert await _assert_target_locked_before_reports(
+        pid, lambda: report_svc.decide_report(rid, "hide", me, None)) == "hidden"
+    out = await _assert_target_locked_before_reports(
+        pid, lambda: report_svc.set_visibility("post", pid, "restore", me, None))
+    assert out["result"] == "restored"

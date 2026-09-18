@@ -244,8 +244,28 @@ def test_CO13_콘솔_페이지는_innerHTML_과_자동링크를_쓰지_않는다
     #   (2026-07-30 실발현 — 가드 문구가 의도보다 넓은 함정 ㊶ 의 축소판). 코드만 본다.
     code = "\n".join(ln for ln in _PAGE.splitlines() if not ln.lstrip().startswith("//"))
 
-    for banned in ("innerHTML", "outerHTML", "insertAdjacentHTML", "document.write"):
-        assert banned not in code, f"{banned} 사용 — 사용자 입력 원문이 HTML 로 해석된다"
+    # HTML·스크립트로 해석되는 싱크 전부 — 이름을 문자열로 우회(`el['innerHTML']`)하거나 다른 경로(`srcdoc`·
+    # `DOMParser`·`createContextualFragment`)로 파싱시키는 모양까지(2026-09-18 적대 검토 M2 로 넓혔다).
+    html_sinks = (
+        r"innerHTML", r"outerHTML", r"insertAdjacentHTML", r"document\.write",
+        r"\bsrcdoc\b", r"DOMParser", r"createContextualFragment",
+        r"\beval\s*\(", r"new\s+Function\s*\(", r"set(?:Timeout|Interval)\(\s*['\"`]",  # 문자열 코드 실행
+        r"setAttribute\(\s*['\"](?:on\w+|src|style|srcdoc)['\"]",                   # 속성으로 스크립트·자원 주입
+    )
+    for pat in html_sinks:
+        assert not re.search(pat, code), f"HTML/스크립트 싱크({pat}) — 사용자 입력 원문이 코드로 해석될 수 있다"
+    # 속성 이름을 **계산**하면 위 목록은 무력하다(`el['inner' + 'HTML'] = v` — 적대 검토 후 실측으로 뚫림). 이름으로는
+    # 막을 수 없으니 **수단**을 막는다: 대괄호 대입·`Reflect.set`·`Object.assign`/`defineProperty` 를 이 페이지는 쓰지
+    # 않는다(읽기 `map[k]` 는 허용 — 싱크가 아니다). 필요해지면 대입 대상을 상수 필드로 바꿔 써라.
+    assert not re.search(r"\]\s*=(?!=)", code), "대괄호로 속성에 대입한다 — 계산된 이름으로 HTML 싱크를 숨길 수 있다"
+    assert not re.search(r"Reflect\.set|Object\.assign|Object\.defineProperty", code), (
+        "간접 대입 수단 — 계산된 이름으로 HTML 싱크를 숨길 수 있다"
+    )
+    # 이벤트 처리기는 **함수만** 대입한다 — 문자열을 넣으면 그 문자열이 코드가 된다.
+    for m in re.finditer(r"\.on[a-z]+\s*=\s*([^;\n]*)", code):
+        assert re.match(r"\s*(async\s*)?(\(|function\b|[A-Za-z_$][\w$]*\s*=>)", m.group(1)), (
+            f"이벤트 처리기에 함수가 아닌 값을 대입한다: {m.group(0)!r}"
+        )
     # 앵커를 만드는 모든 모양 — 이 페이지는 `$('a', …)` 헬퍼로도 요소를 만든다. `x.href = url`(공백 포함)·
     # `setAttribute('href', …)` 도 링크다(2026-09-18 적대 검토: 옛 검사는 이 셋을 못 봤다).
     link_makers = (

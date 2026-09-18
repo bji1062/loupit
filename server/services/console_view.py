@@ -158,11 +158,20 @@ async def list_members(limit: int, before: int | None) -> tuple[list[dict], int 
 # 공개 목록과 달리 **상태를 가리지 않는다**(active·hidden·deleted 전부) — 운영자는 숨긴 것을 다시
 # 찾아 복구할 수 있어야 한다. 신고 수는 전체·대기 두 가지(대기가 곧 할 일이다). 서브쿼리는
 # `uq_report_target_member(TARGET_TYPE_CD, TARGET_ID, …)` 앞부분을 탄다.
+# 조치 이력(`TPOST_ACTION_LOG`)은 건수 + 마지막 1건(누가·언제·무엇·메모)만 싣는다 — 대상 행의 `MOD_ID` 는
+# 마지막 조작자만 남아 "누가 숨겼나"를 복구 뒤에 잃는다. 인덱스 `idx_action_target` 을 탄다.
+# (`%%` 는 pymysql 바인딩 포맷의 이스케이프 — DATE_FORMAT 의 `%Y` 가 바인딩 자리로 읽히지 않게.)
 _SQL_REPORT_COUNTS = """
          (SELECT COUNT(*) FROM TPOST_REPORT r
            WHERE r.TARGET_TYPE_CD='{t}' AND r.TARGET_ID={pk}) AS REPORT_CNT,
          (SELECT COUNT(*) FROM TPOST_REPORT r
-           WHERE r.TARGET_TYPE_CD='{t}' AND r.TARGET_ID={pk} AND r.STATUS_CD='pending') AS REPORT_PENDING_CNT"""
+           WHERE r.TARGET_TYPE_CD='{t}' AND r.TARGET_ID={pk} AND r.STATUS_CD='pending') AS REPORT_PENDING_CNT,
+         (SELECT COUNT(*) FROM TPOST_ACTION_LOG a
+           WHERE a.TARGET_TYPE_CD='{t}' AND a.TARGET_ID={pk}) AS ACTION_CNT,
+         (SELECT JSON_OBJECT('action', a.ACTION_CD, 'source', a.SOURCE_CD, 'actor_id', a.ACTOR_MBR_ID,
+                             'note', a.NOTE_CTNT, 'at', DATE_FORMAT(a.INS_DTM, '%%Y-%%m-%%d %%H:%%i:%%s'))
+            FROM TPOST_ACTION_LOG a WHERE a.TARGET_TYPE_CD='{t}' AND a.TARGET_ID={pk}
+           ORDER BY a.ACTION_LOG_ID DESC LIMIT 1) AS LAST_ACTION"""
 
 SQL_BOARD_POSTS = f"""
   SELECT p.POST_ID, p.CATEGORY_CD, p.TITLE_NM, LEFT(p.BODY_CTNT, {EXCERPT_LEN}) AS EXCERPT, p.STATUS_CD,
@@ -199,6 +208,7 @@ async def list_posts(limit: int, before: int | None, status: str | None) -> tupl
             "comment_cnt": r["COMMENT_CNT"], "like_cnt": r["LIKE_CNT"],
             "report_cnt": r["REPORT_CNT"], "report_pending_cnt": r["REPORT_PENDING_CNT"],
             "modified_by": r["MOD_ID"], "modified_at": _dt(r["MOD_DTM"]),
+            "action_cnt": r["ACTION_CNT"], "last_action": _parse_json(r["LAST_ACTION"]),
         }
         for r in rows
     ], next_before
@@ -222,6 +232,7 @@ async def list_comments(limit: int, before: int | None, status: str | None) -> t
             "member_id": r["MBR_ID"], "nickname": r["NICKNAME"],
             "report_cnt": r["REPORT_CNT"], "report_pending_cnt": r["REPORT_PENDING_CNT"],
             "modified_by": r["MOD_ID"], "modified_at": _dt(r["MOD_DTM"]),
+            "action_cnt": r["ACTION_CNT"], "last_action": _parse_json(r["LAST_ACTION"]),
         }
         for r in rows
     ], next_before

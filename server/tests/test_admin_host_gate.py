@@ -337,9 +337,13 @@ def test_AH10b_관리_vhost_는_비밀번호_전에_경로별로_다르게_답�
     443 server 의 location 은 `return` 을 쓰지 않고 `try_files`(access 뒤)로만 답을 고른다 — 예외는
     try_files 가 넘겨주는 **이름 있는 location**(@…, 비밀번호를 이미 넘은 뒤에만 닿는다)뿐이다.
     격리 nginx 실측: 비밀번호 없는 요청 8경로 전부 401."""
-    https_index = _https_server(ADMIN_CONF)["server"]
+    srv = _https_server(ADMIN_CONF)
+    top = _server_top_level(ADMIN_CONF, srv)
+    assert not re.search(r"\breturn\b", top), (
+        "443 server 레벨에 return 이 있다(봇 UA 차단 등) — 모든 location 보다 먼저, 비밀번호 전에 답한다"
+    )
     for b in _blocks(ADMIN_CONF):
-        if b["kind"] != "location" or b["server"] != https_index or b["head"].startswith("@"):
+        if b["kind"] != "location" or b["server"] != srv["server"] or b["head"].startswith("@"):
             continue
         assert not re.search(r"\breturn\b", b["body"]), (
             f"location {b['head']} 이 비밀번호 검사 전에 답한다(return) — try_files 로 미뤄라"
@@ -376,8 +380,14 @@ _PLACEHOLDER = re.compile(r"^__[A-Z_]+__$")
 
 
 def _repo_text_files() -> list[Path]:
-    """추적 파일 + **아직 커밋 안 된 새 파일**(.gitignore 제외). 추적 파일만 보면 커밋 직전의 새 파일 —
-    바로 비밀이 들어가기 쉬운 문서·conf — 을 못 본다(2026-09-18 적대 검토)."""
+    """작업 트리 전체 — `git ls-files -co --exclude-standard` 가 기준이다(2026-09-18 적대 검토 M2).
+
+    - 포함: 추적 파일 + **아직 커밋 안 된 새 파일**. 추적 파일만 보면 커밋 직전의 새 파일 — 바로 비밀이
+      들어가기 쉬운 문서·conf — 을 못 본다.
+    - 제외: git 이 **무시하는** 파일만(.gitignore · .git/info/exclude · 전역 excludesFile). 대표가 `server/.env`
+      — 비밀이 **있어야 하는** 곳이라 여기서 찾으면 안 된다. 그리고 무시 파일은 커밋될 수 없으니 리포 유출
+      경로도 아니다(.gitignore 가 `infra/nginx/snippets/loupit-admin-gate.conf`·`*.htpasswd` 를 막는 것은 AH-14).
+    - 바이너리(이미지·폰트·PDF·gz)는 건너뛴다."""
     try:
         out = subprocess.run(["git", "-C", str(ROOT), "ls-files", "-z", "-co", "--exclude-standard"],
                              capture_output=True, check=True).stdout

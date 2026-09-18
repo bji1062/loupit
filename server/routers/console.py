@@ -85,9 +85,9 @@ router = APIRouter(
     dependencies=[Depends(require_console_access), Depends(_no_store)],
 )
 
-#: InnoDB 잠금 충돌 — 1213 교착(한쪽을 희생시킨다) · 1205 잠금 대기 초과. 게시판 숨김과 신고 처리가 같은
-#: 대상을 동시에 잡으면 잠금 순서가 엇갈릴 수 있다(신고 행→대상 / 대상→신고 행). 운영자 한 명이 두 화면에서
-#: 동시에 누르는 드문 경우지만, 그때 500 이 아니라 "다시 시도하라"(409)여야 한다.
+#: InnoDB 잠금 충돌 — 1213 교착 · 1205 잠금 대기 초과. 게시판 숨김과 신고 처리는 **같은 잠금 순서**(대상 →
+#: 신고 행, `services/report.py`)라 서로 교착하지 않는다 — 이 번역은 그 뒤의 그물이다: 다른 긴 트랜잭션이 대상
+#: 행을 오래 쥐어 대기가 초과되는 경우에도 운영자는 500 이 아니라 "다시 시도하라"(409)를 봐야 한다.
 _LOCK_CONFLICT = (1205, 1213)
 
 
@@ -333,7 +333,7 @@ async def decide_report(
     `op["MBR_ID"]`(세션)에서 온다 — 본문에 그 필드가 없다(CO-12 가 지킨다)."""
     try:
         result = await report_svc.decide_report(report_id, body.action, op["MBR_ID"], body.note)
-    except OperationalError as exc:  # 게시판 숨김과 동시 처리 — `_LOCK_CONFLICT` 주석
+    except OperationalError as exc:  # 잠금 대기 초과 등 — `_LOCK_CONFLICT` 주석
         if _lock_conflict(exc):
             raise HTTPException(status_code=409, detail="busy") from exc
         raise
@@ -500,6 +500,7 @@ const LABEL = {
   domain: '메일', manual: '수동',
   create: '등록', update: '수정', delete: '삭제',
   notice: '공지', free: '자유', career: '커리어', suggestion: '건의',
+  hide: '숨김', restore: '복구', board: '게시판', report: '신고 처리',
 };
 const MEMBER_LABEL = { active: '활성', withdrawn: '탈퇴' };
 const VRF_LABEL = { active: '인증됨', expired: '만료', revoked: '폐기', pending: '승인 대기' };
@@ -859,6 +860,16 @@ function titleCell(title, excerpt) {
   return f;
 }
 
+/** 조치 이력(TPOST_ACTION_LOG) 마지막 1건 + 총 횟수 — 누가 숨겼는지는 복구 뒤에도 여기 남는다. */
+function actionCell(cnt, last) {
+  if (!cnt || !last) return '—';
+  const f = document.createDocumentFragment();
+  f.appendChild(document.createTextNode(lab(last.action) + ' · ' + (last.actor_id ? 'MBR ' + last.actor_id : '(탈퇴)')
+    + ' · ' + kst(last.at)));
+  f.appendChild($('span', 'sub', lab(last.source) + (last.note ? ' · ' + last.note : '') + ' · 총 ' + cnt + '회'));
+  return f;
+}
+
 function reportCell(pending, total) {
   if (!total) return '0';
   return pending ? pill('pending', '대기 ' + pending + ' / ' + total) : String(total);
@@ -892,6 +903,7 @@ async function renderBoard() {
       { label: '상태', cls: 'nw', get: (p) => pill(p.status, lab(p.status)) },
       { label: '댓글·좋아요', cls: 'nw', get: (p) => p.comment_cnt + ' · ' + p.like_cnt },
       { label: '신고', cls: 'nw', get: (p) => reportCell(p.report_pending_cnt, p.report_cnt) },
+      { label: '최근 조치', get: (p) => actionCell(p.action_cnt, p.last_action) },
       { label: '조작', cls: 'nw', get: (p) => visibilityButton('posts', p.post_id, p.status) },
     ], (before) => api('/posts' + qs({ before, status: board.status })), '글 없음.'));
   } else {
@@ -903,6 +915,7 @@ async function renderBoard() {
       { label: '작성', cls: 'nw', get: (k) => kst(k.created_at) },
       { label: '상태', cls: 'nw', get: (k) => pill(k.status, lab(k.status)) },
       { label: '신고', cls: 'nw', get: (k) => reportCell(k.report_pending_cnt, k.report_cnt) },
+      { label: '최근 조치', get: (k) => actionCell(k.action_cnt, k.last_action) },
       { label: '조작', cls: 'nw', get: (k) => visibilityButton('comments', k.comment_id, k.status) },
     ], (before) => api('/comments' + qs({ before, status: board.status })), '댓글 없음.'));
   }

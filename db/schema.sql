@@ -372,6 +372,38 @@ CREATE TABLE IF NOT EXISTS TPOST_REPORT (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='게시물 신고 큐 (대상은 글·댓글 두 테이블 — TARGET_ID 는 FK 아님. 운영자 hide/dismiss)';
 
 -- ============================================================================
+-- 커뮤니티 운영자 조치 이력 — SP-AUTH-19.7 · SP-DB-18.7 (2026-09-18 신설)
+--
+-- **왜 따로 두나**: 숨김·복구의 흔적은 대상 행의 `MOD_ID`·`MOD_DTM` 뿐이었다 — **마지막** 조작자만
+-- 남아서 숨김→복구를 거치면 숨긴 사람과 그 메모가 사라진다(2026-09-18 적대 검토 L8). 이 표는
+-- 조치 한 번에 한 행을 **추가만** 한다(UPDATE·DELETE 경로 없음 = TBENEFIT_EDIT_LOG 와 같은 규약).
+-- 게시판 직접 조치(`report.set_visibility`)와 신고 처리의 hide(`report.decide_report`)가 **같은
+-- 트랜잭션에서** 쓴다 — 상태는 바뀌었는데 이력이 없는 순간이 없다.
+--
+-- 참여 그룹과 같은 조건: FK 부모가 TMEMBER 라 M9 OFF 스키마에는 만들 수 없다. 커뮤니티 4테이블의
+-- 뒤(`conftest.MODERATION_CREATE_ORDER` — 커뮤니티 묶음 끝 4개 규약을 깨지 않으려고 별도 그룹).
+-- 기존 서빙 DB 반영: db/migrations/20260918_add_post_action_log.sql (순수 추가).
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS TPOST_ACTION_LOG (
+  ACTION_LOG_ID        INT AUTO_INCREMENT PRIMARY KEY COMMENT '운영자 조치 이력 PK (추가 전용)',
+  TARGET_TYPE_CD       VARCHAR(8)   NOT NULL COMMENT '대상 유형 (post, comment) — TPOST_REPORT 와 같은 값집합',
+  TARGET_ID            INT          NOT NULL COMMENT '대상 ID (POST_ID 또는 COMMENT_ID — FK 아님: 두 테이블을 가리키고, 대상이 사라져도 이력은 남아야 한다)',
+  ACTION_CD            VARCHAR(8)   NOT NULL COMMENT '조치 (hide, restore)',
+  FROM_STATUS_CD       VARCHAR(12)  NOT NULL COMMENT '조치 전 대상 상태 (active, hidden)',
+  TO_STATUS_CD         VARCHAR(12)  NOT NULL COMMENT '조치 후 대상 상태 (hidden, active)',
+  SOURCE_CD            VARCHAR(8)   NOT NULL COMMENT '경로 (board: 콘솔 게시판 직접 조치, report: 신고 처리의 hide)',
+  REPORT_ID            INT          DEFAULT NULL COMMENT '신고 처리 경유면 그 신고 ID (TPOST_REPORT.REPORT_ID — FK 아님, 이력 존치)',
+  REPORTS_ACTIONED_CNT INT          NOT NULL DEFAULT 0 COMMENT '이 조치로 함께 닫힌 대기 신고 수 (접미 _CNT)',
+  NOTE_CTNT            VARCHAR(500) DEFAULT NULL COMMENT '운영자 메모 (숨김·복구 모두 — 대상 행에는 메모 칸이 없다)',
+  ACTOR_MBR_ID         INT          DEFAULT NULL COMMENT '조치한 운영자 FK (TMEMBER.MBR_ID, **세션에서 주입** — 본문으로 받지 않는다). ON DELETE SET NULL (이력 존치)',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시 (불변 append-only — 감사 4종 미적용, MOD 없음)',
+  INDEX idx_action_target (TARGET_TYPE_CD, TARGET_ID, ACTION_LOG_ID),
+  INDEX idx_action_actor  (ACTOR_MBR_ID, INS_DTM),
+  FOREIGN KEY (ACTOR_MBR_ID) REFERENCES TMEMBER(MBR_ID) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='커뮤니티 운영자 조치 이력 (숨김·복구 — 불변 append-only, 대상 행 MOD_ID 는 마지막 조작자만 남으므로 전체 이력은 여기)';
+
+-- ============================================================================
 -- 메일 배달 결과 2테이블 — SP-AUTH-16 (P1-4 바운스 웹훅, 2026-07-29 신설)
 --
 -- **참여 7테이블과 의도적으로 분리한다(FK 0개).** M9(로그인)가 꺼진 프로덕션에서도 웹훅을
