@@ -13,7 +13,7 @@
 
 코드 사전(대표 이름·별칭·최빈 카테고리·보유 회사 수)은 DB 컬럼이 아니라 **집계**다. 같은 규칙이
 JS 쪽(`find.js::deriveCodes`)에도 있고, 둘이 갈라지면 표와 칩이 다른 이름을 부른다 —
-`generator/tests/test_find_page.py` 가 표시명 override 다섯을 문자열로 맞춰 잡는다.
+`generator/tests/test_find_page.py` 가 표시명 override 아홉 줄을 문자열로 맞춰 잡는다.
 """
 from __future__ import annotations
 
@@ -24,14 +24,22 @@ from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
 
-# 같은 대표 이름을 쓰는 코드를 갈라 주는 표시명. **`web/assets/js/find.js::LABEL_OVERRIDE` 와 같은
-# 다섯 줄이어야 한다**(표는 여기서, 칩은 거기서 이름을 얻는다). test_find_page.py 가 강제한다.
+# 손으로 못 박는 표시명. **`web/assets/js/find.js::LABEL_OVERRIDE` 와 같은 아홉 줄이어야 한다**
+# (표는 여기서, 칩은 거기서 이름을 얻는다). test_find_page.py 가 강제한다. 두 갈래다:
+#   ① 같은 대표 이름을 쓰는 코드를 갈라 준다(앞 다섯 줄 — 통근버스·장기근속 뭉치).
+#   ② 빈도 1순위가 **한 그룹의 표기**라 항목 전체의 이름이 된 코드를 일반명으로 되돌린다(뒤 네 줄,
+#      2026-09-18). CJ 7개사가 같은 문구를 쓰니 「CJ 계열사 할인」이 할인 45곳 전체의 이름이 됐다.
+#      `birthday_leave` 는 대표 이름이 `birthday_gift` 와 같은 「생일 선물」이라 별칭이 붙던 것까지 푼다.
 LABEL_OVERRIDE = {
     "transport": "교통비·유류비 지원",
     "commute_subsidy": "통근버스·출퇴근 지원",
     "long_service_leave": "장기근속 휴가",
     "long_service_bonus": "장기근속 포상금",
     "long_service": "장기근속 포상 (구 코드)",
+    "discount": "계열사·제휴 할인",
+    "satellite_office": "거점·공유 오피스",
+    "leisure_ticket": "여가·문화 이용권",
+    "birthday_leave": "생일 휴가·기념일",
 }
 
 
