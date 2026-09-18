@@ -62,7 +62,7 @@ def test_SD4_benefit_total_row_count(seeded_db):
           — handoff/2026-09-05-회사확장-웨이브2.md
           − 데이터 정리 1차 합치기 2행(2026-09-18) = 2233
           아이센스 childcare 「보육수당」·child_edu 「자녀 입학축하금」을 같은 회사 parenting 에 합쳤다
-          (재코딩 9행은 코드만 바뀌어 행 수 불변) — db/migrations/20260918_recode_misclassified_rows.sql
+          (재코딩 10행·정성 전환 2행은 행 수 불변) — db/migrations/20260918_recode_misclassified_rows.sql
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
     assert count == 2233, f"복지 총행 불일치: {count} (기대 2233 = 2032 + 웨이브3 203 − 합치기 2)"
