@@ -45,8 +45,8 @@ VALUES
    'est', NULL, TRUE, '신입사원교육(OJT)', 60),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'meal', '점심/저녁식사 제공', 432, 'perks',
-   'est', '점심 및 저녁식사 제공 (추정)', FALSE, NULL, 80),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '점심/저녁식사 제공', NULL, 'perks',  'est', NULL, TRUE, '점심 및 저녁식사 제공', 80),
   (@comp_id, 'snack_bar', '카페테리아/간식', 30, 'perks',
    'est', '카페테리아, 간식 및 음료 제공 (추정)', FALSE, NULL, 81),
   (@comp_id, 'parking', '주차장 제공', NULL, 'perks',

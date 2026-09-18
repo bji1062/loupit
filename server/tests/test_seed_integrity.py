@@ -272,3 +272,63 @@ def test_SI_R1_url_slug_unchanged(seeded_db):
     for eng in RENAMED:
         assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY WHERE COMP_ENG_NM=%s", (eng,)) == 1, \
             f"slug {eng} 이 사라졌다 — /company/{eng} 색인이 통째로 깨진다"
+
+
+# ── SI-9: meal 432 앵커는 3식 이상 명시일 때만 (복지 배치1 확립 규칙 ②, 2026-09-18 강제) ──
+#
+# 432 = 일 18,000원 x 240일. 회사가 밝힌 금액이 아니라 **환산 공식값**이다. 3식이 명시되지 않은
+# 행에 붙으면 근거 없는 432가 비교 합계에 그대로 들어간다 — 2026-09-18 전수 판정에서 43개사 중
+# 22행이 그랬다(db/migrations/20260918_meal_anchor_to_qual.sql 로 정성 강등).
+#
+# 판정은 **항목명과 설명을 함께** 본다. 설명만 보면 LIG 「조/중/석식 제공」처럼 항목명에 근거가
+# 있는 행을 위반으로 잘못 잡는다(초안이 실제로 그랬다). 「일 18,000원 x 240일」은 앵커 공식을
+# 적어 둔 것이라 근거로 세지 않는다.
+
+import re as _re
+
+_THREE = _re.compile(r"삼시|세\s*끼|3\s*[식끼]|조\s*/\s*중\s*/\s*석|조·중·석")
+_MEAL_KINDS = (
+    _re.compile(r"조식|아침"),
+    _re.compile(r"중식|점심"),
+    _re.compile(r"석식|저녁"),
+    _re.compile(r"야식"),
+)
+_FORMULA = _re.compile(r"일\s*18,?000원?\s*[x×]\s*240일")
+
+
+def _meal_count(text: str) -> int:
+    t = _FORMULA.sub("", text or "")
+    if _THREE.search(t):
+        return 3
+    return sum(1 for p in _MEAL_KINDS if p.search(t))
+
+
+def test_SI9_meal_432_requires_three_meals(seeded_db):
+    rows = _rows(seeded_db, """
+        SELECT C.COMP_ENG_NM, B.BENEFIT_NM, COALESCE(B.NOTE_CTNT,''), COALESCE(B.QUAL_DESC_CTNT,'')
+          FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+         WHERE B.BENEFIT_CD = 'meal' AND B.BENEFIT_AMT = 432""")
+    assert rows, "meal 432 행이 하나도 없다 — 픽스처가 시드를 못 읽었거나 앵커가 전부 사라졌다"
+    bad = [f"{eng}/{nm}" for eng, nm, note, desc in rows
+           if _meal_count(f"{nm} {note} {desc}") < 3]
+    assert not bad, f"3식 명시 없이 meal 432 를 쓰는 행: {bad}"
+
+
+def test_SI9_downgraded_rows_keep_the_meal_fact_as_qualitative(seeded_db):
+    """강등은 **금액만** 걷는다. 행은 남고 정성 항목이 된다 — 「이 회사가 식사를 준다」는 사실은 정보다."""
+    rows = _rows(seeded_db, """
+        SELECT B.QUAL_YN, B.BENEFIT_AMT, B.NOTE_CTNT
+          FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+         WHERE C.COMP_ENG_NM = 'rainbow_robotics' AND B.BENEFIT_CD = 'meal'""")
+    assert len(rows) == 1, "행 자체를 지우면 안 된다"
+    qual, amt, note = rows[0]
+    assert qual and amt is None and note is None
+
+
+def test_SI9_meal_count_reads_the_benefit_name_too():
+    """초안 오판 재발 방지 — 항목명의 근거를 놓치지 않는다."""
+    assert _meal_count("조/중/석식 제공 (추정)") == 3
+    assert _meal_count("사내 식당 3끼 무상 제공") == 3
+    assert _meal_count("구내식당 (중식/석식/야식)") == 3
+    assert _meal_count("점심/저녁식사 제공") == 2
+    assert _meal_count("구내식당 일 18,000원 x 240일") == 0

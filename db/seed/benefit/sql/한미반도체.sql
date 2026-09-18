@@ -63,8 +63,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복지포인트 (명절/가정의달)', 60, 'perks',
    'est', '설날/추석 각 20만 + 가정의 달 20만 복지포인트', FALSE, NULL, 80),
-  (@comp_id, 'meal', '점심/저녁 무상 제공', 432, 'perks',
-   'est', '대기업 전문 케이터링(아워홈) 입점 (추정)', FALSE, NULL, 81),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '점심/저녁 무상 제공', NULL, 'perks',  'est', NULL, TRUE, '대기업 전문 케이터링(아워홈) 입점', 81),
   (@comp_id, 'holiday_gift', '생일/명절 선물', 20, 'perks',
    'est', '생일 케이크 상품권 + 명절 복지포인트 (추정)', FALSE, NULL, 82)
 ON DUPLICATE KEY UPDATE

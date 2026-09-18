@@ -65,8 +65,8 @@ VALUES
    'est', NULL, TRUE, '주택구입 자금 및 전세 자금 지원, 신용협동조합 운영', 80),
   (@comp_id, 'discount', '직원 할인 항공권', 200, 'perks',
    'est', '국내선/국제선 할인 항공권, 결혼/효도/청원 항공권, 타항공사 할인(협정체결), 퇴직직원용 항공권 (추정)', FALSE, NULL, 81),
-  (@comp_id, 'meal', '구내식당 식사 제공', 432, 'perks',
-   'est', '전 사옥 구내식당 운영, 식당 미설치 지역은 인근 식당 계약 (추정)', FALSE, NULL, 82),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '구내식당 식사 제공', NULL, 'perks',  'est', NULL, TRUE, '전 사옥 구내식당 운영, 식당 미설치 지역은 인근 식당 계약', 82),
   (@comp_id, 'snack_bar', '생수 제공', NULL, 'perks',
    'est', NULL, TRUE, '대리급 이상 매월 생수 지급', 83)
 ON DUPLICATE KEY UPDATE

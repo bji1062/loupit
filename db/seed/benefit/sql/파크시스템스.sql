@@ -75,8 +75,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복지포인트', 200, 'perks',
    'est', '복지(몰)포인트 제도 운영 (추정)', FALSE, NULL, 80),
-  (@comp_id, 'meal', '중식/석식 지원', 432, 'perks',
-   'est', '(추정)', FALSE, NULL, 81),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '중식/석식 지원', NULL, 'perks',  'est', NULL, TRUE, NULL, 81),
   (@comp_id, 'snack_bar', '스낵바 (커피, 다과 무료)', NULL, 'perks',
    'est', NULL, TRUE, '스낵바 운영 (커피, 다과 무료)', 82),
   (@comp_id, 'telecom', '통신비 지원', 30, 'perks',

@@ -65,8 +65,8 @@ VALUES
    'est', '연 100만원 (원문 명시), 생활/건강/교육/레저/패션/제품', FALSE, NULL, 80),
   (@comp_id, 'housing_loan', '주택자금 지원', NULL, 'perks',
    'est', NULL, TRUE, '주택자금 지원', 81),
-  (@comp_id, 'meal', '사내식당', 432, 'perks',
-   'est', '일 18,000원 × 240일 환산 (추정)', FALSE, NULL, 82),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '사내식당', NULL, 'perks',  'est', NULL, TRUE, NULL, 82),
   (@comp_id, 'transport', '출퇴근 버스', 120, 'perks',
    'est', '사업장별 통근버스 (추정)', FALSE, NULL, 83)
 ON DUPLICATE KEY UPDATE

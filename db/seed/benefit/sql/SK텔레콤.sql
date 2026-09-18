@@ -83,8 +83,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '선택적 복리후생비', 400, 'perks',
    'est', '매년 400만 포인트(가족검진40만+귀성비20만 등), 학원/여행/공연 등 사용', FALSE, NULL, 80),
-  (@comp_id, 'meal', '구내식당', 432, 'perks',
-   'est', 'The Table 한식/아시안/양식/샐러드, 일 18,000원 x 240일', FALSE, NULL, 81),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '구내식당', NULL, 'perks',  'est', NULL, TRUE, 'The Table 한식/아시안/양식/샐러드', 81),
   (@comp_id, 'telecom', '통신비 지원', 290, 'perks',
    'est', '매달 24만2천원까지 지원 (연 290만)', FALSE, NULL, 82),
   (@comp_id, 'housing_loan', '사내 대출/주거지원', NULL, 'perks',

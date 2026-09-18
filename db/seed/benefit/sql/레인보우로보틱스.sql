@@ -47,8 +47,8 @@ VALUES
    'est', '(추정)', FALSE, NULL, 60),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'meal', '중식 제공', 432, 'perks',
-   'est', '(추정)', FALSE, NULL, 80),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '중식 제공', NULL, 'perks',  'est', NULL, TRUE, NULL, 80),
   (@comp_id, 'snack_bar', '다과/커피머신', 20, 'perks',
    'est', '임직원 다과 제공 및 커피머신 구비 (추정)', FALSE, NULL, 81)
 ON DUPLICATE KEY UPDATE
