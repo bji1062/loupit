@@ -65,14 +65,17 @@ def run(
     # 조합 쌍은 한 번만 로드해 양쪽에 전달한다 — 회사 페이지의 /vs/ 링크와 실제
     # 생성되는 조합 페이지가 같은 목록에서 나와야 죽은 링크가 생기지 않는다(GC-20).
     combo_pairs = combo.load_pairs(ctx)
+    # 복지 항목 페이지(SP-BEN)를 **회사 페이지보다 먼저** 그린다 — 회사 원장 행이 실제로 생성됐고
+    # 자기 회사가 실린 항목 페이지에만 링크를 건다(SP-BEN-12). 목록 안 위치(=사이트맵 순서)는 그대로 둔다.
+    benefit_cfgs = benefit.load_configs()  # 설정 구조 오류는 여기서 BuildError(SP-BEN-4)
+    benefit_pages = benefit.render_all(env, ctx, CFG, configs=benefit_cfgs)
+    benefit_index = benefit.page_index(ctx, benefit_pages, benefit_cfgs)
     pages = []
-    pages += company.render_all(env, ctx, combo_pairs=combo_pairs)  # 회사 ~95 (SP-GEN-5·6)
+    pages += company.render_all(env, ctx, combo_pairs=combo_pairs, benefit_index=benefit_index)  # 회사 ~95 (SP-GEN-5·6)
     pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages.append(heatmap.render(env, ctx, CFG))  # 복지·실적 히트맵 (SP-HEAT, 2026-08-27)
     # 복지 항목 페이지(SP-BEN, 2026-09-18)는 `/find` **보다 먼저** 그린다 — /find 표가 실제로 생성된
     # 항목 페이지에만 링크를 건다(문턱에 걸려 안 만든 항목에 링크를 걸면 죽은 링크다, GC-20·GC-30).
-    benefit_cfgs = benefit.load_configs()  # 설정 구조 오류는 여기서 BuildError(SP-BEN-4)
-    benefit_pages = benefit.render_all(env, ctx, CFG, configs=benefit_cfgs)
     pages += benefit_pages
     pages.append(find.render(env, ctx, CFG, benefit_links=benefit.links(benefit_pages, benefit_cfgs)))  # 복지검색 (SP-FIND, 2026-09-06)
     pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체, 셸은 2026-09-15 삭제)

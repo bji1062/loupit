@@ -564,3 +564,45 @@ def test_quantifier_in_human_text_fails_the_build_gate_too():
     cfg = copy.deepcopy(_housing_cfg())
     cfg["intro"] = ["대부분의 회사가 빌려줍니다."]
     assert br.validate_all({"housing_loan": cfg}), "수량어가 빌드 게이트(validate_all)를 통과했다"
+
+
+# ── 회사 원장 → 항목 페이지 링크 (SP-BEN-12, 2026-09-18) ─────────────────────
+
+
+def _company_html_with_index(rows, configs):
+    """항목 페이지를 먼저 그리고, 그 색인으로 회사 페이지를 그린다(build.py 와 같은 순서)."""
+    env = make_env()
+    ctx = build_context(_bundle(rows))
+    bpages = benefit.render_all(env, ctx, CFG, configs=configs, min_companies=1, log=io.StringIO())
+    idx = benefit.page_index(ctx, bpages, configs)
+    cpages = company.render_all(env, ctx, benefit_index=idx)
+    return {p.path: p.html for p in cpages}, idx
+
+
+def test_ledger_row_links_to_the_item_page_with_the_same_count():
+    html, idx = _company_html_with_index(HOUSING, {"housing_loan": _housing_cfg()})
+    n = idx["housing_loan"]["count"]
+    page = next(h for pth, h in html.items() if "kt" in pth)
+    assert f'<a href="/benefit/housing-loan">이 복지가 있는 회사 {n}곳 →</a>' in page
+    assert n == len(HOUSING), "링크 숫자가 항목 페이지 머리의 N 과 다르다"
+
+
+def test_excluded_company_gets_no_item_link():
+    """예외로 뺀 회사에 링크를 걸면 도착한 페이지에 그 회사가 없다."""
+    cfg = copy.deepcopy(_housing_cfg())
+    kt = next(b for e, _, b in HOUSING if e == "kt")
+    cfg["overrides"].append({"comp": "kt", "h": br.text_hash(kt["qual_desc_ctnt"], kt["note_ctnt"]),
+                             "exclude": True, "why": "테스트"})
+    html, idx = _company_html_with_index(HOUSING, {"housing_loan": cfg})
+    assert "kt" not in idx["housing_loan"]["members"]
+    kt_page = next(h for pth, h in html.items() if pth.endswith("/kt.html"))
+    other = next(h for pth, h in html.items() if pth.endswith("/sk-telecom.html"))
+    assert 'class="led-more"' not in kt_page
+    assert 'href="/benefit/housing-loan"' in other
+
+
+def test_no_item_link_without_a_generated_page():
+    """설정이 없거나 문턱에 걸려 페이지가 안 생긴 항목에는 링크가 없다(죽은 링크 방지)."""
+    html, idx = _company_html_with_index(HOUSING, {})
+    assert idx == {}
+    assert not any('class="led-more"' in h for h in html.values())

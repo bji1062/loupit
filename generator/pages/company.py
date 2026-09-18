@@ -193,7 +193,8 @@ def amount_view(b: dict) -> dict:
 
 
 def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
-                    comp_eng_nm: str | None = None) -> list[tuple[str, str, list[dict]]]:
+                    comp_eng_nm: str | None = None,
+                    benefit_index: dict | None = None) -> list[tuple[str, str, list[dict]]]:
     """9카테고리 그룹·정렬·정성/금액·출처 스킴 (FR-53·54).
 
     비지 않은 카테고리만 `(key, label, items)`로 반환한다. 알 수 없는
@@ -233,6 +234,9 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
             # 법정 제도만 담은 행(SP-LEGAL-5) — 화면에는 배지를 달아 남기고 **집계에서만** 뺀다.
             "legal": bool(comp_eng_nm) and legal.is_legal_row(comp_eng_nm, b.get("benefit_cd"), b["benefit_nm"]),
             "src_text": AMOUNT_SOURCE_TEXT[kind],
+            # 복지 항목 페이지(SP-BEN-12) — 그 페이지가 **생성됐고 이 회사가 실려 있을 때만**. 예외로
+            # 뺀 회사에 링크를 걸면 도착한 페이지에 자기 회사가 없다.
+            "item_page": _item_page(benefit_index, b.get("benefit_cd"), comp_eng_nm),
             "ask_q": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[0],
             "ask_a": (EDIT_ASK["stale"] if badge["code"] == "stale" else EDIT_ASK[kind])[1],
             "edit_href": (
@@ -246,6 +250,14 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
     for k in buckets:
         buckets[k].sort(key=lambda x: x["sort"])
     return [(k, CATEGORY_LABEL[k], buckets[k]) for k in CATEGORY_ORDER if buckets[k]]
+
+
+def _item_page(benefit_index: dict | None, code: str | None, comp_eng_nm: str | None) -> dict | None:
+    """원장 행 → 복지 항목 페이지 링크 `{url, count}` 또는 None (SP-BEN-12)."""
+    hit = (benefit_index or {}).get(code)
+    if not hit or comp_eng_nm not in hit["members"]:
+        return None
+    return {"url": hit["url"], "count": hit["count"]}
 
 
 def _card_view(c: dict, groups, corpus) -> dict:
@@ -339,10 +351,11 @@ def _card_view(c: dict, groups, corpus) -> dict:
     }
 
 
-def _company_view(c: dict, ctx, now, corpus) -> dict:
+def _company_view(c: dict, ctx, now, corpus, benefit_index: dict | None = None) -> dict:
     """뷰모델 파생 — 기업정보·유형지표·근무형태·복지·CTA (SP-GEN-5.2)."""
     t = ctx.types_by_cd.get(c["comp_tp_cd"], {})
-    groups = _group_benefits(c["benefits"], now, comp_id=c["comp_id"], comp_eng_nm=c.get("comp_eng_nm"))
+    groups = _group_benefits(c["benefits"], now, comp_id=c["comp_id"], comp_eng_nm=c.get("comp_eng_nm"),
+                             benefit_index=benefit_index)
     ws = c.get("work_style_val") or {}
     return {
         "card": _card_view(c, groups, corpus),
@@ -554,7 +567,7 @@ def _company_seo(c: dict, ctx, url: str) -> dict:
     }
 
 
-def render_all(env, ctx, combo_pairs=None) -> list[Page]:
+def render_all(env, ctx, combo_pairs=None, benefit_index: dict | None = None) -> list[Page]:
     """회사 ~95 전량 렌더 (SP-GEN-5.1). 회사당 정확히 1 페이지, 폴백 없음.
 
     `combo_pairs`: build.py가 검증한 유효 조합 쌍(선택). 주입 시 각 회사 페이지가
@@ -571,7 +584,7 @@ def render_all(env, ctx, combo_pairs=None) -> list[Page]:
         eng = c["comp_eng_nm"]
         slug = ctx.slugs[eng]
         url = f"{CFG.site_origin}/company/{slug}"
-        vm = _company_view(c, ctx, now, corpus)
+        vm = _company_view(c, ctx, now, corpus, benefit_index)
         seo = _company_seo(c, ctx, url)
         html = tpl.render(
             **vm,

@@ -39,6 +39,9 @@
           (실측 6행: 케어젠 '휴가비 지원', 텔레칩스 'Productivity Incentive: 최대 연봉의 30%' 등). -#}
       {% if item.qual_desc %}<p class="benefit-note">{{ item.qual_desc }}</p>{% endif %}
       {% if item.note and item.note != item.qual_desc %}<p class="benefit-note">{{ item.note }}</p>{% endif %}
+      {#- 복지 항목 페이지로(SP-BEN-12). 글은 **라벨**이다(완결문장 아님 — 같은 문장이 수십 쪽에 반복되면
+          필러다). 숫자는 도착할 페이지 머리의 「이 복지가 있는 회사 N곳」과 같은 값이다. -#}
+      {% if item.item_page %}<p class="led-more"><a href="{{ item.item_page.url }}">이 복지가 있는 회사 {{ item.item_page.count }}곳 →</a></p>{% endif %}
       {#- 출처 상태에서 파생된 **사실 질문**이 재직자 편집(SC14)의 유입구다. 모르는 값일수록 물음이
           커진다: 추정 → "실제 금액을 아세요?", 정성 → "환산 금액을 아시나요?", 만료 → "재확인".
 

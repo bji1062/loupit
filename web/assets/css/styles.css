@@ -1381,6 +1381,10 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .bn-note { max-width:44em; font-size:var(--fs-sm); color:var(--t3); }
 /* 셀 원문이 없는 회사 수 — 막대 목록 바로 위의 작은 라벨(문장 아님, 필러 규칙). */
 .bn-blank { margin-top:var(--sp-1); font-size:var(--fs-xs); color:var(--t3); }
+/* 회사 원장 행 → 복지 항목 페이지 링크(SP-BEN-12). 새 클래스라 release 전 구 HTML 에는 안 걸린다.
+   폰에서는 손가락으로 누르기 쉽게 탭 높이(`--tap-min`)를 주고, 768 이상에서는 제 높이로 돌린다. */
+.led-more { margin-top:var(--sp-2); font-size:var(--fs-sm); }
+.led-more a { display:inline-flex; align-items:center; min-height:var(--tap-min); }
 
 /* 방식 누적 막대 + 범례. 폭은 인라인 `flex:<개수>` 숫자만 온다(색은 이 클래스들). */
 .bn-stack { display:flex; gap:2px; height:28px; margin-top:var(--sp-2); border-radius:var(--r-sm); overflow:hidden; }
@@ -1484,6 +1488,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   /* 폰에서 접어 둔 행 목록을 편다 + 힌트 문장을 펼친 폭의 것으로 바꾼다. 이동 수단이 다시
      행이므로 카테고리 머리는 제 크기(한 줄)로 돌아간다. */
   .sc-rows { display:block; }
+  .led-more a { min-height:0; }
   .sc-cat-go, .sc-cat-none { min-height:0; align-items:baseline; }
   .sc-lens-chip { min-height:28px; }
   .sc-hint-narrow { display:none; }

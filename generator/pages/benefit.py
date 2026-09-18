@@ -349,6 +349,24 @@ def render_all(env, ctx, cfg=CFG, *, configs: dict[str, dict] | None = None,
     return pages
 
 
+def page_index(ctx, pages: list[Page], configs: dict[str, dict] | None = None) -> dict[str, dict]:
+    """생성된 항목 페이지 → `{code: {"url", "count", "members"}}` — 회사 페이지가 원장 행에서 링크를 걸 때 쓴다.
+
+    `members` = 그 페이지 표에 **실제로 실린** 회사(센 행 + 배지를 단 법정 행). `exclude` 로 뺀 회사는
+    없다 — 눌러서 간 페이지에 자기 회사가 없으면 링크가 거짓말을 한 셈이다(예: 정착지원금을
+    주택자금 대출로 잘못 분류한 행). `count` 는 페이지 머리의 「이 복지가 있는 회사 N곳」과 **같은 수**다
+    (`build_view` 의 N — 법정 행·예외 제외). 링크 글과 도착한 페이지가 다른 숫자를 말하면 안 된다.
+    """
+    configs = configs if configs is not None else benefit_rules.load_pages()
+    out: dict[str, dict] = {}
+    for code, url in links(pages, configs).items():
+        all_rows = collect_rows(ctx, code)
+        result = benefit_rules.classify(configs[code], [r for r in all_rows if not r["legal"]])
+        members = {r["comp"] for r in result["rows"]} | {r["comp"] for r in all_rows if r["legal"]}
+        out[code] = {"url": url, "count": len(result["rows"]), "members": frozenset(members)}
+    return out
+
+
 def links(pages: list[Page], configs: dict[str, dict] | None = None) -> dict[str, str]:
     """생성된 항목 페이지 → `{code: "/benefit/{slug}"}`. `/find` 표가 이 사전으로 링크를 건다.
 
