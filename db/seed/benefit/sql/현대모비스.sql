@@ -25,7 +25,8 @@ VALUES
   -- ── 근무유연성 (flexibility) ──
   (@comp_id, 'flex_work', '선택적 근로시간제/재택근무', NULL, 'flexibility',
    'est', NULL, TRUE, '정해진 근로시간을 자율 조정 가능한 선택적 근로시간제, 재택근무 공식 제도화, 계획 근무시간 초과 시 PC 자동 종료(PC-OFF)', 10),
-  (@comp_id, 'remote_office', '거점오피스', NULL, 'flexibility',
+  -- 2026-09-18 재코딩 remote_office → satellite_office (같은 뜻 중복 코드 정리): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'satellite_office', '거점오피스', NULL, 'flexibility',
    'est', NULL, TRUE, '집 근처 거점오피스에서 근무 가능', 11),
 
   -- ── 근무환경 (work_env) ──

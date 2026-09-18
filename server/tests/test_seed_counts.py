@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 138
 
 
-# ── SD-4: 복지 총행 1553(=1330-모비스13+CJ계열148+파일럿22+배치1 66), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2233(웨이브3 뒤 2235 − 합치기 2, 2026-09-18), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -60,9 +60,12 @@ def test_SD4_benefit_total_row_count(seeded_db):
           이수페타시스 21 · LG이노텍 20 · 동진쎄미켐 19 · 대덕전자 17 · 셀트리온제약 17 · 한화생명 15 ·
           삼양식품 9 — 검증(Fable ×7)·감사(Opus) 판정 반영: 삭제 6·병합 4·재코딩 2·편집 주석 69필드 일소
           — handoff/2026-09-05-회사확장-웨이브2.md
+          − 데이터 정리 1차 합치기 2행(2026-09-18) = 2233
+          아이센스 childcare 「보육수당」·child_edu 「자녀 입학축하금」을 같은 회사 parenting 에 합쳤다
+          (재코딩 9행은 코드만 바뀌어 행 수 불변) — db/migrations/20260918_recode_misclassified_rows.sql
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2235, f"복지 총행 불일치: {count} (기대 2235 = 2032 + 웨이브3 203)"
+    assert count == 2233, f"복지 총행 불일치: {count} (기대 2233 = 2032 + 웨이브3 203 − 합치기 2)"
     assert count >= 1200
 
 

@@ -55,7 +55,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'meal', '구내식당 (중/석식)', 288, 'perks',
    'est', '구내식당 중식/석식 제공 (일 12,000원 x 240일 환산)', FALSE, NULL, 80),
-  (@comp_id, 'housing_loan', '사택/정착지원금', NULL, 'perks',
+  -- 2026-09-18 재코딩 housing_loan → relocation (대출이 아니라 정착지원금): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'relocation', '사택/정착지원금', NULL, 'perks',
    'est', NULL, TRUE, '사택 또는 정착지원금 지급', 81),
   (@comp_id, 'discount', '제휴업체 할인', NULL, 'perks',
    'est', NULL, TRUE, '제휴업체 직원 할인', 82)

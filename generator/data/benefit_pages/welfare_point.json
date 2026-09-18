@@ -168,12 +168,6 @@
       "h": "e8efabb596",
       "exclude": true,
       "why": "항목명 「개인 업무 지원비」 — 업무 장비·환경 지원비이지 쓸 곳을 고르는 복지포인트가 아니다(코드 오분류)"
-    },
-    {
-      "comp": "kakao_bank",
-      "h": "b13649fe98",
-      "exclude": true,
-      "why": "항목명 「자기계발비」 — 복지포인트가 아니다(코드 오분류, self_development 대상)"
     }
   ]
 }

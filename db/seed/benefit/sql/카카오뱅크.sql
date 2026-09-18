@@ -57,10 +57,11 @@ VALUES
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '교육/컨퍼런스', NULL, 'growth',
    'est', NULL, TRUE, '사내 Insight & Trend 교육, 해외 컨퍼런스 참여, 외부 교육 수강 지원', 60),
+  -- 2026-09-18 재코딩 welfare_point(perks, 80) → self_development(growth, 61) — 복지포인트가 아니라 자기계발비: db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'self_development', '자기계발비', 600, 'growth',
+   'est', '연 600만원 자기계발비', FALSE, NULL, 61),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'welfare_point', '자기계발비', 600, 'perks',
-   'est', '연 600만원 자기계발비', FALSE, NULL, 80),
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
   (@comp_id, 'meal', '사내식당', NULL, 'perks',  'est', NULL, TRUE, NULL, 81),
   (@comp_id, 'housing_loan', '대출이자 지원', NULL, 'perks',

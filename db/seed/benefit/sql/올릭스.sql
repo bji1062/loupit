@@ -57,7 +57,8 @@ VALUES
    'est', '사내 동호회 운영 및 지원 (추정)', FALSE, NULL, 71),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'housing_loan', '주거 지원', NULL, 'perks',
+  -- 2026-09-18 재코딩 housing_loan → housing_support (원문에 대출이 없다): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'housing_support', '주거 지원', NULL, 'perks',
    'est', NULL, TRUE, '주거 지원', 80),
   (@comp_id, 'snack_bar', '카페테리아', 20, 'perks',
    'est', '(추정)', FALSE, NULL, 81),

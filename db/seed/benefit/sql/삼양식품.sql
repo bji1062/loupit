@@ -50,7 +50,8 @@ VALUES
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'event', '경조 지원', NULL, 'family',
    'est', NULL, TRUE, '결혼, 상조 등 경조사에 따른 경조휴가 및 경조금, 물품, 화환 지급 (공식 채용 페이지 복리 후생 항목 그대로 — 경조금 금액·경조휴가 일수·경조사 범위 미기재)', 10),
-  (@comp_id, 'child_edu', '자녀입학 축하금 지원', NULL, 'family',
+  -- 2026-09-18 재코딩 child_edu → parenting (학자금이 아니라 입학 축하금): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'parenting', '자녀입학 축하금 지원', NULL, 'family',
    'est', NULL, TRUE, '임직원들 자녀 입학 축하금 지원 (공식 채용 페이지 복리 후생 항목 그대로 — 축하금 금액·대상 학교급·자녀 수 제한 미기재. 학자금 지원 여부 미기재)', 11),
 
   -- ── 경제적 부가혜택 (perks) ──
