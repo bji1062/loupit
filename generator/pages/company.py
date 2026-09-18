@@ -15,7 +15,7 @@ from generator.employ import company_metrics
 from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
 from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon
-from generator.radar import radar_svg
+from generator.radar import fmt, radar_svg
 from generator.slug import combo_slug
 
 # 관련 회사 링크 개수 상한 (FR-63 확장, 2026-07-19 고아 페이지 해소).
@@ -243,14 +243,21 @@ def _card_view(c: dict, groups, corpus) -> dict:
     다른 기준이 섞일 수 있다.
     """
     used = {k for k, _, _ in groups}
+    by_key = {k: items for k, _, items in groups}
     cats = []
-    for key, label, items in groups:
+    # 카드 목록은 **9카테고리 전부**를 정본 순서로 싣는다. 등록 행이 없는 카테고리를 빼면 바로 옆
+    # 9각형은 그 축을 중심에 찍는데 목록에서는 카테고리가 통째로 사라져, 두 그림이 다른 말을 한다
+    # (2026-09-18 사용자 지적). 빈 카테고리는 「등록 없음」— 레이더 호버 라벨·비교 화면과 **같은
+    # 함수**(`radar.fmt`)의 같은 낱말이다. 「없음」이라 쓰지 않는 이유는 그 함수 주석(SP-CMP-3).
+    for key in CATEGORY_ORDER:
+        items = by_key.get(key, [])
         stated = sum(i["amt"] for i in items if i["amt"] and i["amt_kind"] == "stated")
         est = sum(i["amt"] for i in items if i["amt"] and i["amt_kind"] == "estimated")
         cats.append({
-            "key": key, "label": label, "rows": items, "count": len(items),
+            "key": key, "label": CATEGORY_LABEL[key], "rows": items, "count": len(items),
             "amount": stated + est, "amount_text": krw_manwon(stated + est) if stated + est else "",
             "stated": stated, "est": est,
+            "empty_text": "" if items else fmt(0),
         })
     # 법정 행은 세지 않는다 — 원장에는 남지만 항목 수·렌즈·레이더의 분모가 아니다(SP-LEGAL-5).
     flat = [i for _, _, items in groups for i in items if not i["legal"]]

@@ -669,6 +669,32 @@ def test_card_category_header_links_to_its_ledger_category(fake_bundle, fake_now
         assert heads == groups, f"{p.path}: 카드↔원장 카테고리 앵커 불일치 {heads ^ groups}"
 
 
+def test_card_lists_all_nine_categories_with_empty_ones_marked(fake_bundle, fake_now):
+    """카드 목록은 9카테고리 **전부**를 레이더와 같은 정본 순서로 싣는다(2026-09-18 사용자 지적:
+    빈 카테고리가 목록에서 빠져, 9각형은 그 축을 중심에 찍는데 옆 요약에는 카테고리가 없었다).
+
+    빈 카테고리는 「등록 없음」— 레이더 호버 라벨과 **같은 함수**(`radar.fmt`)의 낱말이다. 링크는
+    걸지 않는다: 원장에 그 절이 없어 `#cat-{키}` 가 에러 없이 맨 위로 가는 죽은 링크가 된다."""
+    from generator.radar import fmt
+
+    labels = [company.CATEGORY_LABEL[k] for k in company.CATEGORY_ORDER]
+    seen_empty = 0
+    for p in _render(fake_bundle, fake_now).values():
+        secs = re.findall(r'<section class="sc-cat( sc-cat-empty)?">(.*?)</section>', p.html, re.S)
+        heads = [re.sub(r"<[^>]+>", "", re.search(r"<h3>(.*?)</h3>", h, re.S)[1]).split()[0] for _, h in secs]
+        assert heads == labels, f"{p.path}: 카드 카테고리가 9개 정본 순서가 아니다 {heads}"
+        ledger = set(re.findall(r'<section class="benefit-group" id="cat-([a-z_]+)"', p.html))
+        for key, (empty, h) in zip(company.CATEGORY_ORDER, secs):
+            # 빈 칸 판정은 원장이 기준이다 — 카드와 원장이 「이 카테고리에 행이 있다」를 다르게 말하면 안 된다.
+            assert bool(empty) == (key not in ledger), f"{p.path}: {key} 빈 칸 판정이 원장과 어긋난다"
+            if empty:
+                seen_empty += 1
+                assert fmt(0) in h, f"{p.path}: {key} 빈 카테고리에 「{fmt(0)}」 표기가 없다"
+                assert "<a " not in h, f"{p.path}: {key} 빈 카테고리에 링크가 걸렸다(원장에 대상 없음)"
+                assert '<ul class="sc-rows">' not in h
+    assert seen_empty, "픽스처에 빈 카테고리가 없다 — 이 가드가 공회전한다"
+
+
 def test_card_hint_tells_the_truth_on_both_widths(fake_bundle, fake_now):
     """폰에서는 누를 행이 없다 — "항목을 누르면" 은 그 화면에서 거짓이다. 두 문장을 함께
     내보내고 CSS 가 폭에 따라 하나만 보여 준다(JS 0)."""

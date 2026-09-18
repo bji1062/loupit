@@ -79,6 +79,14 @@
     {% endif %}
     <div class="sc-cats">
     {% for cat in card.categories %}
+      {% if cat.empty_text %}
+      {#- 등록 행이 없는 카테고리 — 빼지 않고 9각형과 같은 자리에 「등록 없음」으로 남긴다.
+          원장에는 이 카테고리 절이 없으므로(`#cat-{키}` 대상 없음) **링크를 걸지 않는다** —
+          걸면 에러 없이 페이지 맨 위로 가는 죽은 링크가 된다. -#}
+      <section class="sc-cat sc-cat-empty">
+        <h3><span class="sc-cat-none">{{ cat.label }} <span class="sc-cat-sub">{{ cat.empty_text }}</span></span></h3>
+      </section>
+      {% else %}
       <section class="sc-cat">
         {#- 접힌 폭에서는 이 머리가 **유일한 이동 수단**이다 — 원장의 같은 카테고리로 간다.
             펼친 폭에서도 링크로 두는 편이 낫다(행이 27개면 카테고리 단위 이동이 더 빠르다). -#}
@@ -95,6 +103,7 @@
         {% endfor %}
         </ul>
       </section>
+      {% endif %}
     {% endfor %}
     </div>
   </div>

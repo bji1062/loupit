@@ -953,6 +953,11 @@ main p { margin-top:var(--sp-3); }
   gap:var(--sp-2); min-height:var(--tap-min); color:inherit; }
 .sc-cat-go:hover { color:var(--brand-active); }
 .sc-cat-sub { color:var(--t3); font-weight:var(--fw-regular); }
+/* 등록 행이 없는 카테고리 머리 — 링크가 아니다(원장에 그 절이 없다). 누를 수 있는 머리와 **같은
+   상자**(폭·높이·정렬)를 써서 9줄이 한 격자로 읽히게 하고, 글자만 흐리게 해 「없음」을 알린다.
+   새 클래스에만 건다 — CSS 는 머지 즉시, HTML 은 release 이후라 구 마크업이 이 규칙을 만나면 안 된다. */
+.sc-cat-none { display:flex; flex:1; flex-wrap:wrap; align-items:center; justify-content:space-between;
+  gap:var(--sp-2); min-height:var(--tap-min); color:var(--t3); font-weight:var(--fw-regular); }
 /* 🚨 머리 링크는 접힌 폭에서 `.sc-row` 의 역할을 **이어받는다** — 그래서 행에 준 것과 같은 탭
    타깃(`--tap-min` 44px)을 준다. 1차에서 "이름만 링크면 손가락으로 누를 것이 이름 폭뿐"이라
    행 전체를 링크로 만든 그 이유가, 행이 접히면 이 링크로 옮겨 온다(리뷰 지적 2026-09-04:
@@ -1377,7 +1382,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   /* 폰에서 접어 둔 행 목록을 편다 + 힌트 문장을 펼친 폭의 것으로 바꾼다. 이동 수단이 다시
      행이므로 카테고리 머리는 제 크기(한 줄)로 돌아간다. */
   .sc-rows { display:block; }
-  .sc-cat-go { min-height:0; align-items:baseline; }
+  .sc-cat-go, .sc-cat-none { min-height:0; align-items:baseline; }
   .sc-lens-chip { min-height:28px; }
   .sc-hint-narrow { display:none; }
   .sc-hint-wide { display:inline; }
