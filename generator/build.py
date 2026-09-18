@@ -74,8 +74,8 @@ def run(
     pages += company.render_all(env, ctx, combo_pairs=combo_pairs, benefit_index=benefit_index)  # 회사 ~95 (SP-GEN-5·6)
     pages.append(company_index.render(env, ctx, CFG))  # 회사 인덱스 진입문 (SP-GEN-5.3)
     pages.append(heatmap.render(env, ctx, CFG))  # 복지·실적 히트맵 (SP-HEAT, 2026-08-27)
-    # 복지 항목 페이지(SP-BEN, 2026-09-18)는 `/find` **보다 먼저** 그린다 — /find 표가 실제로 생성된
-    # 항목 페이지에만 링크를 건다(문턱에 걸려 안 만든 항목에 링크를 걸면 죽은 링크다, GC-20·GC-30).
+    # 복지 항목 페이지는 위에서 **이미 그렸다**(회사 페이지보다 먼저). 여기서는 목록에 넣기만 한다 —
+    # 이 자리가 사이트맵 순서다. /find 는 그 렌더 결과로 링크를 건다(안 만든 항목에 링크 = 죽은 링크, GC-20·GC-30).
     pages += benefit_pages
     pages.append(find.render(env, ctx, CFG, benefit_links=benefit.links(benefit_pages, benefit_cfgs)))  # 복지검색 (SP-FIND, 2026-09-06)
     pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체, 셸은 2026-09-15 삭제)
