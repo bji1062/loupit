@@ -58,6 +58,9 @@
     {% if view.notes.modes %}<p class="bn-note">{{ view.notes.modes }}</p>{% endif %}
     {% endif %}
     <h3>회사가 공개한 원문에 적힌 것 — {{ view.count }}곳 중</h3>
+    {#- 원문이 비어 있거나 수집자 추정뿐인 행은 어느 칸에도 안 걸린다. 그 수를 밝히지 않으면 막대의
+        「없음」이 「회사가 안 적었다」와 「우리에게 원문이 없다」를 섞어 말한다. 라벨이지 문장이 아니다(필러 규칙). -#}
+    {% if view.blank %}<p class="bn-blank">원문 내용이 없어 세지 않은 회사 {{ view.blank }}곳</p>{% endif %}
     <ul class="bn-bars">
       {% for f in view.facets %}
       <li>

@@ -74,7 +74,8 @@ HOUSING = [
     ("naver", "NAVER", _b("housing_loan", "주택자금 대출이자 지원", desc="대출금액 1.5%를 10년간 지원(최대 2억원)")),
     ("cj_freshway", "CJ프레시웨이", _b("housing_loan", "주택자금 대출", desc="2년 이상 재직자 대상 (한도 미표기)")),
     ("sk_telecom", "SK텔레콤", _b("housing_loan", "사내 대출", desc="사내 대출 1억 한도, 주거 안정 자금 지원")),
-    ("sk_hynix", "SK하이닉스", _b("housing_loan", "주택자금 지원", desc="주택 구입/임차 자금 지원", amt=500, qual=False, src="estimated")),
+    ("sk_hynix", "SK하이닉스", _b("housing_loan", "주택자금 지원", desc="주택 구입/임차 자금 지원, 기혼 무주택자 임대아파트 3년 무료 제공",
+        amt=500, qual=False, src="estimated")),  # 원문은 실데이터(예외 해시가 맞물린다), 금액만 표본용
 ]
 
 
@@ -176,12 +177,16 @@ def test_exclude_on_changed_text_is_disabled_and_the_row_comes_back():
 
 
 def test_real_housing_overrides_match_the_real_text():
-    """housing_loan.json 의 두 예외가 표본 원문과 해시로 맞물린다(예외가 공회전하지 않는다)."""
+    """housing_loan.json 의 예외가 표본 원문과 해시로 맞물린다(예외가 공회전하지 않는다).
+
+    표본에 없는 회사의 예외는 「행이 없어」로 보고되는 게 정상이라 빼고 본다 — 여기서 잡을 것은
+    **표본에 있는데 원문이 달라 꺼진 예외**다(실데이터 해시는 실제 빌드 로그의 stale 0 이 지킨다)."""
     cfg = _housing_cfg()
     rows = [{"comp": e, "desc": b["qual_desc_ctnt"], "note": b["note_ctnt"]} for e, _, b in HOUSING]
     out = br.classify(cfg, rows)
     by = {r["comp"]: r for r in out["rows"]}
-    assert out["stale"] == []
+    assert [s for s in out["stale"] if "원문이 바뀌어" in s] == []
+    assert "no_home" not in by["sk_hynix"]["facets"], "「기혼 무주택자」는 임대아파트 조건이다"
     assert by["doosan_enerbility"]["mode"] == "both"
     assert "limit" not in by["pearl_abyss"]["facets"], "「매월 50만원」 거주비가 대출 한도로 잡혔다"
 
@@ -520,3 +525,30 @@ def test_gc10_covers_item_pages_through_the_release_gate(fake_now):
     env = make_env()
     ctx = build_context(_bundle(HOUSING), now=fake_now)
     run_generated_checks("unused", company.render_all(env, ctx) + pages + [fp, sm, home.render(env, ctx, CFG, pairs=[])])
+
+
+# ── 추정 원문·빈 원문 (검증 반영 2026-09-18) ────────────────────────────────
+
+
+def test_estimated_existence_row_is_not_counted_as_fact():
+    """금액 없는 행의 「(추정)」 = 이 복지가 있다는 것 자체가 수집자 추정(`format.benefit_desc` 와 같은
+    해석). 그 원문 속 「대출」「저금리」를 사실로 세면 공개 숫자에 추정이 섞인다(DB손해보험 구본)."""
+    cfg = _housing_cfg()
+    rows = [{"comp": "db_insurance", "desc": "저금리 주택자금 대출 지원 (추정)", "note": None, "unverified": True}]
+    r = br.classify(cfg, rows)["rows"][0]
+    assert r["facets"] == set() and r["mode"] == cfg["modes"]["fallback"]["key"] and r["blank"]
+
+
+def test_blank_rows_are_disclosed_with_a_label_not_a_sentence():
+    rows = HOUSING + [
+        ("db_insurance", "DB손해보험", _b("housing_loan", "주택자금 대출 지원", desc="주택자금 대출 지원 (추정)")),
+        ("remed", "리메드", _b("housing_loan", "주택자금 대출", note="(추정)", amt=100, qual=False, src="estimated")),
+    ]
+    pages, *_ = _render(rows, {"housing_loan": _housing_cfg()})
+    html = pages[0].html
+    assert '<p class="bn-blank">원문 내용이 없어 세지 않은 회사 2곳</p>' in html
+
+
+def test_no_blank_label_when_every_row_has_text():
+    pages, *_ = _render(HOUSING, {"housing_loan": _housing_cfg()})
+    assert "bn-blank" not in pages[0].html

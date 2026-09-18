@@ -28,7 +28,7 @@ from generator import benefit_rules, legal
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
-from generator.format import benefit_desc
+from generator.format import amount_kind, benefit_desc
 from generator.pages.company import CATEGORY_LABEL, LENS_BUCKETS, amount_view, benefit_anchor, lens_keys
 from generator.pages.find import _prefer_name, derive_codes
 from generator.slug import BuildError
@@ -69,6 +69,8 @@ def collect_rows(ctx, code: str) -> list[dict]:
                 "note": b.get("note_ctnt"),
                 "benefit": b,
                 "legal": legal.is_legal_row(c["comp_eng_nm"], code, b["benefit_nm"]),
+                "unverified": amount_kind(b) == "none"
+                and "(추정)" in (b.get("qual_desc_ctnt") or "") + (b.get("note_ctnt") or ""),
             })
     return rows
 
@@ -273,6 +275,7 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
         "modes": modes if modes_cfg else [],
         "mode_label": modes_cfg.get("label", "방식") if modes_cfg else "",
         "facets": facets,
+        "blank": sum(1 for r in classified if r["blank"]),
         "money": money,
         "questions": questions,
         # 자리마다 빈 문자열을 깔아 둔다 — StrictUndefined 라 없는 키를 템플릿이 읽으면 렌더가 죽는다.

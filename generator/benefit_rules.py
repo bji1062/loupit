@@ -262,7 +262,9 @@ def classify(cfg: dict, rows: list[dict]) -> dict:
     stale, used, changed = [], set(), set()
     out_rows, excluded = [], []
     for r in rows:
-        t = match_text(r.get("desc"), r.get("note"))
+        # 금액 없는 행에 「(추정)」이 붙은 원문은 **이 복지가 있다는 것 자체가 수집자 추정**이다
+        # (`format.benefit_desc` 와 같은 해석 — DB손해보험 구본). 그 원문의 낱말을 사실로 세지 않는다.
+        t = "" if r.get("unverified") else match_text(r.get("desc"), r.get("note"))
         mode = None
         if modes_cfg:
             mode = modes_cfg["fallback"]["key"]
@@ -285,7 +287,9 @@ def classify(cfg: dict, rows: list[dict]) -> dict:
             else:
                 changed.add(r["comp"])
                 stale.append(f"{cfg['code']}: {r['comp']} 원문이 바뀌어 예외를 끈다({o.get('why', '')})")
-        out_rows.append({**r, "mode": mode, "facets": facets})
+        # blank = 셀 원문이 없는 행(빈 칸·「(추정)」뿐·추정 원문). 개수에는 N 으로만 들어가고 어느 칸에도
+        # 안 걸린다 — 페이지가 그 수를 따로 밝힌다(안 밝히면 「없음」이 「원문이 비었음」과 섞인다).
+        out_rows.append({**r, "mode": mode, "facets": facets, "blank": not t})
     for comp in ov:
         if comp not in used and comp not in changed:
             stale.append(f"{cfg['code']}: {comp} 행이 없어 예외가 쓰이지 않는다")

@@ -1379,6 +1379,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .bn-sec h2 + h3 { margin-top:var(--sp-4); }
 .bn-prose p { max-width:40em; color:var(--t2); }
 .bn-note { max-width:44em; font-size:var(--fs-sm); color:var(--t3); }
+/* 셀 원문이 없는 회사 수 — 막대 목록 바로 위의 작은 라벨(문장 아님, 필러 규칙). */
+.bn-blank { margin-top:var(--sp-1); font-size:var(--fs-xs); color:var(--t3); }
 
 /* 방식 누적 막대 + 범례. 폭은 인라인 `flex:<개수>` 숫자만 온다(색은 이 클래스들). */
 .bn-stack { display:flex; gap:2px; height:28px; margin-top:var(--sp-2); border-radius:var(--r-sm); overflow:hidden; }
