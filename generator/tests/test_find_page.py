@@ -224,7 +224,7 @@ def test_short_generic_name_wins_over_one_company_wording():
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
     # 대표 이름(`base_label`)을 잰다 — 표시명(`label`)은 override 가 덮을 수 있다
-    # (`birthday_leave` 는 2026-09-18 부터 「생일 휴가·기념일」로 못 박혔지만 동률 규칙은 그대로 「생일 선물」을 고른다).
+    # (`birthday_leave` 는 2026-09-18 부터 「생일 휴가·조기퇴근」으로 못 박혔지만 동률 규칙은 그대로 「생일 선물」을 고른다).
     codes = find.derive_codes(_companies_from_label_cases(cases))
     for code, expect in (("company_event", "야유회"), ("mba", "대학원비 지원"),
                          ("work_tools", "노트북 지원"), ("profit_sharing", "경영성과금"),
