@@ -29,10 +29,13 @@ from collections import Counter
 _DIR = os.path.join(os.path.dirname(__file__), "data", "benefit_pages")
 
 # 괄호 안이 수집자 메모인지 가르는 낱말. 회사가 쓴 괄호(예: 「(유·무이자)」「(최대 2억원)」)는 남긴다.
-_META = re.compile(r"공식|페이지|미기재|미표기|채용|항목|추정|사이트|출처")
+_META = re.compile(r"공식|페이지|미기재|미표기|미공개|채용|항목|추정|사이트|출처")
 # 「 — 」 뒤 꼬리가 수집자 메모인지 가르는 낱말. 꼬리가 회사 내용일 수도 있어 낱말이 있을 때만 걷는다.
-_META_TAIL = re.compile(r"미기재|미표기|다름|정본|공식|페이지|항목")
+_META_TAIL = re.compile(r"미기재|미표기|미공개|다름|정본|공식|페이지|항목")
 _PAREN = re.compile(r"\s*\(([^()]*)\)")
+# 남기기로 한 괄호를 잠시 가리는 표식. 가리지 않으면 바깥 괄호가 `[^()]` 에 막혀 영영 안 걸린다 —
+# 「(공식 페이지 (유·무이자) 항목 미기재)」의 메모가 통째로 남는다.
+_KEEP_OPEN, _KEEP_CLOSE = "\x02", "\x03"
 _TAIL = re.compile(r"\s+[—–]\s+(.*)$")
 _DIGIT = re.compile(r"[0-9０-９]")
 
@@ -42,10 +45,27 @@ def text_hash(desc: str | None, note: str | None) -> str:
     return hashlib.sha1(((desc or "") + "\x1f" + (note or "")).encode("utf-8")).hexdigest()[:10]
 
 
+def _drop_or_keep(m: re.Match) -> str:
+    if _META.search(m.group(1)):
+        return ""
+    return m.group(0).replace("(", _KEEP_OPEN).replace(")", _KEEP_CLOSE)
+
+
 def core_text(text: str | None) -> str:
-    """매칭용 사본: 수집자 메모(괄호·꼬리)를 걷어 낸 원문."""
+    """매칭용 사본: 수집자 메모(괄호·꼬리)를 걷어 낸 원문.
+
+    괄호는 **안쪽부터** 본다(`[^()]*` = 가장 안쪽 괄호). 메모면 걷고, 회사가 쓴 괄호면 표식으로 가려
+    두고 다시 돈다 — 바뀌지 않을 때까지. 그래서 「(공식 페이지 (채용) 항목 — 한도 미기재)」는 안쪽을
+    걷은 뒤 바깥이 통째로 걷히고, 메모 안에 회사 괄호가 끼어 있어도(「(공식 … (유·무이자) … 미기재)」)
+    바깥 메모가 걷힌다. 메모 낱말이 없는 겹괄호(「(최대 2억원(연 1회))」)는 그대로 남는다.
+    """
     s = text or ""
-    s = _PAREN.sub(lambda m: "" if _META.search(m.group(1)) else m.group(0), s)
+    while True:
+        t = _PAREN.sub(_drop_or_keep, s)
+        if t == s:
+            break
+        s = t
+    s = s.replace(_KEEP_OPEN, "(").replace(_KEEP_CLOSE, ")")
     m = _TAIL.search(s)
     if m and _META_TAIL.search(m.group(1)):
         s = s[: m.start()]
@@ -173,6 +193,12 @@ def validate(cfg: dict) -> list[str]:
     for o in cfg.get("overrides", []):
         if not (o.get("comp") and o.get("h") and o.get("why")):
             errs.append(f"{code}: override 에 comp·h·why 필수 — {o}")
+        if "exclude" in o:
+            # 빼는 예외는 `true` 하나뿐이다. 방식·facet 을 함께 적으면 무엇이 이기는지 읽는 사람이 헷갈린다.
+            if o["exclude"] is not True:
+                errs.append(f"{code}: override {o.get('comp')} exclude 는 true 만 쓴다")
+            if any(k in o for k in ("mode", "facets_add", "facets_remove")):
+                errs.append(f"{code}: override {o.get('comp')} exclude 는 mode·facets 와 함께 쓸 수 없다")
         if "mode" in o and o["mode"] not in mode_keys:
             errs.append(f"{code}: override {o.get('comp')} mode {o['mode']!r} 가 정의되지 않았다")
         for k in (*o.get("facets_add", []), *o.get("facets_remove", [])):
@@ -193,13 +219,19 @@ def classify(cfg: dict, rows: list[dict]) -> dict:
     """원문 행들에 규칙을 적용한다.
 
     rows: `{comp, desc, note, ...}` 목록(회사당 한 행).
-    반환: `{"rows": [{..., mode, facets}], "modes": {key: n}, "facets": {key: n}, "stale": [...]}`
+    반환: `{"rows": [{..., mode, facets}], "modes": {key: n}, "facets": {key: n}, "stale": [...],
+    "excluded": [{..., why}]}`
+
+    `"exclude": true` 예외는 그 행을 **통째로 뺀다** — `rows`·개수 어디에도 없고 `excluded` 에만 남는다.
+    이 항목 코드로 잘못 분류된 행(예: 어린이집 코드인데 어린이집 없이 수당만 주는 회사)을 데이터
+    재코딩 전까지 항목 페이지에서만 걷는 용도다. 다른 예외처럼 해시가 다르면 꺼지고(`stale`) 행이
+    다시 나타난다 — 원문이 바뀌었으면 잘못 분류됐다는 판정도 다시 봐야 한다.
     """
     modes_cfg = cfg.get("modes")
     facets_cfg = cfg.get("facets", [])
     ov = {(o["comp"]): o for o in cfg.get("overrides", [])}
     stale, used, changed = [], set(), set()
-    out_rows = []
+    out_rows, excluded = [], []
     for r in rows:
         t = match_text(r.get("desc"), r.get("note"))
         mode = None
@@ -214,6 +246,9 @@ def classify(cfg: dict, rows: list[dict]) -> dict:
         if o is not None:
             if o["h"] == text_hash(r.get("desc"), r.get("note")):
                 used.add(r["comp"])
+                if o.get("exclude"):
+                    excluded.append({**r, "why": o.get("why", "")})
+                    continue
                 if "mode" in o:
                     mode = o["mode"]
                 facets |= set(o.get("facets_add", []))
@@ -231,7 +266,7 @@ def classify(cfg: dict, rows: list[dict]) -> dict:
             + [modes_cfg["fallback"]["key"]]
         modes = {k: sum(1 for r in out_rows if r["mode"] == k) for k in keys}
     facets = {f["key"]: sum(1 for r in out_rows if f["key"] in r["facets"]) for f in facets_cfg}
-    return {"rows": out_rows, "modes": modes, "facets": facets, "stale": stale}
+    return {"rows": out_rows, "modes": modes, "facets": facets, "stale": stale, "excluded": excluded}
 
 
 def answered(q: dict, row: dict, fallback_mode: str | None) -> bool:

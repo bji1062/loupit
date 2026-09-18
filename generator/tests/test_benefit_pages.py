@@ -101,6 +101,16 @@ def _render(rows, configs, min_companies=1, now=None):
     ("무이자 2천만원 주택자금 대출 — 한도는 계열사별로 다름", "무이자 2천만원 주택자금 대출"),  # CJ CGV 꼬리 메모
     ("주택자금 대출(유·무이자)", "주택자금 대출(유·무이자)"),  # 회사가 쓴 괄호는 남는다
     ("대출금액 1.5%를 10년간 지원(최대 2억원)", "대출금액 1.5%를 10년간 지원(최대 2억원)"),
+    # 「미공개」도 메모 낱말이다 — 괄호와 꼬리 둘 다
+    ("주택자금 대출 (한도 미공개)", "주택자금 대출"),
+    ("저리 대출 — 금리 미공개", "저리 대출"),
+    # 겹괄호: 안쪽부터 걷어 바깥 메모가 통째로 걷힌다
+    ("주택자금 대출 (공식 페이지 (채용) 항목 — 한도 미기재)", "주택자금 대출"),
+    # 메모 안에 회사 괄호가 끼어 있어도 바깥 메모는 걷힌다(안쪽 회사 괄호에 막히지 않는다)
+    ("사내 대출 (공식 페이지 (유·무이자) 항목 — 한도 미기재)", "사내 대출"),
+    # 메모 낱말이 없는 겹괄호는 회사가 쓴 것 — 그대로
+    ("대출 지원(최대 2억원(연 1회))", "대출 지원(최대 2억원(연 1회))"),
+    ("괄호가 (닫히지 않은 원문", "괄호가 (닫히지 않은 원문"),
 ])
 def test_core_text_strips_collector_memo_and_keeps_company_parens(raw, core):
     assert br.core_text(raw) == core
@@ -143,6 +153,26 @@ def test_override_on_changed_text_is_disabled_and_reported():
 def test_override_without_row_is_reported():
     out = br.classify(_ov_cfg(), [{"comp": "c2", "desc": "가", "note": None}])
     assert len(out["stale"]) == 1 and "행이 없어" in out["stale"][0]
+
+
+def _ex_cfg(h):
+    cfg = _ov_cfg()
+    cfg["overrides"] = [{"comp": "c1", "h": h, "exclude": True, "why": "이 코드가 아닌 행"}]
+    return cfg
+
+
+def test_exclude_override_removes_the_row_from_rows_and_counts():
+    out = br.classify(_ex_cfg(br.text_hash("가나", None)),
+                      [{"comp": "c1", "desc": "가나", "note": None}, {"comp": "c2", "desc": "가", "note": None}])
+    assert [r["comp"] for r in out["rows"]] == ["c2"]
+    assert out["modes"]["a"] == 1 and out["facets"]["f"] == 0, "뺀 행이 개수에 남았다"
+    assert [x["comp"] for x in out["excluded"]] == ["c1"] and out["stale"] == []
+
+
+def test_exclude_on_changed_text_is_disabled_and_the_row_comes_back():
+    out = br.classify(_ex_cfg(br.text_hash("가나", None)), [{"comp": "c1", "desc": "가나다", "note": None}])
+    assert [r["comp"] for r in out["rows"]] == ["c1"], "원문이 바뀌었는데 행이 계속 빠져 있다"
+    assert out["excluded"] == [] and len(out["stale"]) == 1
 
 
 def test_real_housing_overrides_match_the_real_text():
@@ -222,6 +252,34 @@ def test_threshold_skips_thin_pages_and_counts_without_legal_rows():
     assert pages == [] and "parenting 건너뜀" in log and "보유 회사 2곳" in log
 
 
+def _parenting_with_exclude():
+    cfg = copy.deepcopy(_PARENTING_CFG)
+    b = PARENTING[2][2]  # 나회사 「출산 축하금」 — 이 코드로 잘못 분류됐다고 치는 행
+    cfg["overrides"] = [{"comp": "b_co", "h": br.text_hash(b["qual_desc_ctnt"], b["note_ctnt"]),
+                         "exclude": True, "why": "테스트 — 잘못 분류된 행"}]
+    return cfg
+
+
+def test_excluded_row_leaves_table_and_every_aggregate():
+    ctx = build_context(_bundle(PARENTING))
+    view = benefit.build_view(ctx, _parenting_with_exclude())
+    assert view["count"] == 1, "예외로 뺀 행이 N 에 남았다(법정 행 1 + 예외 1 을 빼면 1)"
+    table = view["rows_first"] + view["rows_rest"]
+    assert "나회사" not in [r["comp_nm"] for r in table], "예외로 뺀 행이 표에 남았다(법정 행과 달리 표에도 없어야 한다)"
+    assert "출산 축하금" not in view["names"]["shown"]
+    assert sum(s["count"] for s in view["amount_sources"]) == 1
+    assert view["excluded"] == [{"comp": "b_co", "why": "테스트 — 잘못 분류된 행"}]
+
+
+def test_threshold_is_judged_after_exclusion_and_logged():
+    cfgs = {"parenting": _parenting_with_exclude()}
+    pages, _, _, log = _render(PARENTING, cfgs, min_companies=2)
+    assert pages == [] and "보유 회사 1곳" in log, "문턱은 법정 행·예외를 뺀 뒤 개수로 판정한다"
+    assert "예외로 뺀 행 1곳(b_co)" in log
+    pages, _, _, _ = _render(PARENTING, cfgs, min_companies=1)
+    assert "나회사" not in pages[0].html
+
+
 def test_default_threshold_is_twenty():
     assert benefit.MIN_COMPANIES == 20
     pages, _, _, log = _render(HOUSING, {"housing_loan": _housing_cfg()}, min_companies=benefit.MIN_COMPANIES)
@@ -264,12 +322,21 @@ def _valid():
     (lambda c: c.update(money_facet="ghost"), "money_facet"),
     (lambda c: c.update(notes={"sidebar": "문장입니다."}), "notes 키"),
     (lambda c: c.pop("modes"), "answered_by"),  # 방식이 없는데 mode:known 을 가리키는 질문
+    (lambda c: c["overrides"].append({"comp": "x", "h": "0", "exclude": True}), "comp·h·why"),  # 빼는 예외도 why 필수
+    (lambda c: c["overrides"].append({"comp": "x", "h": "0", "exclude": "yes", "why": "w"}), "exclude 는 true"),
+    (lambda c: c["overrides"].append({"comp": "x", "h": "0", "exclude": True, "mode": "direct", "why": "w"}), "함께 쓸 수 없다"),
 ])
 def test_validate_catches_silent_config_errors(mutate, needle):
     cfg = _valid()
     mutate(cfg)
     errs = br.validate(cfg)
     assert any(needle in e for e in errs), errs
+
+
+def test_validate_accepts_exclude_with_why():
+    cfg = _valid()
+    cfg["overrides"].append({"comp": "x", "h": "0", "exclude": True, "why": "잘못 분류된 행"})
+    assert br.validate(cfg) == []
 
 
 def test_human_text_rules_catch_digits_and_quantifiers():

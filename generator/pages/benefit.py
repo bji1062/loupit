@@ -12,7 +12,8 @@
 
 🚨 **법정 행(SP-LEGAL-5)은 표에는 남고 집계에서는 빠진다.** 「이 회사가 육아휴직을 준다」는 사실은
    정보지만 복지가 아니다. 보유 회사 수·방식·원문 항목·질문·금액 출처 **전부**가 법정 행을 뺀
-   분모로 센다 — 한 곳이라도 섞으면 같은 페이지의 두 숫자가 다른 분모를 쓴다.
+   분모로 센다 — 한 곳이라도 섞으면 같은 페이지의 두 숫자가 다른 분모를 쓴다. 설정의 `exclude` 예외
+   (이 코드로 잘못 분류된 행)도 같은 길로 빠지되, 이쪽은 표에도 남지 않는다(이 복지가 아니므로).
 
 ⚠ **보유 회사가 `MIN_COMPANIES` 미만이면 페이지를 만들지 않는다.** 표 몇 줄과 사람 글 두 문단만
    남는 쪽은 그 자체로 얇은 페이지다. 조용히 빼지 않고 빌드 로그에 남긴다(회사가 늘면 저절로 생긴다).
@@ -208,11 +209,12 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
     code = cfg["code"]
     codes = codes if codes is not None else derive_codes(ctx.companies)
     all_rows = collect_rows(ctx, code)
-    counted = [r for r in all_rows if not r["legal"]]
     legal_rows = [r for r in all_rows if r["legal"]]
-    n = len(counted)
-    result = benefit_rules.classify(cfg, counted)
+    # 세는 행 = 법정 행과 `exclude` 예외를 **둘 다** 뺀 나머지다. 아래의 N·방식·원문·질문·금액 출처·
+    # 부르는 이름·표가 전부 이 목록 하나에서 나온다 — 분모가 둘이면 같은 페이지의 숫자가 서로 어긋난다.
+    result = benefit_rules.classify(cfg, [r for r in all_rows if not r["legal"]])
     classified = result["rows"]
+    n = len(classified)
 
     modes_cfg = cfg.get("modes")
     mode_defs = _mode_defs(modes_cfg)
@@ -262,11 +264,11 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
         "slug": cfg["slug"],
         "title": cfg["title"],
         "category": {"key": ctgr, "label": CATEGORY_LABEL.get(ctgr, "")},
-        "names": _name_chips(counted),
+        "names": _name_chips(classified),
         "count": n,
         "total": total,
         "share": round(n / total * 100) if total else 0,
-        "amount_sources": _amount_sources(counted),
+        "amount_sources": _amount_sources(classified),
         "intro": list(cfg["intro"]),
         "modes": modes if modes_cfg else [],
         "mode_label": modes_cfg.get("label", "방식") if modes_cfg else "",
@@ -280,6 +282,8 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
         "rows_first": first,
         "rows_rest": rest,
         "stale": result["stale"],
+        # 예외로 뺀 행(`exclude`) — 화면 어디에도 없다. 빌드 로그에만 남긴다(데이터 재코딩 대상 목록).
+        "excluded": [{"comp": r["comp"], "why": r["why"]} for r in result["excluded"]],
     }
 
 
@@ -316,7 +320,9 @@ def render_all(env, ctx, cfg=CFG, *, configs: dict[str, dict] | None = None,
     """설정마다 한 쪽. 보유 회사가 `min_companies` 미만인 항목은 건너뛰고 로그에 남긴다.
 
     `min_companies` 는 테스트 주입점이다(가짜 번들은 회사 3곳이라 실제 문턱으로는 한 쪽도 안 나온다).
+    문턱은 법정 행과 `exclude` 예외를 **뺀 뒤**의 개수로 판정한다(`build_view` 의 N 과 같은 수).
     `stale` 예외 경고도 여기서 찍는다 — 실패가 아니라 **사람이 다시 볼 행**이다(원문이 바뀌었다).
+    `exclude` 로 뺀 행도 한 줄 남긴다 — 화면에서는 사라졌지만 데이터는 아직 틀려 있다(재코딩 목록).
     """
     configs = configs if configs is not None else load_configs()
     codes = derive_codes(ctx.companies)
@@ -326,9 +332,12 @@ def render_all(env, ctx, cfg=CFG, *, configs: dict[str, dict] | None = None,
         view = build_view(ctx, configs[code], codes)
         for msg in view["stale"]:
             print(f"generator build: 복지 항목 예외 경고 — {msg}", file=log)
+        if view["excluded"]:
+            print(f"generator build: 복지 항목 {code} — 예외로 뺀 행 {len(view['excluded'])}곳"
+                  f"({', '.join(x['comp'] for x in view['excluded'])})", file=log)
         if view["count"] < min_companies:
             print(f"generator build: 복지 항목 페이지 {code} 건너뜀 — 보유 회사 {view['count']}곳"
-                  f"(법정 행 제외) < {min_companies}", file=log)
+                  f"(법정 행·예외 제외) < {min_companies}", file=log)
             continue
         seo = _seo(view, cfg)
         html = tpl.render(view=view, **seo, cfg=cfg, footer_links=POLICY_FOOTER_LINKS, nav_active="/find")
