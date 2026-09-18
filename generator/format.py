@@ -169,16 +169,68 @@ _EST_TAIL = re.compile(r"\s*\(추정\)\s*$")
 # 「제공」이라 쓰면 과장이 된다(2026-09-16 결정).
 _PREDICATES = ("지원", "제공", "운영", "지급", "부여", "실시", "보장", "운용", "지향")
 # 서술어 앞 부사 — 조사는 그 **앞 명사**에 붙는다(`성과급 별도 지급` → `성과급을 별도 지급합니다`).
+# 원래 8개는 붙여 쓴 꼴(`중식 무상지원` 의 `무상`)도 잡으므로 낱말 경계를 요구하지 않는다.
 _ADVERBS = ("별도", "무료", "무상", "전액", "일부", "추가", "전원", "상시")
+# 2026-09-18 추가분 — 코퍼스 전수 스캔에서 조사를 받아 틀린 문장(`매달을 지원`·`적극을 지원`)이 된 부사.
+# 짧거나 흔한 글자열이라(`사내` ⊂ `회사내`) **띄어 쓴 낱말**일 때만 부사로 본다.
+_ADVERBS_WORD = ("매달", "매월", "매년", "격년", "적극", "무제한", "유급", "사내", "선택적", "차등")
 # 꼬리가 구두점·괄호면 손대지 않는다. 규칙 기반 한국어 변환은 조용히 틀리므로 건너뛰는 쪽이 안전하다.
 _RISKY_TAIL = re.compile(r"[,·/]\s*$|[)\]」』]$")
+
+# 서술어 앞 마지막 어절이 **이미 조사·어미로 끝났으면** 을/를을 붙이지 않는다(2026-09-18, 위메이드
+# 「이자를 회사가를 지원합니다」). 한 글자로 판정하지 않는다 — 「별도」의 `도`, 「휴가」의 `가`,
+# 「전시」의 `시` 처럼 명사 끝과 겹치는 글자가 많다(초안이 그래서 틀렸다). 그래서 두 글자 이상의
+# 어미이거나, 한 글자면 앞 글자의 받침으로 조사임이 확정될 때(`야식을`)만 본다.
+# **확신이 없으면 조사 없이** 쪽이 안전하다 — 「운영 및 지원합니다」는 딱딱할 뿐 틀리지 않지만
+# 「운영 및을 지원합니다」는 틀린 문장이다.
+_PARTICLE_END = (
+    "에서", "에게", "부터", "까지", "으로", "처럼", "만큼",       # 조사
+    "도록", "하게", "없게", "있게", "맞게", "없이",              # 부사형 어미·부사
+    "위해", "통해", "대해", "관해", "따라", "맞춰",              # 「~을 위해 지원」 꼴
+    "포함", "제외",                                              # 「A 포함 매년 실시」 — 명사지만 부사처럼 쓰였다
+    "회사가",                                                    # 주어 — `가` 는 휴가·할인가·여가와 구분이 안 돼 이것만
+    "이상시", "이하시", "초과시", "미만시",                      # `시` 는 전시·도시와 겹쳐 조건형만
+)
+# 낱말 전체가 이것이면 조사 없이 — 접속사·시점 명사·주어로 쓰인 「회사」(`50% 회사 지원`).
+_PARTICLE_WORDS = frozenset({"및", "또는", "혹은", "후", "이후", "직후", "전후", "시", "회사"})
+# 기간(`6년간`·`3개월간`) · 시각(`오후10시`) · 단위별(`직무별`) 은 부사어다.
+_PARTICLE_RE = re.compile(r"\d+\s*(년|개월|일|주)간$|\d시$|.별$")
+
+
+def _has_batchim(ch: str) -> bool:
+    return (ord(ch) - 0xAC00) % 28 != 0
+
+
+def _ends_with_particle(head: str) -> bool:
+    """서술어 앞 마지막 어절이 조사·부사형으로 끝났는가 — 그러면 을/를을 더 붙이지 않는다."""
+    word = head.split()[-1]
+    if word in _PARTICLE_WORDS or word.endswith(_PARTICLE_END) or _PARTICLE_RE.search(word):
+        return True
+    if len(word) >= 2 and "가" <= word[-2] <= "힣":
+        # 한 글자 조사는 앞 글자 받침과 짝이 맞을 때만 조사로 본다 — `마을`·`가을` 은 명사다.
+        if word[-1] == "을" and _has_batchim(word[-2]):
+            return True
+        if word[-1] == "를" and not _has_batchim(word[-2]):
+            return True
+        # `로` 는 받침 없는 글자·ㄹ 받침 뒤에서만 조사다(`진로`·`통로` 는 명사).
+        if word[-1] == "로" and (not _has_batchim(word[-2]) or (ord(word[-2]) - 0xAC00) % 28 == 8):
+            return word[-2] not in "도과"   # `도로`·`과로` 는 명사
+    return False
 
 
 def _josa_eul_reul(word: str) -> str:
     ch = word[-1]
-    if not ("가" <= ch <= "힣"):
-        return "를"
-    return "를" if (ord(ch) - 0xAC00) % 28 == 0 else "을"
+    if "가" <= ch <= "힣":
+        return "를" if not _has_batchim(ch) else "을"
+    # 라틴 끝소리(2026-09-18, 텔레칩스 「Profit Sharing를」): 받침이 확실한 꼴만 「을」.
+    # 약어(`HMM`·`PS/PI`)는 글자 이름으로 읽는다 — 엘·엠·엔·알 은 받침으로 끝난다.
+    m = re.search(r"[A-Za-z]+$", word)
+    if m:
+        w = m.group(0)
+        if w.isupper():
+            return "을" if w[-1] in "LMNR" else "를"
+        return "을" if w.lower().endswith(("m", "n", "ng", "l")) else "를"
+    return "를"
 
 
 def benefit_desc(text: str | None, amt_source: str | None = None) -> str:
@@ -220,8 +272,15 @@ def _to_sentence(text: str) -> str | None:
             if head.endswith(a):
                 adv, head = a, head[: -len(a)].rstrip()
                 break
+        else:
+            for a in _ADVERBS_WORD:
+                if head == a or head.endswith(" " + a):
+                    adv, head = a, head[: -len(a)].rstrip()
+                    break
         if not head or len(head) < 2 or _RISKY_TAIL.search(head):
             return None
         tail = f"{adv} {v}합니다." if adv else f"{v}합니다."
+        if _ends_with_particle(head):
+            return f"{head} {tail}"                # 조사가 이미 있다 — 하나 더 붙이면 틀린 문장
         return f"{head}{_josa_eul_reul(head)} {tail}"
     return None

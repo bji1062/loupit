@@ -749,6 +749,85 @@ def test_desc_puts_the_particle_on_the_noun_not_the_adverb():
     assert benefit_desc("경조금 및 경조휴가 지원", "estimated") == "경조금 및 경조휴가를 지원합니다."
 
 
+def test_desc_adds_no_particle_when_the_last_word_already_ends_in_one():
+    """서술어 앞 어절이 이미 조사·부사형으로 끝나면 을/를을 더 붙이지 않는다(2026-09-18).
+
+    라이브에서 나간 틀린 문장들이다(코퍼스 전수 스캔). 규칙은 「확신 없으면 조사 없이」 —
+    「운영 및 지원합니다」는 딱딱할 뿐이지만 「운영 및을 지원합니다」는 틀린 문장이다."""
+    from generator.format import benefit_desc
+
+    cases = {
+        # 위메이드 — 주어 조사 `가` (일반 `가` 는 휴가·할인가·여가와 구분이 안 돼 「회사가」만)
+        "주택 자금 대출 이자를 회사가 지원": "주택 자금 대출 이자를 회사가 지원합니다.",
+        # 아모레퍼시픽 — 부사형 어미 `도록`
+        "자기주도적 학습을 통해 지속적으로 성장할 수 있도록 지원":
+            "자기주도적 학습을 통해 지속적으로 성장할 수 있도록 지원합니다.",
+        # 현대건설 — `에서`
+        "비용은 회사에서 지원": "비용은 회사에서 지원합니다.",
+        # 현대모비스 — `하게`
+        "신입사원 정착지원금 및 주거지원금을 임차/구입 무관하게 지원":
+            "신입사원 정착지원금 및 주거지원금을 임차/구입 무관하게 지원합니다.",
+        # 현대제철 child_edu — `부터` + 부사 `전액`
+        "고등학교부터 전액 지원": "고등학교부터 전액 지원합니다.",
+        # 주성 · 펄어비스 — `없이`
+        "고등학교/대학교 등록금, 자녀 수 제한 없이 지원": "고등학교/대학교 등록금, 자녀 수 제한 없이 지원합니다.",
+        "난임 부부 시술 비용 횟수 제한 없이 지원": "난임 부부 시술 비용 횟수 제한 없이 지원합니다.",
+        # 기아 — 조건형 `이상시` + 부사 `무료` (`시` 는 전시·도시와 겹쳐 조건형만)
+        "이용률 60% 이상시 무료 지원": "이용률 60% 이상시 무료 지원합니다.",
+        # 엘앤에프 — 이미 붙은 목적격 조사(받침 `ㄱ` 뒤 `을`)
+        "사내식당을 운영해 중식·석식·야식을 무상 제공": "사내식당을 운영해 중식·석식·야식을 무상 제공합니다.",
+        # 삼성전기·KB금융 — `까지`
+        "대학교까지 지원": "대학교까지 지원합니다.",
+        # 접속사 · 기간 · 시각 · 단위별 · 시점
+        "사내동아리 운영 및 지원": "사내동아리 운영 및 지원합니다.",
+        "6년간 지원": "6년간 지원합니다.",
+        "서울/경기권 6개 지역 951 T/O, 오전7:30~오후10시 운영": "서울/경기권 6개 지역 951 T/O, 오전7:30~오후10시 운영합니다.",
+        "교통비 지원 — 직책/직무별 차등 지급": "교통비 지원 — 직책/직무별 차등 지급합니다.",
+        "해외배낭여행비 지원 — 년 3~4명 선발 후 지원": "해외배낭여행비 지원 — 년 3~4명 선발 후 지원합니다.",
+        # 주어로 쓰인 「회사」
+        "월 납입액 50% 회사 지원": "월 납입액 50% 회사 지원합니다.",
+    }
+    for src, want in cases.items():
+        assert benefit_desc(src, "none") == want, src
+
+
+def test_desc_moves_the_particle_before_word_adverbs():
+    """`매달`·`적극`·`사내` 같은 부사는 조사를 받지 않는다 — 조사는 그 앞 명사로 간다(`별도` 와 같은 규칙).
+    짧은 글자열이라 띄어 쓴 낱말일 때만 부사로 본다."""
+    from generator.format import benefit_desc
+
+    assert benefit_desc("사내 게임 쿠폰 매달 지급", "none") == "사내 게임 쿠폰을 매달 지급합니다."
+    assert benefit_desc("스키/산악 등 적극 지원", "none") == "스키/산악 등을 적극 지원합니다."
+    assert benefit_desc("푸르니 재단 행복날개 어린이집 사내 운영", "none") == "푸르니 재단 행복날개 어린이집을 사내 운영합니다."
+    assert benefit_desc("식사대용식/스낵류/음료/커피 무제한 제공", "none") == "식사대용식/스낵류/음료/커피를 무제한 제공합니다."
+    assert benefit_desc("스톡옵션 선택적 지급", "none") == "스톡옵션을 선택적 지급합니다."
+    # 조사 확정 어절 앞의 부사 — 부사를 걷은 뒤에도 조사 없이
+    assert benefit_desc("초음파/내시경/암검사 포함 매년 실시", "none") == "초음파/내시경/암검사 포함 매년 실시합니다."
+
+
+def test_desc_still_puts_the_particle_on_nouns_that_look_like_particles():
+    """명사 끝이 조사와 같은 글자인 경우는 지금처럼 조사가 붙는다 — 한 글자로 판정하지 않는 이유."""
+    from generator.format import benefit_desc
+
+    assert benefit_desc("휴가 지원", "none") == "휴가를 지원합니다."
+    assert benefit_desc("임직원 할인가 제공", "none") == "임직원 할인가를 제공합니다."
+    assert benefit_desc("제휴 여가 지원", "none") == "제휴 여가를 지원합니다."
+    assert benefit_desc("사내 전시 지원", "none") == "사내 전시를 지원합니다."
+    assert benefit_desc("주말 농장 마을 지원", "none") == "주말 농장 마을을 지원합니다."
+    assert benefit_desc("커리어 진로 지원", "none") == "커리어 진로를 지원합니다."
+    assert benefit_desc("복지 제도 운영", "none") == "복지 제도를 운영합니다."
+
+
+def test_desc_reads_latin_endings_for_the_particle():
+    """라틴 표기 끝소리 — 받침이 확실한 꼴(-m·-n·-ng·-l, 약어 L·M·N·R)만 「을」(텔레칩스 「Profit Sharing를」)."""
+    from generator.format import benefit_desc
+
+    assert benefit_desc("Profit Sharing 별도 지급", "none") == "Profit Sharing을 별도 지급합니다."
+    assert benefit_desc("H-MBA 핵심인재 Program 운영", "none") == "H-MBA 핵심인재 Program을 운영합니다."
+    assert benefit_desc("Fitness Center 운영", "none") == "Fitness Center를 운영합니다."
+    assert benefit_desc("연 1회 PS/PI 지급", "none") == "연 1회 PS/PI를 지급합니다."
+
+
 def test_desc_skips_risky_tails_instead_of_guessing():
     """꼬리가 구두점·괄호면 변환하지 않는다. 규칙 기반 한국어 변환은 조용히 틀리므로
     건너뛰는 쪽이 항상 안전하다 — 원문이 그대로 화면에 남는다."""
