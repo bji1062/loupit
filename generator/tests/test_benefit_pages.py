@@ -303,8 +303,31 @@ def test_every_config_file_is_valid(path):
     assert br.check_quantifiers(cfg) == [], "사람 글에 수량어 — 데이터가 바뀌면 거짓이 된다"
 
 
-def test_config_slugs_are_unique_across_files():
+def test_all_configs_pass_cross_file_checks():
+    """설정 전부를 함께 본다 — slug 중복 · **설정 사이의 같은 사람 글 문장**(필러). 빌드도 같은 검사로 멈춘다."""
     assert br.validate_all(br.load_pages()) == []
+
+
+def _two(text_a, text_b):
+    a, b = _valid(), _valid()
+    b["code"], b["slug"] = "other", "other"
+    a["notes"] = {"money": text_a}
+    b["notes"] = {"money": text_b}
+    for cfg in (a, b):
+        cfg["intro"], cfg["questions"] = [f"{cfg['code']} 해설입니다."], [
+            {"text": f"{cfg['code']} 질문인가요?", "answered_by": ["mode:known"]}]
+    return {"housing_loan": a, "other": b}
+
+
+def test_same_human_sentence_in_two_configs_is_rejected():
+    errs = br.validate_all(_two("겹치는 문장입니다. 다른 말입니다.", "앞말입니다.  겹치는  문장입니다."))
+    assert len(errs) == 1 and "겹치는 문장입니다." in errs[0] and "'housing_loan', 'other'" in errs[0], errs
+
+
+def test_distinct_sentences_and_repeats_within_one_config_pass():
+    assert br.validate_all(_two("가 문장입니다.", "나 문장입니다.")) == []
+    cfgs = _two("같은 말입니다. 같은 말입니다.", "나 문장입니다.")  # 한 설정 안의 반복은 한 페이지 안의 일
+    assert br.repeated_sentences(cfgs) == []
 
 
 def _valid():

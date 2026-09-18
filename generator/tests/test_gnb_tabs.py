@@ -17,8 +17,9 @@ from pathlib import Path
 from generator.config import CFG
 from generator.content.nav import GNB_TABS, GNB_TAB_HREFS
 from generator.context import build_context
-from generator.pages import benefit, combo, company, company_index, find, heatmap, home, policy
+from generator.pages import combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
+from generator.tests.fixtures import render_benefit_net
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WEB = REPO_ROOT / "web"
@@ -68,7 +69,7 @@ def _all_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
-        + benefit.render_all(env, ctx, CFG, min_companies=1)  # 복지 항목(SP-BEN) — 문턱을 낮춰 그물에 건다
+        + render_benefit_net(env, ctx)  # 복지 항목(SP-BEN) — 문턱을 낮춰 그물에 건다
         + [find.render(env, ctx, CFG)]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
         + combo.render_all(env, ctx, CFG, pairs=pairs)

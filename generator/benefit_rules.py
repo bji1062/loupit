@@ -207,11 +207,39 @@ def validate(cfg: dict) -> list[str]:
     return errs
 
 
+# 문장 끝 — 마침표·물음표·느낌표 뒤 공백(또는 끝). 「1.5%」 같은 소수점은 사람 글에 숫자가 없어 안 걸린다.
+_SENT_END = re.compile(r"(?<=[.?!])\s+")
+
+
+def sentences(text: str) -> list[str]:
+    """사람 글 한 칸 → 문장 목록(공백 정규화). 반복 검사의 단위다."""
+    return [" ".join(x.split()) for x in _SENT_END.split(text or "") if x.strip()]
+
+
+def repeated_sentences(cfgs: dict[str, dict]) -> list[str]:
+    """**서로 다른** 설정에 똑같이 실린 사람 글 문장 — 오류 목록(빈 목록 = 통과).
+
+    여러 페이지에 똑같이 반복되는 완결문장이 곧 필러다(애드센스 거절 사유 원문 §5, SP-BEN-7).
+    템플릿 쪽은 렌더 테스트가 막지만, 사람 글은 항목마다 다른 사람이 써서 템플릿 검사로는 안 보인다
+    (첫 배치 실측: `medical`·`long_service_leave` 의 notes.money 가 한 문장 겹쳤다). 한 설정 **안**의
+    반복은 한 페이지 안의 일이라 여기서 보지 않는다.
+    """
+    where: dict[str, set[str]] = {}
+    for code, cfg in cfgs.items():
+        for _, text in human_texts(cfg):
+            for sent in sentences(text):
+                where.setdefault(sent, set()).add(code)
+    return [f"사람 글 문장이 설정 {sorted(codes)} 에 겹친다(필러): 「{sent}」"
+            for sent, codes in sorted(where.items()) if len(codes) > 1]
+
+
 def validate_all(cfgs: dict[str, dict]) -> list[str]:
-    """설정 전부 — 각자의 `validate` + slug 중복(URL 이 겹치면 한 페이지가 다른 페이지를 덮는다)."""
+    """설정 전부 — 각자의 `validate` + slug 중복(URL 이 겹치면 한 페이지가 다른 페이지를 덮는다)
+    + 설정 사이의 같은 사람 글 문장(`repeated_sentences`)."""
     errs = [e for cfg in cfgs.values() for e in validate(cfg)]
     slugs = Counter(cfg.get("slug") for cfg in cfgs.values())
     errs += [f"slug {s!r} 가 {n}개 설정에 겹친다" for s, n in slugs.items() if n > 1]
+    errs += repeated_sentences(cfgs)
     return errs
 
 

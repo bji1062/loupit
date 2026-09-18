@@ -362,3 +362,19 @@ def make_sibling_employ() -> dict:
     (`employ.assemble` 이 실제로 복사본을 주는 이유와 같다).
     """
     return {98: copy.deepcopy(SIBLING_EMPLOY_YEARS), 99: copy.deepcopy(SIBLING_EMPLOY_YEARS)}
+
+
+def render_benefit_net(env, ctx) -> list:
+    """전역 가드(GC-20 링크·GC-7 메타·헤더·탭) 그물에 거는 복지 항목 페이지(SP-BEN).
+
+    가짜 번들은 회사 3곳이라 문턱을 1로 낮춘다. 설정은 **검사 없이** 읽는다(`load_pages`) — 설정
+    구조·설정 사이 문장 반복은 `test_benefit_pages.py` 가 따로 잡는다. 여기서 검사까지 돌리면 설정
+    문장 하나가 겹치는 날 링크·메타·헤더 테스트 수십 개가 함께 빨개져 원인이 묻힌다.
+    """
+    import io
+
+    from generator import benefit_rules
+    from generator.config import CFG
+    from generator.pages import benefit
+
+    return benefit.render_all(env, ctx, CFG, configs=benefit_rules.load_pages(), min_companies=1, log=io.StringIO())
