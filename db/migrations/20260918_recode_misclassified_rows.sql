@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════
--- 잘못 분류된 복지 행 재코딩·정정 — 13행 UPDATE + 2행 DELETE(합치기) = 15행
+-- 잘못 분류된 복지 행 재코딩·정정 — 18행 UPDATE + 2행 DELETE(합치기) = 20행
 -- 결정: 2026-09-18 세션 인계 3-1 「데이터 정리」 · 선례: 20260918_meal_anchor_to_qual.sql
 --
 -- 왜 필요한가: 코드가 틀린 행은 두 화면에서 서로 다른 숫자를 만든다. 복지 항목 페이지(SP-BEN)는
@@ -7,7 +7,7 @@
 --   그대로 센다(76곳). 원인 행의 코드를 고치면 예외가 필요 없어지고 두 숫자가 같아진다.
 --
 -- 무엇을 바꾸나 (회사 COMP_ENG_NM · 옛 코드 → 새 코드):
---   재코딩 10행 — BENEFIT_CD 만 바꾼다(UPDATE). BENEFIT_ID 가 그대로라 편집 이력
+--   재코딩 15행 — BENEFIT_CD 만 바꾼다(UPDATE). BENEFIT_ID 가 그대로라 편집 이력
 --     (TBENEFIT_EDIT_LOG.BENEFIT_ID 외래키, ON DELETE SET NULL)이 끊기지 않는다.
 --     ecopro        housing_loan  → relocation        「사택 또는 정착지원금 지급」 — 대출이 아니다
 --     ecopro_bm     housing_loan  → relocation        「정착 지원금 지원」 — 대출이 아니다
@@ -27,6 +27,15 @@
 --     ls            health_check  → medical           헬스케어비 — 검진 제도가 아니라 건강 비용 수당
 --     hyundai_mobis remote_office → satellite_office  같은 뜻 중복 코드. 코퍼스의 유일한 remote_office 라
 --                                                     이 행으로 코드 자체가 사라진다
+--     birthday_leave(생일 휴가 코드)에 휴가 없이 선물만 있는 행 5개 — /find 라벨이 「생일 선물 · 생일 축하」로
+--     휴가 코드의 이름을 선물로 만들고 있었다. 선물 4행은 birthday_gift(perks, 정렬은 perks 구역 끝),
+--     창립기념일 1행은 foundation_day_leave(time_off, 자리 그대로).
+--     ecopro        birthday_leave → birthday_gift        「근로자 생일 상품권 지급」 · 정렬 31 → 83
+--     ncsoft        birthday_leave → birthday_gift        「생일자 페이코 10만원 지급」 10 stated · 정렬 30 → 84.
+--                                                         (birthday_gift, 10) 은 이 회사뿐이라 앵커 강등 없음 — stated 유지
+--     com2us        birthday_leave → birthday_gift        「생일 선물 지급」 · 정렬 33 → 85
+--     hanmi_pharm   birthday_leave → birthday_gift        「입사 1주년 축하 선물 · 기념일 연 4회 포인트 지급」 · 정렬 32 → 83
+--     hugel         birthday_leave → foundation_day_leave 「창립기념일 대체 휴무」 — 생일이 아니다
 --   합치기 1곳 — isens 의 childcare 「보육수당」 · child_edu 「자녀 입학축하금」 두 행은 어린이집도
 --     학자금도 아니고, 같은 회사에 parenting 「모성보호」 행이 이미 있다. 두 사실을 parenting 설명
 --     끝에 덧붙이고(UPDATE 1) 두 행을 지운다(DELETE 2).
@@ -40,9 +49,9 @@
 --
 -- 적용: mysql -vv -h <host> -u <user> -p <DB> < db/migrations/20260918_recode_misclassified_rows.sql
 --   -vv 를 붙여야 문마다 Rows matched 가 찍힌다. 붙이지 않으면 0행이어도 조용히 성공한다.
---   맨 앞 0단계 SELECT 는 읽기 전용 점검이다 — 이것만 먼저 따로 돌려 15행이 기대값과 같은지,
+--   맨 앞 0단계 SELECT 는 읽기 전용 점검이다 — 이것만 먼저 따로 돌려 20행이 기대값과 같은지,
 --   EDIT_LOGS 가 0 인지 보고 적용해도 된다.
--- 기대 영향 행 수: 15 (UPDATE 문 13개 각 1 · DELETE 문 2개 각 1). 적으면 멈추고 확인하라 —
+-- 기대 영향 행 수: 20 (UPDATE 문 18개 각 1 · DELETE 문 2개 각 1). 적으면 멈추고 확인하라 —
 --   회사명 오타면 @c 가 NULL 이라 오류 없이 0행이고, BADGE_CD 가 official 이 아니면(재직자 수정)
 --   가드가 일부러 건너뛴 것이다. 합치기는 parenting 설명이 새 문안일 때만(@merged = 1) 지운다 —
 --   parenting 이 가드에 걸려 안 바뀌었는데 두 행만 지워지는 일은 없다.
@@ -51,14 +60,14 @@
 --   편집 이력에 걸린 행이면 지우지 않는다(NOT EXISTS TBENEFIT_EDIT_LOG).
 -- 원자성: 한 트랜잭션이다. 새 코드가 그 회사에 이미 있으면(uq_comp_benefit) UPDATE 가
 --   ERROR 1062 로 멈추고, mysql 클라이언트가 스크립트를 끊으며 COMMIT 전이라 전부 되돌아간다.
--- 시드: 같은 15행을 db/seed/benefit/sql/*.sql 에서도 같은 종착 상태로 고쳤다. 시드는 업서트라
+-- 시드: 같은 20행을 db/seed/benefit/sql/*.sql 에서도 같은 종착 상태로 고쳤다. 시드는 업서트라
 --   코드를 바꾼 행은 **새 키**다 — 이 마이그레이션 없이 시드만 재적용하면 옛 코드 행이 남고
 --   새 코드 행이 하나 더 생긴다. 그러니 서빙 DB 는 반드시 이 파일로 맞춘다.
 -- 순서: 이 마이그레이션을 **정적 재생성(release)보다 먼저**. 같은 PR 이 항목 페이지 exclude 예외
 --   11개 전부를 지웠다 — DB 가 옛 코드인 채로 재생성하면 뺐던 행이 항목 페이지에 다시 들어간다.
 -- ══════════════════════════════════════════════════════════════════════
 
--- 0) 점검(읽기 전용) — 대상 15행 + 새 코드 자리 10곳이 비었는지 + 편집 이력 참조 수
+-- 0) 점검(읽기 전용) — 대상 20행 + 새 코드 자리 15곳이 비었는지 + 편집 이력 참조 수
 SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_AMT, b.AMT_SOURCE_CD,
        b.QUAL_YN, b.BADGE_CD,
        (SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG l WHERE l.BENEFIT_ID = b.BENEFIT_ID) AS EDIT_LOGS
@@ -69,16 +78,20 @@ SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_AMT, b
         ('pearl_abyss', 'parenting'), ('ls', 'health_check'), ('hyundai_mobis', 'remote_office'),
         ('naver', 'welfare_point'), ('hyundai_steel', 'medical'), ('s_oil', 'bonus'),
         ('isens', 'parenting'), ('isens', 'child_edu'), ('isens', 'childcare'),
+        ('ecopro', 'birthday_leave'), ('ncsoft', 'birthday_leave'), ('com2us', 'birthday_leave'),
+        ('hanmi_pharm', 'birthday_leave'), ('hugel', 'birthday_leave'),
         -- 새 코드 자리 — 아래 줄은 0행이어야 한다(있으면 UPDATE 가 1062 로 멈춘다)
         ('ecopro', 'relocation'), ('ecopro_bm', 'relocation'), ('olix', 'housing_support'),
         ('kakao_bank', 'self_development'), ('samyang_foods', 'parenting'), ('korean_air', 'parenting'),
         ('pearl_abyss', 'parent_care'), ('ls', 'medical'), ('hyundai_mobis', 'satellite_office'),
-        ('naver', 'self_development'))
+        ('naver', 'self_development'),
+        ('ecopro', 'birthday_gift'), ('ncsoft', 'birthday_gift'), ('com2us', 'birthday_gift'),
+        ('hanmi_pharm', 'birthday_gift'), ('hugel', 'foundation_day_leave'))
  ORDER BY c.COMP_ENG_NM, b.BENEFIT_CD;
 
 START TRANSACTION;
 
--- ── 재코딩 10행 ──────────────────────────────────────────────────────────
+-- ── 재코딩 15행 ──────────────────────────────────────────────────────────
 
 -- 에코프로 — 「사택/정착지원금」 housing_loan → relocation
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'ecopro');
@@ -165,6 +178,55 @@ UPDATE TCOMPANY_BENEFIT
    AND BENEFIT_AMT IS NULL AND QUAL_YN = TRUE AND NOTE_CTNT IS NULL
    AND QUAL_DESC_CTNT = '집 근처 거점오피스에서 근무 가능' AND BADGE_CD = 'official';
 
+-- 에코프로 — 「생일 상품권」 birthday_leave(time_off) → birthday_gift(perks)
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'ecopro');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD      = 'birthday_gift',
+       BENEFIT_CTGR_CD = 'perks',
+       SORT_ORDER_NO   = 83
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'birthday_leave' AND BENEFIT_NM = '생일 상품권'
+   AND BENEFIT_AMT IS NULL AND QUAL_YN = TRUE AND NOTE_CTNT IS NULL
+   AND QUAL_DESC_CTNT = '근로자 생일 상품권 지급' AND BADGE_CD = 'official';
+
+-- 엔씨소프트 — 「생일 페이코 지급」 birthday_leave(time_off) → birthday_gift(perks). 금액 10 stated 는 그대로
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'ncsoft');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD      = 'birthday_gift',
+       BENEFIT_CTGR_CD = 'perks',
+       SORT_ORDER_NO   = 84
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'birthday_leave' AND BENEFIT_NM = '생일 페이코 지급'
+   AND BENEFIT_AMT = 10 AND QUAL_YN = FALSE AND AMT_SOURCE_CD = 'stated'
+   AND NOTE_CTNT = '생일자 페이코 10만원 지급' AND BADGE_CD = 'official';
+
+-- 컴투스 — 「생일 선물」 birthday_leave(time_off) → birthday_gift(perks)
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'com2us');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD      = 'birthday_gift',
+       BENEFIT_CTGR_CD = 'perks',
+       SORT_ORDER_NO   = 85
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'birthday_leave' AND BENEFIT_NM = '생일 선물'
+   AND BENEFIT_AMT IS NULL AND QUAL_YN = TRUE AND NOTE_CTNT IS NULL
+   AND QUAL_DESC_CTNT = '생일 선물 지급' AND BADGE_CD = 'official';
+
+-- 한미약품 — 「기념일 축하 (연 4회 포인트)」 birthday_leave(time_off) → birthday_gift(perks)
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'hanmi_pharm');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD      = 'birthday_gift',
+       BENEFIT_CTGR_CD = 'perks',
+       SORT_ORDER_NO   = 83
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'birthday_leave' AND BENEFIT_NM = '기념일 축하 (연 4회 포인트)'
+   AND BENEFIT_AMT IS NULL AND QUAL_YN = TRUE AND NOTE_CTNT IS NULL
+   AND QUAL_DESC_CTNT = '입사 1주년 축하 선물(Retention Program), 기념일 연 4회 포인트 지급'
+   AND BADGE_CD = 'official';
+
+-- 휴젤 — 「창립기념일 휴무」 birthday_leave → foundation_day_leave(같은 time_off, 정렬 그대로)
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'hugel');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD = 'foundation_day_leave'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'birthday_leave' AND BENEFIT_NM = '창립기념일 휴무'
+   AND BENEFIT_AMT IS NULL AND QUAL_YN = TRUE AND NOTE_CTNT IS NULL
+   AND QUAL_DESC_CTNT = '창립기념일 대체 휴무' AND BADGE_CD = 'official';
+
 -- ── 정성 전환 2행 ────────────────────────────────────────────────────────
 
 -- 현대제철 — 의료비 100 은 비율(본인 100%)이다. 금액을 걷고 비율 사실은 설명으로
@@ -219,8 +281,9 @@ DELETE FROM TCOMPANY_BENEFIT
 
 COMMIT;
 
--- 사후 확인(읽기 전용) — 재코딩 10행 + 현대제철 medical + S-Oil bonus + 아이센스 parenting = 13행.
---   아이센스 child_edu·childcare · 현대모비스 remote_office · NAVER welfare_point 는 나오지 않아야 한다.
+-- 사후 확인(읽기 전용) — 재코딩 15행 + 현대제철 medical + S-Oil bonus + 아이센스 parenting = 18행.
+--   옛 자리(아이센스 child_edu·childcare · 현대모비스 remote_office · NAVER welfare_point ·
+--   5개사 birthday_leave)는 나오지 않아야 한다.
 SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_CTGR_CD, b.BENEFIT_NM, b.BENEFIT_AMT,
        b.AMT_SOURCE_CD, b.QUAL_YN
   FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
@@ -229,6 +292,10 @@ SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_CTGR_CD, b.BENEFIT_N
         ('kakao_bank', 'self_development'), ('samyang_foods', 'parenting'), ('korean_air', 'parenting'),
         ('pearl_abyss', 'parent_care'), ('ls', 'medical'), ('hyundai_mobis', 'satellite_office'),
         ('naver', 'self_development'), ('hyundai_steel', 'medical'), ('s_oil', 'bonus'), ('isens', 'parenting'),
+        ('ecopro', 'birthday_gift'), ('ncsoft', 'birthday_gift'), ('com2us', 'birthday_gift'),
+        ('hanmi_pharm', 'birthday_gift'), ('hugel', 'foundation_day_leave'),
         ('isens', 'child_edu'), ('isens', 'childcare'), ('hyundai_mobis', 'remote_office'),
-        ('naver', 'welfare_point'))
+        ('naver', 'welfare_point'),
+        ('ecopro', 'birthday_leave'), ('ncsoft', 'birthday_leave'), ('com2us', 'birthday_leave'),
+        ('hanmi_pharm', 'birthday_leave'), ('hugel', 'birthday_leave'))
  ORDER BY c.COMP_ENG_NM, b.BENEFIT_CD;

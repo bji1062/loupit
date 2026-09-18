@@ -31,8 +31,6 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '장기근속자 포상', NULL, 'time_off',
    'est', NULL, TRUE, '장기근속자 포상', 30),
-  (@comp_id, 'birthday_leave', '생일 상품권', NULL, 'time_off',
-   'est', NULL, TRUE, '근로자 생일 상품권 지급', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',
@@ -59,7 +57,11 @@ VALUES
   (@comp_id, 'relocation', '사택/정착지원금', NULL, 'perks',
    'est', NULL, TRUE, '사택 또는 정착지원금 지급', 81),
   (@comp_id, 'discount', '제휴업체 할인', NULL, 'perks',
-   'est', NULL, TRUE, '제휴업체 직원 할인', 82)
+   'est', NULL, TRUE, '제휴업체 직원 할인', 82),
+  -- 2026-09-18 재코딩 birthday_leave(time_off, 31) → birthday_gift(perks, 83) — 휴가가 아니라 생일 상품권:
+  --   db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'birthday_gift', '생일 상품권', NULL, 'perks',
+   'est', NULL, TRUE, '근로자 생일 상품권 지급', 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

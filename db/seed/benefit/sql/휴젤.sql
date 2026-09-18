@@ -39,7 +39,9 @@ VALUES
    'est', NULL, TRUE, '연중 사용 가능한 Refresh 휴가 3일', 30),
   (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
    'est', NULL, TRUE, '장기근속 포상제도 운영', 31),
-  (@comp_id, 'birthday_leave', '창립기념일 휴무', NULL, 'time_off',
+  -- 2026-09-18 재코딩 birthday_leave → foundation_day_leave (생일이 아니라 창립기념일 휴무):
+  --   db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'foundation_day_leave', '창립기념일 휴무', NULL, 'time_off',
    'est', NULL, TRUE, '창립기념일 대체 휴무', 32),
 
   -- ── 건강·의료 (health) ──
