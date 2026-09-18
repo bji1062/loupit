@@ -1346,6 +1346,108 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .home-trust { margin-top:var(--sp-3); padding:var(--sp-4); border-left:3px solid var(--border-strong); background:var(--surface-soft); color:var(--t2); font-size:var(--fs-sm); max-width:76ch; }
 .home-edit p { max-width:76ch; color:var(--t2); }
 
+/* ══════════════════════════════ 복지 항목 페이지(/benefit/{slug}, SP-BEN, 2026-09-18) ══
+   ⚠ 접두사 `.bn-` 를 벗어나지 않는다 — CSS 는 머지 즉시 라이브(`/assets/v2/` = 작업트리)이고 HTML 은
+   release 뒤라, 그 사이 구 HTML 이 새 규칙에 걸리지 않아야 한다. 기존 클래스는 **쓰기만** 한다
+   (`.table-scroll`·`.benefit-legal`·`.h2-sub`). 새 색 토큰도 없다 — 방식 색은 비교 화면 슬롯 색
+   (`--brand`·`--slot-b`)을 그대로 빌린다(두 색의 색약 구분은 SP-CMP-4 에서 이미 검증됐다).
+   🚨 막대는 **보조**다. 색만으로 방식을 가르지 않는다 — 범례·칩·표가 같은 개수를 글로 말한다. */
+/* 한국어는 어절이 단위다 — 기본값은 「가지입/니다」처럼 글자 단위로 꺾는다(대문 검증 MED ③과 같은 이유).
+   `/` 로 이어진 긴 원문 토큰(「주택구입/전세자금/…」)이 폭을 넘지 않게 마지막 수단으로만 꺾는다. */
+.bn-page { max-width:1040px; margin-inline:auto; word-break:keep-all; overflow-wrap:break-word; }
+.bn-crumb { margin-top:var(--sp-5); font-size:var(--fs-xs); color:var(--t3); }
+.bn-crumb a { color:var(--t2); }
+.bn-page h1 { margin-top:var(--sp-2); word-break:keep-all; }
+.bn-names-lb { margin-top:var(--sp-4); font-size:var(--fs-xs); color:var(--t3); }
+.bn-names { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-2); font-size:var(--fs-xs); }
+.bn-names li { background:var(--bg-2); color:var(--t2); border-radius:var(--r-pill); padding:2px var(--sp-3); }
+.bn-names .bn-names-more { background:none; color:var(--t3); }
+
+/* 요약 수치 — 좁은 폭은 한 줄씩, 768 에서 나란히. */
+.bn-stats { display:grid; grid-template-columns:1fr; gap:var(--sp-3); margin:var(--sp-5) 0 0; }
+.bn-stat { background:var(--surface); border:var(--bw) solid var(--border); border-radius:var(--r-md); padding:var(--sp-3) var(--sp-4); }
+.bn-stat dt { font-size:var(--fs-xs); color:var(--t3); }
+.bn-stat dd { margin:var(--sp-1) 0 0; color:var(--t3); font-size:var(--fs-sm); }
+.bn-stat dd strong { color:var(--t1); font-size:var(--fs-h3); font-weight:var(--fw-bold); font-variant-numeric:tabular-nums; }
+.bn-stat-src { display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-4); }
+.bn-stat-src b { color:var(--t1); font-variant-numeric:tabular-nums; }
+
+/* 칸(섹션) — 흰 라운드 카드. `main h2`(28px)는 카드 안에서 한 단계 작게. */
+.bn-sec { margin-top:var(--sp-5); background:var(--surface); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-4); }
+.bn-sec h2 { margin-top:0; font-size:var(--fs-h3); padding-bottom:var(--sp-2); border-bottom:var(--bw) solid var(--border); }
+.bn-sec h3 { margin-top:var(--sp-5); font-family:var(--font-sans); font-size:var(--fs-sm); font-weight:var(--fw-semibold); letter-spacing:normal; color:var(--t1); }
+.bn-sec h2 + h3 { margin-top:var(--sp-4); }
+.bn-prose p { max-width:40em; color:var(--t2); }
+.bn-note { max-width:44em; font-size:var(--fs-sm); color:var(--t3); }
+/* 셀 원문이 없는 회사 수 — 막대 목록 바로 위의 작은 라벨(문장 아님, 필러 규칙). */
+.bn-blank { margin-top:var(--sp-1); font-size:var(--fs-xs); color:var(--t3); }
+
+/* 방식 누적 막대 + 범례. 폭은 인라인 `flex:<개수>` 숫자만 온다(색은 이 클래스들). */
+.bn-stack { display:flex; gap:2px; height:28px; margin-top:var(--sp-2); border-radius:var(--r-sm); overflow:hidden; }
+.bn-seg { display:block; min-width:var(--sp-1); }  /* 0 이 아닌 방식은 한 곳이어도 보이게. px 리터럴은 UT-BP 가 분기로 오인한다 */
+.bn-m1 { background:var(--brand); }
+.bn-m2 { background:var(--slot-b); }
+.bn-m3 { background:var(--purple); }
+.bn-m4 { background:var(--amber); }
+.bn-mx { background:repeating-linear-gradient(135deg, var(--brand) 0 6px, var(--slot-b) 6px 12px); }
+.bn-m0 { background:var(--bg-4); }
+.bn-legend { display:flex; flex-wrap:wrap; gap:var(--sp-1) var(--sp-4); margin-top:var(--sp-2); font-size:var(--fs-sm); color:var(--t2); }
+.bn-legend b { color:var(--t1); font-variant-numeric:tabular-nums; }
+.bn-sw { display:inline-block; width:12px; height:12px; margin-right:var(--sp-2); border-radius:3px; vertical-align:-1px; }
+
+/* 원문에 적힌 것 — 좁은 폭은 라벨·개수 한 줄 + 막대 한 줄, 768 에서 세 칸 한 줄. */
+.bn-bars { display:grid; gap:var(--sp-2); margin-top:var(--sp-2); }
+.bn-bars li { display:grid; grid-template-columns:minmax(0,1fr) 4em; gap:var(--sp-1) var(--sp-3); align-items:center; font-size:var(--fs-sm); }
+.bn-bar-lb { color:var(--t2); }
+.bn-bar-n { text-align:right; font-variant-numeric:tabular-nums; font-weight:var(--fw-medium); color:var(--t1); }
+.bn-track { grid-column:1 / -1; order:3; height:10px; background:var(--bg-2); border-radius:5px; overflow:hidden; }
+.bn-fill { display:block; height:100%; background:var(--brand); border-radius:5px; }
+
+/* 표 — 자기 상자 안에서만 가로 스크롤(`.table-scroll`, SPEC 10 MD-4). */
+.bn-table { width:100%; border-collapse:collapse; margin-top:var(--sp-3); font-size:var(--fs-sm); }
+.bn-table th, .bn-table td { padding:var(--sp-2) var(--sp-2); text-align:left; vertical-align:top; border-bottom:var(--bw) solid var(--border); }
+.bn-table thead th { font-size:var(--fs-xs); font-weight:var(--fw-medium); color:var(--t3); white-space:nowrap; border-bottom-color:var(--border-strong); }
+/* 회사명은 폰에서 두 줄까지 허용한다 — 한 줄로 묶으면 「CJ ENM 엔터테인먼트부문」이 첫 칸을 다 먹어
+   원문 칸이 스크롤 밖으로 밀린다. 768 부터 한 줄. */
+.bn-table tbody th { font-weight:var(--fw-medium); min-width:6em; }
+.bn-table p { margin:0; }
+.bn-table p + p { margin-top:var(--sp-1); }
+.bn-src { min-width:16em; color:var(--t2); }
+.bn-amt { white-space:nowrap; font-variant-numeric:tabular-nums; }
+.bn-amt-v { color:var(--brand); font-weight:var(--fw-semibold); }
+.bn-amt-none { color:var(--t3); }
+.bn-est { font-style:normal; font-size:var(--fs-xs); color:var(--badge-est-fg); background:var(--badge-est-bg); border-radius:var(--r-xs); padding:0 var(--sp-1); }
+.bn-legal-row th a { color:var(--t3); }
+.bn-chip { display:inline-block; font-size:var(--fs-xs); border-radius:var(--r-pill); padding:1px var(--sp-2); white-space:nowrap; }
+.bn-chip.bn-m1 { background:var(--brand-tint); color:var(--brand-active); }
+.bn-chip.bn-m2 { background:var(--badge-edited-bg); color:var(--badge-edited-fg); }
+.bn-chip.bn-m3 { background:var(--badge-member-bg); color:var(--badge-member-fg); }
+.bn-chip.bn-m4 { background:var(--badge-est-bg); color:var(--badge-est-fg); }
+.bn-chip.bn-mx { background:linear-gradient(90deg, var(--brand-tint), var(--badge-edited-bg)); color:var(--t1); }
+.bn-chip.bn-m0 { background:var(--bg-2); color:var(--t3); }
+
+/* 입사 전에 물어볼 것 — 원문에 밝힌 회사가 없는 질문은 강조(그게 이 칸의 가장 쓸모 있는 정보다). */
+.bn-qs { list-style:none; margin:var(--sp-3) 0 0; padding:0; display:grid; gap:var(--sp-2); }
+.bn-q { border:var(--bw) solid var(--border); border-radius:var(--r-sm); padding:var(--sp-3) var(--sp-4); }
+.bn-q .bn-q-text { margin-top:0; font-weight:var(--fw-medium); color:var(--t1); }
+.bn-q-n { display:flex; align-items:center; gap:var(--sp-3); margin-top:var(--sp-2); font-size:var(--fs-xs); color:var(--t3); font-variant-numeric:tabular-nums; }
+.bn-meter { flex:none; width:72px; height:6px; background:var(--bg-2); border-radius:3px; overflow:hidden; }
+.bn-meter span { display:block; height:100%; background:var(--brand); }
+.bn-q-zero { border-color:var(--badge-est-fg); background:var(--badge-est-bg); }
+.bn-q-zero .bn-q-n { color:var(--badge-est-fg); font-weight:var(--fw-semibold); }
+
+/* 법으로 정해진 것 — 표에서 옮긴 칸만. 표에 없으면 라벨 한 줄. */
+.bn-law-none { background:var(--bg-2); border-radius:var(--r-sm); padding:var(--sp-3) var(--sp-4); color:var(--t2); }
+.bn-law-src { font-size:var(--fs-xs); color:var(--t3); }
+.bn-tag { font-size:var(--fs-xs); color:var(--badge-est-fg); background:var(--badge-est-bg); border-radius:var(--r-pill); padding:0 var(--sp-2); white-space:nowrap; }
+
+.bn-more { margin-top:var(--sp-2); }
+.bn-more summary { display:flex; align-items:center; min-height:var(--tap-min); cursor:pointer; color:var(--link); font-weight:var(--fw-medium); font-size:var(--fs-sm); }
+.bn-next { display:flex; flex-wrap:wrap; gap:var(--sp-2) var(--sp-5); margin-top:var(--sp-5); font-size:var(--fs-sm); font-weight:var(--fw-medium); }
+.bn-next a { display:inline-flex; align-items:center; min-height:var(--tap-min); }
+/* /find 정적 표 — 항목 페이지가 있는 줄의 도구 입구(이름은 항목 페이지로 간다). */
+.bn-find-go { margin-left:var(--sp-2); font-size:var(--fs-xs); font-weight:var(--fw-regular); color:var(--t3); white-space:nowrap; }
+
 @media (min-width: 768px) {
   /* GNB 원복 — 여기부터는 워드마크와 넉넉한 gap 이 다 들어간다(768px 실측: 필요 폭 435px).
      `flex-wrap:nowrap` 을 되돌려 두는 건 안전판을 끄는 게 아니라, 이 폭에서 줄이 바뀌면
@@ -1442,4 +1544,12 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   /* A 목록은 가운데 축 쪽으로 붙는다(목업). 클래스는 `cmp-bfp-a` 다 — 예전 `-col-a` 는 DOM 에 없었다. */
   .cmp-bfp-a { text-align:right; }
   .cmp-bfp-a h4 { direction:rtl; }
+
+  /* 복지 항목 페이지(SP-BEN) — 요약 수치 나란히 · 원문 막대는 라벨·막대·개수 한 줄 · 칸 여백 넓게. */
+  .bn-stats { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+  .bn-sec { padding:var(--sp-5) var(--sp-6); }
+  .bn-bars li { grid-template-columns:minmax(0,14em) minmax(0,1fr) 4.2em; }
+  .bn-track { grid-column:auto; order:0; }
+  .bn-meter { width:120px; }
+  .bn-table tbody th { white-space:nowrap; }
 }

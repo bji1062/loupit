@@ -1,0 +1,195 @@
+{
+  "code": "housing_loan",
+  "slug": "housing-loan",
+  "title": "주택자금 대출",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "주택자금 대출은 직원이 집을 사거나 전세를 얻을 때 드는 돈을 돕는 제도입니다. 방식은 크게 두 가지입니다. 회사나 사내근로복지기금이 직접 돈을 빌려주는 방식과, 직원이 은행에서 빌린 돈의 이자를 회사가 대신 내 주는 방식입니다.",
+    "이름이 같아도 어느 쪽인지에 따라 받는 도움의 모양이 다릅니다. 공개 자료에는 한도나 금리가 빠져 있는 경우가 있으니, 입사 전에 아래 질문을 직접 확인해 보세요."
+  ],
+  "modes": {
+    "label": "방식",
+    "_규칙순서": "위에서부터 처음 맞는 규칙 하나. 「대출이자」가 「대출」에도 걸리므로 이자 지원을 먼저 본다.",
+    "rules": [
+      {
+        "key": "interest",
+        "label": "이자를 대신 냄",
+        "pattern": "이자\\s*(일부\\s*)?지원|이자를 회사|이자액|대출이자|이자 실비|이자지원|대출금액의? ?\\d+(\\.\\d+)?%"
+      },
+      {
+        "key": "direct",
+        "label": "직접 빌려줌",
+        "pattern": "대출|대부|융자|무이자|저리|저금리"
+      }
+    ],
+    "extra": [
+      {
+        "key": "both",
+        "label": "둘 다"
+      }
+    ],
+    "fallback": {
+      "key": "unknown",
+      "label": "원문에 안 나옴"
+    },
+    "display": [
+      "direct",
+      "interest",
+      "both",
+      "unknown"
+    ]
+  },
+  "facets": [
+    {
+      "key": "buy",
+      "label": "집을 살 때(구입 자금)",
+      "pattern": "구입|매입|매매|구매|마련"
+    },
+    {
+      "key": "lease",
+      "label": "전세·월세를 얻을 때(임차 자금)",
+      "pattern": "전세|임차|임대"
+    },
+    {
+      "key": "limit",
+      "label": "금액(한도)",
+      "pattern": "\\d+(\\.\\d+)?\\s*(천만|억|만)\\s*원?|천만원"
+    },
+    {
+      "key": "low_rate",
+      "label": "저금리·금리 명시",
+      "pattern": "저금리|저리|낮은 이자|\\d+(\\.\\d+)?\\s*%"
+    },
+    {
+      "key": "zero_rate",
+      "label": "무이자",
+      "pattern": "무이자"
+    },
+    {
+      "key": "no_home",
+      "label": "무주택자만",
+      "pattern": "무주택"
+    },
+    {
+      "key": "tenure",
+      "label": "근속 기간 조건",
+      "pattern": "근속기간|근속 기간|년 이상 재직"
+    },
+    {
+      "key": "exit",
+      "label": "퇴사할 때 갚는 조건",
+      "pattern": "퇴사|퇴직|중도\\s*상환|일시\\s*상환"
+    },
+    {
+      "key": "housing_too",
+      "label": "사택·기숙사·이사비 등도 함께",
+      "pattern": "사택|기숙사|숙소|셰어하우스|이사비|부임|정착|임대아파트|주거비|거주비"
+    }
+  ],
+  "money_facet": "limit",
+  "questions": [
+    {
+      "text": "회사가 직접 빌려주나요, 은행 대출 이자를 대신 내 주나요?",
+      "answered_by": [
+        "mode:known"
+      ]
+    },
+    {
+      "text": "한도는 얼마인가요? 집을 살 때와 전세일 때가 다른가요?",
+      "answered_by": [
+        "facet:limit"
+      ]
+    },
+    {
+      "text": "이자는 없나요? 있다면 몇 %인가요?",
+      "answered_by": [
+        "facet:zero_rate",
+        "facet:low_rate"
+      ]
+    },
+    {
+      "text": "무주택자·근속 기간 같은 자격 조건이 있나요?",
+      "answered_by": [
+        "facet:no_home",
+        "facet:tenure"
+      ]
+    },
+    {
+      "text": "회사를 그만두면 남은 돈은 언제 갚아야 하나요?",
+      "answered_by": [
+        "facet:exit"
+      ]
+    }
+  ],
+  "notes": {
+    "money": "이자를 대신 내 주는 회사의 금액은 「이자를 지원받을 수 있는 대출의 크기」입니다. 회사가 직접 빌려주는 돈의 한도와 같은 줄에 놓고 크기를 비교하면 안 됩니다."
+  },
+  "overrides": [
+    {
+      "comp": "doosan_enerbility",
+      "h": "fc087ebbed",
+      "mode": "both",
+      "why": "신용협동조합 무이자·저금리 대출(직접)과 대출이자 지원을 함께 적었다"
+    },
+    {
+      "comp": "pearl_abyss",
+      "h": "28486994e5",
+      "facets_remove": [
+        "limit"
+      ],
+      "why": "「매월 50만원」은 회사 인근 거주비이지 대출 한도가 아니다"
+    },
+    {
+      "comp": "hyundai_autoever",
+      "h": "48b529eae9",
+      "facets_remove": [
+        "buy"
+      ],
+      "why": "「구입」은 「차량구입비」에서 걸렸다 — 주택 구입 자금이 아니다"
+    },
+    {
+      "comp": "ibk",
+      "h": "1490720a68",
+      "facets_remove": [
+        "lease",
+        "no_home"
+      ],
+      "facets_add": [
+        "housing_too"
+      ],
+      "why": "「무주택자 임차 주택 대여」는 회사가 임차한 집을 빌려주는 사택형 지원이고 대출은 신용 대출이다 — 전세 자금·무주택 조건이 대출에 붙은 게 아니다"
+    },
+    {
+      "comp": "sk_hynix",
+      "h": "4227a52413",
+      "facets_remove": [
+        "no_home"
+      ],
+      "why": "「기혼 무주택자」는 임대아파트 무료 제공의 조건이지 주택 자금 지원의 조건이 아니다"
+    },
+    {
+      "comp": "lg_innotek",
+      "h": "7e47d16f90",
+      "mode": "direct",
+      "why": "수집자 메모가 공식 페이지 항목명을 「주택융자」로 적었다 — 원문 칸만으로는 방식이 안 나온다"
+    },
+    {
+      "comp": "ecopro",
+      "h": "f5e55e24b5",
+      "exclude": true,
+      "why": "「사택 또는 정착지원금 지급」 — 대출이 아니다(코드 오분류, 재코딩 대상)"
+    },
+    {
+      "comp": "ecopro_bm",
+      "h": "296c87cc34",
+      "exclude": true,
+      "why": "「정착 지원금 지원」 — 대출이 아니다(코드 오분류, 재코딩 대상)"
+    },
+    {
+      "comp": "olix",
+      "h": "25bda875d7",
+      "exclude": true,
+      "why": "「주거 지원」 — 대출인지 사택인지 원문에 없다"
+    }
+  ]
+}

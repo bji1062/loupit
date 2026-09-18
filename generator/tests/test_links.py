@@ -11,8 +11,9 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import combo, company, company_index, find, heatmap, home, policy
+from generator.pages import benefit, combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
+from generator.tests.fixtures import render_benefit_net
 
 # /community/ 는 수기 셸(web/community/index.html) + nginx ^~ 블록이 서빙하는 정적 라우트다(SC15, 2026-08-27).
 # `/compare/`(끝 슬래시) — nginx 가 `location = /compare/` 로 직접 서빙한다. 대문 CTA 는 301 한 홉을 아끼려고
@@ -63,11 +64,15 @@ def _build_all_pages(fake_bundle, fake_now):
     env = make_env()
     ctx = build_context(fake_bundle, now=fake_now)
     pairs = combo.load_pairs(ctx)
+    # 복지 항목 페이지(SP-BEN) — 가짜 번들은 회사 3곳이라 문턱을 1로 낮춰 그물에 건다. /find 는
+    # build.py 와 같이 **생성된** 항목 페이지 목록으로 링크한다(회사 원장 앵커 링크도 여기서 검사된다).
+    benefit_pages = render_benefit_net(env, ctx)
     return (
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
-        + [find.render(env, ctx, CFG)]
+        + benefit_pages
+        + [find.render(env, ctx, CFG, benefit_links=benefit.links(benefit_pages))]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
         + combo.render_all(env, ctx, CFG, pairs=pairs)
         + policy.render_all(env, ctx)

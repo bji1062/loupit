@@ -8,6 +8,7 @@ from generator.config import CFG
 from generator.context import build_context
 from generator.pages import combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
+from generator.tests.fixtures import render_benefit_net
 
 _TAG_COUNT_PATTERNS = {
     "title": re.compile(r"<title>"),
@@ -24,7 +25,8 @@ _TAG_COUNT_PATTERNS = {
 def _all_pages(fake_bundle, fake_now, fake_combinations_path):
     env = make_env()
     ctx = build_context(fake_bundle, now=fake_now)
-    return company.render_all(env, ctx) + combo.render_all(env, ctx, CFG)
+    # 복지 항목 페이지(SP-BEN)도 title·description 이 항목마다 고유해야 한다 — 문턱을 낮춰 함께 건다.
+    return company.render_all(env, ctx) + combo.render_all(env, ctx, CFG) + render_benefit_net(env, ctx)
 
 
 # ── GC-5: 필수 태그 각 정확히 1 ──────────────────────────────────────────
@@ -142,6 +144,7 @@ def _all_indexable_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
+        + render_benefit_net(env, ctx)  # 복지 항목(SP-BEN) — 문턱을 낮춰 그물에 건다
         + [find.render(env, ctx, CFG)]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
         + combo.render_all(env, ctx, CFG, pairs=pairs)

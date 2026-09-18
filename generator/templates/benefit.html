@@ -1,0 +1,175 @@
+{# benefit.html — 복지 항목 페이지(/benefit/{slug}, SP-BEN). 순서는 사용자 승인 시안(2026-09-18):
+   빵부스러기·제목·부르는 이름 → 요약 수치 → 한눈에 보기 → 회사마다 뭐가 다른가 → 금액이 적힌 원문
+   → 입사 전에 물어볼 것 → 법으로 정해진 것 → 이 복지가 있는 회사.
+
+   🚨 **이 파일에 완결문장을 쓰지 않는다.** 여기 고정으로 적는 글은 제목·라벨·수치 표기뿐이고,
+      문장은 `view.intro`·`view.notes`·`view.questions`(설정 JSON 의 사람 글)와 회사 원문에서만
+      온다. 같은 문장이 항목 페이지마다 반복되면 그게 필러다(애드센스 거절 사유 원문 §5).
+      `test_benefit_pages.py::test_template_emits_no_fixed_sentences` 가 렌더 결과로 잡는다.
+      같은 이유로 면책 partial(`_disclaimer.html`)도 싣지 않는다 — 푸터가 면책 페이지로 잇는다.
+
+   막대는 인라인 `style` 의 **숫자**(폭·flex)만 받는다. 색은 전부 클래스(`bn-m1`…)다 — 인라인에
+   `var()` 를 쓰면 색 토큰이 두 군데로 갈라진다(SVG 는 아예 무시된다, charts.py 머리말).
+   JS 0 · page_type 미선언 = 광고 0(`/find` 와 같은 탭 소속, 검색 화면 무광고 규약). #}
+{% extends "base.html" %}
+{% block main %}
+<article class="bn-page">
+  <nav class="bn-crumb" aria-label="위치">
+    <a href="/find">복지검색</a>
+    {% if view.category.label %}<span aria-hidden="true">›</span> <a href="/find#cat-{{ view.category.key }}">{{ view.category.label }}</a>{% endif %}
+    <span aria-hidden="true">›</span> <span aria-current="page">{{ view.title }}</span>
+  </nav>
+  <h1>{{ view.title }}</h1>
+  <p class="bn-names-lb">회사들이 부르는 이름 {{ view.names.total }}가지</p>
+  <ul class="bn-names">
+    {% for nm in view.names.shown %}<li>{{ nm }}</li>{% endfor %}
+    {% if view.names.more %}<li class="bn-names-more">외 {{ view.names.more }}가지</li>{% endif %}
+  </ul>
+
+  <dl class="bn-stats">
+    <div class="bn-stat">
+      <dt>이 복지가 있는 회사</dt>
+      <dd><strong>{{ view.count }}곳</strong> <span>/ 등록 {{ view.total }}곳 중 {{ view.share }}%</span></dd>
+    </div>
+    <div class="bn-stat">
+      <dt>금액 출처</dt>
+      <dd class="bn-stat-src">{% for s in view.amount_sources %}<span>{{ s.label }} <b>{{ s.count }}</b></span>{% endfor %}</dd>
+    </div>
+  </dl>
+
+  <section class="bn-sec" aria-labelledby="bn-intro">
+    <h2 id="bn-intro">한눈에 보기</h2>
+    <div class="bn-prose">
+      {% for p in view.intro %}<p>{{ p }}</p>{% endfor %}
+    </div>
+  </section>
+
+  <section class="bn-sec" aria-labelledby="bn-diff">
+    <h2 id="bn-diff">회사마다 뭐가 다른가</h2>
+    {% if view.modes %}
+    <h3>{{ view.mode_label }} — {{ view.count }}곳</h3>
+    {#- 막대는 **보조**다: 같은 개수가 범례에 글로 있다(색만으로 구분하지 않는다). -#}
+    <div class="bn-stack" role="img" aria-label="{% for m in view.modes %}{{ m.label }} {{ m.count }}곳{% if not loop.last %}, {% endif %}{% endfor %}">
+      {% for m in view.modes if m.count %}<span class="bn-seg {{ m.cls }}" style="flex:{{ m.count }}"></span>{% endfor %}
+    </div>
+    <ul class="bn-legend">
+      {% for m in view.modes %}<li><span class="bn-sw {{ m.cls }}" aria-hidden="true"></span>{{ m.label }} <b>{{ m.count }}곳</b></li>{% endfor %}
+    </ul>
+    {% if view.notes.modes %}<p class="bn-note">{{ view.notes.modes }}</p>{% endif %}
+    {% endif %}
+    <h3>회사가 공개한 원문에 적힌 것 — {{ view.count }}곳 중</h3>
+    {#- 원문이 비어 있거나 수집자 추정뿐인 행은 어느 칸에도 안 걸린다. 그 수를 밝히지 않으면 막대의
+        「없음」이 「회사가 안 적었다」와 「우리에게 원문이 없다」를 섞어 말한다. 라벨이지 문장이 아니다(필러 규칙). -#}
+    {% if view.blank %}<p class="bn-blank">원문 내용이 없어 세지 않은 회사 {{ view.blank }}곳</p>{% endif %}
+    <ul class="bn-bars">
+      {% for f in view.facets %}
+      <li>
+        <span class="bn-bar-lb">{{ f.label }}</span>
+        <span class="bn-track" aria-hidden="true"><span class="bn-fill" style="width:{{ f.pct }}%"></span></span>
+        <span class="bn-bar-n">{% if f.count %}{{ f.count }}곳{% else %}없음{% endif %}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if view.notes.facets %}<p class="bn-note">{{ view.notes.facets }}</p>{% endif %}
+  </section>
+
+  {% if view.money %}
+  <section class="bn-sec" aria-labelledby="bn-money">
+    <h2 id="bn-money">금액이 적힌 원문 {{ view.money.rows | length }}곳</h2>
+    <div class="table-scroll" tabindex="0" role="group" aria-labelledby="bn-money">
+      <table class="bn-table">
+        <thead><tr><th scope="col">회사</th>{% if view.modes %}<th scope="col">{{ view.mode_label }}</th>{% endif %}<th scope="col">회사가 공개한 내용</th></tr></thead>
+        <tbody>
+        {% for r in view.money.rows %}
+          <tr>
+            <th scope="row"><a href="{{ r.href }}">{{ r.comp_nm }}</a></th>
+            {% if view.modes %}<td><span class="bn-chip {{ r.mode.cls }}">{{ r.mode.label }}</span></td>{% endif %}
+            <td class="bn-src">{% if r.desc %}<p>{{ r.desc }}</p>{% endif %}{% if r.note %}<p>{{ r.note }}</p>{% endif %}{% if not r.desc and not r.note %}<p>{{ r.name }}</p>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% if view.notes.money %}<p class="bn-note">{{ view.notes.money }}</p>{% endif %}
+  </section>
+  {% endif %}
+
+  <section class="bn-sec" aria-labelledby="bn-ask">
+    <h2 id="bn-ask">입사 전에 물어볼 것</h2>
+    <ol class="bn-qs">
+      {% for q in view.questions %}
+      <li class="bn-q{% if not q.count %} bn-q-zero{% endif %}">
+        <p class="bn-q-text">{{ q.text }}</p>
+        <p class="bn-q-n"><span class="bn-meter" aria-hidden="true"><span style="width:{{ q.pct }}%"></span></span>{% if q.count %}원문에 밝힌 회사 {{ q.count }}곳 / {{ view.count }}곳{% else %}원문에 밝힌 회사 없음{% endif %}</p>
+      </li>
+      {% endfor %}
+    </ol>
+    {% if view.notes.questions %}<p class="bn-note">{{ view.notes.questions }}</p>{% endif %}
+  </section>
+
+  <section class="bn-sec" aria-labelledby="bn-law">
+    <h2 id="bn-law">법으로 정해진 것</h2>
+    {% if view.legal.entries %}
+    {#- 법정 기준선 표(`generator/data/legal_baseline.json`)의 칸을 **옮길 뿐**이다. 문장을 짓지 않는다 —
+        법이 바뀌면 표 하나를 고치면 되고, 페이지마다 문장이 있으면 그 문장들이 표와 갈라진다. -#}
+    <div class="table-scroll" tabindex="0" role="group" aria-labelledby="bn-law">
+      <table class="bn-table">
+        <thead><tr><th scope="col">제도</th><th scope="col">법령·조문</th><th scope="col">법정 기준</th><th scope="col">급여</th><th scope="col">시행</th></tr></thead>
+        <tbody>
+        {% for it in view.legal.entries %}
+          <tr>
+            <th scope="row">{{ it.name }}</th>
+            <td>{{ it.law }} {{ it.article }}</td>
+            <td class="num">{{ it.baseline }}</td>
+            <td>{{ it.paid }}</td>
+            <td class="num">{{ it.effective_from }}{% if it.confidence == "확인필요" %} <span class="bn-tag">확인필요</span>{% endif %}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <p class="bn-law-src">출처: jobcho.wiki 법정 기준선 표 · 검토일 {{ view.legal.reviewed }}</p>
+    {% else %}
+    <p class="bn-law-none">법정 기준선 표에 없는 항목</p>
+    {% endif %}
+  </section>
+
+  <section class="bn-sec" aria-labelledby="bn-cos">
+    <h2 id="bn-cos">이 복지가 있는 회사 {{ view.count }}곳{% if view.legal_rows %} <span class="h2-sub">+ 법정 제도만 적은 회사 {{ view.legal_rows }}곳</span>{% endif %}</h2>
+    {% if view.notes.companies %}<p class="bn-note">{{ view.notes.companies }}</p>{% endif %}
+    {% macro company_rows(rows) -%}
+    {% for r in rows %}
+      <tr{% if r.legal %} class="bn-legal-row"{% endif %}>
+        <th scope="row"><a href="{{ r.href }}">{{ r.comp_nm }}</a></th>
+        {% if view.modes %}<td>{% if r.legal %}<span class="benefit-legal" title="근로기준법 등이 모든 회사에 강제하는 제도 · 복지 집계 제외">법정</span>{% else %}<span class="bn-chip {{ r.mode.cls }}">{{ r.mode.label }}</span>{% endif %}</td>{% endif %}
+        <td class="bn-src">{% if not view.modes and r.legal %}<span class="benefit-legal" title="근로기준법 등이 모든 회사에 강제하는 제도 · 복지 집계 제외">법정</span> {% endif %}{% if r.desc %}<p>{{ r.desc }}</p>{% endif %}{% if r.note %}<p>{{ r.note }}</p>{% endif %}{% if not r.desc and not r.note %}<p>{{ r.name }}</p>{% endif %}</td>
+        {#- 금액 칸 — 판정은 `company.amount_view` 하나다(회사 카드와 같은 함수). 정성과 「금액 미기재」는 다른 사실이다. -#}
+        <td class="bn-amt">{% if r.no_amt_label %}<span class="bn-amt-none">{{ r.no_amt_label }}</span>{% else %}{% if r.est %}<i class="bn-est">추정</i> {% endif %}<span class="bn-amt-v">{{ r.amount }}</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    {%- endmacro %}
+    <div class="table-scroll" tabindex="0" role="group" aria-labelledby="bn-cos">
+      <table class="bn-table">
+        <thead><tr><th scope="col">회사</th>{% if view.modes %}<th scope="col">{{ view.mode_label }}</th>{% endif %}<th scope="col">회사가 공개한 내용</th><th scope="col">연 환산 금액</th></tr></thead>
+        <tbody>{{ company_rows(view.rows_first) }}</tbody>
+      </table>
+    </div>
+    {% if view.rows_rest %}
+    <details class="bn-more">
+      <summary>나머지 {{ view.rows_rest | length }}곳 보기</summary>
+      <div class="table-scroll" tabindex="0" role="group" aria-label="나머지 {{ view.rows_rest | length }}곳">
+        <table class="bn-table">
+          <thead><tr><th scope="col">회사</th>{% if view.modes %}<th scope="col">{{ view.mode_label }}</th>{% endif %}<th scope="col">회사가 공개한 내용</th><th scope="col">연 환산 금액</th></tr></thead>
+          <tbody>{{ company_rows(view.rows_rest) }}</tbody>
+        </table>
+      </div>
+    </details>
+    {% endif %}
+  </section>
+
+  <ul class="bn-next">
+    <li><a href="/find?b={{ view.code }}">이 복지가 있는 회사 거르기</a></li>
+    {% if view.category.label %}<li><a href="/find#cat-{{ view.category.key }}">{{ view.category.label }} 항목 전체</a></li>{% endif %}
+  </ul>
+</article>
+{% endblock %}

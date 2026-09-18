@@ -111,8 +111,14 @@ def _disambiguate(codes: dict[str, dict]) -> dict[str, dict]:
     return codes
 
 
-def build_view(ctx) -> dict:
-    """뷰모델(순수 — 테스트가 직접 검사). 카테고리 9개 × 코드 표 + 요약 수치."""
+def build_view(ctx, benefit_links: dict[str, str] | None = None) -> dict:
+    """뷰모델(순수 — 테스트가 직접 검사). 카테고리 9개 × 코드 표 + 요약 수치.
+
+    `benefit_links` = 실제로 생성된 복지 항목 페이지 `{code: "/benefit/{slug}"}`(SP-BEN, 2026-09-18).
+    있으면 그 줄의 이름이 항목 페이지로 가고, 도구 입구(`/find?b=`)는 같은 칸의 「거르기」로 남는다 —
+    모든 줄이 도구 입구라는 약속(위 머리말)을 깨지 않으면서 항목 페이지의 유일한 정적 진입로가 된다.
+    """
+    benefit_links = benefit_links or {}
     codes = derive_codes(ctx.companies)
     by_cat: dict[str, list] = {k: [] for k in CATEGORY_ORDER}
     for info in codes.values():
@@ -138,6 +144,7 @@ def build_view(ctx) -> dict:
                 "aliases": [a for a in i["aliases"] if a != i["base_label"]][:3],
                 "count": i["count"],
                 "amt_count": i["amt_count"],
+                "page": benefit_links.get(i["code"]),
             } for i in rows],
         })
     rows_total = sum(len(c.get("benefits") or []) for c in ctx.companies)
@@ -151,6 +158,7 @@ def build_view(ctx) -> dict:
         "total_codes": len(codes),
         "total_rows": rows_total,
         "amount_rows": amt_total,
+        "benefit_pages": sum(1 for code in codes if code in benefit_links),
         "types": [
             {"cd": t["comp_tp_cd"], "nm": t["comp_tp_nm"],
              "n": sum(1 for c in ctx.companies if c.get("comp_tp_cd") == t["comp_tp_cd"])}
@@ -159,8 +167,8 @@ def build_view(ctx) -> dict:
     }
 
 
-def render(env, ctx, cfg=CFG) -> Page:
-    view = build_view(ctx)
+def render(env, ctx, cfg=CFG, benefit_links: dict[str, str] | None = None) -> Page:
+    view = build_view(ctx, benefit_links)
     url = f"{cfg.site_origin}/find"
     total = view["total_companies"]
     title = f"복지검색 — 복지 항목으로 상장사 {total}곳 거르기 | {cfg.site_name}"

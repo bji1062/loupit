@@ -19,6 +19,7 @@ from generator.content.nav import GNB_TABS, GNB_TAB_HREFS
 from generator.context import build_context
 from generator.pages import combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
+from generator.tests.fixtures import render_benefit_net
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WEB = REPO_ROOT / "web"
@@ -68,6 +69,7 @@ def _all_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
+        + render_benefit_net(env, ctx)  # 복지 항목(SP-BEN) — 문턱을 낮춰 그물에 건다
         + [find.render(env, ctx, CFG)]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
         + combo.render_all(env, ctx, CFG, pairs=pairs)
@@ -132,8 +134,9 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
             assert cur == ["/companies"], f"{p.path}: 회사정보 탭이 현재 탭이어야 한다"
         elif p.path == "heatmap.html":
             assert cur == ["/heatmap"], "히트맵 탭이 현재 탭이어야 한다"
-        elif p.path == "find.html":
-            assert cur == ["/find"], "복지검색 탭이 현재 탭이어야 한다"
+        elif p.path == "find.html" or p.path.startswith("benefit/"):
+            # 복지 항목 페이지(SP-BEN)는 복지검색 탭 소속이다 — 빵부스러기의 첫 칸이 /find 다.
+            assert cur == ["/find"], f"{p.path}: 복지검색 탭이 현재 탭이어야 한다"
         elif p.path == "index.html":
             assert cur == ["/"], "생성 대문은 홈 탭이 현재 탭이어야 한다(2026-09-13, 2단계)"
         else:
