@@ -24,6 +24,7 @@ import hashlib
 import json
 import os
 import re
+from collections import Counter
 
 _DIR = os.path.join(os.path.dirname(__file__), "data", "benefit_pages")
 
@@ -79,6 +80,113 @@ def human_texts(cfg: dict) -> list[tuple[str, str]]:
 def check_no_digits(cfg: dict) -> list[str]:
     """사람 글에 숫자가 있으면 그 자리를 돌려준다(빈 목록 = 통과)."""
     return [f"{cfg['code']}.{where}: {text}" for where, text in human_texts(cfg) if _DIGIT.search(text)]
+
+
+# 수량어 — 숫자와 같은 이유로 사람 글에서 금지한다. 「대부분의 회사가」는 숫자를 안 썼을 뿐 개수에
+# 대한 주장이고, 회사가 늘어 비율이 뒤집히는 날 **아무 경고 없이** 거짓이 된다. 개수는 빌드가 붙인다.
+# ⚠ 「적은」은 「원문에 적은」(적다=쓰다)에도 걸린다 — 그 뜻이면 「원문에 쓴」으로 바꿔 쓴다.
+QUANTIFIERS = ("대부분", "대다수", "많은", "적은", "보통", "일반적으로", "흔히", "절반", "일부 회사")
+
+
+def check_quantifiers(cfg: dict) -> list[str]:
+    """사람 글에 수량어가 있으면 그 자리를 돌려준다(빈 목록 = 통과)."""
+    return [f"{cfg['code']}.{where}: 「{w}」 — {text}"
+            for where, text in human_texts(cfg) for w in QUANTIFIERS if w in text]
+
+
+# notes 가 놓일 수 있는 자리 — 항목 페이지 템플릿이 아는 칸 이름이다. 모르는 키는 **화면에 안 나오고
+# 에러도 없다**(템플릿이 그 키를 찾지 않는다). 그래서 목록 밖 키는 설정 오류로 막는다.
+NOTE_SLOTS = ("modes", "facets", "money", "questions", "companies")
+# 방식 색은 규칙 순서로 붙는다(styles.css `.bn-m1`~`.bn-m4`). 규칙이 더 많으면 색 없는 막대가 나온다.
+MAX_MODE_RULES = 4
+_SLUG = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+_REQUIRED = ("code", "slug", "title", "intro", "facets", "questions")
+
+
+def _regex_error(where: str, pattern) -> list[str]:
+    try:
+        re.compile(pattern)
+    except (re.error, TypeError) as exc:
+        return [f"{where}: 정규식 오류 {exc}"]
+    return []
+
+
+def validate(cfg: dict) -> list[str]:
+    """설정 **구조** 검사 — 오류 목록(빈 목록 = 통과).
+
+    여기서 잡는 것은 전부 「틀려도 화면이 조용히 나오는」 종류다. `answered_by` 가 없는 facet 을
+    가리키면 `answered()` 는 늘 False 라 질문 칸에 「원문에 밝힌 회사 없음」이 **거짓으로** 찍히고,
+    `display` 에 없는 방식 키는 막대에서 빠진다. 그래서 빌드(`pages/benefit.py`)가 이 검사를 통과한
+    설정만 그린다. 사람 글 규칙(숫자·수량어)은 여기가 아니라 `check_no_digits`·`check_quantifiers`.
+    """
+    code = cfg.get("code", "?")
+    errs = [f"{code}: 필수 키 {k} 없음" for k in _REQUIRED if not cfg.get(k)]
+    if errs:
+        return errs
+    if not _SLUG.match(str(cfg["slug"])):
+        errs.append(f"{code}: slug {cfg['slug']!r} 형식 오류(소문자·숫자·하이픈)")
+    if not all(isinstance(p, str) and p.strip() for p in cfg["intro"]):
+        errs.append(f"{code}: intro 는 비지 않은 문단 목록")
+
+    facet_keys = [f.get("key") for f in cfg["facets"]]
+    if len(set(facet_keys)) != len(facet_keys):
+        errs.append(f"{code}: facet 키 중복 {facet_keys}")
+    for f in cfg["facets"]:
+        if not f.get("key") or not f.get("label"):
+            errs.append(f"{code}: facet 에 key·label 필수 — {f}")
+        errs += _regex_error(f"{code}.facets.{f.get('key')}", f.get("pattern"))
+
+    modes = cfg.get("modes")
+    mode_keys: list[str] = []
+    if modes:
+        rules, extra, fb = modes.get("rules") or [], modes.get("extra") or [], modes.get("fallback")
+        if not rules or not fb or not fb.get("key") or not fb.get("label"):
+            errs.append(f"{code}: modes 는 rules 와 fallback(key·label)이 필요하다")
+            return errs
+        if len(rules) > MAX_MODE_RULES:
+            errs.append(f"{code}: modes.rules {len(rules)}개 — 색이 {MAX_MODE_RULES}개뿐이다")
+        for r in rules:
+            errs += _regex_error(f"{code}.modes.{r.get('key')}", r.get("pattern"))
+        mode_keys = [x.get("key") for x in (*rules, *extra, fb)]
+        if len(set(mode_keys)) != len(mode_keys) or not all(x.get("label") for x in (*rules, *extra)):
+            errs.append(f"{code}: 방식 키 중복이거나 label 없음 {mode_keys}")
+        display = modes.get("display") or []
+        if len(set(display)) != len(display) or not set(display) <= set(mode_keys):
+            errs.append(f"{code}: modes.display {display} 가 정의된 키 {mode_keys} 의 부분집합이 아니다")
+
+    valid_answers = {f"facet:{k}" for k in facet_keys} | ({"mode:known"} if modes else set())
+    for i, q in enumerate(cfg["questions"]):
+        if not q.get("text") or not q.get("answered_by"):
+            errs.append(f"{code}.questions[{i}]: text·answered_by 필수")
+            continue
+        bad = [a for a in q["answered_by"] if a not in valid_answers]
+        if bad:
+            errs.append(f"{code}.questions[{i}]: answered_by {bad} 가 없는 facet/방식을 가리킨다")
+
+    mf = cfg.get("money_facet")
+    if mf is not None and mf not in facet_keys:
+        errs.append(f"{code}: money_facet {mf!r} 가 facet 에 없다")
+    bad_notes = [k for k in (cfg.get("notes") or {}) if k not in NOTE_SLOTS]
+    if bad_notes:
+        errs.append(f"{code}: notes 키 {bad_notes} 는 놓일 자리가 없다(가능: {NOTE_SLOTS})")
+
+    for o in cfg.get("overrides", []):
+        if not (o.get("comp") and o.get("h") and o.get("why")):
+            errs.append(f"{code}: override 에 comp·h·why 필수 — {o}")
+        if "mode" in o and o["mode"] not in mode_keys:
+            errs.append(f"{code}: override {o.get('comp')} mode {o['mode']!r} 가 정의되지 않았다")
+        for k in (*o.get("facets_add", []), *o.get("facets_remove", [])):
+            if k not in facet_keys:
+                errs.append(f"{code}: override {o.get('comp')} facet {k!r} 가 정의되지 않았다")
+    return errs
+
+
+def validate_all(cfgs: dict[str, dict]) -> list[str]:
+    """설정 전부 — 각자의 `validate` + slug 중복(URL 이 겹치면 한 페이지가 다른 페이지를 덮는다)."""
+    errs = [e for cfg in cfgs.values() for e in validate(cfg)]
+    slugs = Counter(cfg.get("slug") for cfg in cfgs.values())
+    errs += [f"slug {s!r} 가 {n}개 설정에 겹친다" for s, n in slugs.items() if n > 1]
+    return errs
 
 
 def classify(cfg: dict, rows: list[dict]) -> dict:

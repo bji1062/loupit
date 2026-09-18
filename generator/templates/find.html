@@ -96,7 +96,9 @@
   {#- ── ② 정적 본문 — JS 와 무관하게 항상 보인다 ── -#}
   <section class="find-static">
     <h2>복지 항목 {{ view.total_codes }}종 — 카테고리별 보유 회사 수</h2>
-    <p class="index-lead">등록 회사 {{ total }}곳의 복지 {{ '{:,}'.format(view.total_rows) }}건을 표준 코드 {{ view.total_codes }}종으로 정리한 표입니다. 「보유 회사」는 그 항목이 회사 페이지에 실린 회사 수이고, 「금액 있음」은 그중 연 환산 금액이 붙은 회사 수입니다({{ '{:,}'.format(view.amount_rows) }}건). 항목 이름을 누르면 그 복지가 있는 회사가 바로 걸러집니다.</p>
+    {#- 항목 페이지(SP-BEN)가 있는 줄은 이름이 그 페이지로 가고 도구 입구는 「거르기」로 옮겨 간다 —
+        그 줄에서 「이름을 누르면 걸러진다」는 거짓이 되므로 마지막 문장을 페이지 유무로 가른다. -#}
+    <p class="index-lead">등록 회사 {{ total }}곳의 복지 {{ '{:,}'.format(view.total_rows) }}건을 표준 코드 {{ view.total_codes }}종으로 정리한 표입니다. 「보유 회사」는 그 항목이 회사 페이지에 실린 회사 수이고, 「금액 있음」은 그중 연 환산 금액이 붙은 회사 수입니다({{ '{:,}'.format(view.amount_rows) }}건). {% if view.benefit_pages %}항목 이름을 누르면 그 복지가 있는 회사가 바로 걸러집니다. 「거르기」가 붙은 {{ view.benefit_pages }}종은 이름이 항목 해설 페이지로 가고, 「거르기」를 누르면 회사가 걸러집니다.{% else %}항목 이름을 누르면 그 복지가 있는 회사가 바로 걸러집니다.{% endif %}</p>
     {% for cat in view.categories %}
     <div class="find-cat">
       <h3 id="cat-{{ cat.key }}">{{ cat.label }} — 항목 {{ cat.codes }}종 · 회사 {{ cat.companies }}곳</h3>
@@ -109,7 +111,11 @@
           <tbody>
           {% for r in cat.rows %}
             <tr>
+              {% if r.page %}
+              <th scope="row"><a href="{{ r.page }}">{{ r.label }}</a> <a class="bn-find-go" href="/find?b={{ r.code }}" aria-label="{{ r.label }} 복지가 있는 회사 거르기">거르기</a></th>
+              {% else %}
               <th scope="row"><a href="/find?b={{ r.code }}">{{ r.label }}</a></th>
+              {% endif %}
               <td class="find-aliases">{{ r.aliases | join(' · ') if r.aliases else '—' }}</td>
               <td class="num">{{ r.count }}곳</td>
               <td class="num">{{ r.amt_count }}곳</td>

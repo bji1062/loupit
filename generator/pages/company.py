@@ -171,6 +171,27 @@ def _amount_tier(amt) -> str:
     return "lo"
 
 
+def amount_view(b: dict) -> dict:
+    """복지 한 행의 **금액 칸** — 숫자·추정 표식·숫자 대신 쓸 말(SP-GEN-5.6).
+
+    회사 페이지(카드·원장)와 복지 항목 페이지(SP-BEN) 표가 **이 함수 하나**를 쓴다. 항목 페이지가
+    판정을 따로 가지면 같은 행이 회사 페이지에서는 「정성」, 항목 페이지에서는 「금액 미기재」가 되는
+    날이 온다(배지 함정, 2026-07-31). 판정의 뿌리는 `format.amount_kind` 이고 여기는 그 투영이다.
+    """
+    kind = amount_kind(b)
+    amt = None if b["qual_yn"] else b.get("benefit_amt")
+    return {
+        "amount": krw_manwon(b["benefit_amt"]) if not b["qual_yn"] else "",
+        "amt": amt,
+        "qual": b["qual_yn"],
+        "amt_kind": kind,
+        "est": kind == "estimated",
+        "tier": _amount_tier(amt),
+        # 카드에서 숫자 대신 보여 줄 말. 정성과 "금액을 모르는 행"은 다른 사실이다.
+        "no_amt_label": ("정성" if b["qual_yn"] else ("금액 미기재" if kind == "none" else "")),
+    }
+
+
 def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
                     comp_eng_nm: str | None = None) -> list[tuple[str, str, list[dict]]]:
     """9카테고리 그룹·정렬·정성/금액·출처 스킴 (FR-53·54).
@@ -187,14 +208,14 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
     buckets: dict[str, list[dict]] = {k: [] for k in CATEGORY_ORDER}
     seen: set = set()
     for b in benefits:
-        kind = amount_kind(b)
+        money = amount_view(b)
+        kind = money["amt_kind"]
         badge = badge_state(b, now)
         anchor = _anchor(b.get("benefit_cd"), b["benefit_nm"], seen)
         item = {
             "name": b["benefit_nm"],
-            "amount": krw_manwon(b["benefit_amt"]) if not b["qual_yn"] else "",
-            "amt": None if b["qual_yn"] else b.get("benefit_amt"),
-            "qual": b["qual_yn"],
+            # 금액 칸(amount·amt·qual·amt_kind·est·tier·no_amt_label) — 판정은 `amount_view` 하나다.
+            **money,
             # 표기 정리(SP-GEN-4.4) — 꼬리 `(추정)` 제거 + 서술어가 있으면 완결문장으로.
             # **저장하지 않는다**: 정본은 시드 원문이고 이 문장은 빌드마다 파생된다.
             "qual_desc": benefit_desc(b.get("qual_desc_ctnt"), b.get("amt_source")),
@@ -207,11 +228,6 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
             "sort": b.get("sort_order_no") or 0,
             # ── 스탯 카드·원장(SP-GEN-5.6) ──
             "anchor": anchor,
-            "amt_kind": kind,
-            "est": kind == "estimated",
-            "tier": _amount_tier(None if b["qual_yn"] else b.get("benefit_amt")),
-            # 카드에서 숫자 대신 보여 줄 말. 정성과 "금액을 모르는 행"은 다른 사실이다.
-            "no_amt_label": ("정성" if b["qual_yn"] else ("금액 미기재" if kind == "none" else "")),
             # 렌즈 키 — 카드 행과 원장 행이 **같은 문자열**을 갖는다(둘이 갈리면 한 화면만 띠가 깔린다).
             "lens": " ".join(lens_keys(kind, bool(b["qual_yn"]), badge["code"])),
             # 법정 제도만 담은 행(SP-LEGAL-5) — 화면에는 배지를 달아 남기고 **집계에서만** 뺀다.
