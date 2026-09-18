@@ -324,6 +324,11 @@ def test_same_human_sentence_in_two_configs_is_rejected():
     assert len(errs) == 1 and "겹치는 문장입니다." in errs[0] and "'housing_loan', 'other'" in errs[0], errs
 
 
+def test_sentences_split_only_at_sentence_endings():
+    """문장 단위 = 종결 「다.」「요.」「?」. 그 밖의 마침표(「등.」「무급.」)에서는 자르지 않는다."""
+    assert br.sentences("가 등. 나입니다.  다인가요? 끝이에요.") == ["가 등. 나입니다.", "다인가요?", "끝이에요."]
+
+
 def test_distinct_sentences_and_repeats_within_one_config_pass():
     assert br.validate_all(_two("가 문장입니다.", "나 문장입니다.")) == []
     cfgs = _two("같은 말입니다. 같은 말입니다.", "나 문장입니다.")  # 한 설정 안의 반복은 한 페이지 안의 일
