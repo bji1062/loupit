@@ -61,8 +61,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '자기계발비', 600, 'perks',
    'est', '연 600만원 자기계발비', FALSE, NULL, 80),
-  (@comp_id, 'meal', '사내식당', 432, 'perks',
-   'est', '(추정)', FALSE, NULL, 81),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '사내식당', NULL, 'perks',  'est', NULL, TRUE, NULL, 81),
   (@comp_id, 'housing_loan', '대출이자 지원', NULL, 'perks',
    'est', NULL, TRUE, '대출이자 지원 제도', 82),
   (@comp_id, 'snack_bar', '사내 스낵바', NULL, 'perks',

@@ -69,8 +69,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '선택적 복리후생 포인트', 200, 'perks',
    'est', '(추정)', FALSE, NULL, 80),
-  (@comp_id, 'meal', '사내 직영 식당', 432, 'perks',
-   'est', '(추정)', FALSE, NULL, 81),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '사내 직영 식당', NULL, 'perks',  'est', NULL, TRUE, NULL, 81),
   (@comp_id, 'commute_subsidy', '통근버스/교통비', 120, 'perks',
    'est', '통근버스 운행 + 교통비 지원 (추정)', FALSE, NULL, 82),
   (@comp_id, 'housing_loan', '대출 제도', NULL, 'perks',

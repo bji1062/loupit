@@ -47,8 +47,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복지카드', 100, 'perks',
    'est', '개인별 복지카드 (추정)', FALSE, NULL, 80),
-  (@comp_id, 'meal', '구내식당', 432, 'perks',
-   'est', '구내식당 운영, 일 18,000원 x 240일 (추정)', FALSE, NULL, 81),
+  -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
+  (@comp_id, 'meal', '구내식당', NULL, 'perks',  'est', NULL, TRUE, '구내식당 운영', 81),
   (@comp_id, 'transport', '통근차량', 120, 'perks',
    'est', '통근차량+시내교통비 (추정)', FALSE, NULL, 82),
   (@comp_id, 'snack_bar', '복지 카페', 50, 'perks',
