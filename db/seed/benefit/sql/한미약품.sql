@@ -39,8 +39,6 @@ VALUES
    'est', NULL, TRUE, '연차 22일, 리프레시 휴가, 휴가 및 숙박 지원', 30),
   (@comp_id, 'long_service_leave', '장기근속 포상 포인트', NULL, 'time_off',
    'est', NULL, TRUE, '장기근속 포상 포인트 지급', 31),
-  (@comp_id, 'birthday_leave', '기념일 축하 (연 4회 포인트)', NULL, 'time_off',
-   'est', NULL, TRUE, '입사 1주년 축하 선물(Retention Program), 기념일 연 4회 포인트 지급', 32),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '연 1회 건강검진', 100, 'health',
@@ -72,7 +70,11 @@ VALUES
   (@comp_id, 'commute_subsidy', '셔틀버스/교통비', 120, 'perks',
    'est', '셔틀버스 + 교통비 지원 (추정)', FALSE, NULL, 81),
   (@comp_id, 'housing_loan', '주택자금 사내대출', NULL, 'perks',
-   'est', NULL, TRUE, '주택자금을 위한 사내 대출 지원', 82)
+   'est', NULL, TRUE, '주택자금을 위한 사내 대출 지원', 82),
+  -- 2026-09-18 재코딩 birthday_leave(time_off, 32) → birthday_gift(perks, 83) — 휴가가 아니라 기념일 선물·포인트:
+  --   db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'birthday_gift', '기념일 축하 (연 4회 포인트)', NULL, 'perks',
+   'est', NULL, TRUE, '입사 1주년 축하 선물(Retention Program), 기념일 연 4회 포인트 지급', 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

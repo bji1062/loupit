@@ -32,10 +32,6 @@ VALUES
   (@comp_id, 'remote_work', '주 2회 재택근무', NULL, 'flexibility',
    'est', NULL, TRUE, '주 2회 재택 (팀장 협의 시 최대 4회까지 가능, 팀바팀)', 11),
 
-  -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'birthday_leave', '생일 페이코 지급', 10, 'time_off',
-   'est', '생일자 페이코 10만원 지급', FALSE, NULL, 30),
-
   -- ── 건강·의료 (health) ──
   (@comp_id, 'clinic', '사내 메디컬센터', NULL, 'health',
    'est', NULL, TRUE, '전문 의사 상주, 내과/소아과/피부과 진료, 신경계/근골격계 질환 치료', 40),
@@ -62,7 +58,11 @@ VALUES
   (@comp_id, 'housing_loan', '전세/주택 대출 이자지원', NULL, 'perks',
    'est', NULL, TRUE, '전세/주택구입 대출 1억까지 은행 연계 이자지원, 생활안정자금 3천만원 대출, 학자금 대출 상환 지원 1500만원', 82),
   (@comp_id, 'commute_subsidy', '야근 택시비 지원', NULL, 'perks',
-   'est', NULL, TRUE, '23시 이후 야근 시 택시비 지원', 83)
+   'est', NULL, TRUE, '23시 이후 야근 시 택시비 지원', 83),
+  -- 2026-09-18 재코딩 birthday_leave(time_off, 30) → birthday_gift(perks, 84) — 휴가가 아니라 생일 페이코 지급:
+  --   db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'birthday_gift', '생일 페이코 지급', 10, 'perks',
+   'est', '생일자 페이코 10만원 지급', FALSE, NULL, 84)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

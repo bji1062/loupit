@@ -23,8 +23,9 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ──
-  (@comp_id, 'bonus', '상여금', 800, 'compensation',
-   'est', '연 800% 상여금', FALSE, NULL, 1),
+  -- 2026-09-18 정성 전환 (금액 800 은 비율 800퍼센트였지 800만원이 아니다): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'bonus', '상여금', NULL, 'compensation',
+   'est', NULL, TRUE, '연 800% 상여금', 1),
   (@comp_id, 'incentive', '성과급', 500, 'compensation',
    'est', '경영실적 기반 업계 최고 수준 (추정)', FALSE, NULL, 2),
 

@@ -55,7 +55,8 @@ VALUES
    'est', '(추정)', FALSE, NULL, 80),
   (@comp_id, 'meal', '구내식당 (중/석식)', 288, 'perks',
    'est', '구내식당 중식/석식 제공 (일 12,000원 x 240일 환산)', FALSE, NULL, 81),
-  (@comp_id, 'housing_loan', '정착 지원금', NULL, 'perks',
+  -- 2026-09-18 재코딩 housing_loan → relocation (대출이 아니라 정착지원금): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'relocation', '정착 지원금', NULL, 'perks',
    'est', NULL, TRUE, '정착 지원금 지원', 82),
   (@comp_id, 'discount', '제휴업체 할인', NULL, 'perks',
    'est', NULL, TRUE, '제휴업체 할인', 83)

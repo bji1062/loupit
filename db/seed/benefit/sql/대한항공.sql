@@ -43,7 +43,8 @@ VALUES
    'est', NULL, TRUE, '사내 헬스클럽 및 수영장 운영', 42),
 
   -- ── 가족·돌봄 (family) ──
-  (@comp_id, 'childcare', '보육비 지원', NULL, 'family',
+  -- 2026-09-18 재코딩 childcare → parenting (어린이집이 아니라 보육비): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'parenting', '보육비 지원', NULL, 'family',
    'est', NULL, TRUE, '보육비 지원', 50),
   (@comp_id, 'child_edu', '자녀 학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '국내 고등학생/대학생 학자금 지원, 해외 유학자녀 및 해외 주재원 자녀 학자금 지원', 51),

@@ -30,7 +30,8 @@ VALUES
    'est', NULL, TRUE, '생일 당일 유급휴가 + 상품권', 31),
 
   -- ── 건강·의료 (health) ──
-  (@comp_id, 'health_check', '헬스케어비', 30, 'health',
+  -- 2026-09-18 재코딩 health_check → medical (검진 제도가 아니라 건강 비용 수당): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'medical', '헬스케어비', 30, 'health',
    'est', '연 1회 건강관련 비용(검진/약/주사 등) 지원', FALSE, NULL, 40),
   (@comp_id, 'fitness', '체력단련비', 30, 'health',
    'est', '헬스장 회원권 월 비용 지원 (추정)', FALSE, NULL, 41),
