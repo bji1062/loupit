@@ -191,6 +191,13 @@ PARTICIPATION_CREATE_ORDER = [
     "TPOST", "TPOST_COMMENT", "TPOST_REACTION", "TPOST_REPORT",
 ]
 
+# ── 커뮤니티 운영자 조치 이력(SP-AUTH-19.7, 2026-09-18) ─────────────────────────────
+# 불변 append-only 1테이블. FK 부모는 TMEMBER(참여 그룹) 하나라 참여 그룹 **뒤**면 SI-4 를 만족한다.
+# 참여 그룹 안에 넣지 않는 이유: 커뮤니티 4테이블이 PARTICIPATION_CREATE_ORDER 끝 4개라는 계약
+# (test_community_schema CM-2.6)이 있다 — 그 계약을 비틀기보다 그룹을 하나 둔다(메일 그룹과 같은 방식).
+# ⚠ 여기 넣지 않으면 schema.sql 로 생성만 되고 DROP 목록에 없어 세션 간 행이 남는다(#15 동형).
+MODERATION_CREATE_ORDER = ["TPOST_ACTION_LOG"]
+
 # ── 메일 배달 결과 2테이블(SP-AUTH-16, P1-4 바운스 웹훅) ────────────────────────────
 # 참여 7테이블과 **별도 그룹**인 이유: FK 가 하나도 없고 M9 스위치와 무관하게 존재한다
 # (M9 OFF 인 프로덕션도 웹훅을 받아 억제 목록을 쌓는다 — db/schema.sql 의 해당 절 참조).
@@ -226,11 +233,12 @@ MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION", "TMAIL_SEND_RATE"]
 # 소멸은 에러를 남기지 않는다(함정 (57)).
 CORP_FINANCE_CREATE_ORDER = ["TCORP", "TCOMPANY_CORP", "TCORP_FINANCE", "TCORP_EMPLOY"]
 
-# 활성 격리 사이클 = 참조 6 + 참여 7 + 메일 3 + DART 법인 4. 참여가 뒤에 오는 것이 FK 부모→자식
+# 활성 격리 사이클 = 참조 6 + 참여(7 + 요청 1 + 커뮤니티 4) + 운영자 조치 이력 1 + 메일 3 + DART 법인 4. 참여가 뒤에 오는 것이 FK 부모→자식
 # 순서를 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).
 TABLE_CREATE_ORDER = (
     _REFERENCE_CREATE_ORDER
     + PARTICIPATION_CREATE_ORDER
+    + MODERATION_CREATE_ORDER
     + MAIL_OPS_CREATE_ORDER
     + CORP_FINANCE_CREATE_ORDER
 )
