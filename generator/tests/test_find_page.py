@@ -223,6 +223,9 @@ def test_short_generic_name_wins_over_one_company_wording():
     코드포인트로 가르면 라틴·숫자·괄호가 한글 앞에 서서 「KB 패밀리데이」가 야유회 코드의 이름이 됐다.
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
+    # 대표 이름(`base_label`)을 잰다 — 표시명(`label`)은 override 가 덮을 수 있다
+    # (`birthday_leave` 는 2026-09-18 부터 「생일 휴가·조기퇴근」으로 못 박혔지만 동률 규칙은 그대로 「생일 선물」을 고른다).
+    codes = find.derive_codes(_companies_from_label_cases(cases))
     for code, expect in (("company_event", "야유회"), ("mba", "대학원비 지원"),
                          ("work_tools", "노트북 지원"), ("profit_sharing", "경영성과금"),
                          ("massage", "안마의자"), ("birthday_leave", "생일 선물")):
@@ -230,7 +233,7 @@ def test_short_generic_name_wins_over_one_company_wording():
         assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
         top = max(names.values())
         assert len([n for n, k in names.items() if k == top]) > 1, f"{code}: 동률이 아니다 — 가드가 공회전한다"
-        assert cases["codes"][code]["label"] == expect, code
+        assert codes[code]["base_label"] == expect, code
         # 더 길거나 회사 고유 표기인 후보가 실제로 함께 있었다는 것까지 확인한다
         assert any(len(n) > len(expect) for n in names), code
 

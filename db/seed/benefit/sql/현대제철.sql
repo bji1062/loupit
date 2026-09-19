@@ -27,8 +27,9 @@ VALUES
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',
    'est', '정기검진+종합건강진단', FALSE, NULL, 40),
-  (@comp_id, 'medical', '의료비 지원', 100, 'health',
-   'est', '본인 100%, 가족 50%', FALSE, NULL, 41),
+  -- 2026-09-18 정성 전환 (금액 100 은 비율 100퍼센트였지 100만원이 아니다): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'medical', '의료비 지원', NULL, 'health',
+   'est', NULL, TRUE, '본인 100%, 가족 50%', 41),
   (@comp_id, 'clinic', '사내 부속의원', NULL, 'health',
    'est', NULL, TRUE, '인천/포항공장 사내 부속의원 운영', 42),
   (@comp_id, 'fitness', '수영장/헬스', NULL, 'health',

@@ -63,12 +63,10 @@ VALUES
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '경조사 발생 시 경조휴가, 경조금, 상조용품 지급', 50),
-  (@comp_id, 'childcare', '보육수당', NULL, 'family',
-   'est', NULL, TRUE, '미취학 자녀 보육수당 지급', 51),
-  (@comp_id, 'child_edu', '자녀 입학축하금', NULL, 'family',
-   'est', NULL, TRUE, '초/중/고/대학교 입학축하금 지급', 52),
+  -- 2026-09-18 합치기: 옛 childcare 「보육수당」(51)·child_edu 「자녀 입학축하금」(52) 두 행을 이 행에 합쳤다.
+  --   어린이집·학자금이 아니라 육아 수당·축하금이다. db/migrations/20260918_recode_misclassified_rows.sql
   (@comp_id, 'parenting', '모성보호', NULL, 'family',
-   'est', NULL, TRUE, '임신 축하 복지포인트·출산 축하금, 육아용품·당뇨관리 용품 지원, 아동 심리상담 지원 등', 53),
+   'est', NULL, TRUE, '임신 축하 복지포인트·출산 축하금, 육아용품·당뇨관리 용품 지원, 아동 심리상담 지원, 미취학 자녀 보육수당, 초/중/고/대학교 입학축하금 지급', 53),
   (@comp_id, 'fertility_support', '난임 지원', NULL, 'family',
    'est', NULL, TRUE, '난임 지원 복지포인트 및 난임 휴가 유급 지원', 54),
   -- ── 성장·커리어 (growth) ──

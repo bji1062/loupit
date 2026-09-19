@@ -63,6 +63,10 @@ VALUES
    'est', '연간 최대 240만원 어학 교육비', FALSE, NULL, 60),
   (@comp_id, 'conference', '외부 교육/컨퍼런스', NULL, 'growth',
    'est', NULL, TRUE, '컨퍼런스/포럼/학회 참가비 전액 지원, Tech Share/Engineering Day/Meetup 등 사내교육', 61),
+  -- 2026-09-18 재코딩 welfare_point(perks, 81) → self_development(growth, 62) — 공식 복지 페이지 Growth 칸 「개인업무지원비」:
+  --   db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'self_development', '개인 업무 지원비', 360, 'growth',
+   'est', '업무 몰입 위한 연간 360만원 지원금', FALSE, NULL, 62),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '프리미엄 리조트 40여 개', 50, 'leisure',
@@ -73,8 +77,6 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'work_tools', '업무 장비 예산', 360, 'perks',
    'est', '2년에 최대 720만원(연 360만원 환산) 노트북/모니터/태블릿 자유 선택, 허먼밀러 에어론/스탠딩데스크', FALSE, NULL, 80),
-  (@comp_id, 'welfare_point', '개인 업무 지원비', 360, 'perks',
-   'est', '업무 몰입 위한 연간 360만원 지원금', FALSE, NULL, 81),
   (@comp_id, 'discount', '네이버 서비스 이용권', 100, 'perks',
    'est', '연간 100만원 상당(네이버페이/플러스멤버십/웹툰/VIBE/클라우드 등)', FALSE, NULL, 82),
   (@comp_id, 'meal', '사내식당 점심/저녁 무료', 432, 'perks',

@@ -43,7 +43,8 @@ VALUES
    'est', '자녀 1명당 매월 양육비 50만원(인원 무제한), 대학 등록금 연 최대 700만원', FALSE, NULL, 50),
   (@comp_id, 'fertility_support', '난임 시술비 지원', NULL, 'family',
    'est', NULL, TRUE, '난임 부부 시술 비용 횟수 제한 없이 지원', 51),
-  (@comp_id, 'parenting', '부모 요양 치료비', 480, 'family',
+  -- 2026-09-18 재코딩 parenting → parent_care (새 코드, 출산·육아가 아니라 부모 요양·치료비): db/migrations/20260918_recode_misclassified_rows.sql
+  (@comp_id, 'parent_care', '부모 요양 치료비', 480, 'family',
    'est', '매월 최대 40만원 x 12개월', FALSE, NULL, 52),
   (@comp_id, 'event', '기념일 선물', NULL, 'family',
    'est', NULL, TRUE, '원하는 날짜에 원하는 곳 배송, 자녀 입학 선물 약 30만원', 53),
