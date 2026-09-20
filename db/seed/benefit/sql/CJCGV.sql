@@ -10,6 +10,7 @@
 -- "CJ 그룹 임직원 복리후생에 **더해** CGVian 혜택을 추가로 누릴 수 있으며".
 -- ⚠ 자사 도메인 복지 페이지를 찾지 못해 고유 항목이 적다. 추가 조사 여지 있음.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 40·20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('cj_cgv', 'CJ CGV',
@@ -31,7 +32,7 @@ VALUES
    'est', NULL, TRUE, '전국 거점 공유오피스 — 거점 목록은 계열사·시점별로 다름', 11),
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', 'CREATIVE WEEK(창의휴가)', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가, 연차 결합 시 최대 4주', 20),
+   'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가', 20),
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', NULL, 'health',
    'est', NULL, TRUE, '본인 및 배우자 건강검진 지원', 30),
@@ -43,7 +44,7 @@ VALUES
    'est', NULL, TRUE, '사내 피트니스 운영', 34),
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '임신·출산·육아', NULL, 'family',
-   'est', NULL, TRUE, '육아휴직 플러스제(만8세/초2 이하 자녀 시 최대 2.5년), 입학자녀 돌봄휴가 최대 4주, 난임휴직 최대 6개월, 배우자 출산휴가, 임신 축하 선물', 40),
+   'est', NULL, TRUE, '육아휴직 플러스제 — 만 8세 또는 초등학교 2학년 이하 자녀 대상 최대 2년 6개월, 입학 자녀 돌봄휴가 최대 4주, 난임휴직 최대 6개월, 임신 축하 선물', 40),
   (@comp_id, 'childcare', 'CJ키즈빌(직장 어린이집)', NULL, 'family',
    'est', NULL, TRUE, '사내 어린이집 CJ키즈빌 운영', 41),
   (@comp_id, 'child_edu', '자녀 학자금', NULL, 'family',

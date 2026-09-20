@@ -11,6 +11,7 @@
 --    않아(전수 확인) 단독 근거로 쓰지 않았다. 그 페이지에만 있는 통신비 월 5만원 등의
 --    금액은 **미기재**로 두고, 재직 인증 직원의 편집으로 채워지도록 남긴다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 40·20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('cj_enm_com', 'CJ ENM 커머스부문',
@@ -32,7 +33,7 @@ VALUES
    'est', NULL, TRUE, '전국 거점 공유오피스 — 거점 목록은 계열사·시점별로 다름', 11),
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', 'CREATIVE WEEK(창의휴가)', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가, 연차 결합 시 최대 4주', 20),
+   'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가', 20),
   (@comp_id, 'refresh_leave', '''쉴랜다'' 리프레시 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '커머스부문 전용 — 공휴일 없는 달·징검다리 휴일이 있는 달·연말 마지막 주 리프레시 휴가 사용 권장', 21),
   -- ── 보상 (compensation) ──
@@ -53,7 +54,7 @@ VALUES
    'est', NULL, TRUE, '사옥 내 피트니스 운영', 34),
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '임신·출산·육아', NULL, 'family',
-   'est', NULL, TRUE, '육아휴직 최대 2년 6개월(법정 1년 6개월 + 추가 1년), 자녀 초등 입학 선물, 산모 교실 연 2회(상·하반기), 배우자 출산휴가 법정 외 최대 14일 추가, 난임휴직', 40),
+   'est', NULL, TRUE, '육아휴직 자녀당 최대 2년 6개월 중 회사 지원 추가 1년, 자녀 초등 입학 선물, 산모 교실 연 2회(상·하반기), 배우자 출산휴가 회사 지원 추가 최대 14일, 난임휴직', 40),
   (@comp_id, 'childcare', '직장 어린이집', NULL, 'family',
    'est', NULL, TRUE, '직장 어린이집 3개소 운영, 만5~6세 자녀 보육수당 별도', 41),
   (@comp_id, 'child_edu', '자녀 학자금', NULL, 'family',

@@ -5,23 +5,16 @@
  "_한계": [
   "시드 SQL 이 아니라 생성기 참조 파일이다(company_registrations.json 선례). 시드가 바뀌면 낡는다 —",
   "test_legal_rows_all_exist_in_bundle 이 실제 번들과 대조해 낡으면 빌드를 깨뜨린다.",
-  "법정과 복지가 한 줄에 섞인 29행은 여기 없다 — 그건 시드 문안을 고치는 별개 작업이다.",
-  "판단 보류 2행(크래프톤 명절 반차·CJ올리브영 시간 연차)도 없다. 결정되면 추가한다."
+  "법정과 복지가 한 줄에 섞인 행은 여기 없다 — 시드 문안에서 법정 낱말만 걷어낸다(2026-09-20 전수 정리로 52행 집행).",
+  "시간 단위·반반차 연차는 여기 없다 — 법정 연차를 쓰더라도 그렇게 쪼개 쓰게 해주는 회사가 소수라 제도 자체가 복지다(사용자 결정 2026-09-20). CJ올리브영 시간 연차·제주반도체 반차·반반차는 그래서 등록하지 않는다. 크래프톤 명절 반차는 회사가 더 주는 반차라 애초에 대상이 아니다."
  ],
- "reviewed": "2026-09-16",
+ "reviewed": "2026-09-20",
  "rows": [
   {
    "comp_eng_nm": "classys",
    "benefit_cd": "parenting",
    "benefit_nm": "산전후휴가/육아휴직",
    "desc_at_review": "산전후 휴가, 남성출산휴가, 육아휴직",
-   "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
-  },
-  {
-   "comp_eng_nm": "dongjin_semichem",
-   "benefit_cd": "leave_general",
-   "benefit_nm": "연차·반차·반반차",
-   "desc_at_review": "연차, 반차, 반반차 제도 운영 — 분할 한도·사용 조건 미기재",
    "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
   },
   {
@@ -82,13 +75,6 @@
   },
   {
    "comp_eng_nm": "rainbow_robotics",
-   "benefit_cd": "leave_general",
-   "benefit_nm": "연차/반차/반반차",
-   "desc_at_review": "연차, 반차, 반반차",
-   "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
-  },
-  {
-   "comp_eng_nm": "rainbow_robotics",
    "benefit_cd": "parenting",
    "benefit_nm": "육아휴직",
    "desc_at_review": "육아휴직 제도 운영",
@@ -99,13 +85,6 @@
    "benefit_cd": "parenting",
    "benefit_nm": "육아휴직·모성보호제도",
    "desc_at_review": "육아휴직제도 및 단축근무 등 모성보호제도 운영",
-   "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
-  },
-  {
-   "comp_eng_nm": "silicon2",
-   "benefit_cd": "leave_general",
-   "benefit_nm": "연차/반차/반반차",
-   "desc_at_review": "연차, 반차, 반반차 사용",
    "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
   },
   {

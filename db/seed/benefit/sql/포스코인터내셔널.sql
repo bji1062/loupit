@@ -24,6 +24,7 @@
 --       ⚠ 검증·감사 판정 반영(2026-09-15): 22 → 21행. SORT 40 출장 Refresh 휴가는 출장이라는 근무 사건에 붙는
 --       보상 휴가라 refresh_leave 에서 leave_general 로 옮겨 SORT 41 심야근무 보상휴가와 병합했다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 73 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -98,7 +99,7 @@ VALUES
   (@comp_id, 'child_edu', '자녀 학자금 보조', NULL, 'family',
    'est', NULL, TRUE, '유치원, 초/중/고/대학교 학자금 지원 (공식 홈페이지 복리후생 Family Care 항목 — 지원 한도·자녀 수 제한 미기재)', 72),
   (@comp_id, 'parenting', '출산장려금·육아 일반휴직', NULL, 'family',
-   'est', NULL, TRUE, '출산장려금 첫째 300만원, 둘째 이상 500만원 및 선물 지급, 육아 목적 일반휴직 1년 추가 사용 가능 (공식 홈페이지 복리후생 Family Care 출산장려금 지급·육아휴직 항목 — 선물 내용·일반휴직 기간 급여 미기재)', 73),
+   'est', NULL, TRUE, '출산장려금 첫째 300만원, 둘째 이상 500만원 및 선물 지급, 육아 목적 일반휴직 1년 추가 사용 가능 (공식 홈페이지 복리후생 Family Care 항목 — 선물 내용·일반휴직 기간 급여 미기재)', 73),
   (@comp_id, 'fertility_support', '난임 치료비 지원', NULL, 'family',
    'est', NULL, TRUE, '난임 치료비 회당 100만원 한도 내 실비 지원 (공식 홈페이지 복리후생 Family Care 항목 — 연간 지원 횟수 미기재)', 74)
 ON DUPLICATE KEY UPDATE

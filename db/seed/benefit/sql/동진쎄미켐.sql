@@ -32,6 +32,7 @@
 --       대상 요건을 넘는다 — 코퍼스에 수당 코드 선례가 없다. 삭제 뒤 SORT 12·13 은
 --       재번호하지 않았다(구멍 허용). 사용자 노출 3필드의 편집 주석도 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -64,9 +65,9 @@ VALUES
 
   -- ── 휴가 (time_off) — 정본 카드 3 「하계휴가 & 유연한 연차」 ──
   (@comp_id, 'summer_leave', '하계휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '하계휴가 별도 운영 — 법정 연차와 별도로 운영한다는 서술만 있고 부여 일수·시기 미기재', 20),
-  (@comp_id, 'leave_general', '연차·반차·반반차', NULL, 'time_off',
-   'est', NULL, TRUE, '연차, 반차, 반반차 제도 운영 — 분할 한도·사용 조건 미기재', 21),
+   'est', NULL, TRUE, '연차와 별도로 운영하는 하계휴가 — 부여 일수·사용 시기 미기재', 20),
+  (@comp_id, 'leave_general', '2시간 단위 휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '2시간 단위 휴가 분할 사용 — 분할 한도·사용 조건 미기재', 21),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양시설(콘도)', NULL, 'leisure',

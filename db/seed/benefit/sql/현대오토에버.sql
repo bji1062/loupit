@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hyundai_autoever', '현대오토에버',
@@ -24,7 +25,7 @@ VALUES
 
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '별도 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '연차 외 별도 5일 휴가, 백신/보건휴가, 휴가비 지원', 30),
+   'est', NULL, TRUE, '연차 외 별도 5일 휴가, 백신 접종 휴가, 휴가비 지원', 30),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',

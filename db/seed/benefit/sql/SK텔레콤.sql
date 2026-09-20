@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -58,7 +59,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '출산/육아 지원', NULL, 'family',
-   'est', NULL, TRUE, '출산휴가 90일(배우자10일), 육아휴직 남녀2년(2회 분할), 초등입학시 3개월 휴직', 50),
+   'est', NULL, TRUE, '육아휴직 남녀 2년, 초등학교 입학 시 3개월 휴직', 50),
   (@comp_id, 'childcare', '사내 어린이집', NULL, 'family',
    'est', NULL, TRUE, '푸르니 재단 행복날개 어린이집 사내 운영', 51),
   (@comp_id, 'child_edu', '자녀학자금', 300, 'family',

@@ -12,6 +12,7 @@
 --       승계하지 않음** — 금액정책 (a) "기존 앵커 유지"의 예외(2026-08-31 결정).
 --       금액 2건(150·60)은 공고 명시값 → note 에 추정 표기 없음 = DG-2 가 stated 도출.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 53·54 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -65,10 +66,10 @@ VALUES
    'est', NULL, TRUE, '경조사 발생 시 경조휴가, 경조금, 상조용품 지급', 50),
   -- 2026-09-18 합치기: 옛 childcare 「보육수당」(51)·child_edu 「자녀 입학축하금」(52) 두 행을 이 행에 합쳤다.
   --   어린이집·학자금이 아니라 육아 수당·축하금이다. db/migrations/20260918_recode_misclassified_rows.sql
-  (@comp_id, 'parenting', '모성보호', NULL, 'family',
+  (@comp_id, 'parenting', '임신·출산·육아 지원', NULL, 'family',
    'est', NULL, TRUE, '임신 축하 복지포인트·출산 축하금, 육아용품·당뇨관리 용품 지원, 아동 심리상담 지원, 미취학 자녀 보육수당, 초/중/고/대학교 입학축하금 지급', 53),
   (@comp_id, 'fertility_support', '난임 지원', NULL, 'family',
-   'est', NULL, TRUE, '난임 지원 복지포인트 및 난임 휴가 유급 지원', 54),
+   'est', NULL, TRUE, '난임 지원 복지포인트 지급', 54),
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'lang', '어학교육 지원', NULL, 'growth',
    'est', NULL, TRUE, '전사 차원 외국어 교육 지원 제도 — 직무 무관 본인 희망 외국어 교육 프로그램 선택 학습', 60),

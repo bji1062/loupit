@@ -179,9 +179,9 @@ def test_benefit_cd_lookup_flags_statutory_codes():
 def test_legal_rows_lookup_is_by_company_code_and_name():
     """같은 코드(`parenting`·`leave_general`)에 법정 행과 진짜 복지 행이 섞여 있다.
     코드만 보고 판정하면 멀쩡한 복지가 통째로 빠진다."""
-    assert legal.is_legal_row("rainbow_robotics", "leave_general", "연차/반차/반반차")
+    assert legal.is_legal_row("rainbow_robotics", "parenting", "육아휴직")
     assert not legal.is_legal_row("yuhan", "leave_general", "연차휴가 (법정 상회)")
-    assert not legal.is_legal_row("rainbow_robotics", "leave_general", "다른 이름")
+    assert not legal.is_legal_row("rainbow_robotics", "parenting", "다른 이름")
 
 
 def test_legal_rows_all_exist_in_seed_sql():
@@ -202,8 +202,9 @@ def test_legal_rows_all_exist_in_seed_sql():
 
 def test_legal_rows_cover_the_audited_companies():
     rows = legal.legal_rows()
-    assert len(rows) == 16
-    assert len({r["comp_eng_nm"] for r in rows}) == 13
+    # 2026-09-20: 시간·2시간 단위 휴가 5행을 복지로 되돌려 등록 해제(사용자 결정)
+    assert len(rows) == 13
+    assert len({r["comp_eng_nm"] for r in rows}) == 12
     for r in rows:
         assert r["desc_at_review"] and r["why"], f"{r['comp_eng_nm']} 판정 근거가 비었다"
 
@@ -222,7 +223,7 @@ def test_corpus_excludes_legal_rows_from_item_count():
     from generator import corpus as corpus_mod
     from generator.pages.company import CATEGORY_ORDER
 
-    c = _fake_company("rainbow_robotics", ["연차/반차/반반차", "하계휴가"])
+    c = _fake_company("rainbow_robotics", ["육아휴직", "하계휴가"], ctgr="parenting")
     built = corpus_mod.build([c], CATEGORY_ORDER)
     assert built.items[1] == 1, "법정 행 1개가 항목 수에서 빠져야 한다"
 
@@ -240,7 +241,7 @@ def test_ledger_keeps_the_legal_row_but_flags_it(fake_now):
     """행은 남는다 — 「이 회사가 연차를 준다」는 사실은 정보다. 배지만 붙는다."""
     from generator.pages.company import _group_benefits
 
-    c = _fake_company("rainbow_robotics", ["연차/반차/반반차", "하계휴가"])
+    c = _fake_company("rainbow_robotics", ["육아휴직", "하계휴가"], ctgr="parenting")
     groups = _group_benefits(c["benefits"], fake_now, comp_eng_nm="rainbow_robotics")
     items = [i for _, _, its in groups for i in its]
     assert len(items) == 2, "원장에서 행을 지우지 않는다"
@@ -251,6 +252,6 @@ def test_group_benefits_without_company_name_flags_nothing(fake_now):
     """회사 이름이 없으면 판정이 전부 False 가 된다 — 조합 페이지가 eng 를 꼭 넘겨야 하는 이유."""
     from generator.pages.company import _group_benefits
 
-    c = _fake_company("rainbow_robotics", ["연차/반차/반반차"])
+    c = _fake_company("rainbow_robotics", ["육아휴직"], ctgr="parenting")
     groups = _group_benefits(c["benefits"], fake_now)
     assert all(not i["legal"] for _, _, its in groups for i in its)

@@ -27,6 +27,7 @@
 --       원문이 그 이상을 밝히지 않는 한 회사 재량 급부로 실을 수 없다. 행 수 26 그대로.
 --       SORT 60 의 학술연수·지역전문가는 career 에, SORT 63 은 MBA·EMBA 전용으로 둔다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 21 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -64,8 +65,8 @@ VALUES
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'childcare', '사내 어린이집', NULL, 'family',
    'est', NULL, TRUE, '3살 이상 자녀 지원 가능하며 초등학교 입학 전까지 등원 가능 (정원·보육료 부담 미기재)', 20),
-  (@comp_id, 'parenting', '모성보호제도', NULL, 'family',
-   'est', NULL, TRUE, '임산부 휴식공간 제공 등 모성보호제도 운영 (적용 기간·대상 범위 미기재)', 21),
+  (@comp_id, 'parenting', '임산부 휴식공간', NULL, 'family',
+   'est', NULL, TRUE, '임산부 휴식공간 제공 (위치·이용 대상 미기재)', 21),
   (@comp_id, 'child_edu', '자녀 학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '자녀의 미취학 학자금부터 대학 학자금까지 지원 (지원 한도·자녀 수 제한·금액 미기재)', 22),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',

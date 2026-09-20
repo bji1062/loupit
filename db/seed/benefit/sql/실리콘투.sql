@@ -54,8 +54,8 @@ VALUES
    'est', NULL, TRUE, '유니폼 제공(여름용ㆍ겨울용)', 21),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '연차/반차/반반차', NULL, 'time_off',
-   'est', NULL, TRUE, '연차, 반차, 반반차 사용', 30),
+  (@comp_id, 'leave_general', '2시간 단위 휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '2시간 단위 휴가 분할 사용', 30),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진 지원', 100, 'health',

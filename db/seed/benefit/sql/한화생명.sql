@@ -27,6 +27,7 @@
 --       housing_support 는 코퍼스에서 임차비·주거비 현금 축이다 — 대한항공 「사택 지원」
 --       이 같은 선례다. SORT 33 은 원문 표기 「맘’s」를 U+2019 로 살렸다(분할기 안전).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 32·33 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -75,9 +76,9 @@ VALUES
   (@comp_id, 'event', '경조 지원', NULL, 'family',
    'est', NULL, TRUE, '경조 (공식 복리후생 페이지 생활안정지원 항목명 그대로 — 경조금·경조휴가 구분과 금액·대상 범위 미기재)', 31),
   (@comp_id, 'childcare', '사내 어린이집', NULL, 'family',
-   'est', NULL, TRUE, '사내 어린이집 (공식 복리후생 페이지 모성보호지원 항목명 그대로 — 설치 사업장·정원·대상 연령 미기재)', 32),
+   'est', NULL, TRUE, '사내 어린이집 (공식 복리후생 페이지 항목명 그대로 — 설치 사업장·정원·대상 연령 미기재)', 32),
   (@comp_id, 'parenting', '모성보호 Cafe·임신직원 패키지', NULL, 'family',
-   'est', NULL, TRUE, '모성보호 Cafe 운영 및 임신직원 맘’s 패키지 제공 (공식 복리후생 페이지 모성보호지원 항목명 그대로 — 시설 위치·패키지 구성·지급 시점 미기재)', 33),
+   'est', NULL, TRUE, '모성보호 Cafe 운영 및 임신직원 맘’s 패키지 제공 (공식 복리후생 페이지 항목명 그대로 — 시설 위치·패키지 구성·지급 시점 미기재)', 33),
 
   -- ── 여가·라이프 (leisure) — 원문 02 건강문화지원 ──
   (@comp_id, 'resort', '휴양소', NULL, 'leisure',

@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -38,7 +39,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '슈퍼맘 서포트', NULL, 'family',
-   'est', NULL, TRUE, '임신/출산 선물, 근무시간 변경, 임산부 정기검진 유급휴가, 난임휴가, 육아휴직', 50),
+   'est', NULL, TRUE, '임신·출산 선물과 근무시간 변경', 50),
   (@comp_id, 'childcare', '어린이집(2개소)', NULL, 'family',
    'est', NULL, TRUE, '늘예솔 어린이집 및 오리뜰 2곳 지원', 51),
   (@comp_id, 'event', '경조사/생일/명절 지원', NULL, 'family',
