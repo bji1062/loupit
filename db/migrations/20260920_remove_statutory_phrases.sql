@@ -40,6 +40,69 @@
 -- 순서: 정적 재생성(release)보다 **먼저**. DB 가 옛 문안인 채로 재생성하면 법정 문구가
 --   그대로 페이지에 다시 구워진다.
 -- 행 수: 삭제·추가가 없으므로 SD-4 핀 2452 는 그대로다.
+
+-- ══════════════════════════════════════════════════════════════════════
+-- 추가 (사용자 결정 2026-09-20): 시간 단위 휴가는 복지다
+--   법정 연차를 쓰더라도 시간·2시간 단위로 쪼개 쓰게 해주는 회사는 소수다 — 제도 자체가
+--   회사 간 차이이므로 복지로 센다. 「반반차」는 내부 낱말이라 화면에는 2시간으로 적는다.
+--   회사가 별도 단위를 밝혔으면 그 단위를 따른다(CJ올리브영 1시간 · 포스코퓨처엠 4시간 이내).
+--   이 결정으로 legal_rows.json 등록도 3행 해제된다(16 → 13행) — 배지·집계는 생성기 몫이라
+--   이 마이그레이션은 문안만 맞춘다. 반대로 「연차」·「반차」는 법정이라 문안에서 뺀다.
+-- ══════════════════════════════════════════════════════════════════════
+
+-- 동진쎄미켐 `leave_general` — 시간 단위 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'dongjin_semichem');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_NM = '2시간 단위 휴가',
+       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용 — 분할 한도·사용 조건 미기재'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
+   AND BENEFIT_NM = '연차·반차·반반차'
+   AND QUAL_DESC_CTNT = '연차, 반차, 반반차 제도 운영 — 분할 한도·사용 조건 미기재';
+
+-- 레인보우로보틱스 `leave_general` — 시간 단위 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'rainbow_robotics');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_NM = '2시간 단위 휴가',
+       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
+   AND BENEFIT_NM = '연차/반차/반반차'
+   AND QUAL_DESC_CTNT = '연차, 반차, 반반차';
+
+-- 실리콘투 `leave_general` — 시간 단위 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'silicon2');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_NM = '2시간 단위 휴가',
+       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
+   AND BENEFIT_NM = '연차/반차/반반차'
+   AND QUAL_DESC_CTNT = '연차, 반차, 반반차 사용';
+
+-- CJ올리브영 `leave_general` — 시간 단위 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'cj_oliveyoung');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_NM = '1시간 단위 휴가',
+       QUAL_DESC_CTNT = '1시간 단위 휴가 사용'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
+   AND BENEFIT_NM = '시간 연차'
+   AND QUAL_DESC_CTNT = '1시간 단위 연차 사용';
+
+-- 제주반도체 `leave_general` — 시간 단위 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'jeju_semi');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_NM = '2시간 단위 휴가',
+       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용과 탄력적인 휴가제도 운용 (공식 채용 공고 조직 문화 항목·공식 인사/복지제도 페이지 — 부여 일수·사용 절차 미기재)'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
+   AND BENEFIT_NM = '반차·반반차 휴가'
+   AND QUAL_DESC_CTNT = '공식 채용 공고 조직 문화 항목의 반차·반반차 단위 분할 사용, 공식 인사/복지제도 페이지의 탄력적인 휴가제도 운용 — 부여 일수·사용 절차 미기재';
+
+-- 포스코퓨처엠 `leave_general` — 시간 단위 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'posco_futurem');
+UPDATE TCOMPANY_BENEFIT
+   SET QUAL_DESC_CTNT = '권장휴가와 저축휴가 제도, 4시간 이내 시간 단위 휴가 사용, 연차 조기사용 제도 운영 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 권장휴가 일수·저축 한도 미기재)'
+ WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
+   AND BENEFIT_NM = '권장휴가·저축휴가·연차 조기사용'
+   AND QUAL_DESC_CTNT = '권장휴가와 저축휴가 제도, 연차 조기사용 제도 운영 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 권장휴가 일수·저축 한도 미기재)';
+
 -- ══════════════════════════════════════════════════════════════════════
 
 -- 0) 점검(읽기 전용) — 대상 52행이 옛 문안 그대로인지 + 편집 이력 참조 수

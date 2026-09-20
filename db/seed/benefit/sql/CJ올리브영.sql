@@ -31,8 +31,8 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', 'CREATIVE WEEK(창의휴가)', NULL, 'time_off',
    'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가', 20),
-  (@comp_id, 'leave_general', '시간 연차', NULL, 'time_off',
-   'est', NULL, TRUE, '1시간 단위 연차 사용', 23),
+  (@comp_id, 'leave_general', '1시간 단위 휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '1시간 단위 휴가 사용', 23),
   -- ── 보상 (compensation) ──
   (@comp_id, 'excellence_award', '인재추천포상금', 500, 'compensation',
    'est', '인재 추천 포상금 300~500만원. 표기값은 상한', FALSE, NULL, 81),
