@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- 참고: 원본 txt 내용은 CJ올리브네트웍스 (CJ 계열사)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('cj', 'CJ올리브네트웍스',
@@ -39,7 +40,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '임신/출산/육아', NULL, 'family',
-   'est', NULL, TRUE, '임신축하선물/택시쿠폰, 태아검진휴가, 출산선물, 초등입학 돌봄휴가 최대4주, 난임시술비, 장애자녀 양육비', 50),
+   'est', NULL, TRUE, '임신 축하 선물과 택시 쿠폰, 출산 선물, 초등 입학 자녀 돌봄휴가 최대 4주, 난임 시술비, 장애 자녀 양육비 지원', 50),
   (@comp_id, 'childcare', 'CJ키즈빌', NULL, 'family',
    'est', NULL, TRUE, '사내 어린이집 CJ키즈빌 운영', 51),
   (@comp_id, 'child_edu', '자녀학자금', 200, 'family',

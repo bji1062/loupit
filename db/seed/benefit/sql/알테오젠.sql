@@ -16,6 +16,7 @@
 --       코퍼스 전체가 단체상해보험 의미)·DC형 퇴직연금(pension_support 는 개인연금 지원 의미)
 --       2행 제외. 창립기념 행사는 company_event 로 통합(배치 공용 행사 코드).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -47,8 +48,8 @@ VALUES
    'est', NULL, TRUE, '상여금 지급', 12),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '연차·경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '연차 및 경조휴가 제공', 20),
+  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '경조휴가 제공', 20),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', NULL, 'health',

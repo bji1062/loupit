@@ -34,6 +34,7 @@
 --       이 세 필드는 API 응답과 비교 엔진으로 그대로 나간다. SORT 60 은 원문이
 --       「지역전문가, MBA, 석사 학위」 한 라벨이라 mba 1행으로 유지한다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30·34 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -82,7 +83,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '출산 축하금·임산부 지원', NULL, 'family',
-   'est', NULL, TRUE, '생활안정 지원의 출산 축하금과 모성보호제도의 임산부 물품지원 (공식 페이지 — 축하금 액수·지원 품목 미기재)', 30),
+   'est', NULL, TRUE, '생활안정 지원 항목의 출산 축하금과 임산부 물품 지원 (공식 페이지 — 축하금 액수·지원 품목 미기재)', 30),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '생활안정 지원 항목의 경조사 지원 (공식 페이지 — 경조금·경조휴가 구분과 금액 미기재)', 31),
   (@comp_id, 'childcare', '사내 어린이집', NULL, 'family',
@@ -90,7 +91,7 @@ VALUES
   (@comp_id, 'child_edu', '자녀 학자금·취학 축하 선물', NULL, 'family',
    'est', NULL, TRUE, '취학 자녀 축하 선물과 자녀 학자금(유치원·중/고/대학교·해외대 포함) 지원 (공식 페이지 — 지원 한도·자녀 수 제한·금액 미기재)', 33),
   (@comp_id, 'fertility_support', '난임 치료비 지원', NULL, 'family',
-   'est', NULL, TRUE, '모성보호제도의 난임 치료비 지원 (공식 페이지 — 지원 한도·횟수 미기재)', 34),
+   'est', NULL, TRUE, '난임 치료비 지원 (공식 페이지 — 지원 한도·횟수 미기재)', 34),
 
   -- ── 휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '장기근속 휴가', NULL, 'time_off',

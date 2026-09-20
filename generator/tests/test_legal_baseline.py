@@ -202,8 +202,9 @@ def test_legal_rows_all_exist_in_seed_sql():
 
 def test_legal_rows_cover_the_audited_companies():
     rows = legal.legal_rows()
-    assert len(rows) == 16
-    assert len({r["comp_eng_nm"] for r in rows}) == 13
+    # 2026-09-20 법정 문구 전수 정리에서 2행 추가(CJ올리브영 시간 연차 · 제주반도체 반차·반반차)
+    assert len(rows) == 18
+    assert len({r["comp_eng_nm"] for r in rows}) == 15
     for r in rows:
         assert r["desc_at_review"] and r["why"], f"{r['comp_eng_nm']} 판정 근거가 비었다"
 

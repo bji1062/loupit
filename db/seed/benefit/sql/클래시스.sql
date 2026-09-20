@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -33,8 +34,8 @@ VALUES
    'est', NULL, TRUE, '노트북 및 사무용품 지급', 20),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '연차/보건휴가/경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '연차, 보건휴가, 경조휴가, 근로자의 날 휴무', 30),
+  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '경조휴가 제공', 30),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진 지원', 100, 'health',

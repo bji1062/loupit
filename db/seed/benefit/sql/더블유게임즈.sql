@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50·32 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -46,15 +47,15 @@ VALUES
   (@comp_id, 'birthday_leave', '생일 유급휴가+축하금', 30, 'time_off',
    'est', '생일자 유급 휴가 + 생일축하금 30만원', FALSE, NULL, 31),
   (@comp_id, 'leave_general', '연말/이사 유급휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '연말 1일 유급휴가, 이사 유급휴가, 백신 유급휴가, 잔여연차 수당 정산', 32),
+   'est', NULL, TRUE, '연말 1일 유급휴가, 이사 유급휴가, 백신 유급휴가', 32),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'fitness', '사내 헬스키퍼/헬스존', NULL, 'health',
    'est', NULL, TRUE, '사내 헬스키퍼 운영, 사내 헬스존 운영', 40),
 
   -- ── 가족·돌봄 (family) ──
-  (@comp_id, 'parenting', '출산/육아 지원', NULL, 'family',
-   'est', NULL, TRUE, '경조금 50만원(다태아 75만원), 출산휴가 90일(다태아 120일), 임산부 2시간 단축, 육아휴직 1년', 50),
+  (@comp_id, 'parenting', '출산 경조금', NULL, 'family',
+   'est', NULL, TRUE, '출산 경조금 50만원, 다태아 75만원 지급', 50),
   (@comp_id, 'event', '가족 기념일 선물/경조사', NULL, 'family',
    'est', NULL, TRUE, '가족 기념일 꽃다발/케이크, 다양한 경조사 지원', 51),
 

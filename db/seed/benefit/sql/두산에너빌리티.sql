@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('doosan_enerbility', '두산에너빌리티',
@@ -40,7 +41,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '임신/출산/육아', NULL, 'family',
-   'est', NULL, TRUE, '출산축하 신생아용품, 출산휴가/육아휴직/근로시간단축/가족돌봄 휴직, 난임시술비 지원', 50),
+   'est', NULL, TRUE, '출산 축하 신생아용품과 난임 시술비 지원', 50),
   (@comp_id, 'childcare', '푸르니 어린이집', NULL, 'family',
    'est', NULL, TRUE, '최고수준 푸르니 어린이집, 연령별 특성화 보육프로그램', 51),
   (@comp_id, 'child_edu', '자녀학자금', 300, 'family',

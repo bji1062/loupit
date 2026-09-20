@@ -4,6 +4,7 @@
 -- URL: https://careers.mobis.co.kr
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 51·30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -32,7 +33,7 @@ VALUES
   -- ── 근무환경 (work_env) ──
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '연월차 및 기타 휴가', NULL, 'time_off',
+  (@comp_id, 'leave_general', '월차·장기근속·하계·경조 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '법정 연차 외 월차, 장기근속휴가, 하계휴가, 경조휴가 제공', 30),
   (@comp_id, 'refresh_leave', '장기근속자 포상', NULL, 'time_off',
    'est', NULL, TRUE, '근속연수에 따라 휴가, 해외여행 등 포상 제공 및 퇴직 지원', 31),
@@ -47,7 +48,7 @@ VALUES
   (@comp_id, 'child_edu', '학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '유아/고등/대학 학자금 지원', 50),
   (@comp_id, 'parenting', '임신/출산/육아 지원', NULL, 'family',
-   'est', NULL, TRUE, '임신기/육아기 근로시간 단축, 출산 전후 휴가, 육아휴직 자녀당 최대 2년, 가족돌봄휴직 최대 90일, 상병휴직 지원', 51),
+   'est', NULL, TRUE, '육아휴직 자녀당 최대 2년, 상병휴직 지원', 51),
   (@comp_id, 'event', '경조사 지원', 100, 'family',
    'est', '휴가/지원금 (추정)', FALSE, NULL, 52),
 

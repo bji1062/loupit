@@ -8,6 +8,7 @@
 --       계열사별로 실제 갈리는 축은 ①금액·한도 ②부문/계열사 전용 제도 두 가지뿐이다.
 -- 자사 채용 Benefit 페이지 기준.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 40·20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('cj_oliveyoung', 'CJ올리브영',
@@ -29,7 +30,7 @@ VALUES
    'est', NULL, TRUE, '전국 거점 공유오피스 — 거점 목록은 계열사·시점별로 다름', 11),
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', 'CREATIVE WEEK(창의휴가)', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가, 연차 결합 시 최대 4주', 20),
+   'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가', 20),
   (@comp_id, 'leave_general', '시간 연차', NULL, 'time_off',
    'est', NULL, TRUE, '1시간 단위 연차 사용', 23),
   -- ── 보상 (compensation) ──
@@ -44,7 +45,7 @@ VALUES
    'est', NULL, TRUE, '상담 비용 지원', 32),
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '임신·출산·육아', NULL, 'family',
-   'est', NULL, TRUE, '육아휴직 최대 2년, 가족돌봄 연 최대 10일 + 최대 90일, 수험생 자녀 선물', 40),
+   'est', NULL, TRUE, '육아휴직 최대 2년, 수험생 자녀 선물', 40),
   (@comp_id, 'childcare', 'CJ키즈빌(직장 어린이집)', NULL, 'family',
    'est', NULL, TRUE, '사내 어린이집 CJ키즈빌 운영', 41),
   (@comp_id, 'child_edu', '자녀 학자금', NULL, 'family',

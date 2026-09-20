@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 53 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -52,7 +53,7 @@ VALUES
   (@comp_id, 'child_edu', '자녀 학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '자녀 학자금 지원', 52),
   (@comp_id, 'parenting', '출산/육아 정책', NULL, 'family',
-   'est', NULL, TRUE, '여성 자동육아휴직(2년), 남성 육아휴직 의무화', 53),
+   'est', NULL, TRUE, '여성 자동 육아휴직 2년, 남성 육아휴직 의무 사용', 53),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '경조사 격려 상여금', 54),
 

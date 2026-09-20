@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -33,8 +34,8 @@ VALUES
    'est', NULL, TRUE, '코어타임 10시~15시, 주 40~52시간 범위 내 자율 선택 근무', 10),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '1시간 단위 연차 + 창립기념일', NULL, 'time_off',
-   'est', NULL, TRUE, '1시간 단위 연차 사용, 창립기념일 휴무, 크리스마스 다음날 유급휴일', 30),
+  (@comp_id, 'leave_general', '창립기념일·크리스마스 다음날 휴무', NULL, 'time_off',
+   'est', NULL, TRUE, '창립기념일 휴무, 크리스마스 다음날 유급휴일', 30),
   (@comp_id, 'refresh_leave', '리커버리데이', NULL, 'time_off',
    'est', NULL, TRUE, '한 달에 한 번 재충전 시간 제공', 31),
   (@comp_id, 'long_service_leave', '장기근속 휴가', NULL, 'time_off',

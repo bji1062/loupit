@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -33,7 +34,7 @@ VALUES
    'est', NULL, TRUE, '지방지점 합숙소 운영', 20),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '연차휴가 (법정 상회)', NULL, 'time_off',
+  (@comp_id, 'leave_general', '연차휴가 22일(최대 32일)', NULL, 'time_off',
    'est', NULL, TRUE, '연간 22일(최대 32일) 연차휴가 부여, 자유로운 휴가사용 문화', 30),
   (@comp_id, 'long_service_leave', '장기근속 특별휴가', NULL, 'time_off',
    'est', NULL, TRUE, '장기근속자 특별휴가, 정년퇴직자 6개월 공로연수휴가', 31),

@@ -4,6 +4,7 @@
 -- URL: https://www.coway.com/recruit
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 51 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -44,7 +45,7 @@ VALUES
   (@comp_id, 'child_edu', '자녀 학자금', NULL, 'family',
    'est', NULL, TRUE, '자녀 학자금 지원', 50),
   (@comp_id, 'parenting', '출산/육아 지원', NULL, 'family',
-   'est', NULL, TRUE, '자녀 입학 휴가, 난임 휴직, 배우자 출산 휴가, 남녀 구분 없는 육아휴직 제도 (여성가족부 가족친화인증 2012년~현재)', 51),
+   'est', NULL, TRUE, '자녀 입학 휴가와 난임 휴직 운영 (여성가족부 가족친화인증 2012년부터 유지)', 51),
   (@comp_id, 'event', '경조사 지원', 100, 'family',
    'est', '(추정)', FALSE, NULL, 52),
 

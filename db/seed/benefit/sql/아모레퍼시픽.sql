@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 52 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -54,7 +55,7 @@ VALUES
   (@comp_id, 'child_edu', '자녀 학자금/유치원 보조금', 100, 'family',
    'est', '유치원 보조금 + 자녀 학자금 지원 (추정)', FALSE, NULL, 51),
   (@comp_id, 'parenting', '예비맘 배려', NULL, 'family',
-   'est', NULL, TRUE, '예비맘 단축근무, 임산부 전용 의자/발받침대/담요, 태아검진 외출/조퇴 허용', 52),
+   'est', NULL, TRUE, '임산부 전용 의자와 발받침대, 담요 제공', 52),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '평생 맞춤형 학습 지원', NULL, 'growth',

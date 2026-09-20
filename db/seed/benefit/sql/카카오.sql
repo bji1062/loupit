@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50·60 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -34,13 +35,13 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '출산/육아 지원', NULL, 'family',
-   'est', NULL, TRUE, '출산 선물, 배우자 유사산 휴가, 임신기간/육아기 단축근무', 50),
+   'est', NULL, TRUE, '출산 선물 지급', 50),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '결혼/환갑/출산/조사 경조휴가, 경조금, 경조화환, 장례용품 지원', 51),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '교육 지원', NULL, 'growth',
-   'est', NULL, TRUE, '입문교육, 직책자 리더십, 직무역량, 공통역량, 법정의무교육', 60),
+   'est', NULL, TRUE, '입문교육, 직책자 리더십, 직무역량, 공통역량 과정 운영', 60),
   (@comp_id, 'self_development', '자기계발비', NULL, 'growth',
    'est', NULL, TRUE, '자기계발비 지원, 도서 구입 지원', 61),
 
