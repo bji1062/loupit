@@ -66,8 +66,8 @@ VALUES
   -- ── 휴가 (time_off) — 정본 카드 3 「하계휴가 & 유연한 연차」 ──
   (@comp_id, 'summer_leave', '하계휴가', NULL, 'time_off',
    'est', NULL, TRUE, '연차와 별도로 운영하는 하계휴가 — 부여 일수·사용 시기 미기재', 20),
-  (@comp_id, 'leave_general', '2시간 단위 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '2시간 단위 휴가 분할 사용 — 분할 한도·사용 조건 미기재', 21),
+  (@comp_id, 'leave_general', '연차·반차·반반차', NULL, 'time_off',
+   'est', NULL, TRUE, '연차, 반차, 반반차 제도 운영 — 분할 한도·사용 조건 미기재', 21),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양시설(콘도)', NULL, 'leisure',

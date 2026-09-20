@@ -50,33 +50,6 @@
 --   이 마이그레이션은 문안만 맞춘다. 반대로 「연차」·「반차」는 법정이라 문안에서 뺀다.
 -- ══════════════════════════════════════════════════════════════════════
 
--- 동진쎄미켐 `leave_general` — 시간 단위 휴가
-SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'dongjin_semichem');
-UPDATE TCOMPANY_BENEFIT
-   SET BENEFIT_NM = '2시간 단위 휴가',
-       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용 — 분할 한도·사용 조건 미기재'
- WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
-   AND BENEFIT_NM = '연차·반차·반반차'
-   AND QUAL_DESC_CTNT = '연차, 반차, 반반차 제도 운영 — 분할 한도·사용 조건 미기재';
-
--- 레인보우로보틱스 `leave_general` — 시간 단위 휴가
-SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'rainbow_robotics');
-UPDATE TCOMPANY_BENEFIT
-   SET BENEFIT_NM = '2시간 단위 휴가',
-       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용'
- WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
-   AND BENEFIT_NM = '연차/반차/반반차'
-   AND QUAL_DESC_CTNT = '연차, 반차, 반반차';
-
--- 실리콘투 `leave_general` — 시간 단위 휴가
-SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'silicon2');
-UPDATE TCOMPANY_BENEFIT
-   SET BENEFIT_NM = '2시간 단위 휴가',
-       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용'
- WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
-   AND BENEFIT_NM = '연차/반차/반반차'
-   AND QUAL_DESC_CTNT = '연차, 반차, 반반차 사용';
-
 -- CJ올리브영 `leave_general` — 시간 단위 휴가
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'cj_oliveyoung');
 UPDATE TCOMPANY_BENEFIT
@@ -85,15 +58,6 @@ UPDATE TCOMPANY_BENEFIT
  WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
    AND BENEFIT_NM = '시간 연차'
    AND QUAL_DESC_CTNT = '1시간 단위 연차 사용';
-
--- 제주반도체 `leave_general` — 시간 단위 휴가
-SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'jeju_semi');
-UPDATE TCOMPANY_BENEFIT
-   SET BENEFIT_NM = '2시간 단위 휴가',
-       QUAL_DESC_CTNT = '2시간 단위 휴가 분할 사용과 탄력적인 휴가제도 운용 (공식 채용 공고 조직 문화 항목·공식 인사/복지제도 페이지 — 부여 일수·사용 절차 미기재)'
- WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
-   AND BENEFIT_NM = '반차·반반차 휴가'
-   AND QUAL_DESC_CTNT = '공식 채용 공고 조직 문화 항목의 반차·반반차 단위 분할 사용, 공식 인사/복지제도 페이지의 탄력적인 휴가제도 운용 — 부여 일수·사용 절차 미기재';
 
 -- 포스코퓨처엠 `leave_general` — 시간 단위 휴가
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'posco_futurem');
