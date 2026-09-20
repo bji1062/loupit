@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
 
 
-# ── SD-4: 복지 총행 2452(2233 + 웨이브4 219, 2026-09-22), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2452(2233 + 웨이브4 219, 2026-09-20), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -63,7 +63,7 @@ def test_SD4_benefit_total_row_count(seeded_db):
           − 데이터 정리 1차 합치기 2행(2026-09-18) = 2233
           아이센스 childcare 「보육수당」·child_edu 「자녀 입학축하금」을 같은 회사 parenting 에 합쳤다
           (재코딩 15행·정성 전환 2행은 행 수 불변) — db/migrations/20260918_recode_misclassified_rows.sql
-          + 확장 웨이브 4 신규 12개사 +219행(2026-09-22) = 2452
+          + 확장 웨이브 4 신규 12개사 +219행(2026-09-20) = 2452
           피에스케이 26 · GC녹십자 25 · 풍산 24 · HL만도 23 · 이마트 23 · JYP Ent. 20 · 제주반도체 17 ·
           농심 16 · 현대백화점 14 · 티에스이 12 · 파두 10 · 동국제약 9
           — 수집 223 − 삭제·병합 9 + 추가 5. 검증(Fable ×9 · Opus ×3, REFUTED 0)·감사(Opus, BLOCK 5)

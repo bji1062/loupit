@@ -185,7 +185,7 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 확장 웨이브 3(2026-09-14, 12) — 신규 등록, 전부 실 URL 헤더
         "posco_intl", "posco_futurem", "kiwoom", "samsung_sec", "sk_biopharm", "taihan",
         "stpharm", "robotis", "lunit", "seegene", "douzone", "gaon_cable",
-        # 확장 웨이브 4(2026-09-22, 12) — 신규 등록, 전부 실 URL 헤더
+        # 확장 웨이브 4(2026-09-20, 12) — 신규 등록, 전부 실 URL 헤더
         "gc_biopharma", "hl_mando", "jyp", "nongshim", "dongkook_pharm", "emart",
         "jeju_semi", "tse", "fadu", "poongsan", "psk", "hyundai_dept",
     }

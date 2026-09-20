@@ -426,7 +426,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'gaoncable.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gaon_cable';
 
--- ── 확장 웨이브 4 (2026-09-22 서빙 반영, 12개사 중 10사) ────────────────────
+-- ── 확장 웨이브 4 (2026-09-20 서빙 반영, 12개사 중 10사) ────────────────────
 -- 미등록 2사: GC녹십자(6페이지 전수 mailto 0건) · 농심(페이지가 이메일주소 무단수집 거부로 주소 미게재)
 --             — 관측 0건이라 추정 등록하지 않는다(수동 승인 폴백).
 -- ⚠ 웹 도메인과 메일 도메인이 다른 회사 3곳: 파두 fadu.io → fadutec.com ·

@@ -131,7 +131,7 @@ WAVE3_ALIASES: dict[str, list[str]] = {
     "douzone": ["더존비즈온", "Douzone Bizon"],
     "gaon_cable": ["가온전선", "Gaon Cable"],
 }
-# 확장 웨이브 4(2026-09-22 서빙 반영) — 구명·영문·약칭만. 지주·형제 법인 이름은 절대 금지.
+# 확장 웨이브 4(2026-09-20 서빙 반영) — 구명·영문·약칭만. 지주·형제 법인 이름은 절대 금지.
 WAVE4_ALIASES: dict[str, list[str]] = {
     "gc_biopharma": ["녹십자", "GC Biopharma", "지씨녹십자"],  # DART 정식명이 녹십자 — 빠지면 검색 0건
     "hl_mando": ["만도", "Mando", "HL Mando"],
