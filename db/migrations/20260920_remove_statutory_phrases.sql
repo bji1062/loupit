@@ -41,6 +41,39 @@
 --   그대로 페이지에 다시 구워진다.
 -- 행 수: 삭제·추가가 없으므로 SD-4 핀 2452 는 그대로다.
 
+
+START TRANSACTION;
+
+
+-- ══════════════════════════════════════════════════════════════════════
+
+-- 0) 점검(읽기 전용) — 대상 52행이 옛 문안 그대로인지 + 편집 이력 참조 수
+SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.SORT_ORDER_NO, b.BADGE_CD,
+       (SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG l WHERE l.BENEFIT_ID = b.BENEFIT_ID) AS EDIT_LOGS
+  FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
+ WHERE (c.COMP_ENG_NM, b.BENEFIT_CD) IN (
+        ('alteogen', 'leave_general'), ('amorepacific', 'parenting'), ('apr', 'leave_general'),
+        ('caregen', 'leave_general'), ('cj', 'parenting'), ('cj_cgv', 'long_service_leave'),
+        ('cj_cgv', 'parenting'), ('cj_enm_com', 'long_service_leave'), ('cj_enm_com', 'parenting'),
+        ('cj_enm_ent', 'long_service_leave'), ('cj_enm_ent', 'parenting'),
+        ('cj_freshway', 'long_service_leave'), ('cj_freshway', 'parenting'),
+        ('cj_logistics', 'parenting'), ('cj_oliveyoung', 'long_service_leave'),
+        ('cj_oliveyoung', 'parenting'), ('classys', 'leave_general'), ('com2us', 'leave_general'),
+        ('coway', 'parenting'), ('daeduck', 'leave_general'), ('dongjin_semichem', 'summer_leave'),
+        ('doosan_enerbility', 'parenting'), ('hanwha_life', 'childcare'), ('hanwha_life', 'parenting'),
+        ('hyundai_autoever', 'refresh_leave'), ('hyundai_mobis', 'leave_general'),
+        ('hyundai_mobis', 'parenting'), ('hyundai_motor', 'parenting'), ('isens', 'fertility_support'),
+        ('isens', 'parenting'), ('kakao', 'edu_support'), ('kakao', 'parenting'),
+        ('kakao_games', 'parenting'), ('lig_nex1', 'childcare'), ('lotte_chem', 'parenting'),
+        ('naver', 'leave_general'), ('naver', 'parenting'), ('netmarble', 'parenting'),
+        ('olix', 'leave_general'), ('posco_futurem', 'leave_general'), ('posco_intl', 'parenting'),
+        ('remed', 'leave_general'), ('samsung_fire', 'fertility_support'),
+        ('samsung_fire', 'parenting'), ('samsung_heavy', 'parenting'), ('sk_hynix', 'parenting'),
+        ('sk_innovation', 'leave_general'), ('skt', 'parenting'), ('voronoi', 'leave_general'),
+        ('wgames', 'leave_general'), ('wgames', 'parenting'), ('yuhan', 'leave_general'))
+ ORDER BY c.COMP_ENG_NM, b.SORT_ORDER_NO;
+
+
 -- ══════════════════════════════════════════════════════════════════════
 -- 추가 (사용자 결정 2026-09-20): 시간 단위 휴가는 복지다
 --   법정 연차를 쓰더라도 시간·2시간 단위로 쪼개 쓰게 해주는 회사는 소수다 — 제도 자체가
@@ -102,36 +135,6 @@ UPDATE TCOMPANY_BENEFIT
  WHERE COMP_ID = @c AND BENEFIT_CD = 'leave_general'
    AND BENEFIT_NM = '권장휴가·저축휴가·연차 조기사용'
    AND QUAL_DESC_CTNT = '권장휴가와 저축휴가 제도, 연차 조기사용 제도 운영 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 권장휴가 일수·저축 한도 미기재)';
-
--- ══════════════════════════════════════════════════════════════════════
-
--- 0) 점검(읽기 전용) — 대상 52행이 옛 문안 그대로인지 + 편집 이력 참조 수
-SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.SORT_ORDER_NO, b.BADGE_CD,
-       (SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG l WHERE l.BENEFIT_ID = b.BENEFIT_ID) AS EDIT_LOGS
-  FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
- WHERE (c.COMP_ENG_NM, b.BENEFIT_CD) IN (
-        ('alteogen', 'leave_general'), ('amorepacific', 'parenting'), ('apr', 'leave_general'),
-        ('caregen', 'leave_general'), ('cj', 'parenting'), ('cj_cgv', 'long_service_leave'),
-        ('cj_cgv', 'parenting'), ('cj_enm_com', 'long_service_leave'), ('cj_enm_com', 'parenting'),
-        ('cj_enm_ent', 'long_service_leave'), ('cj_enm_ent', 'parenting'),
-        ('cj_freshway', 'long_service_leave'), ('cj_freshway', 'parenting'),
-        ('cj_logistics', 'parenting'), ('cj_oliveyoung', 'long_service_leave'),
-        ('cj_oliveyoung', 'parenting'), ('classys', 'leave_general'), ('com2us', 'leave_general'),
-        ('coway', 'parenting'), ('daeduck', 'leave_general'), ('dongjin_semichem', 'summer_leave'),
-        ('doosan_enerbility', 'parenting'), ('hanwha_life', 'childcare'), ('hanwha_life', 'parenting'),
-        ('hyundai_autoever', 'refresh_leave'), ('hyundai_mobis', 'leave_general'),
-        ('hyundai_mobis', 'parenting'), ('hyundai_motor', 'parenting'), ('isens', 'fertility_support'),
-        ('isens', 'parenting'), ('kakao', 'edu_support'), ('kakao', 'parenting'),
-        ('kakao_games', 'parenting'), ('lig_nex1', 'childcare'), ('lotte_chem', 'parenting'),
-        ('naver', 'leave_general'), ('naver', 'parenting'), ('netmarble', 'parenting'),
-        ('olix', 'leave_general'), ('posco_futurem', 'leave_general'), ('posco_intl', 'parenting'),
-        ('remed', 'leave_general'), ('samsung_fire', 'fertility_support'),
-        ('samsung_fire', 'parenting'), ('samsung_heavy', 'parenting'), ('sk_hynix', 'parenting'),
-        ('sk_innovation', 'leave_general'), ('skt', 'parenting'), ('voronoi', 'leave_general'),
-        ('wgames', 'leave_general'), ('wgames', 'parenting'), ('yuhan', 'leave_general'))
- ORDER BY c.COMP_ENG_NM, b.SORT_ORDER_NO;
-
-START TRANSACTION;
 
 -- ── 레인 A — 육아·출산·난임 29행 ──────────────────────────────
 
