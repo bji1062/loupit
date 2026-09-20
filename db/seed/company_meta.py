@@ -131,6 +131,22 @@ WAVE3_ALIASES: dict[str, list[str]] = {
     "douzone": ["더존비즈온", "Douzone Bizon"],
     "gaon_cable": ["가온전선", "Gaon Cable"],
 }
+# 확장 웨이브 4(2026-09-20 서빙 반영) — 구명·영문·약칭만. 지주·형제 법인 이름은 절대 금지.
+WAVE4_ALIASES: dict[str, list[str]] = {
+    "gc_biopharma": ["녹십자", "GC Biopharma", "지씨녹십자"],  # DART 정식명이 녹십자 — 빠지면 검색 0건
+    "hl_mando": ["만도", "Mando", "HL Mando"],
+    "jyp": ["JYP", "JYP엔터테인먼트", "제이와이피"],
+    "nongshim": ["Nongshim"],
+    "dongkook_pharm": ["Dongkook Pharmaceutical"],
+    "emart": ["Emart", "E-Mart"],
+    "jeju_semi": ["Jeju Semiconductor", "EMLSI"],
+    "tse": ["TSE"],
+    "fadu": ["FADU"],
+    "poongsan": ["Poongsan"],
+    "psk": ["PSK", "PSK Inc"],
+    "hyundai_dept": ["The Hyundai", "현대百"],
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -294,6 +310,10 @@ def build_company_meta() -> dict:
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
     for eng, extra_aliases in WAVE3_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE4_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

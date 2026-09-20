@@ -159,7 +159,7 @@ def test_SI7_no_duplicate_alias_per_company(seeded_db):
 # ── SI-8: 200-seed 미등록 — 회사 수 = 95 (≠ 200) ──
 def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
-    assert count == 138  # 126 + 확장 웨이브 3 12개사(2026-09-14)
+    assert count == 150  # 138 + 확장 웨이브 4 12개사(2026-09-20)
     assert count != 200
 
 

@@ -9,6 +9,23 @@
   ],
   "waves": [
     {
+      "date": "2026-09-20",
+      "companies": [
+        "gc_biopharma",
+        "hl_mando",
+        "jyp",
+        "nongshim",
+        "dongkook_pharm",
+        "emart",
+        "jeju_semi",
+        "tse",
+        "fadu",
+        "poongsan",
+        "psk",
+        "hyundai_dept"
+      ]
+    },
+    {
       "date": "2026-09-15",
       "label": "회사 확장 웨이브 3",
       "companies": [
