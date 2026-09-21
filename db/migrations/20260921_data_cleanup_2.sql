@@ -881,7 +881,7 @@ UPDATE TCOMPANY_BENEFIT SET QUAL_DESC_CTNT = '통신비 지원 (2025 지속가�
    AND BADGE_CD = 'est'
    AND SORT_ORDER_NO = 14;
 -- welfare_fund_loan (desc)
-UPDATE TCOMPANY_BENEFIT SET QUAL_DESC_CTNT = '사내 근로복지기금 운영 (공식 채용정보 복지제도 페이지 회사생활 항목은 「자금 지원」으로, 2025 지속가능경영보고서 66쪽 기타 지원 항목은 「복지기금 대출」로 기재 — 대출 한도·이율·대상 미기재)'
+UPDATE TCOMPANY_BENEFIT SET QUAL_DESC_CTNT = '사내 근로복지기금 대출 (공식 채용정보 복지제도 페이지 회사생활 항목은 「자금 지원」으로, 2025 지속가능경영보고서 66쪽 기타 지원 항목은 「복지기금 대출」로 기재 — 대출 한도·이율·대상 미기재)'
  WHERE COMP_ID = @c
    AND BENEFIT_CD = 'welfare_fund_loan'
    AND BENEFIT_NM = '사내 근로복지기금 대출'
