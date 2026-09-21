@@ -37,6 +37,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 70 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 71·80 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('posco_futurem', '포스코퓨처엠',
@@ -118,11 +119,11 @@ VALUES
   (@comp_id, 'leave_general', '권장휴가·저축휴가·연차 조기사용', NULL, 'time_off',
    'est', NULL, TRUE, '권장휴가와 저축휴가 제도, 4시간 이내 시간 단위 휴가 사용, 연차 조기사용 제도 운영 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 권장휴가 일수·저축 한도 미기재)', 70),
   (@comp_id, 'long_service_leave', '근속휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속자를 위한 근속휴가 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 근속 연차 기준·휴가 일수 미기재)', 71),
+   'est', NULL, TRUE, '장기근속자를 위한 근속휴가 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 근속 연수 기준·휴가 일수 미기재)', 71),
 
   -- ── 보상·금전 (compensation) — 복리후생 블록 휴가제도 ──
   (@comp_id, 'long_service_bonus', '장기근속 포상금', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속자를 위한 포상금 지급 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 근속 연차 기준·포상금 액수 미기재)', 80)
+   'est', NULL, TRUE, '장기근속자를 위한 포상금 지급 (공식 인사제도 페이지 복리후생 휴가제도 항목 — 근속 연수 기준·포상금 액수 미기재)', 80)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

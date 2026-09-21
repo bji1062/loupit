@@ -36,6 +36,7 @@
 --       흡수해 두 파일이 갈리는데, 되돌릴 쪽은 모회사다(셀트리온 재수집 때 처리).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 40 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('celltrion_pharm', '셀트리온제약',
@@ -89,7 +90,7 @@ VALUES
 
   -- ── 보상·금전 (compensation) ── 원문 섹션 3 회사생활
   (@comp_id, 'long_service_bonus', '장기근속자 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속자 포상 (공식 복지제도 페이지 회사생활 항목명 그대로 — 영문판이 reward 로 표기해 포상이며 휴가 부여는 언급 없음, 근속 연차·포상 내용·금액 미기재)', 40),
+   'est', NULL, TRUE, '장기근속자 포상 (공식 복지제도 페이지 회사생활 항목명 그대로 — 영문판이 reward 로 표기해 포상이며 휴가 부여는 언급 없음, 근속 연수·포상 내용·금액 미기재)', 40),
 
   -- ── 여가·라이프 (leisure) ── 원문 섹션 4 여가활동
   (@comp_id, 'club', '사내 동호회', NULL, 'leisure',

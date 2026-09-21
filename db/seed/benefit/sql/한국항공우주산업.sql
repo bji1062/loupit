@@ -32,6 +32,7 @@
 --       노출 3필드의 편집 주석 23곳(사진 수록·부연·판단 서술)을 전부 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 51·60 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kai', '한국항공우주산업',
@@ -107,13 +108,13 @@ VALUES
   (@comp_id, 'holiday_gift', '명절 귀성여비·창립기념일 상품권', NULL, 'compensation',
    'est', NULL, TRUE, '설/추석 귀성여비 지원 및 창립기념일 상품권 (복리후생제도 페이지 동기부여 항목 2건). 채용사이트 부가급여 항목에도 명절 귀성여비 — 지급액 미기재', 50),
   (@comp_id, 'long_service_bonus', '근속기념품·축하금', NULL, 'compensation',
-   'est', NULL, TRUE, '근속기념품·축하금 (복리후생제도 페이지 동기부여 항목 「근속기념품/휴가/축하금 지원」) — 근속 연차 기준·금액 미기재', 51),
+   'est', NULL, TRUE, '근속기념품·축하금 (복리후생제도 페이지 동기부여 항목 「근속기념품/휴가/축하금 지원」) — 근속 연수 기준·금액 미기재', 51),
   (@comp_id, 'excellence_award', '자랑스러운 KAI인 상·유공자 포상', NULL, 'compensation',
    'est', NULL, TRUE, '자랑스러운 KAI인 상 수여 (복리후생제도 페이지 동기부여 항목, 시상식 사진 게재). 인사제도 페이지가 모범 및 근무유공자 포상, 해외연수로 설명 — 포상 기준·부상 금액 미기재', 52),
 
   -- ── 휴가·휴직 (time_off) — 원문 동기부여 + 채용사이트 연차와 휴가 ──
   (@comp_id, 'long_service_leave', '근속 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 휴가 (복리후생제도 페이지 동기부여 항목 「근속기념품/휴가/축하금 지원」) — 부여 일수·근속 연차 기준 미기재', 60),
+   'est', NULL, TRUE, '근속 휴가 (복리후생제도 페이지 동기부여 항목 「근속기념품/휴가/축하금 지원」) — 부여 일수·근속 연수 기준 미기재', 60),
   (@comp_id, 'leave_general', '최초 연차 22일', NULL, 'time_off',
    'est', NULL, TRUE, '최초 연차 22일 제공, 하기휴가 5일 별도 (채용사이트 연차와 휴가 항목) — 근속별 가산·사용 조건 미기재', 61),
   (@comp_id, 'summer_leave', '하기휴가', NULL, 'time_off',

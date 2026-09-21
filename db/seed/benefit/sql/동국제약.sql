@@ -42,6 +42,7 @@
 --       n=2). 위 ⚠ 의 welfare_fund_loan 전환 가정은 폐기한다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 10·11·20·21·30·40·41·50·51 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('dongkook_pharm', '동국제약',
@@ -65,31 +66,31 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_fund', '사내 근로복지기금 운영', NULL, 'perks',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 사내 근로복지기금 운영 (기금 지원 내용·대상·한도 미기재)', 10),
+   'est', NULL, TRUE, '사내 근로복지기금 운영 (공식 채용 페이지 복리후생 항목 — 기금 지원 내용·대상·한도 미기재)', 10),
   (@comp_id, 'pension_support', '개인연금보험 가입지원', NULL, 'perks',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 개인연금보험 가입 지원 (회사 부담 비율·지원 금액 미기재)', 11),
+   'est', NULL, TRUE, '개인연금보험 가입 지원 (공식 채용 페이지 복리후생 항목 — 회사 부담 비율·지원 금액 미기재)', 11),
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'event', '경조휴가 및 경조금 지원', NULL, 'family',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 경조휴가와 경조금 지원 (경조사 범위·휴가 일수·지급액 미기재)', 20),
+   'est', NULL, TRUE, '경조휴가와 경조금 지원 (공식 채용 페이지 복리후생 항목 — 경조사 범위·휴가 일수·지급액 미기재)', 20),
   (@comp_id, 'child_edu', '자녀 학자금 지원', NULL, 'family',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 자녀 학자금 지원 (대상 학교급·자녀 수·지원 한도 미기재)', 21),
+   'est', NULL, TRUE, '자녀 학자금 지원 (공식 채용 페이지 복리후생 항목 — 대상 학교급·자녀 수·지원 한도 미기재)', 21),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'insurance', '단체 상해보험 가입', NULL, 'health',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 단체 상해보험 가입 (보장 범위·보험료 부담 주체 미기재)', 30),
+   'est', NULL, TRUE, '단체 상해보험 가입 (공식 채용 페이지 복리후생 항목 — 보장 범위·보험료 부담 주체 미기재)', 30),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'club', '사내 동아리활동 지원', NULL, 'leisure',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 사내 동아리활동 지원 (활동비·동아리 수 미기재)', 40),
+   'est', NULL, TRUE, '사내 동아리활동 지원 (공식 채용 페이지 복리후생 항목 — 활동비·동아리 수 미기재)', 40),
   (@comp_id, 'resort', '휴양시설(콘도) 지원', NULL, 'leisure',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 휴양시설 콘도 지원 (제휴처·이용 조건·이용료 미기재)', 41),
+   'est', NULL, TRUE, '휴양시설 콘도 지원 (공식 채용 페이지 복리후생 항목 — 제휴처·이용 조건·이용료 미기재)', 41),
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'excellence_award', '우수사원 표창 및 해외연수', NULL, 'compensation',
-   'est', NULL, TRUE, '공식 채용 페이지 복리후생 항목의 우수사원 표창과 해외연수 (선발 기준·포상 금액·연수 지역 미기재)', 50),
+   'est', NULL, TRUE, '우수사원 표창과 해외연수 (공식 채용 페이지 복리후생 항목 — 선발 기준·포상 금액·연수 지역 미기재)', 50),
   (@comp_id, 'bonus', '보너스(600%)', NULL, 'compensation',
-   'est', NULL, TRUE, '공식 채용 페이지 급여 항목의 연 보너스 600퍼센트와 성과급 (지급 시기·산정 기준 미기재)', 51)
+   'est', NULL, TRUE, '연 보너스 600퍼센트와 성과급 (공식 채용 페이지 급여 항목 — 지급 시기·산정 기준 미기재)', 51)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

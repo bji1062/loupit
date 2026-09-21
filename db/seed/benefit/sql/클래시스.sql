@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 51 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('classys', '클래시스',
@@ -45,7 +46,7 @@ VALUES
   (@comp_id, 'parenting', '산전후휴가/육아휴직', NULL, 'family',
    'est', NULL, TRUE, '산전후 휴가, 남성출산휴가, 육아휴직', 50),
   (@comp_id, 'event', '경조사 지원', 20, 'family',
-   'est', '각종 경조사 지원 및 경조휴가 (추정)', FALSE, NULL, 51),
+   'est', '각종 경조사 지원 (추정)', FALSE, NULL, 51),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양시설', 50, 'leisure',

@@ -18,6 +18,7 @@
 --       법정 제도(4대보험·법정 퇴직연금·법정 연차)는 수록하지 않았다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 62 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('wonik_ips', '원익IPS',
@@ -78,7 +79,8 @@ VALUES
    'est', NULL, TRUE, '사내 동호회 운영', 60),
   (@comp_id, 'resort', '휴양시설 지원', NULL, 'leisure',
    'est', NULL, TRUE, '휴양시설 지원 — 대명, 한화, 무주, 휘닉스 등', 61),
-  (@comp_id, 'massage', '안마의자', NULL, 'leisure',
+  -- 카테고리 통일(2026-09-21): leisure → health
+  (@comp_id, 'massage', '안마의자', NULL, 'health',
    'est', NULL, TRUE, '직원휴게시설 내 안마의자 운영', 62),
   (@comp_id, 'culture_day', '문화가 있는 날', NULL, 'leisure',
    'est', NULL, TRUE, '매주 수요일 문화관람을 하는 직원에게 Flexible 근무 허용', 63),

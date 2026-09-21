@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 71·86·87 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao_pay', '카카오페이',
@@ -61,7 +62,8 @@ VALUES
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양시설 리조트', 50, 'leisure',
    'est', '(추정)', FALSE, NULL, 70),
-  (@comp_id, 'massage', '전속 안마사/안마의자', NULL, 'leisure',
+  -- 카테고리 통일(2026-09-21): leisure → health
+  (@comp_id, 'massage', '전속 안마사/안마의자', NULL, 'health',
    'est', NULL, TRUE, '전속 안마사 30분 안마, 격층 안마의자, 남녀 수면실', 71),
 
   -- ── 경제적 부가혜택 (perks) ──
@@ -77,9 +79,11 @@ VALUES
    'est', '아메리카노 500원/라떼 1000원, 콜라/사이다 등 무료, 사내매점 70~80% 할인 (추정)', FALSE, NULL, 84),
   (@comp_id, 'discount', '카카오프렌즈/항공/차량 할인', NULL, 'perks',
    'est', NULL, TRUE, '카카오프렌즈샵 20% 할인, 김포/제주 항공 할인, 벤츠/BMW MOU 2% 할인', 85),
-  (@comp_id, 'work_tools', '최신 맥북/스탠딩데스크', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'work_tools', '최신 맥북/스탠딩데스크', NULL, 'work_env',
    'est', NULL, TRUE, '최신/최고급 맥북 또는 아이맥, 개인 스탠딩 데스크, 주말 업무용 차량 대여', 86),
-  (@comp_id, 'parking', '주차비 지원', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'parking', '주차비 지원', NULL, 'work_env',
    'est', NULL, TRUE, '주차비 지원', 87)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

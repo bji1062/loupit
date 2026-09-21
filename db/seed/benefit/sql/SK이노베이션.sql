@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 53 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('sk_innovation', 'SK이노베이션',
@@ -65,7 +66,7 @@ VALUES
   (@comp_id, 'child_edu', '자녀학자금', 200, 'family',
    'est', '자녀 학자금 지원 (추정)', FALSE, NULL, 52),
   (@comp_id, 'event', '경조사 지원', 50, 'family',
-   'est', '경조휴가 및 경조금 (추정)', FALSE, NULL, 53),
+   'est', '경조금 지급 (추정)', FALSE, NULL, 53),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '역량개발 교육', NULL, 'growth',

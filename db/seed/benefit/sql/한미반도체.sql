@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 82 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hanmi_semi', '한미반도체',
@@ -65,7 +66,8 @@ VALUES
    'est', '설날/추석 각 20만 + 가정의 달 20만 복지포인트', FALSE, NULL, 80),
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
   (@comp_id, 'meal', '점심/저녁 무상 제공', NULL, 'perks',  'est', NULL, TRUE, '대기업 전문 케이터링(아워홈) 입점', 81),
-  (@comp_id, 'holiday_gift', '생일/명절 선물', 20, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '생일/명절 선물', 20, 'compensation',
    'est', '생일 케이크 상품권 + 명절 복지포인트 (추정)', FALSE, NULL, 82)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 85 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao_bank', '카카오뱅크',
@@ -70,7 +71,8 @@ VALUES
    'est', NULL, TRUE, '사내 스낵바 운영', 83),
   (@comp_id, 'discount', '카카오프렌즈샵 할인', NULL, 'perks',
    'est', NULL, TRUE, '카카오프렌즈샵 20% 할인', 84),
-  (@comp_id, 'work_tools', '스탠딩 책상', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'work_tools', '스탠딩 책상', NULL, 'work_env',
    'est', NULL, TRUE, '스탠딩 책상 지원', 85)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

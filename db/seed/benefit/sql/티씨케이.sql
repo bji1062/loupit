@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 85 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('tck', '티씨케이',
@@ -69,7 +70,8 @@ VALUES
    'est', '기숙사 및 안성 주요 지점 통근 버스 (추정)', FALSE, NULL, 83),
   (@comp_id, 'housing_loan', '주택/전세/긴급 대출', NULL, 'perks',
    'est', NULL, TRUE, '주택구입, 임차자금, 긴급자금 저리 대출 지원', 84),
-  (@comp_id, 'holiday_gift', '명절/생일/결혼기념 포인트', 30, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절/생일/결혼기념 포인트', 30, 'compensation',
    'est', '명절 복지포인트, 생일/결혼기념일 축하 포인트 (추정)', FALSE, NULL, 85)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

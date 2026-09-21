@@ -47,6 +47,7 @@
 --       (공동연차는 회사가 날짜를 정하는 지정 휴가다) · SORT 70 에서 출처 구조 서술을 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 31 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('fadu', '파두',
@@ -79,7 +80,7 @@ VALUES
   -- ── 근무 환경 (work_env) ──
   (@comp_id, 'work_tools', '업무용 IT 장비 제공', NULL, 'work_env',
    'est', NULL, TRUE, '원활한 업무 활용을 위해 노트북(LG그램/레노버/맥북), 모니터 2대, 모니터 암 제공 (공식 채용 사이트 복지 혜택 몰입을 위한 환경 제공 항목 — 교체 주기·직군별 차이 미기재)', 30),
-  (@comp_id, 'lounge', '카페테리아', NULL, 'work_env',
+  (@comp_id, 'lounge', '카페테리아 (휴식 공간)', NULL, 'work_env',
    'est', NULL, TRUE, '안마의자 등을 구비한 휴식 공간 카페테리아 운영 (공식 채용 사이트 복지 혜택 행복한 회사 생활 항목 — 운영 시간·사업장 범위 미기재)', 31),
 
   -- ── 경제적 부가혜택 (perks) ──

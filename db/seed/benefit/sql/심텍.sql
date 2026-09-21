@@ -18,6 +18,7 @@
 --       ⚠ apex 도메인(simmtech.com)은 무응답 — 반드시 www 를 붙여야 한다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 10 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('simmtech', '심텍',
@@ -41,7 +42,7 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속 및 우수/공로 포상 (공식 페이지 회사생활 항목명 그대로 — 근속 연차·포상 금액 미기재)', 10),
+   'est', NULL, TRUE, '장기근속 및 우수/공로 포상 (공식 페이지 회사생활 항목명 그대로 — 근속 연수·포상 금액 미기재)', 10),
   (@comp_id, 'excellence_award', '우수/공로 포상', NULL, 'compensation',
    'est', NULL, TRUE, '장기근속 및 우수/공로 포상 (공식 페이지 회사생활 항목명 그대로 — 포상 기준·금액 미기재)', 11),
 

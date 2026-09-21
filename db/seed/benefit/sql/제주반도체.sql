@@ -40,6 +40,7 @@
 --       SORT 43 에서 직무발명규정 삭제 · SORT 60 NOTE 교체.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 10·21·30·31·32·40·41·42·43·50·51·60·61·62·70·80 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('jeju_semi', '제주반도체',
@@ -63,53 +64,53 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 유연근무 (flexibility) — 공고 근무환경 조직 문화 ──
   (@comp_id, 'flex_work', '부서별 유연근무제', NULL, 'flexibility',
-   'est', NULL, TRUE, '공식 채용 공고 조직 문화 항목의 부서별 유연근무제 도입 — 적용 부서 범위·근무시간 운영 방식 미기재', 10),
+   'est', NULL, TRUE, '부서별 유연근무제 도입 (공식 채용 공고 조직 문화 항목 — 적용 부서 범위·근무시간 운영 방식 미기재)', 10),
 
   -- ── 휴가 (time_off) ──
   (@comp_id, 'leave_general', '2시간 단위 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '2시간 단위 휴가 분할 사용과 탄력적인 휴가제도 운용 (공식 채용 공고 조직 문화 항목·공식 인사/복지제도 페이지 — 부여 일수·사용 절차 미기재)', 20),
   (@comp_id, 'long_service_leave', '장기 근속자 리프레시 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 5년·10년 장기 근속자 리프레시 휴가 — 휴가 일수 미기재', 21),
+   'est', NULL, TRUE, '5년·10년 장기 근속자 리프레시 휴가 (공식 채용 공고 복리후생 제도 항목 — 휴가 일수 미기재)', 21),
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'snack_bar', '사내 카페테리아 음료', NULL, 'perks',
-   'est', NULL, TRUE, '공식 채용 공고 조직 문화 항목의 사내 카페테리아 음료 무한 제공', 30),
+   'est', NULL, TRUE, '사내 카페테리아 음료 무한 제공 (공식 채용 공고 조직 문화 항목)', 30),
   (@comp_id, 'welfare_point', '복리후생비용 지원', 175, 'perks',
-   'est', '공식 채용 공고 복리후생 제도 항목의 직급별 연간 통합복리후생비 130~220만원 지원 — 표기값은 직급별 구간의 중간값이고 실지급액은 직급에 따라 다르다. 포인트 형태·사용처 미기재', FALSE, NULL, 31),
+   'est', '직급별 연간 통합복리후생비 130~220만원 지원 (공식 채용 공고 복리후생 제도 항목) — 표기값은 직급별 구간의 중간값이고 실지급액은 직급에 따라 다르다. 포인트 형태·사용처 미기재', FALSE, NULL, 31),
   (@comp_id, 'housing_support', '신입사원 주거비 지원', NULL, 'perks',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 신입사원 주거비 지원 — 대상자에 한하여 2년간 월 50만원 지급, 대상자 선정 기준 미기재', 32),
+   'est', NULL, TRUE, '신입사원 주거비 지원 — 대상자에 한하여 2년간 월 50만원 지급 (공식 채용 공고 복리후생 제도 항목 — 대상자 선정 기준 미기재)', 32),
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'holiday_gift', '명절 상여금 및 선물', NULL, 'compensation',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 명절 상여금 및 선물 지원 — 설·추석 각 250만원 지급과 10만원 상당 명절 선물, 선물 지급 횟수 미기재', 40),
+   'est', NULL, TRUE, '설·추석 각 250만원 명절 상여금과 10만원 상당 명절 선물 지급 (공식 채용 공고 복리후생 제도 항목 — 선물 지급 횟수 미기재)', 40),
   (@comp_id, 'long_service_bonus', '장기 근속자 순금 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 5년·10년 장기 근속자 순금 지원 — 순금 중량·금액 미기재', 41),
+   'est', NULL, TRUE, '5년·10년 장기 근속자 순금 지원 (공식 채용 공고 복리후생 제도 항목 — 순금 중량·금액 미기재)', 41),
   (@comp_id, 'profit_sharing', '부가급여(Profit Sharing System)', NULL, 'compensation',
-   'est', NULL, TRUE, '공식 인사/복지제도 페이지 인사제도 항목의 부가급여(Profit Sharing System) — 지급 기준·시기·금액 미기재', 42),
+   'est', NULL, TRUE, '부가급여(Profit Sharing System) (공식 인사/복지제도 페이지 인사제도 항목 — 지급 기준·시기·금액 미기재)', 42),
   (@comp_id, 'incentive', 'R&D 프로젝트 인센티브', NULL, 'compensation',
-   'est', NULL, TRUE, '공식 인사/복지제도 페이지 인사제도 항목의 R&D 프로젝트 수행에 따른 인센티브 지급 — 지급 기준·금액 미기재', 43),
+   'est', NULL, TRUE, 'R&D 프로젝트 수행에 따른 인센티브 지급 (공식 인사/복지제도 페이지 인사제도 항목 — 지급 기준·금액 미기재)', 43),
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 결혼·회갑 등 경조사비 및 휴가 지원, 공식 인사/복지제도 페이지의 경조금지원(결혼, 회갑, 사망 등) — 경조금액·경조휴가 일수 미기재', 50),
+   'est', NULL, TRUE, '결혼·회갑·사망 등 경조사비와 경조휴가 지원 (공식 채용 공고 복리후생 제도 항목 · 공식 인사/복지제도 페이지 경조금지원 항목 — 경조금액·경조휴가 일수 미기재)', 50),
   (@comp_id, 'parenting', '출산 축하금·보육 수당', NULL, 'family',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목 육아 지원의 출산 축하금과 보육 수당 — 지급액·지급 대상 조건 미기재', 51),
+   'est', NULL, TRUE, '출산 축하금과 보육 수당 지급 (공식 채용 공고 복리후생 제도 항목 육아 지원 — 지급액·지급 대상 조건 미기재)', 51),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'leisure_ticket', '문화생활비 지원', 24, 'leisure',
-   'est', '공식 채용 공고 복리후생 제도 항목의 월 2만원 문화생활체육비 지원, 표기값은 월 2만원 × 12개월', FALSE, NULL, 60),
+   'est', '월 2만원 문화생활체육비 지원 (공식 채용 공고 복리후생 제도 항목) — 표기값은 월 2만원 × 12개월', FALSE, NULL, 60),
   (@comp_id, 'resort', '소노 호텔&리조트 회원권', NULL, 'leisure',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 전국 소노 호텔&리조트 회원가 예약 지원 — 이용 한도·예약 조건 미기재', 61),
+   'est', NULL, TRUE, '전국 소노 호텔&리조트 회원가 예약 지원 (공식 채용 공고 복리후생 제도 항목 — 이용 한도·예약 조건 미기재)', 61),
   (@comp_id, 'company_event', '전 직원 워크샵', NULL, 'leisure',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 전 직원 연 1~2회 제주도 워크샵과 액티비티 활동 지원 — 참가 대상 조건·지원 금액 미기재', 62),
+   'est', NULL, TRUE, '전 직원 연 1~2회 제주도 워크샵과 액티비티 활동 지원 (공식 채용 공고 복리후생 제도 항목 — 참가 대상 조건·지원 금액 미기재)', 62),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진 지원', NULL, 'health',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 전 직원 종합검진비용 지원 — 검진 주기·검진 항목·금액 미기재', 70),
+   'est', NULL, TRUE, '전 직원 종합검진비용 지원 (공식 채용 공고 복리후생 제도 항목 — 검진 주기·검진 항목·금액 미기재)', 70),
 
   -- ── 성장·교육 (growth) ──
   (@comp_id, 'edu_support', '직무·교양 교육비 지원', NULL, 'growth',
-   'est', NULL, TRUE, '공식 채용 공고 복리후생 제도 항목의 연간 직무·교양 교육비 지원 — 지원 한도·대상 과정 미기재', 80)
+   'est', NULL, TRUE, '연간 직무·교양 교육비 지원 (공식 채용 공고 복리후생 제도 항목 — 지원 한도·대상 과정 미기재)', 80)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

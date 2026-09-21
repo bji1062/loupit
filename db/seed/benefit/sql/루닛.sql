@@ -32,6 +32,7 @@
 --       SORT 71 원격근무(remote_work) 삭제, 문구는 SORT 70 유연근무제 서술에 흡수. 복지포인트 120 은 원문 명시값이라 유지.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 43 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('lunit', '루닛',
@@ -78,7 +79,8 @@ VALUES
    'est', NULL, TRUE, '간식 지원, 2025 지속가능경영보고서는 사내 카페/스낵바 운영으로 기재 (공식 채용 페이지 「점심/저녁/간식지원」 항목 — 무료 여부·이용 한도 미기재, 서울 오피스 기준이며 오피스 위치에 따라 상이할 수 있음)', 41),
   (@comp_id, 'welfare_point', '복지포인트', 120, 'perks',
    'est', '공식 채용 페이지 항목명 「복지포인트 연간 120만원 지원」 명시값 — 원하는 곳, 필요한 곳에 사용. 2025 지속가능경영보고서는 개개인의 라이프스타일에 맞춰 사용 가능한 복지포인트(Seluv-Be) 지급으로 기재 (서울 오피스 기준이며 오피스 위치에 따라 상이할 수 있음)', FALSE, NULL, 42),
-  (@comp_id, 'holiday_gift', '명절 선물', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절 선물', NULL, 'compensation',
    'est', NULL, TRUE, '설과 추석 명절 선물 지급 (2025 지속가능경영보고서 복리후생 표 — 선물 종류·금액 미기재)', 43),
 
   -- ── 여가·라이프 (leisure) — S1 함께, 즐겁게 일합니다 + S2 ──

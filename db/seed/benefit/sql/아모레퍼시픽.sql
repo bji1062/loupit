@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 52 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 71 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('amorepacific', '아모레퍼시픽',
@@ -64,7 +65,8 @@ VALUES
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양지/콘도', 50, 'leisure',
    'est', '임직원 전용 휴양지와 콘도 서비스 운영 (추정)', FALSE, NULL, 70),
-  (@comp_id, 'massage', '마사지 테라피 라온(RA-ON)', NULL, 'leisure',
+  -- 카테고리 통일(2026-09-21): leisure → health
+  (@comp_id, 'massage', '마사지 테라피 라온(RA-ON)', NULL, 'health',
    'est', NULL, TRUE, '시각장애인 안마사의 전문 수기치료 서비스 제공', 71),
 
   -- ── 경제적 부가혜택 (perks) ──

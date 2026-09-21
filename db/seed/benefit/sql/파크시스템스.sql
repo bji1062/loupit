@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 84 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('park_systems', '파크시스템스',
@@ -81,7 +82,8 @@ VALUES
    'est', NULL, TRUE, '스낵바 운영 (커피, 다과 무료)', 82),
   (@comp_id, 'telecom', '통신비 지원', 30, 'perks',
    'est', '통신비 일부 지원 (추정)', FALSE, NULL, 83),
-  (@comp_id, 'holiday_gift', '명절 선물', 20, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절 선물', 20, 'compensation',
    'est', '(추정)', FALSE, NULL, 84)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

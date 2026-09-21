@@ -30,6 +30,7 @@
 --       문구를 빼고, 사용자 노출 3필드의 편집 주석도 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 50·60 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('samsung_ena', '삼성E&A',
@@ -85,11 +86,11 @@ VALUES
 
   -- ── 휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '장기 근속 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속 기간에 따른 유급휴가 부여 (근속 연차 구간·휴가 일수 미기재)', 50),
+   'est', NULL, TRUE, '장기근속 기간에 따른 유급휴가 부여 (근속 연수 구간·휴가 일수 미기재)', 50),
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'long_service_bonus', '장기 근속 포상 및 휴가비', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속 기간에 따른 기념품·상품권·휴가비 지급 (금액·근속 연차 구간 미기재)', 60),
+   'est', NULL, TRUE, '장기근속 기간에 따른 기념품·상품권·휴가비 지급 (금액·근속 연수 구간 미기재)', 60),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'mental', '심리 상담센터', NULL, 'health',

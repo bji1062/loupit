@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 51 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 81 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('coway', '코웨이',
@@ -62,7 +63,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복지포인트', 200, 'perks',
    'est', '(추정)', FALSE, NULL, 80),
-  (@comp_id, 'holiday_gift', '기념일 선물', 30, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '기념일 선물', 30, 'compensation',
    'est', '창립기념일/설날/추석 (추정)', FALSE, NULL, 81),
   (@comp_id, 'housing_loan', '주택자금 이자 지원', NULL, 'perks',
    'est', NULL, TRUE, '주택자금 대출 이자 지원', 82)

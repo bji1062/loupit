@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50·31 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 80·85 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('naver', 'NAVER',
@@ -76,7 +77,8 @@ VALUES
    'est', '동료 관심사 공유 모임, 연간 36만원 활동비', FALSE, NULL, 71),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'work_tools', '업무 장비 예산', 360, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'work_tools', '업무 장비 예산', 360, 'work_env',
    'est', '2년에 최대 720만원(연 360만원 환산) 노트북/모니터/태블릿 자유 선택, 허먼밀러 에어론/스탠딩데스크', FALSE, NULL, 80),
   (@comp_id, 'discount', '네이버 서비스 이용권', 100, 'perks',
    'est', '연간 100만원 상당(네이버페이/플러스멤버십/웹툰/VIBE/클라우드 등)', FALSE, NULL, 82),
@@ -84,7 +86,8 @@ VALUES
    'est', '점심/저녁 무료, 각 층 캔틴(조식/커피/간식 무료) (추정)', FALSE, NULL, 83),
   (@comp_id, 'housing_loan', '대출이자 지원', NULL, 'perks',
    'est', NULL, TRUE, '대출금액 1.5%를 10년간 지원(최대 2억원)', 84),
-  (@comp_id, 'holiday_gift', '명절 네이버페이', 40, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절 네이버페이', 40, 'compensation',
    'est', '설/추석 총 40만원 네이버페이 포인트(또는 상품권)', FALSE, NULL, 85)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

@@ -6,6 +6,7 @@
 -- 참고: 원본 txt는 '하이브로(드래곤빌리지)' 데이터
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 31 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hybe', '하이브',
@@ -34,7 +35,8 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'leave_general', '자율 휴가제', NULL, 'time_off',
    'est', NULL, TRUE, '자율 휴가제 운영', 30),
-  (@comp_id, 'family_day', '금요일 조기퇴근', NULL, 'time_off',
+  -- 카테고리 통일(2026-09-21): time_off → flexibility
+  (@comp_id, 'family_day', '금요일 조기퇴근', NULL, 'flexibility',
    'est', NULL, TRUE, '금요일 오후 5시 퇴근 (1시간 30분 조기퇴근)', 31),
 
   -- ── 건강·의료 (health) ──

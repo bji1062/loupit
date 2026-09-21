@@ -14,6 +14,7 @@
 --       제외 4건(4대 보험 · 퇴직연금(DC) · 판교 위치 · 휴가비)의 사유는 evidence 참조.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 84 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('silicon2', '실리콘투',
@@ -88,7 +89,8 @@ VALUES
    'est', NULL, TRUE, '팀 회식비 지원', 82),
   (@comp_id, 'discount', '임직원 할인(자사몰·제휴)', NULL, 'perks',
    'est', NULL, TRUE, '자사 쇼핑몰 제품 할인, 외부 제휴 복지 서비스 제공(LG전자 복지몰, 병원, 호텔 등), 외부 제휴 식음료 할인 제공(음식점, 카페)', 83),
-  (@comp_id, 'parking', '차량 지원', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'parking', '차량 지원', NULL, 'work_env',
    'est', NULL, TRUE, '차량 지원(법인차량 및 주차비 지원)', 84),
   (@comp_id, 'visa_support', '비자 발급 지원', NULL, 'perks',
    'est', NULL, TRUE, '비자 발급 지원', 85)

@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 82 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('jusung', '주성엔지니어링',
@@ -51,7 +52,8 @@ VALUES
    'est', '아침, 점심, 저녁 제공, 점심시간 2시간(12~14시) (추정)', FALSE, NULL, 80),
   (@comp_id, 'snack_bar', '사내 카페', NULL, 'perks',
    'est', NULL, TRUE, '임직원 전용 사내 카페 운영, 커피 제공', 81),
-  (@comp_id, 'holiday_gift', '명절 선물 포인트', 20, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절 선물 포인트', 20, 'compensation',
    'est', '설/추석 선물 포인트, 선물 신청몰에서 선택 (추정)', FALSE, NULL, 82),
   (@comp_id, 'transport', '대리운전비 지원', 30, 'perks',
    'est', '늦은 퇴근/업무 회식 시 대리 운전비 지원 (추정)', FALSE, NULL, 83)

@@ -1,4 +1,4 @@
-# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,452행)
+# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,451행)
 
 새 코드를 만들기 전에 **여기서 같은 뜻을 찾는다.** 대응 어휘가 정말 없을 때만 신규 코드(evidence 에 「신규 코드」절로 사유 — 원문이 혜택 내용을 밝힐 때만).
 
@@ -28,7 +28,7 @@
 | `commute_subsidy` | 53 | perks | 통근버스 · 출퇴근 지원 · 셔틀버스 |
 | `lang` | 53 | growth | 어학시험 응시료 · 어학교육 · 외국어 교육 지원 |
 | `mental` | 50 | health | 심리상담 · 심리상담 지원 · 심리상담센터 |
-| `holiday_gift` | 48 | compensation ⚠ | 명절 선물 · 명절 상여 · 기념일 기념품 |
+| `holiday_gift` | 48 | compensation | 명절 선물 · 명절 상여 · 기념일 기념품 |
 | `discount` | 47 | perks | CJ 계열사 할인 · 그룹사 제품 할인 · 제휴업체 할인 |
 | `dormitory` | 41 | work_env | 기숙사 · 기숙사 지원 · 사택 지원 |
 | `leave_general` | 40 | time_off | 2시간 단위 휴가 · 경조휴가 · 1시간 단위 휴가 |
@@ -49,21 +49,21 @@
 | `company_event` | 19 | leisure | KB 패밀리데이 · 가정의 날 과일 선물·종무식 · 가족 초청 행사 |
 | `pension_support` | 18 | perks | 개인연금 지원 · 개인연금 · 개인연금(IRP) 50% 지원 |
 | `satellite_office` | 16 | flexibility | CJ Work On 거점오피스 · 거점오피스 · 거점 오피스 |
-| `work_tools` | 15 | work_env ⚠ | AI Tool 지원 · IT 장비 지원 · 고사양 PC 지원 |
+| `work_tools` | 15 | work_env | AI Tool 지원 · IT 장비 지원 · 고사양 PC 지원 |
 | `leisure_ticket` | 14 | leisure | 티빙·CGV 이용권 · 문화 활동 (콘서트 초대권) · 문화생활 지원(영화티켓 등) |
 | `fertility_support` | 13 | family | 난임 치료비 지원 · 난임 지원 · 난임 수술 지원 |
 | `telecom` | 13 | perks | 통신비 지원 · 통신비 · 통신사 제휴 할인 |
-| `parking` | 12 | work_env ⚠ | 주차비 지원 · 주차장 · 주차장 제공 |
-| `welcome_kit` | 11 | leisure ⚠ | 웰컴키트 · Welcome Kit · 신규입사자 웰컴패키지 |
+| `parking` | 12 | work_env | 주차비 지원 · 주차장 · 주차장 제공 |
 | `library` | 10 | leisure | 사내 북카페 · 전자 도서관 · 전자도서관 |
 | `stock_option` | 10 | compensation | 스톡옵션 · 우리사주조합 · 우리사주제도 |
+| `welcome_kit` | 10 | leisure | 웰컴키트 · Welcome Kit · 신규입사자 웰컴패키지 |
 | `birthday_leave` | 9 | time_off | 본인/가족 기념일 선물+휴가 · 생일 선물+조기퇴근 · 생일 연차 휴식 |
 | `housing_support` | 9 | perks | 주거 지원 · 새내기 정착/주거지원금 · 숙소임차비용 지원 |
 | `nap_room` | 9 | work_env | 남/여 휴게실 · 릴렉스룸 · 사내 수면실/샤워실 |
 | `pc_off` | 9 | flexibility | PC-OFF 제도 · PC OFF 제도 · PC OFF제 |
-| `family_day` | 8 | flexibility ⚠ | 가정의 날 · 패밀리데이 · 가족의 날 조기 퇴근 |
+| `family_day` | 8 | flexibility | 가정의 날 · 패밀리데이 · 가족의 날 조기 퇴근 |
 | `relocation` | 8 | perks | 부임여비 지원 · 부임이사 지원 · 사택/정착지원금 |
-| `massage` | 7 | leisure ⚠ | 마사지 테라피 라온(RA-ON) · 마사지(사이다룸) · 사내 마사지룸 |
+| `massage` | 7 | health | 마사지 테라피 라온(RA-ON) · 마사지(사이다룸) · 사내 마사지룸 |
 | `conference` | 6 | growth | 교육·세미나 참석 지원 · 세미나/컨퍼런스 · 외부 교육/컨퍼런스 |
 | `profit_sharing` | 6 | compensation | PS (Profit Sharing) · 경영성과금 · 부가급여(Profit Sharing System) |
 | `bonus` | 5 | compensation | 상여금 · 보너스(600%) · 성과급 |
@@ -118,18 +118,26 @@
 `compensation · flexibility · work_env · time_off · health · family · growth · leisure · perks`
 (정본 순서 = `generator/pages/company.py` `CATEGORY_ORDER`. 9각형 그래프·카테고리 집계가 이 9개를 축으로 쓴다.)
 
-⚠ **한 코드는 한 카테고리에만 넣는다.** 표의 카테고리가 정본이다. 계약서는 「카테고리 ∈ 9개」만 정하고 코드↔카테고리 1:1 을 못 박지 않아서, 회사마다 판단이 갈린 코드가 **6종 · 어긋난 행 28개 · 회사 25곳** 남아 있다(표에 ⚠ 로 표시):
+⚠ **한 코드는 한 카테고리에만 넣는다.** 표의 카테고리가 정본이다.
 
-| 코드 | 정본(다수) | 어긋난 쪽 | 행 |
-|---|---|---|---:|
-| `holiday_gift` | compensation (33) | perks 14 · family 1 | 15 |
-| `parking` | work_env (7) | perks 5 | 5 |
-| `work_tools` | work_env (11) | perks 4 | 4 |
-| `massage` | leisure (5) | health 2 | 2 |
-| `welcome_kit` | leisure (10) | work_env 1 | 1 |
-| `family_day` | flexibility (7) | time_off 1 | 1 |
+수집 계약은 「카테고리 ∈ 9개」만 정하고 코드↔카테고리 1:1 을 못 박지 않았다. 그래서 2026-09-21 이전에는 같은 코드가 회사마다 다른 축에 들어간 것이 **6종 · 28행 · 25개 회사** 있었다(「명절 선물」이 7곳은 compensation, 4곳은 perks — 같은 복지가 다른 축으로 세어졌다).
 
-「명절 선물」이 7곳에선 compensation, 4곳에선 perks 로 들어가 있는 식이라 **같은 복지가 회사마다 다른 축으로 세어진다.** 수집기는 정본 열만 보고 넣을 것. 기존 28행의 재코딩은 **B 작업(데이터 정리 2차)에서 집행**한다(사용자 결정 2026-09-21) — 시드 + 마이그레이션으로 한 번에 고치고 릴리스도 한 번.
+**데이터 정리 2차에서 전부 통일했다**(2026-09-21, 30행 재코딩 + 1행 삭제 — `db/migrations/20260921_data_cleanup_2.sql`).
+
+⚠ 위의 **28행**과 아래 **30+1행**은 어긋난 수치가 아니다. 28은 「다수결 기준 소수파」이고, `massage` 의 정본을 **소수파인 health 로 뒤집었기 때문에**(사용자 결정) 대상이 leisure 5행으로 바뀌어 31행이 됐다 — 28 − 2 + 5 = 31 = 재코딩 30 + 삭제 1.
+
+확정된 정본:
+
+| 코드 | 정본 | 근거 |
+|---|---|---|
+| `holiday_gift` | compensation | 다수(33행) · 「명절 상여금」 등 현금성이 섞여 있다 |
+| `work_tools` | work_env | 업무 장비는 근무환경 |
+| `parking` | work_env | 주차장·주차비는 근무환경 시설 |
+| `family_day` | flexibility | 조기퇴근 = 근무 유연성 |
+| `massage` | **health** | 사용자 결정 — 다수는 leisure 였으나 건강관리 성격을 따랐다 |
+| `welcome_kit` | leisure | 입사 선물 **물품**. 휴젤의 「온보딩 프로그램」 행은 뜻이 달라 삭제했다 |
+
+지금 코퍼스의 분열은 **0종**이다(`_vocab_scan.py` 가 매번 확인한다). 새 회사를 넣을 때 표의 카테고리 열을 그대로 쓸 것 — 여기서 갈리면 9각형 비교가 다시 오염된다.
 
 ## 법정 제도 판정선 (2026-09-20 확정)
 
