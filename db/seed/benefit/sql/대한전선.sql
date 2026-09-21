@@ -24,6 +24,7 @@
 --       ⚠ 검증·감사 판정 반영(2026-09-15): 행 조치 없음(10행 그대로). 선물 지급 1항목의 3행 분해(SORT 11·20·30)를 유지한다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 31 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('taihan', '대한전선',
@@ -65,7 +66,7 @@ VALUES
   (@comp_id, 'holiday_gift', '명절·창립기념일 선물', NULL, 'compensation',
    'est', NULL, TRUE, '선물 지급 항목의 명절·창립기념일 선물 (공식 인사제도 페이지 복지제도 — 선물 종류·금액·연간 지급 횟수 미기재)', 30),
   (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속 포상 (공식 인사제도 페이지 복지제도 포상 항목 — 근속 연차 기준·포상 내용·금액 미기재)', 31),
+   'est', NULL, TRUE, '장기근속 포상 (공식 인사제도 페이지 복지제도 포상 항목 — 근속 연수 기준·포상 내용·금액 미기재)', 31),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '사원숙소', NULL, 'work_env',

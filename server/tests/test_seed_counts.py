@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
 
 
-# ── SD-4: 복지 총행 2452(2233 + 웨이브4 219, 2026-09-20), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2451(2452 − 데이터 정리 2차 1행, 2026-09-21), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -68,9 +68,14 @@ def test_SD4_benefit_total_row_count(seeded_db):
           농심 16 · 현대백화점 14 · 티에스이 12 · 파두 10 · 동국제약 9
           — 수집 223 − 삭제·병합 9 + 추가 5. 검증(Fable ×9 · Opus ×3, REFUTED 0)·감사(Opus, BLOCK 5)
           판정 반영 — handoff/2026-09-19-evidence/_ROSTER.md
+          − 데이터 정리 2차 삭제 1행(2026-09-21) = 2451
+          휴젤 welcome_kit 「온보딩 프로그램」 — 혜택 내용 없이 「운영」만 있는 서술이라 행이
+          아니고(상담실 선례), welcome_kit 은 나머지 10사가 전부 입사 선물 물품에 쓰는 코드라
+          뜻도 어긋났다(사용자 결정). 카테고리 통일 30행·문안 60행은 행 수 불변
+          — db/migrations/20260921_data_cleanup_2.sql
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2452, f"복지 총행 불일치: {count} (기대 2452 = 2233 + 웨이브4 219)"
+    assert count == 2451, f"복지 총행 불일치: {count} (기대 2451 = 2452 − 정리 2차 1)"
     assert count >= 1200
 
 

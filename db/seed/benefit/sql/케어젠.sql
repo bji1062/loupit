@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 50·83 카테고리 통일 + 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('caregen', '케어젠',
@@ -36,8 +37,11 @@ VALUES
    'est', NULL, TRUE, '장기근속자 포상', 31),
 
   -- ── 가족·돌봄 (family) ──
-  (@comp_id, 'event', '경조휴가', NULL, 'family',
-   'est', NULL, TRUE, '경조휴가', 50),
+  -- 문안(2026-09-21): 이름을 코퍼스 표준 「경조사 지원」으로 맞추고 서술은 원문 근거(경조휴가)만 남겼다.
+  --   ⚠ 이 회사는 원문이 「경조휴가」 하나뿐이라 SORT 30 leave_general 과 서술이 여전히 겹친다.
+  --   금전 근거가 0이라 금액·「경조금」을 쓸 수 없다 — 겹침을 푸는 길은 원문 재수집뿐이다(구본: AI 파싱·URL 수동 입력).
+  (@comp_id, 'event', '경조사 지원', NULL, 'family',
+   'est', NULL, TRUE, '경조휴가 부여', 50),
 
   -- ── 경제적 부가혜택 (perks) ──
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
@@ -46,7 +50,8 @@ VALUES
    'est', '(추정)', FALSE, NULL, 81),
   (@comp_id, 'discount', '자회사 제품 할인', 30, 'perks',
    'est', '자회사 제품 할인 지원 (추정)', FALSE, NULL, 82),
-  (@comp_id, 'parking', '주차장 제공', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'parking', '주차장 제공', NULL, 'work_env',
    'est', NULL, TRUE, '주차장 제공', 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

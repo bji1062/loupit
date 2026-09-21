@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 82 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('duksan_neolux', '덕산네오룩스',
@@ -59,7 +60,8 @@ VALUES
    'est', '복지 포인트 지급 (추정)', FALSE, NULL, 80),
   (@comp_id, 'snack_bar', '사내 카페', NULL, 'perks',
    'est', NULL, TRUE, '사내 카페 운영, 간식 및 음료 제공', 81),
-  (@comp_id, 'holiday_gift', '명절/창립기념일 선물', 20, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절/창립기념일 선물', 20, 'compensation',
    'est', '설/추석 연 1회 + 창립기념일 기념품 (추정)', FALSE, NULL, 82)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

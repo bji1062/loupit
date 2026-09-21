@@ -43,6 +43,7 @@
 --       「사내 문화예술 프로그램」으로 교체(가족농장 서술은 QUAL_DESC 에 유지).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 12·62 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('emart', '이마트',
@@ -70,7 +71,7 @@ VALUES
   (@comp_id, 'holiday_gift', '명절 복지 마일리지', NULL, 'compensation',
    'est', NULL, TRUE, '명절 및 생일 등 현금성 복지 마일리지 지급 (공식 채용 공고 이마트 복리후생 07 특별한 날 지원 항목) 중 명절 지급분 — 지급 마일리지 액수 미기재', 11),
   (@comp_id, 'long_service_bonus', '장기근속 축하금', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속 축하금 지급 (공식 채용 공고 이마트 복리후생 07 특별한 날 지원 항목) — 대상 근속 연차·축하금 액수 미기재', 12),
+   'est', NULL, TRUE, '장기근속 축하금 지급 (공식 채용 공고 이마트 복리후생 07 특별한 날 지원 항목) — 대상 근속 연수·축하금 액수 미기재', 12),
 
   -- ── 성장·커리어 (growth) — 공고문 02 항목 ──
   (@comp_id, 'edu_support', '직무·외부 교육 지원', NULL, 'growth',
@@ -104,7 +105,7 @@ VALUES
   (@comp_id, 'refresh_leave', '연중휴가', NULL, 'time_off',
    'est', NULL, TRUE, '연차 휴가 외 추가 5일 연중 휴가 (공식 채용 공고 이마트 복리후생 05 다양한 휴가 제도 항목, 경력 채용 공고 복리후생도 연중휴가 5일/年) — 사용 단위·이월 여부 미기재', 61),
   (@comp_id, 'long_service_leave', '근속 포상 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 포상 휴가 (공식 채용 공고 이마트 복리후생 05 다양한 휴가 제도 항목) — 대상 근속 연차·부여 일수 미기재', 62),
+   'est', NULL, TRUE, '근속 포상 휴가 (공식 채용 공고 이마트 복리후생 05 다양한 휴가 제도 항목) — 대상 근속 연수·부여 일수 미기재', 62),
 
   -- ── 가족·돌봄 (family) — 공고문 05·07·09 항목 ──
   (@comp_id, 'event', '경조금·경조휴가', NULL, 'family',

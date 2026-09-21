@@ -6,6 +6,7 @@
 -- 주의: 원본 txt 내용은 "KLT (Pulsarlube)" — LS 데이터 부재, 가용 데이터로 생성
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 50 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('ls', 'LS',
         (SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD = 'large'),
@@ -37,7 +38,8 @@ VALUES
    'est', '헬스장 회원권 월 비용 지원 (추정)', FALSE, NULL, 41),
 
   -- ── 가족·돌봄 (family) ──
-  (@comp_id, 'holiday_gift', '명절 지원', 20, 'family',
+  -- 카테고리 통일(2026-09-21): family → compensation
+  (@comp_id, 'holiday_gift', '명절 지원', 20, 'compensation',
    'est', '명절 상품권 지급 (추정)', FALSE, NULL, 50),
 
   -- ── 경제적 부가혜택 (perks) ──

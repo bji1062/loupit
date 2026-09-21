@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 71 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao_games', '카카오게임즈',
@@ -52,7 +53,8 @@ VALUES
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '제주 전용 휴양시설/리조트', 50, 'leisure',
    'est', '제주 섭지코지 프라이빗 숙소 1박+특별휴가, 롯데속초/대명/한화 리조트 회원가 (추정)', FALSE, NULL, 70),
-  (@comp_id, 'massage', '마사지(사이다룸)', NULL, 'leisure',
+  -- 카테고리 통일(2026-09-21): leisure → health
+  (@comp_id, 'massage', '마사지(사이다룸)', NULL, 'health',
    'est', NULL, TRUE, '전문 헬스키퍼 마사지, 안마의자/수면실', 71),
   (@comp_id, 'club', '동호회/캠핑 지원', NULL, 'leisure',
    'est', NULL, TRUE, '동호회 활동 지원(등산/골프/필라테스), 캠핑카/캠핑용품 무상 대여', 72),

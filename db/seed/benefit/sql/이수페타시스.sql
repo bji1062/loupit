@@ -35,6 +35,7 @@
 --       0자라 무엇을 비교하는지 정의가 없다. SORT 70 은 법정 휴일인 노동절 문구를 뺐다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 71·80 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('isu_petasys', '이수페타시스',
@@ -102,13 +103,13 @@ VALUES
   (@comp_id, 'foundation_day_leave', '창립기념일 휴무', NULL, 'time_off',
    'est', NULL, TRUE, '창립기념일 휴무 (공식 페이지 Happy Workplace 항목명 기준 — 휴무 일수 미기재)', 70),
   (@comp_id, 'long_service_leave', '장기근속자 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목명 그대로 — 근속 연차 구간·휴가 일수 미기재)', 71),
+   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목명 그대로 — 근속 연수 구간·휴가 일수 미기재)', 71),
   (@comp_id, 'refresh_leave', 'Refresh 휴가', NULL, 'time_off',
    'est', NULL, TRUE, 'Refresh 휴가 (공식 페이지 Motivation 항목명 그대로 — 사용 주기·일수·근속 요건 미기재)', 72),
 
   -- ── 보상·금전 (compensation) — 원문 Motivation ──
   (@comp_id, 'long_service_bonus', '장기근속자 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목명 그대로 — 근속 연차 구간·포상 금액 미기재)', 80),
+   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목명 그대로 — 근속 연수 구간·포상 금액 미기재)', 80),
   (@comp_id, 'excellence_award', '우수사원 표창', NULL, 'compensation',
    'est', NULL, TRUE, '우수사원 표창 (공식 페이지 Motivation 항목명 그대로 — 선발 기준·포상 규모 미기재)', 81),
   (@comp_id, 'incentive', '성과급', NULL, 'compensation',

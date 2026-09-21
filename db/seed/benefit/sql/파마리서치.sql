@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 72 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('pharma_research', '파마리서치',
@@ -57,7 +58,8 @@ VALUES
    'est', '법인 리조트 회원권 + 자체 게스트하우스 운영 (추정)', FALSE, NULL, 70),
   (@comp_id, 'club', '사내 동호회', 10, 'leisure',
    'est', '(추정)', FALSE, NULL, 71),
-  (@comp_id, 'massage', '휴식공간 (포켓볼/안마의자)', NULL, 'leisure',
+  -- 카테고리 통일(2026-09-21): leisure → health
+  (@comp_id, 'massage', '휴식공간 (포켓볼/안마의자)', NULL, 'health',
    'est', NULL, TRUE, '포켓볼, 안마의자 등 휴식 공간 제공', 72),
 
   -- ── 경제적 부가혜택 (perks) ──

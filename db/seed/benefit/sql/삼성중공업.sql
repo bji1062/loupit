@@ -29,6 +29,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 21 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 40·50 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('samsung_heavy', '삼성중공업',
@@ -86,11 +87,11 @@ VALUES
 
   -- ── 휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '근속휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '장기 근속 시 리텐션을 위한 휴가 지급 (근속 연차 기준·휴가 일수 미기재)', 40),
+   'est', NULL, TRUE, '장기 근속 시 리텐션을 위한 휴가 지급 (근속 연수 기준·휴가 일수 미기재)', 40),
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'long_service_bonus', '장기근속 선물', NULL, 'compensation',
-   'est', NULL, TRUE, '장기 근속 시 리텐션을 위한 선물 지급 (근속 연차 기준·선물 종류·금액 미기재)', 50),
+   'est', NULL, TRUE, '장기 근속 시 리텐션을 위한 선물 지급 (근속 연수 기준·선물 종류·금액 미기재)', 50),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'career', '국내외 학술연수·지역전문가', NULL, 'growth',

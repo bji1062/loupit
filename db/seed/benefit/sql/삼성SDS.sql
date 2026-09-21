@@ -30,6 +30,7 @@
 --       사용자 노출 3필드의 편집 주석도 함께 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 40·50 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('samsung_sds', '삼성SDS',
@@ -89,11 +90,11 @@ VALUES
 
   -- ── 휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '장기근속휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속 임직원이 재충전할 수 있도록 휴가와 휴가비 지원 — 원문 항목 장기근속휴가/장기근속시상 중 휴가 부분 (근속 연차 기준·휴가 일수·휴가비 금액 미기재)', 40),
+   'est', NULL, TRUE, '장기근속 임직원이 재충전할 수 있도록 휴가와 휴가비 지원 — 원문 항목 장기근속휴가/장기근속시상 중 휴가 부분 (근속 연수 기준·휴가 일수·휴가비 금액 미기재)', 40),
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'long_service_bonus', '장기근속시상', NULL, 'compensation',
-   'est', NULL, TRUE, '오랜 시간 노력해 온 장기근속 임직원 시상 — 원문 항목 장기근속휴가/장기근속시상 중 시상 부분 (근속 연차 기준·포상 내용·금액 미기재)', 50),
+   'est', NULL, TRUE, '오랜 시간 노력해 온 장기근속 임직원 시상 — 원문 항목 장기근속휴가/장기근속시상 중 시상 부분 (근속 연수 기준·포상 내용·금액 미기재)', 50),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'lang', '외국어 교육', NULL, 'growth',

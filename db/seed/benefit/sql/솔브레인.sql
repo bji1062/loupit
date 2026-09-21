@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 84 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('soulbrain', '솔브레인',
@@ -65,7 +66,8 @@ VALUES
    'est', '(추정)', FALSE, NULL, 82),
   (@comp_id, 'housing_loan', '주택자금 대출', NULL, 'perks',
    'est', NULL, TRUE, '주택구입 및 전세자금 대출 지원', 83),
-  (@comp_id, 'holiday_gift', '명절/생일/창립기념 선물', 30, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절/생일/창립기념 선물', 30, 'compensation',
    'est', '명절선물, 생일선물, 창립기념일 선물 (추정)', FALSE, NULL, 84)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

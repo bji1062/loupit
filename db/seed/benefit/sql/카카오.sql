@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50·60 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 83·86 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao', '카카오',
@@ -58,13 +59,15 @@ VALUES
    'est', '월 20만원 식대 지원', FALSE, NULL, 81),
   (@comp_id, 'commute_subsidy', '통근버스/순환버스', 120, 'perks',
    'est', '통근버스 및 판교역 순환버스, 야근시 카카오T 업무택시 (추정)', FALSE, NULL, 82),
-  (@comp_id, 'work_tools', '최신 업무장비', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → work_env
+  (@comp_id, 'work_tools', '최신 업무장비', NULL, 'work_env',
    'est', NULL, TRUE, '최신/최고급 맥북, 전동 스탠딩 데스크, 허먼밀러 의자', 83),
   (@comp_id, 'snack_bar', '사내 카페/스낵바', 144, 'perks',
    'est', 'kafe(커피/논커피/티/에이드), 무인 스낵바(전 제품 50% 할인) (추정)', FALSE, NULL, 84),
   (@comp_id, 'discount', '카카오프렌즈 할인', NULL, 'perks',
    'est', NULL, TRUE, '카카오프렌즈 골프샵 최대 30% 할인, 직영 아카데미 최대 20% 할인, 전자제품(Apple/LG/삼성) 할인', 85),
-  (@comp_id, 'holiday_gift', '명절 귀향비/생일선물', 15, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절 귀향비/생일선물', 15, 'compensation',
    'est', '명절 귀향비 10만원, 생일선물 5만원(카카오톡 선물하기)', FALSE, NULL, 86)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

@@ -64,6 +64,7 @@
 --       재코딩 · SORT 52 에서 보상 휴가제 구절 삭제 · SORT 80 flex_work 복원(기존 80·81 을 81·82 로 밀었다).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 51 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('gc_biopharma', 'GC녹십자',
@@ -127,7 +128,7 @@ VALUES
   (@comp_id, 'summer_leave', '하계·동계 장기휴가(연 2회, 각 1주)', NULL, 'time_off',
    'est', NULL, TRUE, '충분한 휴식을 위해 여름과 겨울 연 2회, 각 1주일 간 장기 휴가 부여 (공식 채용사이트 GC녹십자 복리후생 페이지 휴식 항목 — 사용 시기 지정 여부·부여 대상 미기재)', 50),
   (@comp_id, 'long_service_leave', 'Amazing Holiday(장기근속 휴가)', NULL, 'time_off',
-   'est', NULL, TRUE, '장기 근속자에 대한 Amazing Holiday 부여 (공식 채용사이트 GC녹십자 복리후생 페이지 휴식 항목 — 기준 근속 연차·휴가 일수 미기재)', 51),
+   'est', NULL, TRUE, '장기 근속자에 대한 Amazing Holiday 부여 (공식 채용사이트 GC녹십자 복리후생 페이지 휴식 항목 — 기준 근속 연수·휴가 일수 미기재)', 51),
   (@comp_id, 'leave_general', '휴직·병가 제도', NULL, 'time_off',
    'est', NULL, TRUE, '가정 내 어려움을 지원하는 휴직·병가 제도 운영 (공식 채용사이트 GC녹십자 복리후생 페이지 휴식 항목 — 휴직 사유·기간·급여 보전 여부 미기재)', 52),
 

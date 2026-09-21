@@ -32,6 +32,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 70 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 90 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('daeduck', '대덕전자',
@@ -103,7 +104,7 @@ VALUES
 
   -- ── 보상·금전 (compensation) ── 원문 섹션 5 기타
   (@comp_id, 'long_service_bonus', '장기근속자 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속자 포상 (공식 복지제도 페이지 기타 항목명 그대로 — 근속 연차 기준·포상금·부상 미기재)', 90)
+   'est', NULL, TRUE, '장기근속자 포상 (공식 복지제도 페이지 기타 항목명 그대로 — 근속 연수 기준·포상금·부상 미기재)', 90)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

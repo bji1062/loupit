@@ -30,6 +30,7 @@
 --       refresh_leave 에서 leave_general 로 재코딩했다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 72 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('seegene', '씨젠',
@@ -101,7 +102,7 @@ VALUES
   (@comp_id, 'event', '경조금·경조휴가', NULL, 'family',
    'est', NULL, TRUE, '경조금/경조휴가 (공식 채용 페이지 복리후생 항목). ESG 사회 페이지 복리후생 프로그램 가족 영역: 경조사 지원 — 경조 유형별 금액·휴가 일수 미기재', 71),
   (@comp_id, 'childcare', '씨젠 어린이집', NULL, 'family',
-   'est', NULL, TRUE, 'ESG 사회 페이지 복리후생 프로그램 가족 영역: 씨젠 어린이집 운영 — 정원·대상 연령·운영 사업장 미기재', 72)
+   'est', NULL, TRUE, '씨젠 어린이집 운영 (ESG 사회 페이지 복리후생 프로그램 가족 영역 — 정원·대상 연령·운영 사업장 미기재)', 72)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

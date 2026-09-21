@@ -36,6 +36,7 @@
 --       되풀이하던 것을 각 행의 몫만 말하도록 고쳤고, 9개 필드의 전사 방식 서술을 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 60 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('nongshim', '농심',
@@ -97,7 +98,7 @@ VALUES
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'long_service_bonus', '장기근속 기념품', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속기념품 지급 (공식 채용 페이지 복리후생 「안정적인 삶」 항목 — 근속 연차 기준·기념품 내용 미기재)', 60),
+   'est', NULL, TRUE, '장기근속기념품 지급 (공식 채용 페이지 복리후생 「안정적인 삶」 항목 — 근속 연수 기준·기념품 내용 미기재)', 60),
   (@comp_id, 'holiday_gift', '기념일 기념품', NULL, 'compensation',
    'est', NULL, TRUE, '노동절, 창립기념일 기념품 지급 (공식 채용 페이지 복리후생 「안정적인 삶」 항목 — 기념품 내용·금액 미기재)', 61)
 ON DUPLICATE KEY UPDATE

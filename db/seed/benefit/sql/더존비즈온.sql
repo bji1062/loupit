@@ -38,6 +38,7 @@
 --     출처 표기를 더존ICT그룹 기준으로 바꾸고 (그룹 통합 채용 기준) 각주를 붙였다 — 14행 전부 그룹 기준.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 63 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('douzone', '더존비즈온',
@@ -96,7 +97,8 @@ VALUES
    'est', NULL, TRUE, '직원 편의를 위해 강촌 본사와 을지타워에 사내 카페 운영 (더존ICT그룹 채용공고 사내 카페 운영 항목 — 무료 여부·이용 한도 미기재) (그룹 통합 채용 기준)', 61),
   (@comp_id, 'commute_subsidy', '통근버스', NULL, 'perks',
    'est', NULL, TRUE, '강촌 본사와 잠실역·강변역·천호역·구리역·태릉입구역·상봉역·평내호평역·춘천지역 간 통근버스 운행 (더존ICT그룹 채용공고 통근버스 운행 항목 · 복리후생제도 페이지 복리후생시설 항목 — 운행 시간·요금 부담 여부 미기재) (그룹 통합 채용 기준)', 62),
-  (@comp_id, 'holiday_gift', '명절선물', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절선물', NULL, 'compensation',
    'est', NULL, TRUE, '명절선물 제공 (더존ICT그룹 채용공고 경조지원 항목 — 선물 품목·금액·지급 횟수 미기재) (그룹 통합 채용 기준)', 63)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

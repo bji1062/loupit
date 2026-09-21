@@ -4,7 +4,7 @@
 **리포 읽기 전용 · DB 접속 금지.** 스크래치패드 = `<이번 세션 스크래치패드>` (아래 `…/scratchpad`) — **리드가 착수 시 실제 경로로 치환해서 배포한다**(지난 웨이브 경로가 남으면 남의 세션 폴더를 읽는다). 산출물: `…/scratchpad/wave5/verify/<회사>.verify.md`.
 
 ## 입력 (회사마다)
-`…/scratchpad/wave5/<회사>.sql` · `<회사>.evidence.md` · 프로브 `<이번 웨이브 프로브 폴더>/<회사>.md`(**산일전기·ISC 는 `docs/handoff/2026-09-19-evidence/probe/` 에 이미 있다 — 재실사 불필요**, 나머지는 웨이브 5 폴더. 리드가 착수 시 치환) · 수집 계약 `docs/handoff/2026-09-19-evidence/_COLLECT-CONTRACT.md`(규칙 1~9 — 웨이브 5 착수 시 갱신본으로 교체) · 어휘표 `docs/handoff/2026-09-21-evidence/_VOCAB.md`(**90종 갱신본** — 87종 구본을 보지 말 것).
+`…/scratchpad/wave5/<회사>.sql` · `<회사>.evidence.md` · 프로브 `<이번 웨이브 프로브 폴더>/<회사>.md`(**산일전기·ISC 는 `docs/handoff/2026-09-19-evidence/probe/` 에 이미 있다 — 재실사 불필요**, 나머지는 웨이브 5 폴더. 리드가 착수 시 치환) · 수집 계약 `docs/handoff/2026-09-21-evidence/_COLLECT-CONTRACT.md`(규칙 1~9 **웨이브 5 판** — 카테고리는 어휘표 열 그대로라는 규칙이 여기 들어갔다) · 어휘표 `docs/handoff/2026-09-21-evidence/_VOCAB.md`(**90종 갱신본** — 87종 구본을 보지 말 것).
 
 ## 절차
 1. **evidence 를 읽기 전에** 프로브의 정본 URL 을 직접 가져와 **독립 항목 목록**을 만든다(이미지면 직접 판독, `__NEXT_DATA__`/번들이면 직접 추적, CSR 이면 Playwright, CSS 숨김 탭이면 원본 HTML). UA 는 일반 브라우저 문자열, HEAD 대신 GET, 요청 간 ≥1초, 회사당 ≤40회. robots.txt 는 호스트마다 단독으로 먼저 받아 RFC 9309 기준(가장 긴 일치 우선 — `urllib.robotparser` 금지)으로 판정한 뒤 본문을 요청한다(헤드리스 렌더는 원본 HTML·데이터 JSON 에 항목이 없을 때만 — 하위 리소스도 요청 수에 든다).

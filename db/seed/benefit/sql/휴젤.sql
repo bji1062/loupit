@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 20 행 삭제. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hugel', '휴젤',
@@ -29,10 +30,6 @@ VALUES
    'est', NULL, TRUE, '자율출퇴근, 시차출퇴근 운영', 11),
   (@comp_id, 'family_day', '패밀리데이', NULL, 'flexibility',
    'est', NULL, TRUE, '매월 셋째주 금요일 반일 근무', 12),
-
-  -- ── 근무환경 (work_env) ──
-  (@comp_id, 'welcome_kit', '온보딩 프로그램', NULL, 'work_env',
-   'est', NULL, TRUE, '신규 입사자 온보딩 프로그램 운영', 20),
 
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '리프레시 휴가', NULL, 'time_off',

@@ -6,6 +6,7 @@
 -- 참고: 원본 txt는 '위메이드플레이' 데이터
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+-- ⚠ 데이터 정리 2차(2026-09-21): SORT 83 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('wemade', '위메이드',
@@ -64,7 +65,8 @@ VALUES
    'est', '매일 아침 빵/시리얼/과일 등 제공, 사내 간식 지원', FALSE, NULL, 81),
   (@comp_id, 'housing_loan', '주택 자금 대출 이자 지원', NULL, 'perks',
    'est', NULL, TRUE, '주택 자금 대출 이자를 회사가 지원', 82),
-  (@comp_id, 'holiday_gift', '명절 상품권', NULL, 'perks',
+  -- 카테고리 통일(2026-09-21): perks → compensation
+  (@comp_id, 'holiday_gift', '명절 상품권', NULL, 'compensation',
    'est', NULL, TRUE, '설날/추석 백화점 상품권 지급', 83),
   (@comp_id, 'discount', '사내 게임 쿠폰', NULL, 'perks',
    'est', NULL, TRUE, '사내 게임 쿠폰 매달 지급', 84)
