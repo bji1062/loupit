@@ -1,0 +1,43 @@
+{
+  "code": "self_development",
+  "slug": "self-development",
+  "title": "자기계발비·자격증 지원",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "자기계발비·자격증 지원은 직원이 스스로 배우고 자라는 데 드는 돈을 회사가 대 주는 제도입니다. 이 항목에 묶인 원문은 세 가지로 나뉩니다. 자기계발비나 학습비 같은 지원금, 자격증을 딸 때 드는 비용, 직원 본인의 학자금입니다.",
+    "자기계발비는 한 해 금액까지 밝힌 곳이 있고, 제도 이름만 밝힌 곳이 있습니다. 자격증 쪽은 응시료를 대 주는지, 취득 비용 전반을 대 주는지가 회사마다 다르게 적혀 있고, 업무와 관련된 공부여야 하는지를 따로 밝힌 곳도 있습니다."
+  ],
+  "modes": {
+    "label": "대 주는 것",
+    "_규칙순서": "위에서부터 처음 맞는 규칙 하나. 자격증을 먼저 본다(「자격증 등 역량 개발 지원」). 이어서 본인 학자금, 마지막으로 자기계발비·학습비 — 「비·지원금·비용」 없이 「자기계발 지원」만 쓴 원문은 돈인지 교육인지 안 나와서 걸지 않는다.",
+    "rules": [
+      {"key": "cert", "label": "자격증 취득 비용", "pattern": "자격증"},
+      {"key": "tuition", "label": "본인 학자금", "pattern": "학자금"},
+      {"key": "allowance", "label": "자기계발비·학습비·업무 지원비", "pattern": "자기\\s*계발\\s*(비|지원금|교육\\s*비용)|지원금|학습|교육\\s*비용"}
+    ],
+    "fallback": {"key": "unknown", "label": "원문에 안 나옴"},
+    "display": ["allowance", "cert", "tuition", "unknown"]
+  },
+  "facets": [
+    {"key": "amount", "label": "금액", "pattern": "\\d[\\d,]*\\s*만\\s*원"},
+    {"key": "uses", "label": "쓸 수 있는 곳(교육·어학·도서 등)", "pattern": "교육|어학|OA|도서|학습"},
+    {"key": "work_link", "label": "업무와 관련 있어야 하는지", "pattern": "직무와\\s*관련|업무에\\s*필요|업무\\s*관련|관계\\s*없이|무관"},
+    {"key": "cert_cost", "label": "자격증: 응시료·취득 비용·축하금", "pattern": "응시료|축하금|취득\\s*비용"},
+    {"key": "settle", "label": "먼저 받는지, 쓰고 돌려받는지(정산 방식)", "pattern": "정산|환급|영수증|선지급|사후\\s*지급"}
+  ],
+  "money_facet": "amount",
+  "questions": [
+    {"text": "자기계발비로 주나요, 자격증이나 학비처럼 정해진 비용만 대 주나요?", "answered_by": ["mode:known"]},
+    {"text": "자기계발비는 한 해에 얼마인가요?", "answered_by": ["facet:amount"]},
+    {"text": "학원비·책값·강의료 가운데 어디에 쓸 수 있나요?", "answered_by": ["facet:uses"]},
+    {"text": "업무와 상관없는 공부에도 쓸 수 있나요?", "answered_by": ["facet:work_link"]},
+    {"text": "자격증은 응시료만 대 주나요, 딴 뒤에 축하금도 있나요?", "answered_by": ["facet:cert_cost"]},
+    {"text": "먼저 받아서 쓰나요, 쓰고 나서 영수증으로 돌려받나요?", "answered_by": ["facet:settle"]}
+  ],
+  "overrides": [
+    {"comp": "samsung_card", "h": "32069960bb", "exclude": true, "why": "「글로벌 금융인재 양성을 위한 해외 파견 지역전문가 제도」 — 자기계발비가 아니라 회사가 뽑아 보내는 해외 파견 제도다(재코딩 후보: 해외 파견·지역전문가 쪽, 지금 코드로는 career)"},
+    {"comp": "kakao", "h": "f69b2dc553", "facets_remove": ["uses"], "why": "「자기계발비 지원, 도서 구입 지원」 — 도서 구입은 자기계발비의 쓰임이 아니라 나란히 적은 별개 항목이다"},
+    {"comp": "bh", "h": "0c8e0a47b6", "mode": "allowance", "why": "항목명이 「자기계발비 지원」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"},
+    {"comp": "rainbow_robotics", "h": "0c8e0a47b6", "mode": "allowance", "why": "항목명이 「자기계발비 지원」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"}
+  ]
+}

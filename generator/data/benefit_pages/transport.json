@@ -1,0 +1,152 @@
+{
+  "code": "transport",
+  "slug": "transport-allowance",
+  "title": "교통비·유류비 지원",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "_경계": "이 코드 = 이동 비용을 돈·포인트·실비로 보태 주는 것(수집 계약의 house rule: 금전 지급 = transport, 운행 자체 = commute_subsidy). 통근버스만 적은 행은 commute_subsidy 의 복지라 exclude 하고 재코딩 후보로 남긴다. 버스와 교통비·유류대를 한 행에 함께 적은 행(유한양행·현대무벡스)과 귀향버스(삼성중공업, 통근이 아니다)는 여기서 센다.",
+  "intro": [
+    "교통비·유류비 지원은 출퇴근이나 귀향처럼 직원이 이동하는 데 드는 비용을 회사가 대신 부담해 주는 제도입니다. 차로 출퇴근하는 직원에게 유류비나 통행료를 주는 곳이 있고, 고향을 오가는 비용을 대 주는 곳이 있습니다.",
+    "받는 사람을 정해 둔 곳도 있습니다. 직급이나 직책에 따라 대상을 정하거나 차등을 두는 곳이 있고, 다른 지역에서 온 미혼 직원이나 혼자 부임한 직원에게 귀향비를 주는 곳이 있습니다."
+  ],
+  "_방식없음": "쓰임(유류비·귀향·야근 귀가)이 한 회사 원문에 겹칠 수 있고 지급 방식은 원문에 거의 안 나온다 — facet 으로만 센다.",
+  "facets": [
+    {
+      "key": "fuel",
+      "label": "유류비·통행료·자가운전 보조",
+      "pattern": "유류|주유|자가운전|통행료|주차비"
+    },
+    {
+      "key": "late",
+      "label": "야근·심야 귀가(택시·대리운전)",
+      "pattern": "택시|대리\\s*운전|심야|야근|야간|늦은\\s*퇴근"
+    },
+    {
+      "key": "home",
+      "label": "고향 오가는 비용·장거리 이동(귀향·KTX)",
+      "pattern": "귀향|귀성|KTX"
+    },
+    {
+      "key": "target",
+      "label": "대상이 정해짐(직급·직책·미혼·단신 부임 등)",
+      "pattern": "책임급|직급|직책|직무|미혼|단신\\s*부임|타\\s*지역"
+    },
+    {
+      "key": "how",
+      "label": "지급 방식(정액·실비·포인트)",
+      "pattern": "실비|포인트|일정액|정액"
+    },
+    {
+      "key": "business",
+      "label": "업무상 이동 경비",
+      "pattern": "업무상|업무용|출장"
+    },
+    {
+      "key": "bus_too",
+      "label": "버스·통근 차량도 함께",
+      "pattern": "통근|버스"
+    },
+    {
+      "key": "money",
+      "label": "금액",
+      "pattern": "\\d[\\d,]*\\s*만\\s*원"
+    }
+  ],
+  "money_facet": "money",
+  "questions": [
+    {
+      "text": "매달 정해진 금액을 주나요, 쓴 만큼 돌려주나요?",
+      "answered_by": [
+        "facet:how",
+        "facet:money"
+      ]
+    },
+    {
+      "text": "차를 몰고 다니면 기름값이나 통행료를 받을 수 있나요?",
+      "answered_by": [
+        "facet:fuel"
+      ]
+    },
+    {
+      "text": "밤늦게 퇴근하면 택시비나 대리운전비를 받을 수 있나요?",
+      "answered_by": [
+        "facet:late"
+      ]
+    },
+    {
+      "text": "직급이나 사는 곳에 따라 받는 사람이 정해져 있나요?",
+      "answered_by": [
+        "facet:target"
+      ]
+    },
+    {
+      "text": "고향에 다녀오거나 멀리 이동하는 비용도 대 주나요?",
+      "answered_by": [
+        "facet:home"
+      ]
+    }
+  ],
+  "overrides": [
+    {
+      "comp": "hyundai_mobis",
+      "h": "d7d6330fc0",
+      "exclude": true,
+      "why": "항목명 「셔틀버스」, 원문 「서울/경기 약 60개 노선」 — 교통비 지급이 아니라 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "hyundai_motor",
+      "h": "e5f3fadfa6",
+      "exclude": true,
+      "why": "「사업장별 통근버스」뿐 — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "hyundai_rotem",
+      "h": "0c8e0a47b6",
+      "exclude": true,
+      "why": "항목명 「통근버스」(원문 칸은 수집자 표식 (추정)뿐) — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "hyundai_steel",
+      "h": "7cc9715142",
+      "exclude": true,
+      "why": "항목명 「통근버스」, 원문 「서울/당진/인천/포항/순천 전 지역」 — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "lg_display",
+      "h": "01c736d213",
+      "exclude": true,
+      "why": "「통근버스 지원」뿐 — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "lg_elec",
+      "h": "e5f3fadfa6",
+      "exclude": true,
+      "why": "「사업장별 통근버스」뿐 — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "samsung_elec",
+      "h": "ef161f4227",
+      "exclude": true,
+      "why": "항목명 「통근버스」, 원문 「수도권 150여 노선, 일 약 800회 운행」 — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "sk_hynix",
+      "h": "8c122cdd1e",
+      "exclude": true,
+      "why": "「리무진 통근버스」 운행 — 버스 운행(commute_subsidy). 재코딩 후보"
+    },
+    {
+      "comp": "sk_innovation",
+      "h": "a7698a7f12",
+      "exclude": true,
+      "why": "「통근버스 운행」뿐 — 버스 운행(commute_subsidy). 같은 회사의 commute_subsidy 행이 오히려 야간 교통비라 두 행이 뒤바뀌어 있다. 재코딩 후보(맞바꿈)"
+    },
+    {
+      "comp": "isens",
+      "h": "3fdd59e31b",
+      "facets_remove": [
+        "fuel"
+      ],
+      "why": "「업무상 주차비, 통행료, 유류비」 — 업무 이동 경비라 자가운전 보조(유류비·통행료)로 세지 않는다(업무상 이동 경비로만 센다)"
+    }
+  ]
+}

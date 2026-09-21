@@ -1,0 +1,49 @@
+{
+  "code": "lang",
+  "slug": "language-learning",
+  "title": "어학 교육 지원",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "어학 교육 지원은 직원의 외국어 공부를 회사가 돕는 제도입니다. 회사가 사내 강좌나 전화·온라인 과정을 직접 마련하는 곳이 있고, 학습비나 어학시험 응시료를 대 주는 곳이 있으며, 두 가지를 함께 쓴 곳도 있습니다.",
+    "사내 과정을 연 곳 가운데는 합숙이나 외국어 생활관처럼 한동안 몰아서 배우는 과정을 밝힌 곳이 있습니다. 영어 말고 중국어·일본어 같은 언어를 함께 쓴 곳도 있고, 외국인 직원의 한국어 공부를 돕는다고 밝힌 곳도 있습니다."
+  ],
+  "modes": {
+    "label": "방식",
+    "_규칙순서": "위에서부터 처음 맞는 규칙 하나. 회사가 과정을 여는 쪽을 먼저 본다. 과정 운영과 비용 지원을 함께 적은 곳은 예외(overrides.mode)로 「둘 다」를 붙인다. 「교육 지원」「프로그램 지원」처럼 누가 여는지 안 나오는 원문은 어느 쪽에도 걸지 않는다.",
+    "rules": [
+      {"key": "inhouse", "label": "회사가 수업을 엶", "pattern": "사내|과정|강좌|생활관|합숙|인텐시브|연수|수업|스터디|코칭|Workshop|워크숍|전화|온라인|비대면|사이버|교육 진행|교육 운영|프로그램 운영|집중교육"},
+      {"key": "cost", "label": "학습비·응시료를 대 줌", "pattern": "비용|학습비|교육비|응시료|검정비|지원비|자기계발비|만원|학원"}
+    ],
+    "extra": [
+      {"key": "both", "label": "둘 다"}
+    ],
+    "fallback": {"key": "unknown", "label": "원문에 안 나옴"},
+    "display": ["inhouse", "cost", "both", "unknown"]
+  },
+  "facets": [
+    {"key": "test", "label": "어학시험(응시료·등급 취득·사내 검정)", "pattern": "응시료|검정|OPIc|Opic|시험|자격\\s*취득|등급\\s*취득"},
+    {"key": "amount", "label": "금액·한도", "pattern": "\\d[\\d,]*\\s*만\\s*원|한도"},
+    {"key": "count", "label": "지원 횟수", "pattern": "연\\s*\\d+\\s*회|월\\s*\\d+\\s*회"},
+    {"key": "remote", "label": "전화·온라인·화상 수업", "pattern": "전화|온라인|사이버|화상|모바일|스마트\\s*러닝|동영상|비대면|온·오프라인"},
+    {"key": "intensive", "label": "합숙·집중 과정", "pattern": "집중|합숙|생활관|인텐시브"},
+    {"key": "languages", "label": "영어 말고 다른 언어도", "pattern": "중국어|일본어|스페인어|제2외국어|각종 외국어"},
+    {"key": "korean", "label": "외국인 직원 한국어 수업", "pattern": "한국어"},
+    {"key": "abroad", "label": "해외 어학연수·파견", "pattern": "어학연수|지역전문가"}
+  ],
+  "questions": [
+    {"text": "회사가 수업을 직접 여나요, 학습비나 시험 응시료를 대 주나요?", "answered_by": ["mode:known"]},
+    {"text": "어학시험을 볼 때도 지원이 있나요?", "answered_by": ["facet:test"]},
+    {"text": "한 해에 얼마까지, 몇 번까지 지원받을 수 있나요?", "answered_by": ["facet:amount", "facet:count"]},
+    {"text": "영어 말고 다른 언어도 배울 수 있나요?", "answered_by": ["facet:languages"]},
+    {"text": "전화나 온라인으로 들을 수 있는 수업이 있나요?", "answered_by": ["facet:remote"]}
+  ],
+  "overrides": [
+    {"comp": "lig_nex1", "h": "692a66d8f8", "mode": "unknown", "facets_remove": ["remote"], "why": "「온라인/독서통신교육」은 어학이 아닌 교육 목록(사외 직무교육·학회 참석과 나란히)에서 걸렸다 — 어학교육은 누가 여는지 안 나온다"},
+    {"comp": "lunit", "h": "18f4475e61", "mode": "both", "why": "사내 영어 강사 수업(사내 무료 어학 프로그램)과 외국인 임직원 한국어 수업 비용 지원을 함께 적었다"},
+    {"comp": "psk", "h": "6001f72ae7", "mode": "both", "why": "사내 어학강좌 운영과 어학 시험 응시료 지원을 함께 적었다"},
+    {"comp": "samsung_bio", "h": "b4a4fbd4d4", "facets_remove": ["remote"], "why": "「Biz. Skill Up 온라인 과정」에는 어학이라는 말이 없다 — 어학 과정은 사내 과정만 나온다"},
+    {"comp": "samsung_ena", "h": "1d5e96b7b5", "mode": "both", "why": "OPIc 응시료 지원과 언어별·단계별 교육 프로그램 운영을 함께 적었다"},
+    {"comp": "samsung_sec", "h": "61784527e3", "mode": "both", "why": "어학교육 과정 운영과 어학 학습·등급 취득 비용 지원을 함께 적었다"},
+    {"comp": "techwing", "h": "f142c10b0f", "mode": "both", "why": "어학 자기계발비 지원과 온라인 어학 강좌 운영을 함께 적었다"}
+  ]
+}
