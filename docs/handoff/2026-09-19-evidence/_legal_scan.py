@@ -26,6 +26,15 @@ LEGAL_TERMS = [
     "육아기", "임신기", "가족돌봄", "가족 돌봄", "4대", "사회보험", "퇴직연금", "퇴직금", "연차",
     "주5일", "주 5일", "태아 검진", "태아검진", "유산", "사산", "수유", "모성보호", "근로기준법",
 ]
+# 검출어가 걸려도 **이 표기면 법정이 아니다.** 법은 시간·휴가를 시키지 시설을 시키지 않는다.
+#   「수유」는 근로기준법 75조(육아 시간)를 잡으려고 넣은 낱말인데, 「수유실」은 회사가 만든 방이라
+#   복지다. 문안을 「모유수유 공간」으로 바꿔도 「수유」가 그대로 들어 있어 소용이 없다(2026-09-21 실측)
+#   — 고쳐야 하는 건 글이 아니라 이 검사기다.
+#   면제는 **숨기지 않는다**: 아래 main() 이 「면제 n건」으로 따로 세어 보여주므로 사람이 확인할 수 있다.
+EXEMPT = {
+    "수유": ("수유실", "수유 공간", "수유룸", "모유수유 공간"),
+}
+
 EDIT_TERMS = [
     "코퍼스", "선례", "어휘", "규칙", "수집기", "수집", "검증", "병합", "미수록", "회피", "흡수",
     "정본", "판독", "시드", "SI-B2", "별도 행", "수록", "부연", "우리 판단", "⚠", "분할기",
@@ -46,28 +55,37 @@ def unq(s):
 def scan(path):
     sql = open(path, encoding="utf-8").read()
     sql = re.sub(r"^\s*--.*$", "", sql, flags=re.M)      # 주석은 사용자에게 안 보인다
-    hits, rows = [], 0
+    hits, exempted, rows = [], [], 0
     for m in ROW.finditer(sql):
         rows += 1
         cd, nm, _amt, note, qual, sort = m.groups()
         for field, text in (("NM", nm.replace("''", "'")), ("NOTE", unq(note)), ("QUAL", unq(qual))):
             for kind, terms in (("법정", LEGAL_TERMS), ("편집", EDIT_TERMS)):
                 for t in terms:
-                    if t in text:
-                        hits.append((sort, cd, field, kind, t, text))
-    return rows, hits
+                    if t not in text:
+                        continue
+                    if any(e in text for e in EXEMPT.get(t, ())):
+                        exempted.append((sort, cd, field, t, text))
+                        continue
+                    hits.append((sort, cd, field, kind, t, text))
+    return rows, hits, exempted
 
 
 def main(paths):
-    total = bad = 0
+    total = bad = skipped = 0
     for p in paths:
-        rows, hits = scan(p)
+        rows, hits, exempted = scan(p)
         total += rows
         bad += len(hits)
-        print(f"\n=== {p} — 행 {rows} · 검출 {len(hits)}")
+        skipped += len(exempted)
+        print(f"\n=== {p} — 행 {rows} · 검출 {len(hits)}"
+              + (f" · 면제 {len(exempted)}" if exempted else ""))
         for sort, cd, field, kind, term, text in sorted(hits, key=lambda h: int(h[0])):
             print(f"  [{kind}] SORT {sort:>3} {cd:<22} {field:<4} 「{term}」  {text[:100]}")
-    print(f"\n총 행 {total} · 검출 {bad}")
+        # 면제는 숨기지 않는다 — 표를 잘못 넓히면 진짜 법정 문구가 조용히 빠진다.
+        for sort, cd, field, term, text in sorted(exempted, key=lambda h: int(h[0])):
+            print(f"  [면제] SORT {sort:>3} {cd:<22} {field:<4} 「{term}」  {text[:100]}")
+    print(f"\n총 행 {total} · 검출 {bad}" + (f" · 면제 {skipped}" if skipped else ""))
     return 1 if bad else 0
 
 
