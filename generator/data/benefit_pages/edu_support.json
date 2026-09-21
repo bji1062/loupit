@@ -27,6 +27,7 @@
     {"text": "나에게 맞는 교육을 정하는 면담이나 성장 계획 제도가 있나요?", "answered_by": ["facet:plan"]}
   ],
   "overrides": [
+    {"comp": "lg_cns", "h": "cded73c87b", "exclude": true, "why": "「학자금 대출 이자비용 지원」 — 직원이 진 학자금 대출의 이자를 대 주는 금융 지원이지 교육을 마련하거나 교육비를 대는 제도가 아니다. 맞는 자리(self_development)는 같은 회사의 「자격증 취득 지원」이 2026-09-22 재코딩으로 차지했다 — 두 행 합치기는 사용자 결정"},
     {"comp": "doosan_enerbility", "h": "990e5cd239", "facets_remove": ["online"], "why": "「온라인스튜디오」는 시설 이름이다 — 직원이 온라인으로 배운다는 말은 원문에 없다"},
     {"comp": "cj_freshway", "h": "8962451d53", "facets_add": ["external"], "why": "항목명이 「사내외 교육 지원」 — 원문 칸에는 한도·횟수만 있고 사외 교육이라는 말은 항목명에만 있다"}
   ]

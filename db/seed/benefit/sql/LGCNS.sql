@@ -71,10 +71,10 @@ VALUES
    'est', NULL, TRUE, '임신 시 축하 선물 제공', 53),
 
   -- ── 성장·커리어 (growth) ──
-  -- 2026-09-22 재코딩 edu_support → self_development — 교육 제도가 아니라 본인 학자금 대출 이자 지원: db/migrations/20260922_recode_benefit_rows.sql
-  (@comp_id, 'self_development', '학자금 이자 지원', NULL, 'growth',
+  (@comp_id, 'edu_support', '학자금 이자 지원', NULL, 'growth',
    'est', NULL, TRUE, '학자금 대출 이자비용 지원', 60),
-  (@comp_id, 'career', '자격증 취득 지원', NULL, 'growth',
+  -- 2026-09-22 재코딩 career → self_development — 커리어 제도가 아니라 자격증 취득 비용 지원(어휘표 self_development 대표 명칭): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'self_development', '자격증 취득 지원', NULL, 'growth',
    'est', NULL, TRUE, '응시전형료·협회비 등 자격증 취득 비용 지원', 61),
 
   -- ── 여가·라이프 (leisure) ──

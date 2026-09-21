@@ -1,4 +1,4 @@
-# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,451행 · 2026-09-22 재코딩 51행 반영)
+# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,451행 · 2026-09-22 재코딩 52행 반영)
 
 새 코드를 만들기 전에 **여기서 같은 뜻을 찾는다.** 대응 어휘가 정말 없을 때만 신규 코드(evidence 에 「신규 코드」절로 사유 — 원문이 혜택 내용을 밝힐 때만).
 
@@ -16,19 +16,19 @@
 | `welfare_point` | 94 | perks | 복지포인트 · 카페테리아 포인트 · 선택적 복리후생 |
 | `club` | 90 | leisure | 사내 동호회 · 동호회 · 사내동호회 |
 | `housing_loan` | 79 | perks | 주택자금 대출 · 주택자금 대출 지원 · 주택자금 지원 |
+| `edu_support` | 75 | growth | 직무/리더십 교육 · 자기계발 지원 · 교육 프로그램 |
 | `medical` | 75 | health | 의료비 지원 · 본인 의료비 지원 · 가족 의료비 보조 |
-| `edu_support` | 74 | growth | 직무/리더십 교육 · 자기계발 지원 · 교육 프로그램 |
 | `flex_work` | 74 | flexibility | 유연근무제 · 자율출퇴근제 · 선택적 근로시간제 |
 | `fitness` | 66 | health | 피트니스센터 · 사내 피트니스 · 사내 헬스장 |
 | `childcare` | 62 | family | 사내 어린이집 · 직장 어린이집 · CJ키즈빌(직장 어린이집) |
 | `insurance` | 62 | health | 단체상해보험 · 단체 상해보험 · 단체보험 |
-| `long_service_leave` | 60 | time_off | 장기근속 포상 · CREATIVE WEEK(창의휴가) · 장기근속 휴가 |
+| `long_service_leave` | 61 | time_off | 장기근속 포상 · CREATIVE WEEK(창의휴가) · 장기근속 휴가 |
 | `parenting` | 59 | family | 임신·출산·육아 · 출산/육아 지원 · 임신/출산/육아 지원 |
 | `commute_subsidy` | 58 | perks | 통근버스 · 출퇴근 지원 · 셔틀버스 |
 | `snack_bar` | 58 | perks | 사내 카페 · 사내 카페/간식 · 사내 카페/무인매점 |
 | `lang` | 53 | growth | 어학시험 응시료 · 어학교육 · 외국어 교육 지원 |
-| `long_service_bonus` | 50 | compensation | 장기근속 포상 · 장기근속 포상금 · 장기근속자 포상 |
 | `mental` | 50 | health | 심리상담 · 심리상담 지원 · 심리상담센터 |
+| `long_service_bonus` | 49 | compensation | 장기근속 포상 · 장기근속 포상금 · 장기근속자 포상 |
 | `discount` | 46 | perks | CJ 계열사 할인 · 그룹사 제품 할인 · 제휴업체 할인 |
 | `holiday_gift` | 46 | compensation | 명절 선물 · 명절 상여 · 기념일 기념품 |
 | `leave_general` | 41 | time_off | 2시간 단위 휴가 · 경조휴가 · 1시간 단위 휴가 |
@@ -41,12 +41,12 @@
 | `mba` | 25 | growth | 국내외 학술연수 · Global MBA/유학 · H-MBA 핵심인재 프로그램 |
 | `birthday_gift` | 24 | perks | 기념일 선물 · 생일 선물 · 생일 상품권 |
 | `remote_work` | 24 | flexibility | 재택근무 · 재택근무제 · 자율 재택근무 |
-| `self_development` | 24 | growth | 자기계발비 · 자격증 취득 지원 · 자기계발비 지원 |
-| `lounge` | 23 | work_env | 직원 휴게실 · 고급 안마의자 · 공장 편의시설(휴게실·안마의자) |
+| `self_development` | 24 | growth | 자격증 취득 지원 · 자기계발비 · 자기계발비 지원 |
+| `lounge` | 22 | work_env | 직원 휴게실 · 고급 안마의자 · 공장 편의시설(휴게실·안마의자) |
 | `summer_leave` | 22 | time_off | 하계휴가 · 하기휴가 · 여름휴가 |
-| `career` | 20 | growth | 멘토링 제도 · 멘토링 프로그램 · Global Talent/지역전문가 |
 | `company_event` | 20 | leisure | KB 패밀리데이 · 가정의 날 과일 선물·종무식 · 가족 초청 행사 |
 | `transport` | 20 | perks | 교통비 지원 · 야근 교통비 · KTX 비용 지원 |
+| `career` | 19 | growth | 멘토링 제도 · 멘토링 프로그램 · Global Talent/지역전문가 |
 | `pension_support` | 18 | perks | 개인연금 지원 · 개인연금 · 개인연금(IRP) 50% 지원 |
 | `satellite_office` | 16 | flexibility | CJ Work On 거점오피스 · 거점오피스 · 거점 오피스 |
 | `work_tools` | 15 | work_env | AI Tool 지원 · IT 장비 지원 · 고사양 PC 지원 |
@@ -77,6 +77,7 @@
 | `travel_support` | 3 | leisure | 해외 배낭여행비 지원 · 해외여행 지원 · 휴양프로그램 |
 | `welfare_fund_loan` | 3 | perks | 사내 근로복지기금 대출 · 사내근로복지기금 대출 |
 | `free_seating` | 2 | work_env | 자율좌석제 |
+| `leisure_room` | 2 | leisure | 복지동 · 카지노룸 |
 | `office_furniture` | 2 | work_env | 데스크테리어 비용 지원 · 인체공학 사무가구 |
 | `smart_office` | 2 | work_env | Smart Working Zone · 스마트오피스 |
 | `smoking_cessation` | 2 | health | 금연 성공 축하금 · 금연수당 |
@@ -88,7 +89,6 @@
 | `guest_house` | 1 | leisure | 영빈관 |
 | `home_security` | 1 | perks | 여직원 무인경비 지원 |
 | `homecoming` | 1 | family | Home-coming 제도 |
-| `leisure_room` | 1 | leisure | 카지노룸 |
 | `long_service` | 1 | time_off | 장기근속 포상 |
 | `overseas_safety` | 1 | health | 해외종합안전관리서비스 |
 | `parent_care` | 1 | family | 부모 요양 치료비 |

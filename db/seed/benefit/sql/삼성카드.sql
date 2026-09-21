@@ -55,8 +55,9 @@ VALUES
    'est', NULL, TRUE, '육아휴직제도 및 단축근무 등 모성보호제도 운영', 42),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '경조사 지원 제도 운영', 43),
+  -- 2026-09-22 원문 정리 — 원문 끝에 섞인 수집 메모(코드명·선례 설명)가 화면에 보였다: db/migrations/20260922_recode_benefit_rows.sql
   (@comp_id, 'company_event', '가족친화 프로그램', NULL, 'leisure',
-   'est', NULL, TRUE, '가족이 함께 참여하는 사내 가족친화 프로그램 기획·운영(사내 행사 — 코퍼스 family_day 는 조기퇴근 의미라 회피)', 44),
+   'est', NULL, TRUE, '가족이 함께 참여하는 사내 가족친화 프로그램 기획·운영', 44),
   -- ── 성장·커리어 (growth) ──
   -- 2026-09-22 재코딩 self_development → career — 자기계발비가 아니라 해외 파견 지역전문가 제도: db/migrations/20260922_recode_benefit_rows.sql
   (@comp_id, 'career', '지역전문가 제도', NULL, 'growth',

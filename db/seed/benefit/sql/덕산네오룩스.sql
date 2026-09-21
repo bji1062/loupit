@@ -23,10 +23,10 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
-  -- ── 보상·금전 (compensation) ──
-  -- 2026-09-22 재코딩 excellence_award → long_service_bonus — 우수 선발이 아니라 근속 연동 포상: db/migrations/20260922_recode_benefit_rows.sql
-  (@comp_id, 'long_service_bonus', '장기근속 포상', 50, 'compensation',
-   'est', '근속메달, 기념패, 포상금, 해외여행, 리프레쉬 휴가 등 (추정)', FALSE, NULL, 1),
+  -- ── 시간·휴가 (time_off) ──
+  -- 2026-09-22 재코딩 excellence_award(compensation, 1) → long_service_leave(time_off, 19) — 우수 선발이 아니라 근속 연동 포상 — 리프레쉬 휴가가 한 줄에 있어 경계 규칙상 장기근속 휴가: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '장기근속 포상', 50, 'time_off',
+   'est', '근속메달, 기념패, 포상금, 해외여행, 리프레쉬 휴가 등 (추정)', FALSE, NULL, 19),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',

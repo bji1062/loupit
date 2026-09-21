@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════
--- 복지 행 재코딩 51행 + 원문 정리 1행 — UPDATE 54문(맞바꿈·돌림의 임시 코드 경유 2문 포함)
+-- 복지 행 재코딩 52행 + 원문 정리 2행 — UPDATE 56문(맞바꿈·돌림의 임시 코드 경유 2문 포함)
 -- 결정: 2026-09-21 세션 인계 §7-1 「1번 재코딩 43행 · 2번 유진테크 메모 노출」(사용자 지정)
 -- 선례: 20260918_recode_misclassified_rows.sql (같은 가드·같은 형식)
 --
@@ -7,41 +7,43 @@
 --   빼 두고 있었다. 예외는 항목 페이지에서만 걷히고 회사 페이지·/find·9각형 비교는 코드 그대로
 --   센다 — 같은 행이 화면마다 다른 복지로 세어진다. 원인 행의 코드를 고치면 예외가 필요 없다.
 --
--- 무엇을 바꾸나: BENEFIT_CD 만(카테고리가 바뀌는 19행은 BENEFIT_CTGR_CD·SORT_ORDER_NO 도).
---   금액·이름·설명·배지는 건드리지 않는다(원문 정리 1행만 예외). BENEFIT_ID 가 그대로라
+-- 무엇을 바꾸나: BENEFIT_CD 만(카테고리가 바뀌는 행은 BENEFIT_CTGR_CD·SORT_ORDER_NO 도).
+--   금액·이름·배지는 건드리지 않는다(설명은 원문 정리 2행만). BENEFIT_ID 가 그대로라
 --   편집 이력(TBENEFIT_EDIT_LOG.BENEFIT_ID)이 끊기지 않는다. 카테고리는 _VOCAB.md 정본을 따른다.
 --   ① commute_subsidy ↔ transport 13행 — 수집 계약 house rule 「운행 = commute_subsidy,
 --      금전 = transport」. 버스 운행만 적은 transport 9행 → commute_subsidy, 교통비·택시비만
 --      적은 commute_subsidy 4행 → transport. sk_innovation 은 두 행이 서로 뒤바뀌어 있어 맞바꾼다.
---   ② refresh_leave → long_service_leave 7행 — 근속 연수에 맞춰 주는 휴가(카카오뱅크·JYP·
---      삼성E&A·네오위즈 같은 모양 선례가 이미 long_service_leave 에 있다).
+--   ② → long_service_leave 8행 — refresh_leave 7행(근속 연수에 맞춰 주는 휴가 — 카카오뱅크·
+--      JYP·삼성E&A·네오위즈 같은 모양 선례가 이미 long_service_leave 에 있다) + 덕산네오룩스
+--      excellence_award 1행(근속 포상과 리프레쉬 휴가가 한 줄 — 경계 규칙상 장기근속 휴가).
 --   ③ long_service_leave → long_service_bonus 11행 — 어휘표 「long_service_leave = 휴가만
 --      (포상금은 long_service_bonus)」. 원문에 휴가 없이 포상금·기념품·여행만 있는 행.
 --      NAVER 「근속 기념 선물」이 먼저 비켜야 ② 의 NAVER 휴가 행이 그 자리에 들어간다(순서 중요).
---   ④ excellence_award → long_service_bonus 3행 — 우수 선발 포상이 아니라 근속 연동 포상.
---   ⑤ 그 밖의 1:1 재코딩 14행 — kt 통신비(discount→telecom) · 덕산네오룩스 주거 지원비
---      (dormitory→housing_support) · lg_cns 학자금 이자·원익IPS 본인 학자금(edu_support→
---      self_development) · 솔브레인 학위지원(edu_support→mba) · 주성 기념일 조기퇴근(event→
---      family_day) · 펄어비스 기념일 선물(event→birthday_gift)·패밀리데이(club→company_event) ·
---      크래프톤 명절 반차(holiday_gift→leave_general) · 레인보우로보틱스 생일 상품권(holiday_gift→
---      birthday_gift) · 한화에어로스페이스 아빠휴가(leave_general→parenting) · 삼성카드 사내카페
---      (lounge→snack_bar) · TCK 사내 영화관(lounge→library) · S-Oil 집중 휴가제(summer_leave→
---      leave_general).
+--   ④ excellence_award → long_service_bonus 2행 — 우수 선발 포상이 아니라 근속 연동 포상금·표창.
+--   ⑤ 그 밖의 1:1 재코딩 15행 — kt 통신비(discount→telecom) · 덕산네오룩스 주거 지원비
+--      (dormitory→housing_support) · 원익IPS 본인 학자금(edu_support→self_development) ·
+--      LG CNS 자격증 취득 지원(career→self_development) · 솔브레인 학위지원(edu_support→mba) ·
+--      주성 기념일 조기퇴근(event→family_day) · 펄어비스 기념일 선물(event→birthday_gift)·
+--      패밀리데이(club→company_event) · 크래프톤 명절 반차(holiday_gift→leave_general) ·
+--      레인보우로보틱스 생일 상품권(holiday_gift→birthday_gift) · 한화에어로스페이스 아빠휴가
+--      (leave_general→parenting) · 삼성카드 사내카페(lounge→snack_bar) · 테크윙 복지동(lounge→
+--      leisure_room) · TCK 사내 영화관(lounge→library) · S-Oil 집중 휴가제(summer_leave→leave_general).
 --   ⑥ 삼성카드 성장 3행 돌림 — 자격 취득 지원(edu_support→self_development) · 지역전문가 제도
 --      (self_development→career) · Job master 양성과정(career→edu_support). 세 코드가 한 회사에서
 --      서로의 자리를 차지하고 있어 임시 코드 __recode_tmp 를 거친다.
---   ⑦ 원문 정리 1행 — 유진테크 birthday_gift 원문 끝에 수집 메모 「(기념일 선물 — 삼성카드
---      birthday_gift 선례)」가 섞여 회사 페이지와 /benefit/birthday-gift 에 코드명이 보였다.
+--   ⑦ 원문 정리 2행 — 원문 끝에 수집 메모가 섞여 회사 페이지에 보였다. 유진테크 birthday_gift
+--      「(기념일 선물 — 삼성카드 birthday_gift 선례)」 · 삼성카드 company_event 「(사내 행사 —
+--      코퍼스 family_day 는 조기퇴근 의미라 회피)」. 메모만 걷고 제도 서술은 그대로다.
 --
 -- 남기는 예외 4개(재코딩으로 못 푼다 — 목적 코드가 그 회사에 이미 있거나 맞는 코드가 없다):
 --   cj_oliveyoung 트렌드 쿠폰(welfare_point·discount 둘 다 이미 있음) · sk_hynix 사내 편의시설
---   (맞는 코드 없음) · techwing 복지동(fitness·library 둘 다 이미 있음) · cj_freshway 렌터카·식음료
---   할인(discount 이미 있음). 합치기·새 코드는 사용자 결정이 필요하다.
+--   (맞는 코드 없음) · cj_freshway 렌터카·식음료 할인(discount 이미 있음) · lg_cns 학자금 대출
+--   이자(self_development 자리는 더 분명한 「자격증 취득 지원」이 차지). 합치기·새 코드는 사용자 결정.
 --
 -- 적용: /data/mysql/bin/mysql -vv -h <host> -u <user> -p <DB> < db/migrations/20260922_recode_benefit_rows.sql
 --   -vv 를 붙여야 문마다 Rows matched 가 찍힌다. 붙이지 않으면 0행이어도 조용히 성공한다.
---   맨 앞 0단계 SELECT 는 읽기 전용이다 — 대상 52행이 옛 값 그대로인지 먼저 볼 수 있다.
--- 기대 영향 행 수: UPDATE 54문 각 1행 = 54. 적으면 멈추고 확인하라 — 회사명 오타면 @c 가
+--   맨 앞 0단계 SELECT 는 읽기 전용이다 — 대상 54행이 옛 값 그대로인지 먼저 볼 수 있다.
+-- 기대 영향 행 수: UPDATE 56문 각 1행 = 56. 적으면 멈추고 확인하라 — 회사명 오타면 @c 가
 --   NULL 이라 오류 없이 0행이고, 값이 이미 다르면 가드가 건너뛴 것이다.
 -- 멱등: 모든 WHERE 가 옛 값 전체(코드·이름·금액·카테고리·QUAL_YN·설명·NOTE·정렬·배지)를 본다 —
 --   두 번째 실행은 전부 0행이다.
@@ -50,14 +52,14 @@
 --   'official' 이다(배지가 재계산된다). 시드 값을 가드로 쓰면 전 문장이 조용히 0행이 된다.
 -- 원자성: 한 트랜잭션이다. 새 코드가 그 회사에 이미 있으면(uq_comp_benefit) UPDATE 가
 --   ERROR 1062 로 멈추고, mysql 클라이언트가 스크립트를 끊으며 COMMIT 전이라 전부 되돌아간다.
--- 시드: 같은 52행을 db/seed/benefit/sql/*.sql 에서도 같은 종착 상태로 고쳤다. 시드는 업서트라
+-- 시드: 같은 54행을 db/seed/benefit/sql/*.sql 에서도 같은 종착 상태로 고쳤다. 시드는 업서트라
 --   코드를 바꾼 행은 새 키다 — 이 마이그레이션 없이 시드만 재적용하면 옛 코드 행이 남고 새 코드
 --   행이 하나 더 생긴다. 그러니 서빙 DB 는 반드시 이 파일로 맞춘다. 행 수는 그대로(2451).
 -- 순서: 이 마이그레이션을 정적 재생성(release)보다 먼저. 같은 PR 이 항목 페이지 exclude 예외
 --   39개를 지웠다 — DB 가 옛 코드인 채로 재생성하면 뺐던 행이 항목 페이지에 다시 들어간다.
 -- ══════════════════════════════════════════════════════════════════════
 
--- 0) 점검(읽기 전용) — 대상 행과 새 코드 자리를 함께 띄운다. 옛 코드 행 52개 + 새 코드 자리.
+-- 0) 점검(읽기 전용) — 대상 행과 새 코드 자리를 함께 띄운다.
 --    새 코드 자리에 이미 행이 있으면 그 행이 이 파일 안에서 먼저 비켜 가는 행인지 확인할 것
 --    (NAVER long_service_leave · sk_innovation 두 행 · 삼성카드 세 행만 그렇다).
 SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_CTGR_CD, b.SORT_ORDER_NO,
@@ -74,7 +76,7 @@ SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_CTGR_C
         ('duksan_neolux', 'dormitory'),
         ('duksan_neolux', 'excellence_award'),
         ('duksan_neolux', 'housing_support'),
-        ('duksan_neolux', 'long_service_bonus'),
+        ('duksan_neolux', 'long_service_leave'),
         ('eo_technics', 'excellence_award'),
         ('eo_technics', 'long_service_bonus'),
         ('eugenetech', 'birthday_gift'),
@@ -116,7 +118,7 @@ SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_CTGR_C
         ('kt', 'long_service_leave'),
         ('kt', 'refresh_leave'),
         ('kt', 'telecom'),
-        ('lg_cns', 'edu_support'),
+        ('lg_cns', 'career'),
         ('lg_cns', 'long_service_leave'),
         ('lg_cns', 'refresh_leave'),
         ('lg_cns', 'self_development'),
@@ -144,6 +146,7 @@ SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_CTGR_C
         ('s_oil', 'leave_general'),
         ('s_oil', 'summer_leave'),
         ('samsung_card', 'career'),
+        ('samsung_card', 'company_event'),
         ('samsung_card', 'edu_support'),
         ('samsung_card', 'lounge'),
         ('samsung_card', 'self_development'),
@@ -158,6 +161,8 @@ SELECT c.COMP_ENG_NM, b.BENEFIT_ID, b.BENEFIT_CD, b.BENEFIT_NM, b.BENEFIT_CTGR_C
         ('soulbrain', 'mba'),
         ('tck', 'library'),
         ('tck', 'lounge'),
+        ('techwing', 'leisure_room'),
+        ('techwing', 'lounge'),
         ('wonik_ips', 'edu_support'),
         ('wonik_ips', 'self_development'),
         ('yuhan', 'excellence_award'),
@@ -551,6 +556,25 @@ UPDATE TCOMPANY_BENEFIT
    AND SORT_ORDER_NO = 30
    AND BADGE_CD = 'official';
 
+-- ── excellence_award → long_service_leave ──
+-- duksan_neolux 「장기근속 포상」 — 우수 선발이 아니라 근속 연동 포상 — 리프레쉬 휴가가 한 줄에 있어 경계 규칙상 장기근속 휴가
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'duksan_neolux');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD = 'long_service_leave',
+       BENEFIT_CTGR_CD = 'time_off',
+       SORT_ORDER_NO = 19
+ WHERE COMP_ID = @c
+   AND BENEFIT_CD = 'excellence_award'
+   AND BENEFIT_NM = '장기근속 포상'
+   AND BENEFIT_AMT = 50
+   AND BENEFIT_CTGR_CD = 'compensation'
+   AND QUAL_YN = FALSE
+   AND NOTE_CTNT = '근속메달, 기념패, 포상금, 해외여행, 리프레쉬 휴가 등 (추정)'
+   AND QUAL_DESC_CTNT IS NULL
+   AND SORT_ORDER_NO = 1
+   AND BADGE_CD = 'official';
+
+-- ── refresh_leave → long_service_leave ──
 -- naver 「리프레시 플러스 휴가」 — 2년 근속 시 주는 추가 휴가(근속 기념 선물 행을 먼저 long_service_bonus 로 옮김)
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'naver');
 UPDATE TCOMPANY_BENEFIT
@@ -738,21 +762,6 @@ UPDATE TCOMPANY_BENEFIT
    AND BADGE_CD = 'official';
 
 -- ── excellence_award → long_service_bonus ──
--- duksan_neolux 「장기근속 포상」 — 우수 선발이 아니라 근속 연동 포상
-SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'duksan_neolux');
-UPDATE TCOMPANY_BENEFIT
-   SET BENEFIT_CD = 'long_service_bonus'
- WHERE COMP_ID = @c
-   AND BENEFIT_CD = 'excellence_award'
-   AND BENEFIT_NM = '장기근속 포상'
-   AND BENEFIT_AMT = 50
-   AND BENEFIT_CTGR_CD = 'compensation'
-   AND QUAL_YN = FALSE
-   AND NOTE_CTNT = '근속메달, 기념패, 포상금, 해외여행, 리프레쉬 휴가 등 (추정)'
-   AND QUAL_DESC_CTNT IS NULL
-   AND SORT_ORDER_NO = 1
-   AND BADGE_CD = 'official';
-
 -- eo_technics 「장기근속 포상금」 — 우수 선발이 아니라 근속 연동 포상금
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'eo_technics');
 UPDATE TCOMPANY_BENEFIT
@@ -817,20 +826,20 @@ UPDATE TCOMPANY_BENEFIT
    AND SORT_ORDER_NO = 20
    AND BADGE_CD = 'official';
 
--- ── edu_support → self_development ──
--- lg_cns 「학자금 이자 지원」 — 교육 제도가 아니라 본인 학자금 대출 이자 지원
+-- ── career → self_development ──
+-- lg_cns 「자격증 취득 지원」 — 커리어 제도가 아니라 자격증 취득 비용 지원(어휘표 self_development 대표 명칭)
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'lg_cns');
 UPDATE TCOMPANY_BENEFIT
    SET BENEFIT_CD = 'self_development'
  WHERE COMP_ID = @c
-   AND BENEFIT_CD = 'edu_support'
-   AND BENEFIT_NM = '학자금 이자 지원'
+   AND BENEFIT_CD = 'career'
+   AND BENEFIT_NM = '자격증 취득 지원'
    AND BENEFIT_AMT IS NULL
    AND BENEFIT_CTGR_CD = 'growth'
    AND QUAL_YN = TRUE
    AND NOTE_CTNT IS NULL
-   AND QUAL_DESC_CTNT = '학자금 대출 이자비용 지원'
-   AND SORT_ORDER_NO = 60
+   AND QUAL_DESC_CTNT = '응시전형료·협회비 등 자격증 취득 비용 지원'
+   AND SORT_ORDER_NO = 61
    AND BADGE_CD = 'official';
 
 -- ── edu_support → mba ──
@@ -989,6 +998,24 @@ UPDATE TCOMPANY_BENEFIT
    AND SORT_ORDER_NO = 30
    AND BADGE_CD = 'official';
 
+-- ── lounge → leisure_room ──
+-- techwing 「복지동」 — 휴게 공간이 아니라 노래방·스크린골프·실내야구 같은 여가 시설 건물(어휘표 leisure_room)
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'techwing');
+UPDATE TCOMPANY_BENEFIT
+   SET BENEFIT_CD = 'leisure_room',
+       BENEFIT_CTGR_CD = 'leisure',
+       SORT_ORDER_NO = 73
+ WHERE COMP_ID = @c
+   AND BENEFIT_CD = 'lounge'
+   AND BENEFIT_NM = '복지동'
+   AND BENEFIT_AMT IS NULL
+   AND BENEFIT_CTGR_CD = 'work_env'
+   AND QUAL_YN = TRUE
+   AND NOTE_CTNT IS NULL
+   AND QUAL_DESC_CTNT = '복지동(노래방, 스쿼시, 스크린골프, 실내야구 등)'
+   AND SORT_ORDER_NO = 21
+   AND BADGE_CD = 'official';
+
 -- ── lounge → library ──
 -- tck 「사내 영화관」 — 휴게 공간이 아니라 문화시설(sk_hynix 사내 문화시설 선례)
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'tck');
@@ -1024,7 +1051,7 @@ UPDATE TCOMPANY_BENEFIT
    AND BADGE_CD = 'official';
 
 -- ── 원문 정리 ──
--- eugenetech birthday_gift 「결혼기념일 선물」 — 수집 메모가 원문에 섞여 회사 페이지·/benefit/birthday-gift 에 코드명이 보였다
+-- eugenetech birthday_gift 「결혼기념일 선물」 — 원문 끝에 섞인 수집 메모(코드명·선례 설명)가 회사 페이지에 보였다
 SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'eugenetech');
 UPDATE TCOMPANY_BENEFIT
    SET QUAL_DESC_CTNT = '결혼기념일 축하 꽃바구니 지급'
@@ -1037,6 +1064,22 @@ UPDATE TCOMPANY_BENEFIT
    AND NOTE_CTNT IS NULL
    AND QUAL_DESC_CTNT = '결혼기념일 축하 꽃바구니 지급(기념일 선물 — 삼성카드 birthday_gift 선례)'
    AND SORT_ORDER_NO = 42
+   AND BADGE_CD = 'official';
+
+-- ── 원문 정리 ──
+-- samsung_card company_event 「가족친화 프로그램」 — 원문 끝에 섞인 수집 메모(코드명·선례 설명)가 회사 페이지에 보였다
+SET @c = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'samsung_card');
+UPDATE TCOMPANY_BENEFIT
+   SET QUAL_DESC_CTNT = '가족이 함께 참여하는 사내 가족친화 프로그램 기획·운영'
+ WHERE COMP_ID = @c
+   AND BENEFIT_CD = 'company_event'
+   AND BENEFIT_NM = '가족친화 프로그램'
+   AND BENEFIT_AMT IS NULL
+   AND BENEFIT_CTGR_CD = 'leisure'
+   AND QUAL_YN = TRUE
+   AND NOTE_CTNT IS NULL
+   AND QUAL_DESC_CTNT = '가족이 함께 참여하는 사내 가족친화 프로그램 기획·운영(사내 행사 — 코퍼스 family_day 는 조기퇴근 의미라 회피)'
+   AND SORT_ORDER_NO = 44
    AND BADGE_CD = 'official';
 
 COMMIT;
