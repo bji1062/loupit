@@ -193,10 +193,20 @@ def test_legal_rows_all_exist_in_seed_sql():
     """
     from pathlib import Path
 
+    import re
+
     seed_dir = Path(__file__).resolve().parents[2] / "db" / "seed" / "benefit" / "sql"
-    blob = "\n".join(p.read_text(encoding="utf-8") for p in seed_dir.glob("*.sql"))
+    # 회사 파일 단위로 좁힌다. 시드 전체를 한 덩어리로 이어 붙여 이름만 찾으면
+    # 다른 회사가 같은 이름을 들고 있는 행은 자기 시드에서 사라져도 통과한다
+    # (2026-09-21 실측: 등록 13행 중 4행이 그 상태였다 — 「출산/육아 지원」 7사 공유 등).
+    by_slug = {}
+    for path in seed_dir.glob("*.sql"):
+        src = path.read_text(encoding="utf-8")
+        m = re.search(r"COMP_ENG_NM\s*=\s*'([A-Za-z0-9_]+)'", src)
+        if m:
+            by_slug[m.group(1)] = src
     missing = [f"{r['comp_eng_nm']}/{r['benefit_nm']}" for r in legal.legal_rows()
-               if f"'{r['benefit_nm']}'" not in blob]
+               if f"'{r['benefit_nm']}'" not in by_slug.get(r["comp_eng_nm"], "")]
     assert not missing, f"시드에서 사라진 법정 행: {missing}"
 
 
