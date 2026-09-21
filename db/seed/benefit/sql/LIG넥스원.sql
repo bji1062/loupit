@@ -23,6 +23,11 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
+  -- ── 보상·금전 (compensation) ──
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 32) → long_service_bonus(compensation, 9) — 휴가 없이 장기근속비·기념품만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
+   'est', NULL, TRUE, '10년 이상 5년 단위 장기근속비 지급, 정년 퇴임식 및 기념품', 9),
+
   -- ── 근무유연성 (flexibility) ──
   (@comp_id, 'flex_work', '선택적 근무시간제', NULL, 'flexibility',
    'est', NULL, TRUE, '주 40시간 선택적 근무시간제, 시차출퇴근제', 10),
@@ -40,8 +45,6 @@ VALUES
    'est', NULL, TRUE, '여름휴가 5일 별도, 징검다리 휴가 권장', 30),
   (@comp_id, 'refresh_leave', '리프레시/Re-Fill 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '리프레시 휴가 지원금(국내여행비), Re-Fill 휴가, 해외문화 체험비 지원, 여행포인트 지급, 마이너스휴가/연차이월 제도', 31),
-  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
-   'est', NULL, TRUE, '10년 이상 5년 단위 장기근속비 지급, 정년 퇴임식 및 기념품', 32),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',

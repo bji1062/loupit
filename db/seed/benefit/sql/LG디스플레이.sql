@@ -57,7 +57,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복리후생 포인트', 200, 'perks',
    'est', '자기계발/생활/건강/레저/패션 등 자율 사용 (추정)', FALSE, NULL, 80),
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '통근버스 지원 (추정)', FALSE, NULL, 81),
   (@comp_id, 'housing_loan', '주택융자/사택', NULL, 'perks',
    'est', NULL, TRUE, '주택 구입/임차 융자금, 사택/기숙사 지원', 82)

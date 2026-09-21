@@ -22,10 +22,6 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
-  -- ── 보상·금전 (compensation) ──
-  (@comp_id, 'holiday_gift', '명절 반차', NULL, 'compensation',
-   'est', NULL, TRUE, '명절 기념 반차 제공', 1),
-
   -- ── 근무유연성 (flexibility) ──
   (@comp_id, 'remote_work', '자율 재택근무', NULL, 'flexibility',
    'est', NULL, TRUE, '자율 재택근무 (팀바팀)', 10),
@@ -43,6 +39,9 @@ VALUES
    'est', NULL, TRUE, '매 5년 근속마다 기념품 및 포상 휴가', 30),
   (@comp_id, 'birthday_leave', '생일 축하', 5, 'time_off',
    'est', '생일날 5만원 지급 + 인정 반차', FALSE, NULL, 31),
+  -- 2026-09-22 재코딩 holiday_gift(compensation, 1) → leave_general(time_off, 32) — 선물·돈이 아니라 명절 반차(휴가): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'leave_general', '명절 반차', NULL, 'time_off',
+   'est', NULL, TRUE, '명절 기념 반차 제공', 32),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진 (본인+가족)', 100, 'health',

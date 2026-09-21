@@ -24,12 +24,9 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ──
-  (@comp_id, 'excellence_award', '장기근속 포상', 50, 'compensation',
+  -- 2026-09-22 재코딩 excellence_award → long_service_bonus — 우수 선발이 아니라 근속 연동 포상: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상', 50, 'compensation',
    'est', '근속메달, 기념패, 포상금, 해외여행, 리프레쉬 휴가 등 (추정)', FALSE, NULL, 1),
-
-  -- ── 근무환경 (work_env) ──
-  (@comp_id, 'dormitory', '원거리 주거 지원', NULL, 'work_env',
-   'est', '6년간 지원', TRUE, '원거리 거주자 6년간 주거 지원비 지원', 20),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',
@@ -62,7 +59,10 @@ VALUES
    'est', NULL, TRUE, '사내 카페 운영, 간식 및 음료 제공', 81),
   -- 카테고리 통일(2026-09-21): perks → compensation
   (@comp_id, 'holiday_gift', '명절/창립기념일 선물', 20, 'compensation',
-   'est', '설/추석 연 1회 + 창립기념일 기념품 (추정)', FALSE, NULL, 82)
+   'est', '설/추석 연 1회 + 창립기념일 기념품 (추정)', FALSE, NULL, 82),
+  -- 2026-09-22 재코딩 dormitory(work_env, 20) → housing_support(perks, 82) — 시설이 아니라 주거 지원비(현금): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'housing_support', '원거리 주거 지원', NULL, 'perks',
+   'est', '6년간 지원', TRUE, '원거리 거주자 6년간 주거 지원비 지원', 82)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

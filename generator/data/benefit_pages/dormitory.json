@@ -129,12 +129,6 @@
   ],
   "overrides": [
     {
-      "comp": "duksan_neolux",
-      "h": "0380775c2c",
-      "exclude": true,
-      "why": "「원거리 거주자 6년간 주거 지원비 지원」 — 시설이 아니라 주거비 현금(housing_support). 재코딩 후보"
-    },
-    {
       "comp": "daeduck",
       "h": "6d9260e289",
       "mode": "both",

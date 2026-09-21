@@ -67,7 +67,8 @@ VALUES
    'est', NULL, TRUE, '학자금 지원 항목 중 자녀학자금', 40),
 
   -- ── 성장·커리어 (growth) ──
-  (@comp_id, 'edu_support', '본인 학자금', NULL, 'growth',
+  -- 2026-09-22 재코딩 edu_support → self_development — 본인 학자금(hanmi_pharm·hyundai_muvex 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'self_development', '본인 학자금', NULL, 'growth',
    'est', NULL, TRUE, '학자금 지원 항목 중 본인학자금', 50),
   (@comp_id, 'lang', '사내 외국어 교육', NULL, 'growth',
    'est', NULL, TRUE, '어학교육지원 — 사내외국어 교육', 51),

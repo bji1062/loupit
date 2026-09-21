@@ -106,6 +106,16 @@
       "h": "f9abb00fdb",
       "exclude": true,
       "why": "「임직원 트렌드 쿠폰 — 매월 3만원 정액 쿠폰」은 매달 주는 쿠폰이다 — 생일·기념일과 무관(welfare_point·discount 계열)"
+    },
+    {
+      "comp": "pearl_abyss",
+      "h": "02af0b620d",
+      "facets_remove": [
+        "family",
+        "choice",
+        "amount"
+      ],
+      "why": "「자녀 입학 선물 약 30만원」은 가족 생일 선물이 아니라 입학 선물이고 금액도 그 몫이다. 「원하는 날짜에 원하는 곳 배송」은 받을 날짜와 장소를 고르는 것이지 선물을 고르는 것이 아니다"
     }
   ]
 }

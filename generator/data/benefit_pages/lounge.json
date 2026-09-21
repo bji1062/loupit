@@ -84,22 +84,10 @@
   ],
   "overrides": [
     {
-      "comp": "samsung_card",
-      "h": "023266d4a6",
-      "exclude": true,
-      "why": "「임직원 전용 사내 카페 운영」뿐이다 — 휴게실이 아니라 사내 카페다(재코딩 후보: snack_bar, 이 회사는 snack_bar 행이 없다)"
-    },
-    {
       "comp": "sk_hynix",
       "h": "4d6ddcd0af",
       "exclude": true,
       "why": "은행·카페·음식점·편의점·미용실·세탁소·약국 같은 사내 편의시설 목록이다 — 쉬는 공간이 원문에 없다(재코딩 후보: 편의시설 코드 없음 — 새 코드 또는 삭제 판단 필요)"
-    },
-    {
-      "comp": "tck",
-      "h": "4e28b2b77f",
-      "exclude": true,
-      "why": "「퇴근 후 영화 관람 가능한 사내 영화관」 — 휴게 공간이 아니라 문화시설이다(재코딩 후보: library, sk_hynix 「사내 문화시설」 선례)"
     },
     {
       "comp": "techwing",

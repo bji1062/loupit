@@ -26,6 +26,9 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'excellence_award', '아이디어/공로 포상', 50, 'compensation',
    'est', '아이디어 제안 포상금 + 회사 발전 공로자 포상금/상패 (추정)', FALSE, NULL, 1),
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 31) → long_service_bonus(compensation, 83) — 휴가 없이 순금 선물만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 순금 선물', NULL, 'compensation',
+   'est', NULL, TRUE, '장기근속자 감사 선물(순금) 지급', 83),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '1인1실 기숙사 무상 (신축 오피스텔)', NULL, 'work_env',
@@ -36,8 +39,6 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '특별 휴가 1주일 + 휴가비', 100, 'time_off',
    'est', '매년 1주일 특별 휴가 + 100만 복지포인트 지급', FALSE, NULL, 30),
-  (@comp_id, 'long_service_leave', '장기근속 순금 선물', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속자 감사 선물(순금) 지급', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진 (출장 검진)', 100, 'health',

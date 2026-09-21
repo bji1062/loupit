@@ -23,6 +23,11 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
+  -- ── 근무유연성 (flexibility) ──
+  -- 2026-09-22 재코딩 event(family, 51) → family_day(flexibility, 19) — 경조사 지원이 아니라 가족 기념일 조기 퇴근: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'family_day', '기념일 조기퇴근', NULL, 'flexibility',
+   'est', NULL, TRUE, '부모님 생신, 배우자 생일, 결혼기념일 중 연 2회 17시 조기 퇴근', 19),
+
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '기숙사 무료 제공', NULL, 'work_env',
    'est', NULL, TRUE, '원거리 거주자 기숙사 무료 제공', 20),
@@ -40,8 +45,6 @@ VALUES
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'child_edu', '자녀 학자금 (무제한)', 200, 'family',
    'est', '고등학교/대학교 등록금, 자녀 수 제한 없이 지원 (추정)', FALSE, NULL, 50),
-  (@comp_id, 'event', '기념일 조기퇴근', NULL, 'family',
-   'est', NULL, TRUE, '부모님 생신, 배우자 생일, 결혼기념일 중 연 2회 17시 조기 퇴근', 51),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '법인 콘도', 50, 'leisure',

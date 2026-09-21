@@ -70,7 +70,8 @@ VALUES
    'est', '여행/문화공연/건강관리/자기계발 등 (추정)', FALSE, NULL, 80),
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
   (@comp_id, 'meal', '구내식당', NULL, 'perks',  'est', NULL, TRUE, '위생적 영양 식사', 81),
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '사업장별 통근버스 (추정)', FALSE, NULL, 82),
   (@comp_id, 'discount', '차량 할인', NULL, 'perks',
    'est', NULL, TRUE, '본인명의 차량 구입/수리비 할인, 자가정비코너 운영', 83),

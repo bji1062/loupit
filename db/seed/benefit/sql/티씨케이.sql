@@ -30,8 +30,6 @@ VALUES
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '사내 아파트/기숙사', NULL, 'work_env',
    'est', NULL, TRUE, '출퇴근 거리에 따라 안성 시내 아파트 이용 가능', 20),
-  (@comp_id, 'lounge', '사내 영화관', NULL, 'work_env',
-   'est', NULL, TRUE, '퇴근 후 영화 관람 가능한 사내 영화관 운영', 21),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합 건강검진 (본인+배우자)', 100, 'health',
@@ -58,6 +56,9 @@ VALUES
    'est', '전국 유명 휴양지 콘도 보유 (추정)', FALSE, NULL, 70),
   (@comp_id, 'club', '동호회 활동', NULL, 'leisure',
    'est', NULL, TRUE, '축구, 야구, 볼링, 산악, 자전거, 영화, 봉사 동아리 등', 71),
+  -- 2026-09-22 재코딩 lounge(work_env, 21) → library(leisure, 72) — 휴게 공간이 아니라 문화시설(sk_hynix 사내 문화시설 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'library', '사내 영화관', NULL, 'leisure',
+   'est', NULL, TRUE, '퇴근 후 영화 관람 가능한 사내 영화관 운영', 72),
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '선택적 복리후생 포인트', 200, 'perks',

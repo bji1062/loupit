@@ -23,7 +23,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ──
-  (@comp_id, 'excellence_award', '장기근속 포상금', 50, 'compensation',
+  -- 2026-09-22 재코딩 excellence_award → long_service_bonus — 우수 선발이 아니라 근속 연동 포상금: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상금', 50, 'compensation',
    'est', '근속 10년차부터 장기근속 포상금 지급 (추정)', FALSE, NULL, 1),
 
   -- ── 근무환경 (work_env) ──

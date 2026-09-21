@@ -25,14 +25,13 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'incentive', '경영성과급(PS/PI)', NULL, 'compensation',
    'est', NULL, TRUE, '경영성과급(PS,PI) 및 안전장려금 지급', 1),
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 30) → long_service_bonus(compensation, 2) — 휴가 없이 여행 지원만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 여행 지원', NULL, 'compensation',
+   'est', NULL, TRUE, '장기근속 직원 여행 지원 및 정년퇴직 여행비 지원', 2),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '사택 지원', NULL, 'work_env',
    'est', NULL, TRUE, '김포, 부산, 김해, 제주 등 사택 지원', 20),
-
-  -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'long_service_leave', '장기근속 여행 지원', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속 직원 여행 지원 및 정년퇴직 여행비 지원', 30),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진 (전직원)', 100, 'health',

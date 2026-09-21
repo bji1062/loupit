@@ -100,18 +100,6 @@
   },
   "overrides": [
     {
-      "comp": "jusung",
-      "h": "e6ee1f83ab",
-      "exclude": true,
-      "why": "부모님 생신·배우자 생일·결혼기념일 조기 퇴근이다 — 경조사 지원(돈·휴가·물품)이 아니라 가족 기념일 조기퇴근(family_day 계열)"
-    },
-    {
-      "comp": "pearl_abyss",
-      "h": "02af0b620d",
-      "exclude": true,
-      "why": "항목명 「기념일 선물」, 원문은 원하는 날짜 선물 배송과 자녀 입학 선물 — 경조사 내용이 없다(birthday_gift·parenting 계열)"
-    },
-    {
       "comp": "kia",
       "h": "1efeadebc3",
       "facets_remove": [

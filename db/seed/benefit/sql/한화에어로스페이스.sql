@@ -26,10 +26,6 @@ VALUES
   (@comp_id, 'flex_work', '자율출퇴근제', NULL, 'flexibility',
    'est', NULL, TRUE, '자율출퇴근제', 10),
 
-  -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '아빠휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '아빠휴가 제도', 30),
-
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진 지원', 100, 'health',
    'est', '(추정)', FALSE, NULL, 40),
@@ -41,6 +37,9 @@ VALUES
    'est', NULL, TRUE, '자녀 학자금 지원', 50),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '각종 경조사 지원, 사우회(경조사회)', 51),
+  -- 2026-09-22 재코딩 leave_general(time_off, 30) → parenting(family, 52) — 자녀 출산 때 아버지에게 주는 휴가(한화시스템 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'parenting', '아빠휴가', NULL, 'family',
+   'est', NULL, TRUE, '아빠휴가 제도', 52),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '해외 석/박사/교육', NULL, 'growth',

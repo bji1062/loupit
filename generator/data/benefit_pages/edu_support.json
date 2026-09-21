@@ -27,10 +27,6 @@
     {"text": "나에게 맞는 교육을 정하는 면담이나 성장 계획 제도가 있나요?", "answered_by": ["facet:plan"]}
   ],
   "overrides": [
-    {"comp": "lg_cns", "h": "cded73c87b", "exclude": true, "why": "「학자금 대출 이자비용 지원」 — 직원이 진 학자금 대출의 이자를 대 주는 금융 지원이지 교육을 마련하거나 교육비를 대는 제도가 아니다(재코딩 후보: 본인 학자금이 있는 self_development 쪽)"},
-    {"comp": "soulbrain", "h": "1c72d19279", "exclude": true, "why": "「학위지원제도 운영」뿐 — 직무 교육도 교육비도 없고 학위 지원만 적힌 행이다. mba 페이지의 kai·gc_biopharma 석·박사 학위 지원과 같은 제도(재코딩 후보 mba)"},
-    {"comp": "wonik_ips", "h": "0b6c749e1d", "exclude": true, "why": "「학자금 지원 항목 중 본인학자금」뿐 — self_development 페이지의 hanmi_pharm·hyundai_muvex 본인 학자금과 같은 제도라 한 제도가 두 페이지에 다른 이름으로 선다(재코딩 후보 self_development)"},
-    {"comp": "samsung_card", "h": "3b8f12e9b0", "exclude": true, "why": "「금융/비금융 자격 취득 지원」뿐 — 교육 과정·교육비가 없다. self_development 의 lig_nex1·samsung_heavy 자격증 취득 지원과 같은 제도(재코딩 후보 self_development). 「교육 과정」을 함께 적은 samsung_fire·samsung_sec 는 남긴다"},
     {"comp": "doosan_enerbility", "h": "990e5cd239", "facets_remove": ["online"], "why": "「온라인스튜디오」는 시설 이름이다 — 직원이 온라인으로 배운다는 말은 원문에 없다"},
     {"comp": "cj_freshway", "h": "8962451d53", "facets_add": ["external"], "why": "항목명이 「사내외 교육 지원」 — 원문 칸에는 한도·횟수만 있고 사외 교육이라는 말은 항목명에만 있다"}
   ]

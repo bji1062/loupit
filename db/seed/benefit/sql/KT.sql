@@ -29,7 +29,8 @@ VALUES
   -- ── 근무환경 (work_env) ──
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'refresh_leave', '장기근속 포상', NULL, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 장기근속 시 주는 포상과 휴가: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
    'est', NULL, TRUE, '장기근속 시 포상과 휴가 지원', 30),
 
   -- ── 건강·의료 (health) ──
@@ -55,7 +56,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복지포인트/자기계발비', 200, 'perks',
    'est', '높은 수준 (추정)', FALSE, NULL, 80),
-  (@comp_id, 'discount', '통신비/단말기 지원', 120, 'perks',
+  -- 2026-09-22 재코딩 discount → telecom — 할인이 아니라 통신비·단말기 보조: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'telecom', '통신비/단말기 지원', 120, 'perks',
    'est', '휴대폰 통신비 및 단말기 (추정)', FALSE, NULL, 81),
   (@comp_id, 'housing_loan', '주택자금 대출', NULL, 'perks',
    'est', NULL, TRUE, '저금리 주택자금 대출 지원', 82)

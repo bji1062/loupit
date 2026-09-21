@@ -70,7 +70,8 @@ VALUES
    'est', '일 6,000원 x 240일 환산 (추정)', FALSE, NULL, 81),
   (@comp_id, 'snack_bar', '사내 카페', 50, 'perks',
    'est', '서울사무소 사내 카페 운영 (추정)', FALSE, NULL, 82),
-  (@comp_id, 'commute_subsidy', '야근 교통비', 30, 'perks',
+  -- 2026-09-22 재코딩 commute_subsidy → transport — 버스 운행이 아니라 야근 교통비 지급: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'transport', '야근 교통비', 30, 'perks',
    'est', '야근 교통비 지원 (추정)', FALSE, NULL, 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

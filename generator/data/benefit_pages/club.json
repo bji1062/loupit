@@ -84,13 +84,5 @@
         "facet:more"
       ]
     }
-  ],
-  "overrides": [
-    {
-      "comp": "pearl_abyss",
-      "h": "35c47f7f0b",
-      "exclude": true,
-      "why": "가족 참여 프로그램·1인가구 가사 청소·반려동물 보험비 지원 — 동호회가 원문에 없다(재코딩 후보: company_event·family_day 등)"
-    }
   ]
 }

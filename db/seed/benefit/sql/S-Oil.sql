@@ -38,7 +38,8 @@ VALUES
    'est', NULL, TRUE, '사택 제공', 20),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'summer_leave', '집중 휴가제', NULL, 'time_off',
+  -- 2026-09-22 재코딩 summer_leave → leave_general — 여름휴가가 아니라 휴가 집중 사용 제도: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'leave_general', '집중 휴가제', NULL, 'time_off',
    'est', NULL, TRUE, '연 1회 2주간 휴가사용 의무화 (사무직/기술직)', 30),
 
   -- ── 건강·의료 (health) ──

@@ -46,9 +46,6 @@ VALUES
   -- ── 유연근무 (flexibility) ──
   (@comp_id, 'flex_work', '선택적 근무시간제', NULL, 'flexibility',
    'est', NULL, TRUE, '의무근무시간과 선택근무시간을 구분한 탄력 근무 운영', 20),
-  -- ── 근무환경 (work_env) ──
-  (@comp_id, 'lounge', '사내카페', NULL, 'work_env',
-   'est', NULL, TRUE, '임직원 전용 사내 카페 운영', 30),
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'childcare', '사내어린이집', NULL, 'family',
    'est', NULL, TRUE, '임직원 전용 사내 어린이집 운영', 40),
@@ -61,17 +58,20 @@ VALUES
   (@comp_id, 'company_event', '가족친화 프로그램', NULL, 'leisure',
    'est', NULL, TRUE, '가족이 함께 참여하는 사내 가족친화 프로그램 기획·운영(사내 행사 — 코퍼스 family_day 는 조기퇴근 의미라 회피)', 44),
   -- ── 성장·커리어 (growth) ──
-  (@comp_id, 'self_development', '지역전문가 제도', NULL, 'growth',
+  -- 2026-09-22 재코딩 self_development → career — 자기계발비가 아니라 해외 파견 지역전문가 제도: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'career', '지역전문가 제도', NULL, 'growth',
    'est', NULL, TRUE, '글로벌 금융인재 양성을 위한 해외 파견 지역전문가 제도', 50),
   (@comp_id, 'mba', '삼성 MBA/EMBA·금융석사과정', NULL, 'growth',
    'est', NULL, TRUE, '국내외 MBA/EMBA 파견 및 성균관대 협업 금융석사과정 운영', 51),
-  (@comp_id, 'edu_support', '전문 자격 취득 지원', NULL, 'growth',
+  -- 2026-09-22 재코딩 edu_support → self_development — 교육 과정이 아니라 자격 취득 지원(lig_nex1·samsung_heavy 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'self_development', '전문 자격 취득 지원', NULL, 'growth',
    'est', NULL, TRUE, '데이터분석·마케팅·CFA·CPA·세무사 등 금융/비금융 자격 취득 지원', 52),
   (@comp_id, 'lang', '외국어 학습 지원', NULL, 'growth',
    'est', NULL, TRUE, '어학자격 취득 지원 및 어학교육 과정 운영', 53),
   (@comp_id, 'books', '도서구입 지원', NULL, 'growth',
    'est', NULL, TRUE, '도서구입 지원 및 독서휴가제도 운영', 54),
-  (@comp_id, 'career', 'Job master 양성과정', NULL, 'growth',
+  -- 2026-09-22 재코딩 career → edu_support — 직무·리더십 교육체계 — 교육 제도: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'edu_support', 'Job master 양성과정', NULL, 'growth',
    'est', NULL, TRUE, '직무별 사내 전문가 선발·양성 과정, 기본·리더십·직무 교육체계 운영', 55),
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'club', '사내 동호회 지원', NULL, 'leisure',
@@ -88,7 +88,10 @@ VALUES
   (@comp_id, 'housing_support', '임차사택·주거안정지원', NULL, 'perks',
    'est', NULL, TRUE, '임차사택 제공 및 주거안정자금 지원', 73),
   (@comp_id, 'pension_support', '개인연금 지원', NULL, 'perks',
-   'est', NULL, TRUE, '국민연금 외 개인연금 제도 운영 및 회사 지원', 74)
+   'est', NULL, TRUE, '국민연금 외 개인연금 제도 운영 및 회사 지원', 74),
+  -- 2026-09-22 재코딩 lounge(work_env, 30) → snack_bar(perks, 75) — 휴게실이 아니라 사내 카페: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'snack_bar', '사내카페', NULL, 'perks',
+   'est', NULL, TRUE, '임직원 전용 사내 카페 운영', 75)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

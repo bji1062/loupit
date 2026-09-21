@@ -117,18 +117,6 @@
   },
   "overrides": [
     {
-      "comp": "krafton",
-      "h": "16ff98ce8f",
-      "exclude": true,
-      "why": "「명절 기념 반차」는 휴가다 — 명절 선물·돈이 아니다(leave_general 계열)"
-    },
-    {
-      "comp": "rainbow_robotics",
-      "h": "679d190e6d",
-      "exclude": true,
-      "why": "원문이 「생일자 상품권 지급」뿐이다 — 명절이 없는 생일 선물(birthday_gift 계열)"
-    },
-    {
       "comp": "ncsoft",
       "h": "ff4a57b2c7",
       "mode": "cash",

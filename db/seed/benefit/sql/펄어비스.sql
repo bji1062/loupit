@@ -46,8 +46,6 @@ VALUES
   -- 2026-09-18 재코딩 parenting → parent_care (새 코드, 출산·육아가 아니라 부모 요양·치료비): db/migrations/20260918_recode_misclassified_rows.sql
   (@comp_id, 'parent_care', '부모 요양 치료비', 480, 'family',
    'est', '매월 최대 40만원 x 12개월', FALSE, NULL, 52),
-  (@comp_id, 'event', '기념일 선물', NULL, 'family',
-   'est', NULL, TRUE, '원하는 날짜에 원하는 곳 배송, 자녀 입학 선물 약 30만원', 53),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'conference', '최신 기술 스터디', NULL, 'growth',
@@ -56,7 +54,8 @@ VALUES
    'est', NULL, TRUE, '도서구입비 지원', 61),
 
   -- ── 여가·라이프 (leisure) ──
-  (@comp_id, 'club', '패밀리데이/반려동물 보험', NULL, 'leisure',
+  -- 2026-09-22 재코딩 club → company_event — 동호회가 아니라 가족 참여 프로그램(패밀리데이): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'company_event', '패밀리데이/반려동물 보험', NULL, 'leisure',
    'est', NULL, TRUE, '가족 참여 프로그램, 1인가구 가사 청소 월 1회, 반려동물 보험비 지원', 70),
 
   -- ── 경제적 부가혜택 (perks) ──
@@ -67,7 +66,10 @@ VALUES
   (@comp_id, 'snack_bar', '무료 카페테리아', NULL, 'perks',
    'est', NULL, TRUE, '무료 카페테리아 운영', 82),
   (@comp_id, 'housing_loan', '거주비/대출 이자 지원', 600, 'perks',
-   'est', '회사 인근 거주 시 매월 50만원 거주비, 그 외 지역 대출 이자 실비 지원', FALSE, NULL, 83)
+   'est', '회사 인근 거주 시 매월 50만원 거주비, 그 외 지역 대출 이자 실비 지원', FALSE, NULL, 83),
+  -- 2026-09-22 재코딩 event(family, 53) → birthday_gift(perks, 84) — 경조사가 아니라 기념일 선물: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'birthday_gift', '기념일 선물', NULL, 'perks',
+   'est', NULL, TRUE, '원하는 날짜에 원하는 곳 배송, 자녀 입학 선물 약 30만원', 84)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

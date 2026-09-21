@@ -63,7 +63,8 @@ VALUES
    'est', '가전/모바일 할인 (추정)', FALSE, NULL, 81),
   (@comp_id, 'meal', '구내식당 삼시세끼 무료', 432, 'perks',
    'est', '일 18,000원 x 240일 환산', FALSE, NULL, 82),
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '수도권 150여 노선, 일 약 800회 운행', FALSE, NULL, 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

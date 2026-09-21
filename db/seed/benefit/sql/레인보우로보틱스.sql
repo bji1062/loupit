@@ -25,8 +25,6 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'stock_option', '우리사주조합', NULL, 'compensation',
    'est', NULL, TRUE, '우리사주조합 운영', 1),
-  (@comp_id, 'holiday_gift', '생일 상품권', 5, 'compensation',
-   'est', '생일자 상품권 지급 (추정)', FALSE, NULL, 2),
 
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'leave_general', '2시간 단위 휴가', NULL, 'time_off',
@@ -50,7 +48,10 @@ VALUES
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
   (@comp_id, 'meal', '중식 제공', NULL, 'perks',  'est', NULL, TRUE, NULL, 80),
   (@comp_id, 'snack_bar', '다과/커피머신', 20, 'perks',
-   'est', '임직원 다과 제공 및 커피머신 구비 (추정)', FALSE, NULL, 81)
+   'est', '임직원 다과 제공 및 커피머신 구비 (추정)', FALSE, NULL, 81),
+  -- 2026-09-22 재코딩 holiday_gift(compensation, 2) → birthday_gift(perks, 82) — 명절이 아니라 생일 상품권: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'birthday_gift', '생일 상품권', 5, 'perks',
+   'est', '생일자 상품권 지급 (추정)', FALSE, NULL, 82)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),
