@@ -1,0 +1,117 @@
+{
+  "code": "excellence_award",
+  "slug": "employee-awards",
+  "title": "사내 포상 제도",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "사내 포상 제도는 일을 잘했거나 회사에 보탬이 된 직원을 뽑아 상과 상금·상품을 주는 제도입니다. 포상의 종류가 회사마다 다릅니다. 우수사원이나 모범사원을 뽑는 곳, 회사 발전에 공을 세운 사람에게 공로상을 주는 곳, 직무발명이나 아이디어 제안에 따로 포상하는 곳이 있습니다.",
+    "매월이나 분기마다 뽑는다고 밝힌 곳이 있고, 포상 휴가나 해외연수를 준다는 곳도 있습니다. 직원이 사람을 추천해 채용되면 주는 추천 포상도 이 항목에 들어 있습니다."
+  ],
+  "_방식없음": "우수사원·공로·발명·제안 포상은 한 회사가 여럿을 함께 운영하는 목록이라 배타적인 방식 축이 아니다 — facet 으로만 센다.",
+  "facets": [
+    {
+      "key": "excellent",
+      "label": "우수·모범사원 선발",
+      "pattern": "우수\\s*사원|우수/|모범|칭찬|올해의|하나인상|KAI인\\s*상"
+    },
+    {
+      "key": "contribution",
+      "label": "공로·경영 기여 포상",
+      "pattern": "공로|유공|기여상|경영기여"
+    },
+    {
+      "key": "invention",
+      "label": "발명·특허·제안·연구·도전 포상",
+      "pattern": "발명|특허|제안|연구|아이디어|신제품|원가혁신|IDEATHON|Try\\s*상|Innovation"
+    },
+    {
+      "key": "referral",
+      "label": "인재 추천 포상",
+      "pattern": "추천"
+    },
+    {
+      "key": "frequency",
+      "label": "시상 주기(매월·분기·연간)",
+      "pattern": "매월|월간|분기|연간|매년|올해의"
+    },
+    {
+      "key": "non_cash",
+      "label": "포상 휴가·해외연수·상품",
+      "pattern": "휴가|연수|상품|상패"
+    },
+    {
+      "key": "prize",
+      "label": "상금·포상금",
+      "pattern": "포상금|상금|\\d\\s*만\\s*원"
+    },
+    {
+      "key": "amount",
+      "label": "금액",
+      "pattern": "\\d[\\d,]*\\s*만\\s*원"
+    }
+  ],
+  "money_facet": "amount",
+  "questions": [
+    {
+      "text": "우수사원 말고 발명·특허나 아이디어 제안으로도 상을 받을 수 있나요?",
+      "answered_by": [
+        "facet:invention"
+      ]
+    },
+    {
+      "text": "얼마나 자주 뽑나요?",
+      "answered_by": [
+        "facet:frequency"
+      ]
+    },
+    {
+      "text": "상금이나 포상금을 주나요?",
+      "answered_by": [
+        "facet:prize"
+      ]
+    },
+    {
+      "text": "돈 말고 포상 휴가나 해외연수도 주나요?",
+      "answered_by": [
+        "facet:non_cash"
+      ]
+    },
+    {
+      "text": "사람을 추천해 채용되면 포상이 있나요?",
+      "answered_by": [
+        "facet:referral"
+      ]
+    }
+  ],
+  "notes": {
+    "money": "금액이 적힌 원문에는 추천 채용 포상과 직무발명 포상처럼 우수사원 시상이 아닌 포상의 금액이 섞여 있습니다. 우수사원 상금의 크기로 읽으면 안 됩니다."
+  },
+  "overrides": [
+    {
+      "comp": "duksan_neolux",
+      "h": "ed84d75547",
+      "exclude": true,
+      "why": "항목명 「장기근속 포상」, 원문은 근속메달·기념패·포상금·해외여행·리프레쉬 휴가 — 근속 연동 포상이다(long_service_bonus 계열)"
+    },
+    {
+      "comp": "eo_technics",
+      "h": "bf2aaa366f",
+      "exclude": true,
+      "why": "「근속 10년차부터 장기근속 포상금 지급」 — 근속 연동 포상이다(long_service_bonus 계열)"
+    },
+    {
+      "comp": "yuhan",
+      "h": "0054dcfff6",
+      "exclude": true,
+      "why": "항목명 「장기근속 포상/퇴직금 누진제」, 원문은 퇴직금 누진제·장기근속 표창·정년퇴직자 공로연수휴가 — 우수·공로 선발 포상이 아니다(long_service_bonus 계열)"
+    },
+    {
+      "comp": "silicon2",
+      "h": "cccdc95e77",
+      "facets_remove": [
+        "frequency"
+      ],
+      "why": "「연간」은 「1회성, 연간 정기 지급 아님」에서 걸렸다 — 시상 주기를 밝힌 것이 아니다"
+    }
+  ]
+}

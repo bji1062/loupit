@@ -1,0 +1,111 @@
+{
+  "code": "birthday_gift",
+  "slug": "birthday-gift",
+  "title": "생일·기념일 선물",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "생일·기념일 선물은 직원의 생일이나 결혼기념일에 회사가 선물이나 포인트를 주는 제도입니다. 복지포인트나 페이 포인트로 주는 곳, 상품권·쿠폰·기프트카드를 주는 곳, 꽃바구니나 선물을 보내는 곳이 있습니다.",
+    "원문에 생일만 나오는 곳이 있고, 결혼기념일까지 함께 챙긴다고 밝힌 곳이 있습니다. 어떤 기념일인지 밝히지 않고 「기념일」에 준다고만 쓴 곳도 있습니다."
+  ],
+  "modes": {
+    "label": "주는 것",
+    "_규칙순서": "위에서부터 처음 맞는 규칙 하나. 포인트·상품권을 먼저 본다 — 「입사 1주년 축하 선물, 기념일 포인트」처럼 선물이 기념일 밖의 몫인 행이 있다. 「선물」만 있고 품목이 없는 행은 선물로 센다.",
+    "rules": [
+      {
+        "key": "points",
+        "label": "포인트·상품권·쿠폰",
+        "pattern": "포인트|마일리지|페이코|페이|상품권|쿠폰|기프트카드|티켓"
+      },
+      {
+        "key": "gift",
+        "label": "선물·꽃",
+        "pattern": "선물|꽃|케이크"
+      }
+    ],
+    "fallback": {
+      "key": "unknown",
+      "label": "원문에 안 나옴"
+    },
+    "display": [
+      "points",
+      "gift",
+      "unknown"
+    ]
+  },
+  "facets": [
+    {
+      "key": "anniversary",
+      "label": "결혼기념일도",
+      "pattern": "결혼기념일"
+    },
+    {
+      "key": "family",
+      "label": "가족·지정한 사람의 생일도",
+      "pattern": "가족|배우자|자녀|부모|지정"
+    },
+    {
+      "key": "other_days",
+      "label": "다른 기념일도(입사 기념일·창립기념일 등)",
+      "pattern": "입사|주년|창립"
+    },
+    {
+      "key": "culture",
+      "label": "영화·문화생활",
+      "pattern": "영화|문화"
+    },
+    {
+      "key": "choice",
+      "label": "직접 고름",
+      "pattern": "선택|원하는"
+    },
+    {
+      "key": "amount",
+      "label": "금액",
+      "pattern": "\\d[\\d,]*\\s*만\\s*원"
+    }
+  ],
+  "money_facet": "amount",
+  "questions": [
+    {
+      "text": "포인트나 상품권으로 주나요, 선물을 보내 주나요?",
+      "answered_by": [
+        "mode:known"
+      ]
+    },
+    {
+      "text": "결혼기념일에도 주나요?",
+      "answered_by": [
+        "facet:anniversary"
+      ]
+    },
+    {
+      "text": "배우자나 가족의 생일도 챙겨 주나요?",
+      "answered_by": [
+        "facet:family"
+      ]
+    },
+    {
+      "text": "받을 선물을 내가 고를 수 있나요?",
+      "answered_by": [
+        "facet:choice"
+      ]
+    },
+    {
+      "text": "얼마 상당인가요?",
+      "answered_by": [
+        "facet:amount"
+      ]
+    }
+  ],
+  "notes": {
+    "companies": "생일 선물이 생일 휴가나 명절 선물, 경조사 지원 항목 안에 함께 들어 있는 회사도 있습니다. 이 표에 없는 회사라도 그 항목의 원문에 생일 선물이 나올 수 있습니다."
+  },
+  "overrides": [
+    {
+      "comp": "cj_oliveyoung",
+      "h": "f9abb00fdb",
+      "exclude": true,
+      "why": "「임직원 트렌드 쿠폰 — 매월 3만원 정액 쿠폰」은 매달 주는 쿠폰이다 — 생일·기념일과 무관(welfare_point·discount 계열)"
+    }
+  ]
+}

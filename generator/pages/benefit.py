@@ -33,7 +33,7 @@ from generator.pages.company import CATEGORY_LABEL, LENS_BUCKETS, amount_view, b
 from generator.pages.find import _prefer_name, derive_codes
 from generator.slug import BuildError
 
-# 페이지를 만드는 보유 회사 수 하한(법정 행 제외). 2026-09-18 실측: 87종 중 36종이 넘는다.
+# 페이지를 만드는 보유 회사 수 하한(법정 행·exclude 제외). 실측: 2026-09-18 87종 중 36종 · 2026-09-21 90종 중 38종(SPEC 20 SP-BEN-13).
 MIN_COMPANIES = 20
 # 회사 표 첫 화면 행 수 — 나머지는 `<details>` 안. 방식이 있으면 방식마다 고르게 뽑는다.
 FIRST_ROWS = 12

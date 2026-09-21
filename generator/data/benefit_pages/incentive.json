@@ -1,0 +1,115 @@
+{
+  "code": "incentive",
+  "slug": "performance-bonus",
+  "title": "성과급·인센티브",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "성과급·인센티브는 회사나 개인이 낸 성과에 따라 연봉과 별도로 돈을 더 주는 제도입니다. 기준으로 삼는 성과가 회사마다 다릅니다. 회사의 경영실적이나 이익에 따라 나누는 곳, 개인이나 부서의 성과에 따라 차등을 두는 곳, 두 가지를 함께 운영한다는 곳이 있습니다.",
+    "지급 한도를 연봉의 몇 %나 최대 몇 %로 밝힌 곳이 있고, 회사가 정한 매출·이익 목표를 달성해야 나온다고 밝힌 곳도 있습니다. 프로젝트 성과에 따른 인센티브를 따로 둔다는 곳도 있습니다."
+  ],
+  "modes": {
+    "label": "무엇에 따라",
+    "_규칙순서": "위에서부터 처음 맞는 규칙 하나. 회사 실적과 개인·팀 성과가 둘 다 적힌 행을 먼저 본다. 「PI」는 회사마다 뜻이 달라(개인 성과 Personal / 생산성 Productivity) 개인 쪽 낱말로 쓰지 않는다 — 「Personal」「개별」처럼 뜻이 적힌 것만 본다. 「영업이익」은 회사 실적이다(영업 부문 성과가 아니다).",
+    "rules": [
+      {
+        "key": "both",
+        "label": "회사 실적과 개인·팀 성과 둘 다",
+        "pattern": "^(?=.*(경영\\s*성과|경영\\s*실적|영업이익|이익|매출|Profit\\s*Sharing|\\bPS\\b|조직\\s*실적|기업))(?=.*(개인|개별|차등|업무\\s*성과|부서|팀|핵심인재|Personal|업적급|능력주의|프로젝트|영업(?!이익)|On[-\\s]?Spot|Golden\\s*Collar|SEM))"
+      },
+      {
+        "key": "company",
+        "label": "회사 실적(경영성과·이익 배분)",
+        "pattern": "경영\\s*성과|경영\\s*실적|영업이익|이익|매출|Profit\\s*Sharing|\\bPS\\b|조직\\s*실적|기업"
+      },
+      {
+        "key": "individual",
+        "label": "개인·팀 성과",
+        "pattern": "개인|개별|차등|업무\\s*성과|부서|팀|핵심인재|Personal|업적급|능력주의|프로젝트|영업(?!이익)|On[-\\s]?Spot|Golden\\s*Collar|SEM"
+      }
+    ],
+    "fallback": {
+      "key": "unknown",
+      "label": "원문에 안 나옴"
+    },
+    "display": [
+      "company",
+      "individual",
+      "both",
+      "unknown"
+    ]
+  },
+  "facets": [
+    {
+      "key": "cap",
+      "label": "지급 한도·비율(연봉의 몇 % 등)",
+      "pattern": "\\d+(\\.\\d+)?\\s*%|퍼센트"
+    },
+    {
+      "key": "frequency",
+      "label": "지급 주기(연 몇 회·분기·월 등)",
+      "pattern": "연\\s*\\d+\\s*회|분기|월간|매월|매년|연간(?!\\s*\\d)|연말|반기|월/"
+    },
+    {
+      "key": "target",
+      "label": "지급 조건(목표 달성 등)",
+      "pattern": "목표|초과\\s*달성|달성\\s*시|0\\s*~"
+    },
+    {
+      "key": "project_sales",
+      "label": "프로젝트·영업 성과 인센티브를 따로 둠",
+      "pattern": "프로젝트|영업(?!이익)|SEM"
+    },
+    {
+      "key": "all_staff",
+      "label": "전 직원 대상",
+      "pattern": "전\\s*직원|전\\s*임직원|임직원\\s*수"
+    },
+    {
+      "key": "newcomer",
+      "label": "신규 입사자",
+      "pattern": "신규\\s*입사|신입|입사\\s*첫"
+    }
+  ],
+  "questions": [
+    {
+      "text": "회사 실적에 따라 다 같이 받나요, 개인 성과에 따라 다르게 받나요?",
+      "answered_by": [
+        "mode:known"
+      ]
+    },
+    {
+      "text": "지급 한도나 비율이 정해져 있나요?",
+      "answered_by": [
+        "facet:cap"
+      ]
+    },
+    {
+      "text": "한 해에 몇 번 나오나요?",
+      "answered_by": [
+        "facet:frequency"
+      ]
+    },
+    {
+      "text": "회사가 목표를 못 채운 해에도 나오나요?",
+      "answered_by": [
+        "facet:target"
+      ]
+    },
+    {
+      "text": "영업이나 프로젝트 성과에 따른 인센티브가 따로 있나요?",
+      "answered_by": [
+        "facet:project_sales"
+      ]
+    },
+    {
+      "text": "모든 직원이 받나요? 입사한 첫해에도 받을 수 있나요?",
+      "answered_by": [
+        "facet:all_staff",
+        "facet:newcomer"
+      ]
+    }
+  ],
+  "notes": {
+    "modes": "원문의 「PI」는 회사마다 뜻이 달라, 개인 성과급으로도 생산성 격려금으로도 적혀 있습니다. 그래서 「PI」라는 이름만 적힌 원문은 개인 성과 쪽으로 세지 않았습니다."
+  }
+}

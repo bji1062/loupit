@@ -1,0 +1,37 @@
+{
+  "code": "edu_support",
+  "slug": "job-training",
+  "title": "직무 교육·교육비 지원",
+  "_사람글규칙": "intro·questions.text·notes 는 사람이 쓴다. 숫자 금지(빌드 게이트). 수량어(대부분·많은·보통)도 쓰지 않는다 — 데이터가 바뀌면 거짓이 된다. 근거는 이 항목 원문에서 관찰된 것만.",
+  "intro": [
+    "직무 교육·교육비 지원은 직원이 일에 필요한 지식과 기술을 배우도록 회사가 교육을 마련하거나 교육비를 대 주는 제도입니다. 회사가 입문·직무·리더십 과정을 직접 짜서 여는 곳과 회사 밖에서 듣는 교육의 비용을 대 주는 곳이 있고, 한 회사가 둘을 함께 밝히기도 합니다.",
+    "회사가 짠 교육은 신입 입문 교육에서 승진자·직책자 리더십 교육까지 단계별로 나열한 곳이 있고, 온라인 학습 플랫폼이나 사이버 연수원을 열어 둔 곳도 있습니다. 같은 항목 안에 자격증 취득이나 대학원 학위 과정 지원까지 묶어 쓴 곳이 있어, 원문마다 담긴 범위가 꽤 다릅니다."
+  ],
+  "_방식없음": "회사가 여는 교육과 사외 교육비 지원은 한 회사 원문에 함께 적힌 곳이 잦아(사내외 교육·사내 과정 + 외부 교육 지원) 배타적인 운영 방식 축이 아니다 — facet 으로만 센다.",
+  "facets": [
+    {"key": "onboarding", "label": "신입·경력 입사자 교육", "pattern": "신입|입문|OJT|온보딩|신규\\s*입사|리텐션"},
+    {"key": "leadership", "label": "리더십·승진자 교육", "pattern": "리더|승진|승격|직책자|팀장|임원|계층|경영자|후계자|사업가"},
+    {"key": "external", "label": "회사 밖 교육 지원(사외 교육·교육비)", "pattern": "사외|사내외|외부|위탁|교육비|수강|희망\\s*교육|원하는\\s*직무\\s*교육|기회 및 지원금"},
+    {"key": "limit", "label": "교육비 한도(금액·「모두 지원」 등)", "pattern": "\\d[\\d,]*\\s*만\\s*원|한도|모두 지원"},
+    {"key": "online", "label": "온라인 학습·사이버 연수원", "pattern": "온라인|온·오프|온오프|이러닝|e-러닝|사이버|Cyber|스마트\\s*러닝|학습\\s*플랫폼|학습플랫폼|mySUNI|러닝라운지|학습솔루션|독서통신"},
+    {"key": "cert", "label": "자격증 취득 지원", "pattern": "자격"},
+    {"key": "degree", "label": "대학·대학원 학위 과정", "pattern": "학위|석\\s*/\\s*박사|석박사|석사|대학원|학자금|MBA|우수대학"},
+    {"key": "plan", "label": "개인별 성장 계획·육성 면담", "pattern": "IDP|육성\\s*면담|성장\\s*계획|경력\\s*개발|적성"},
+    {"key": "work_hours", "label": "근무 시간 중 학습 허용", "pattern": "업무\\s*시간\\s*중|근무\\s*시간\\s*중|러닝타임"}
+  ],
+  "questions": [
+    {"text": "신입이나 경력으로 들어가면 입사자 교육이 따로 있나요?", "answered_by": ["facet:onboarding"]},
+    {"text": "회사 밖에서 듣는 교육도 회사가 지원하나요?", "answered_by": ["facet:external"]},
+    {"text": "교육비는 한 해에 얼마까지 쓸 수 있나요?", "answered_by": ["facet:limit"]},
+    {"text": "업무 시간 중에도 교육을 들을 수 있나요?", "answered_by": ["facet:work_hours"]},
+    {"text": "나에게 맞는 교육을 정하는 면담이나 성장 계획 제도가 있나요?", "answered_by": ["facet:plan"]}
+  ],
+  "overrides": [
+    {"comp": "lg_cns", "h": "cded73c87b", "exclude": true, "why": "「학자금 대출 이자비용 지원」 — 직원이 진 학자금 대출의 이자를 대 주는 금융 지원이지 교육을 마련하거나 교육비를 대는 제도가 아니다(재코딩 후보: 본인 학자금이 있는 self_development 쪽)"},
+    {"comp": "soulbrain", "h": "1c72d19279", "exclude": true, "why": "「학위지원제도 운영」뿐 — 직무 교육도 교육비도 없고 학위 지원만 적힌 행이다. mba 페이지의 kai·gc_biopharma 석·박사 학위 지원과 같은 제도(재코딩 후보 mba)"},
+    {"comp": "wonik_ips", "h": "0b6c749e1d", "exclude": true, "why": "「학자금 지원 항목 중 본인학자금」뿐 — self_development 페이지의 hanmi_pharm·hyundai_muvex 본인 학자금과 같은 제도라 한 제도가 두 페이지에 다른 이름으로 선다(재코딩 후보 self_development)"},
+    {"comp": "samsung_card", "h": "3b8f12e9b0", "exclude": true, "why": "「금융/비금융 자격 취득 지원」뿐 — 교육 과정·교육비가 없다. self_development 의 lig_nex1·samsung_heavy 자격증 취득 지원과 같은 제도(재코딩 후보 self_development). 「교육 과정」을 함께 적은 samsung_fire·samsung_sec 는 남긴다"},
+    {"comp": "doosan_enerbility", "h": "990e5cd239", "facets_remove": ["online"], "why": "「온라인스튜디오」는 시설 이름이다 — 직원이 온라인으로 배운다는 말은 원문에 없다"},
+    {"comp": "cj_freshway", "h": "8962451d53", "facets_add": ["external"], "why": "항목명이 「사내외 교육 지원」 — 원문 칸에는 한도·횟수만 있고 사외 교육이라는 말은 항목명에만 있다"}
+  ]
+}
