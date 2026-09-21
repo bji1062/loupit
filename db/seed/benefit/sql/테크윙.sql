@@ -29,8 +29,6 @@ VALUES
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '사내 기숙사', NULL, 'work_env',
    'est', NULL, TRUE, '사내 기숙사 운영', 20),
-  (@comp_id, 'lounge', '복지동', NULL, 'work_env',
-   'est', NULL, TRUE, '복지동(노래방, 스쿼시, 스크린골프, 실내야구 등)', 21),
 
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
@@ -65,6 +63,9 @@ VALUES
    'est', NULL, TRUE, '북카페 운영, 전자도서관 운영', 71),
   (@comp_id, 'club', '동호회', NULL, 'leisure',
    'est', NULL, TRUE, '동호회 활동 지원', 72),
+  -- 2026-09-22 재코딩 lounge(work_env, 21) → leisure_room(leisure, 73) — 휴게 공간이 아니라 노래방·스크린골프·실내야구 같은 여가 시설 건물(어휘표 leisure_room): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'leisure_room', '복지동', NULL, 'leisure',
+   'est', NULL, TRUE, '복지동(노래방, 스쿼시, 스크린골프, 실내야구 등)', 73),
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '선택적 복리후생 포인트', 200, 'perks',

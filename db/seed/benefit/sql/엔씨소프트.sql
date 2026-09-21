@@ -57,7 +57,8 @@ VALUES
    'est', '점심 무료, 아침/저녁/샐러드 2천원', FALSE, NULL, 81),
   (@comp_id, 'housing_loan', '전세/주택 대출 이자지원', NULL, 'perks',
    'est', NULL, TRUE, '전세/주택구입 대출 1억까지 은행 연계 이자지원, 생활안정자금 3천만원 대출, 학자금 대출 상환 지원 1500만원', 82),
-  (@comp_id, 'commute_subsidy', '야근 택시비 지원', NULL, 'perks',
+  -- 2026-09-22 재코딩 commute_subsidy → transport — 버스 운행이 아니라 야근 택시비 지급: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'transport', '야근 택시비 지원', NULL, 'perks',
    'est', NULL, TRUE, '23시 이후 야근 시 택시비 지원', 83),
   -- 2026-09-18 재코딩 birthday_leave(time_off, 30) → birthday_gift(perks, 84) — 휴가가 아니라 생일 페이코 지급:
   --   db/migrations/20260918_recode_misclassified_rows.sql

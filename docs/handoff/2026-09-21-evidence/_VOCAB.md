@@ -1,4 +1,4 @@
-# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,451행)
+# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,451행 · 2026-09-22 재코딩 52행 반영)
 
 새 코드를 만들기 전에 **여기서 같은 뜻을 찾는다.** 대응 어휘가 정말 없을 때만 신규 코드(evidence 에 「신규 코드」절로 사유 — 원문이 혜택 내용을 밝힐 때만).
 
@@ -8,60 +8,60 @@
 
 | 코드 | n | 카테고리 | 코퍼스의 대표 명칭 |
 |---|---:|---|---|
-| `event` | 135 | family | 경조사 지원 · 경조금 지원 · 경조사/명절 |
+| `event` | 133 | family | 경조사 지원 · 경조금 지원 · 경조사/명절 |
 | `health_check` | 133 | health | 건강검진 · 종합건강검진 · 건강검진 지원 |
 | `resort` | 118 | leisure | 휴양시설 · 숙박·여가 지원 · 휴양시설 지원 |
 | `child_edu` | 106 | family | 자녀학자금 · 자녀 학자금 지원 · 자녀 학자금 |
 | `meal` | 96 | perks | 구내식당 · 사내식당 · 식대 지원 |
 | `welfare_point` | 94 | perks | 복지포인트 · 카페테리아 포인트 · 선택적 복리후생 |
-| `club` | 91 | leisure | 사내 동호회 · 동호회 · 사내동호회 |
+| `club` | 90 | leisure | 사내 동호회 · 동호회 · 사내동호회 |
 | `housing_loan` | 79 | perks | 주택자금 대출 · 주택자금 대출 지원 · 주택자금 지원 |
-| `edu_support` | 77 | growth | 직무/리더십 교육 · 자기계발 지원 · 교육 프로그램 |
+| `edu_support` | 75 | growth | 직무/리더십 교육 · 자기계발 지원 · 교육 프로그램 |
 | `medical` | 75 | health | 의료비 지원 · 본인 의료비 지원 · 가족 의료비 보조 |
 | `flex_work` | 74 | flexibility | 유연근무제 · 자율출퇴근제 · 선택적 근로시간제 |
 | `fitness` | 66 | health | 피트니스센터 · 사내 피트니스 · 사내 헬스장 |
-| `long_service_leave` | 64 | time_off | 장기근속 포상 · CREATIVE WEEK(창의휴가) · 장기근속 휴가 |
 | `childcare` | 62 | family | 사내 어린이집 · 직장 어린이집 · CJ키즈빌(직장 어린이집) |
 | `insurance` | 62 | health | 단체상해보험 · 단체 상해보험 · 단체보험 |
-| `parenting` | 58 | family | 임신·출산·육아 · 출산/육아 지원 · 임신/출산/육아 지원 |
-| `snack_bar` | 57 | perks | 사내 카페 · 사내 카페/간식 · 사내 카페/무인매점 |
-| `commute_subsidy` | 53 | perks | 통근버스 · 출퇴근 지원 · 셔틀버스 |
+| `long_service_leave` | 61 | time_off | 장기근속 포상 · CREATIVE WEEK(창의휴가) · 장기근속 휴가 |
+| `parenting` | 59 | family | 임신·출산·육아 · 출산/육아 지원 · 임신/출산/육아 지원 |
+| `commute_subsidy` | 58 | perks | 통근버스 · 출퇴근 지원 · 셔틀버스 |
+| `snack_bar` | 58 | perks | 사내 카페 · 사내 카페/간식 · 사내 카페/무인매점 |
 | `lang` | 53 | growth | 어학시험 응시료 · 어학교육 · 외국어 교육 지원 |
 | `mental` | 50 | health | 심리상담 · 심리상담 지원 · 심리상담센터 |
-| `holiday_gift` | 48 | compensation | 명절 선물 · 명절 상여 · 기념일 기념품 |
-| `discount` | 47 | perks | CJ 계열사 할인 · 그룹사 제품 할인 · 제휴업체 할인 |
-| `dormitory` | 41 | work_env | 기숙사 · 기숙사 지원 · 사택 지원 |
-| `leave_general` | 40 | time_off | 2시간 단위 휴가 · 경조휴가 · 1시간 단위 휴가 |
+| `long_service_bonus` | 49 | compensation | 장기근속 포상 · 장기근속 포상금 · 장기근속자 포상 |
+| `discount` | 46 | perks | CJ 계열사 할인 · 그룹사 제품 할인 · 제휴업체 할인 |
+| `holiday_gift` | 46 | compensation | 명절 선물 · 명절 상여 · 기념일 기념품 |
+| `leave_general` | 41 | time_off | 2시간 단위 휴가 · 경조휴가 · 1시간 단위 휴가 |
+| `dormitory` | 40 | work_env | 기숙사 · 기숙사 지원 · 사택 지원 |
 | `incentive` | 37 | compensation | 성과급 · 인센티브 · 성과 인센티브 |
-| `long_service_bonus` | 36 | compensation | 장기근속 포상 · 장기근속자 포상 · 장기근속 포상금 |
-| `excellence_award` | 35 | compensation | 우수사원 포상 · 우수/모범사원 포상 · ENM Awards |
-| `refresh_leave` | 35 | time_off | 리프레시 휴가 · Refresh 휴가 · 장기근속 포상 |
 | `clinic` | 34 | health | 사내 부속의원 · 건강관리실 · 사내 건강관리실 |
+| `excellence_award` | 32 | compensation | 우수사원 포상 · 우수/모범사원 포상 · ENM Awards |
+| `refresh_leave` | 28 | time_off | 리프레시 휴가 · Refresh 휴가 · '쉴랜다' 리프레시 휴가 |
 | `books` | 27 | growth | 사내 도서관 · 도서 구입비 지원 · 도서구입비 지원 |
-| `lounge` | 25 | work_env | 직원 휴게실 · 고급 안마의자 · 공장 편의시설(휴게실·안마의자) |
-| `transport` | 25 | perks | 통근버스 · 교통비 지원 · KTX 비용 지원 |
-| `mba` | 24 | growth | 국내외 학술연수 · Global MBA/유학 · H-MBA 핵심인재 프로그램 |
+| `mba` | 25 | growth | 국내외 학술연수 · Global MBA/유학 · H-MBA 핵심인재 프로그램 |
+| `birthday_gift` | 24 | perks | 기념일 선물 · 생일 선물 · 생일 상품권 |
 | `remote_work` | 24 | flexibility | 재택근무 · 재택근무제 · 자율 재택근무 |
-| `summer_leave` | 23 | time_off | 하계휴가 · 하기휴가 · 여름휴가 |
-| `birthday_gift` | 22 | perks | 생일 선물 · 기념일 선물 · 생일포인트 |
-| `self_development` | 22 | growth | 자기계발비 · 자격증 취득 지원 · 자기계발비 지원 |
-| `career` | 20 | growth | 멘토링 제도 · 멘토링 프로그램 · Global Talent/지역전문가 |
-| `company_event` | 19 | leisure | KB 패밀리데이 · 가정의 날 과일 선물·종무식 · 가족 초청 행사 |
+| `self_development` | 24 | growth | 자격증 취득 지원 · 자기계발비 · 자기계발비 지원 |
+| `lounge` | 22 | work_env | 직원 휴게실 · 고급 안마의자 · 공장 편의시설(휴게실·안마의자) |
+| `summer_leave` | 22 | time_off | 하계휴가 · 하기휴가 · 여름휴가 |
+| `company_event` | 20 | leisure | KB 패밀리데이 · 가정의 날 과일 선물·종무식 · 가족 초청 행사 |
+| `transport` | 20 | perks | 교통비 지원 · 야근 교통비 · KTX 비용 지원 |
+| `career` | 19 | growth | 멘토링 제도 · 멘토링 프로그램 · Global Talent/지역전문가 |
 | `pension_support` | 18 | perks | 개인연금 지원 · 개인연금 · 개인연금(IRP) 50% 지원 |
 | `satellite_office` | 16 | flexibility | CJ Work On 거점오피스 · 거점오피스 · 거점 오피스 |
 | `work_tools` | 15 | work_env | AI Tool 지원 · IT 장비 지원 · 고사양 PC 지원 |
 | `leisure_ticket` | 14 | leisure | 티빙·CGV 이용권 · 문화 활동 (콘서트 초대권) · 문화생활 지원(영화티켓 등) |
+| `telecom` | 14 | perks | 통신비 지원 · 통신비 · 통신비/단말기 지원 |
 | `fertility_support` | 13 | family | 난임 치료비 지원 · 난임 지원 · 난임 수술 지원 |
-| `telecom` | 13 | perks | 통신비 지원 · 통신비 · 통신사 제휴 할인 |
 | `parking` | 12 | work_env | 주차비 지원 · 주차장 · 주차장 제공 |
-| `library` | 10 | leisure | 사내 북카페 · 전자 도서관 · 전자도서관 |
+| `library` | 11 | leisure | 사내 북카페 · 전자 도서관 · 전자도서관 |
+| `housing_support` | 10 | perks | 주거 지원 · 새내기 정착/주거지원금 · 숙소임차비용 지원 |
 | `stock_option` | 10 | compensation | 스톡옵션 · 우리사주조합 · 우리사주제도 |
 | `welcome_kit` | 10 | leisure | 웰컴키트 · Welcome Kit · 신규입사자 웰컴패키지 |
 | `birthday_leave` | 9 | time_off | 본인/가족 기념일 선물+휴가 · 생일 선물+조기퇴근 · 생일 연차 휴식 |
-| `housing_support` | 9 | perks | 주거 지원 · 새내기 정착/주거지원금 · 숙소임차비용 지원 |
+| `family_day` | 9 | flexibility | 가정의 날 · 패밀리데이 · 가족의 날 조기 퇴근 |
 | `nap_room` | 9 | work_env | 남/여 휴게실 · 릴렉스룸 · 사내 수면실/샤워실 |
 | `pc_off` | 9 | flexibility | PC-OFF 제도 · PC OFF 제도 · PC OFF제 |
-| `family_day` | 8 | flexibility | 가정의 날 · 패밀리데이 · 가족의 날 조기 퇴근 |
 | `relocation` | 8 | perks | 부임여비 지원 · 부임이사 지원 · 사택/정착지원금 |
 | `massage` | 7 | health | 마사지 테라피 라온(RA-ON) · 마사지(사이다룸) · 사내 마사지룸 |
 | `conference` | 6 | growth | 교육·세미나 참석 지원 · 세미나/컨퍼런스 · 외부 교육/컨퍼런스 |
@@ -77,6 +77,7 @@
 | `travel_support` | 3 | leisure | 해외 배낭여행비 지원 · 해외여행 지원 · 휴양프로그램 |
 | `welfare_fund_loan` | 3 | perks | 사내 근로복지기금 대출 · 사내근로복지기금 대출 |
 | `free_seating` | 2 | work_env | 자율좌석제 |
+| `leisure_room` | 2 | leisure | 복지동 · 카지노룸 |
 | `office_furniture` | 2 | work_env | 데스크테리어 비용 지원 · 인체공학 사무가구 |
 | `smart_office` | 2 | work_env | Smart Working Zone · 스마트오피스 |
 | `smoking_cessation` | 2 | health | 금연 성공 축하금 · 금연수당 |
@@ -88,7 +89,6 @@
 | `guest_house` | 1 | leisure | 영빈관 |
 | `home_security` | 1 | perks | 여직원 무인경비 지원 |
 | `homecoming` | 1 | family | Home-coming 제도 |
-| `leisure_room` | 1 | leisure | 카지노룸 |
 | `long_service` | 1 | time_off | 장기근속 포상 |
 | `overseas_safety` | 1 | health | 해외종합안전관리서비스 |
 | `parent_care` | 1 | family | 부모 요양 치료비 |

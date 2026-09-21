@@ -33,7 +33,8 @@ VALUES
   -- ── 근무환경 (work_env) ──
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'refresh_leave', '장기근속 포상', NULL, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속 5년마다 주는 포상금과 휴가: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
    'est', NULL, TRUE, '10년 이상 장기근속자에게 5년마다 포상금과 휴가 지급, 20년/30년 근속 시 배우자 동반 해외여행 제공', 30),
   (@comp_id, 'leave_general', '휴가제도', NULL, 'time_off',
    'est', NULL, TRUE, '휴가제도 운영', 31),
@@ -67,7 +68,8 @@ VALUES
    'est', NULL, TRUE, '주택자금 지원', 81),
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
   (@comp_id, 'meal', '사내식당', NULL, 'perks',  'est', NULL, TRUE, NULL, 82),
-  (@comp_id, 'transport', '출퇴근 버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '출퇴근 버스', 120, 'perks',
    'est', '사업장별 통근버스 (추정)', FALSE, NULL, 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

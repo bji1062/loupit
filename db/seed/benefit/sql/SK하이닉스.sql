@@ -82,7 +82,8 @@ VALUES
    'est', '전용 복지포털 1,300여 가맹점 사용 (추정)', FALSE, NULL, 80),
   (@comp_id, 'meal', '구내식당', 432, 'perks',
    'est', '조식/중식/석식/야식 무료, 기숙사 식당 포함, 일 18,000원 x 240일', FALSE, NULL, 81),
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 리무진 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '수도권 전 지역 무료, 리무진 통근버스, 다양한 시간대 운행 (추정)', FALSE, NULL, 82),
   (@comp_id, 'housing_loan', '주택자금 대출', NULL, 'perks',
    'est', NULL, TRUE, '주택 구입/임차 자금 지원, 기혼 무주택자 임대아파트 3년 무료 제공', 83),

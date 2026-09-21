@@ -19,11 +19,14 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
+  -- ── 보상·금전 (compensation) ──
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 31) → long_service_bonus(compensation, 29) — 휴가 없이 포상·해외여행·기념패만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
+   'est', NULL, TRUE, '근속년수별 포상, 35년 부부동반 해외여행, 정년퇴직 기념패+금열쇠', 29),
+
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '리프레시/집중 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '여름2주+연말1주 권장, 연중 리프레시 휴가, 하계 휴가비, 선진문화탐방(미국/캐나다/유럽 항공비+교통비)', 30),
-  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
-   'est', NULL, TRUE, '근속년수별 포상, 35년 부부동반 해외여행, 정년퇴직 기념패+금열쇠', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',

@@ -26,7 +26,8 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'holiday_gift', '기념일 기념품', 20, 'compensation',
    'est', '창립기념일, 근로자의 날, 생일 등 기념품 지급 (추정)', FALSE, NULL, 1),
-  (@comp_id, 'excellence_award', '장기근속 포상/퇴직금 누진제', NULL, 'compensation',
+  -- 2026-09-22 재코딩 excellence_award → long_service_bonus — 우수 선발이 아니라 장기근속 표창·포상: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상/퇴직금 누진제', NULL, 'compensation',
    'est', NULL, TRUE, '퇴직금 누진제, 장기근속 표창+기념품+상금+특별휴가+자사주식, 정년퇴직자 6개월 공로연수휴가', 2),
 
   -- ── 근무환경 (work_env) ──

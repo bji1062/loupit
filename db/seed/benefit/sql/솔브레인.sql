@@ -48,7 +48,8 @@ VALUES
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'lang', '외국어 인텐시브 과정', NULL, 'growth',
    'est', NULL, TRUE, '외국어 인텐시브 과정, 맞춤형 교육, 인문학 특강', 60),
-  (@comp_id, 'edu_support', '학위지원제도', NULL, 'growth',
+  -- 2026-09-22 재코딩 edu_support → mba — 직무 교육이 아니라 학위 지원(kai·gc_biopharma 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'mba', '학위지원제도', NULL, 'growth',
    'est', NULL, TRUE, '학위지원제도 운영', 61),
 
   -- ── 여가·라이프 (leisure) ──

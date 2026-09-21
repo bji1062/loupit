@@ -85,9 +85,11 @@ VALUES
    'est', 'SK행복카드, SK패밀리카드 (추정)', FALSE, NULL, 80),
   (@comp_id, 'meal', '구내식당', 432, 'perks',
    'est', '조식/중식/석식 제공, 일 18,000원 x 240일', FALSE, NULL, 81),
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행(야간 교통비 행과 맞바꿈): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '통근버스 운행 (추정)', FALSE, NULL, 82),
-  (@comp_id, 'commute_subsidy', '야간 교통비', 30, 'perks',
+  -- 2026-09-22 재코딩 commute_subsidy → transport — 버스 운행이 아니라 야간 교통비 지급(통근버스 행과 맞바꿈): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'transport', '야간 교통비', 30, 'perks',
    'est', '야간 교통비 지급 (추정)', FALSE, NULL, 83),
   (@comp_id, 'snack_bar', '간식/음료', 50, 'perks',
    'est', '간식 및 음료 제공 (추정)', FALSE, NULL, 84),

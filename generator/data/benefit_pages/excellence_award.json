@@ -88,24 +88,6 @@
   },
   "overrides": [
     {
-      "comp": "duksan_neolux",
-      "h": "ed84d75547",
-      "exclude": true,
-      "why": "항목명 「장기근속 포상」, 원문은 근속메달·기념패·포상금·해외여행·리프레쉬 휴가 — 근속 연동 포상이다(long_service_bonus 계열)"
-    },
-    {
-      "comp": "eo_technics",
-      "h": "bf2aaa366f",
-      "exclude": true,
-      "why": "「근속 10년차부터 장기근속 포상금 지급」 — 근속 연동 포상이다(long_service_bonus 계열)"
-    },
-    {
-      "comp": "yuhan",
-      "h": "0054dcfff6",
-      "exclude": true,
-      "why": "항목명 「장기근속 포상/퇴직금 누진제」, 원문은 퇴직금 누진제·장기근속 표창·정년퇴직자 공로연수휴가 — 우수·공로 선발 포상이 아니다(long_service_bonus 계열)"
-    },
-    {
       "comp": "silicon2",
       "h": "cccdc95e77",
       "facets_remove": [

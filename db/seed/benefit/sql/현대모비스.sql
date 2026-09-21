@@ -35,7 +35,8 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'leave_general', '월차·장기근속·하계·경조 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '법정 연차 외 월차, 장기근속휴가, 하계휴가, 경조휴가 제공', 30),
-  (@comp_id, 'refresh_leave', '장기근속자 포상', NULL, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속연수에 따라 주는 휴가·여행 포상: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '장기근속자 포상', NULL, 'time_off',
    'est', NULL, TRUE, '근속연수에 따라 휴가, 해외여행 등 포상 제공 및 퇴직 지원', 31),
 
   -- ── 건강·의료 (health) ──
@@ -73,7 +74,8 @@ VALUES
    'est', NULL, TRUE, '장거리 부임 시 이사비, 부임여비 등 지원', 82),
   (@comp_id, 'housing_support', '새내기 정착/주거지원금', NULL, 'perks',
    'est', NULL, TRUE, '신입사원 정착지원금 및 주거지원금을 임차/구입 무관하게 지원', 83),
-  (@comp_id, 'transport', '셔틀버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 셔틀버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '셔틀버스', 120, 'perks',
    'est', '서울/경기 약 60개 노선 (추정)', FALSE, NULL, 84)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),

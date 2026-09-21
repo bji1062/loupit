@@ -25,6 +25,9 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'incentive', '성과급', NULL, 'compensation',
    'est', NULL, TRUE, '성과에 부합하는 성과급 지급', 1),
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 31) → long_service_bonus(compensation, 2) — 휴가 없이 포상·해외여행 상품권만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
+   'est', NULL, TRUE, '10년/20년/30년 근속자 포상 및 해외여행 상품권 지급', 2),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '독신자 숙소', NULL, 'work_env',
@@ -33,8 +36,6 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '리프레시 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '매년 10일 휴가 연속 사용 장려, 한화그룹사 여가/레저/식음시설 이용 가능', 30),
-  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
-   'est', NULL, TRUE, '10년/20년/30년 근속자 포상 및 해외여행 상품권 지급', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'medical', '본인/가족 병원비 지원', 100, 'health',

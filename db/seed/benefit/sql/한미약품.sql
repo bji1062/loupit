@@ -25,6 +25,9 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'incentive', '경영성과급/SEM', NULL, 'compensation',
    'est', NULL, TRUE, '분기별 CIQ+연간 업무 성과 기반 개인별 차등 성과급, 국내사업부 SEM 월간 성과 보상', 1),
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 31) → long_service_bonus(compensation, 2) — 휴가 없이 포상 포인트만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상 포인트', NULL, 'compensation',
+   'est', NULL, TRUE, '장기근속 포상 포인트 지급', 2),
 
   -- ── 근무유연성 (flexibility) ──
   (@comp_id, 'flex_work', '유연근무제', NULL, 'flexibility',
@@ -37,8 +40,6 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '리프레시 휴가 (연차 22일+)', NULL, 'time_off',
    'est', NULL, TRUE, '연차 22일, 리프레시 휴가, 휴가 및 숙박 지원', 30),
-  (@comp_id, 'long_service_leave', '장기근속 포상 포인트', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속 포상 포인트 지급', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '연 1회 건강검진', 100, 'health',

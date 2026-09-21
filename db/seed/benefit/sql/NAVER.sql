@@ -29,18 +29,20 @@ VALUES
    'est', '전 직원 대상 연간 1,000만원 상당 주식 부여', FALSE, NULL, 1),
   (@comp_id, 'profit_sharing', '주식 매입 리워드', 200, 'compensation',
    'est', '네이버 주식 매입 후 6개월 보유 시 매입금액 10%(연 200만원 한도) 지원', FALSE, NULL, 2),
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 32) → long_service_bonus(compensation, 86) — 휴가 없이 근속 선물만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '근속 기념 선물', NULL, 'compensation',
+   'est', NULL, TRUE, '근속 10주년/20주년 선물 지급', 86),
 
   -- ── 근무유연성 (flexibility) ──
   (@comp_id, 'flex_work', '자율 근무(Type_O/R)', NULL, 'flexibility',
    'est', NULL, TRUE, '평일 6시~22시 자율 근무, Type_O(주3일 출근) 또는 Type_R(원격) 개인 선택, 연간 최대 4주 해외근무, OCC 사내공모', 10),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'refresh_leave', '리프레시 플러스 휴가', NULL, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 2년 근속 시 주는 추가 휴가(근속 기념 선물 행을 먼저 long_service_bonus 로 옮김): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '리프레시 플러스 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '2년 근속 시 15일 추가 유급휴가, 연차 2일 이상 사용시 1일x5만원 휴가비', 30),
   (@comp_id, 'leave_general', '자기돌봄 휴직', NULL, 'time_off',
    'est', NULL, TRUE, '3년 이상 근속자 대상 최대 6개월 무급 자기돌봄 휴직', 31),
-  (@comp_id, 'long_service_leave', '근속 기념 선물', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 10주년/20주년 선물 지급', 32),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',

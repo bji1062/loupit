@@ -114,48 +114,6 @@
   },
   "overrides": [
     {
-      "comp": "hyundai_mobis",
-      "h": "205620bbf9",
-      "exclude": true,
-      "why": "항목명 「장기근속자 포상」 — 근속연수에 따라 휴가·해외여행 포상을 준다. 장기근속 휴가·포상(long_service_leave) 재코딩 후보"
-    },
-    {
-      "comp": "kt",
-      "h": "390e21c9b5",
-      "exclude": true,
-      "why": "항목명 「장기근속 포상」 — 장기근속 시 포상과 휴가. long_service_leave 재코딩 후보"
-    },
-    {
-      "comp": "lg_elec",
-      "h": "afb7e9d142",
-      "exclude": true,
-      "why": "항목명 「장기근속 포상」 — 10년 이상 근속자에게 5년마다 포상금과 휴가, 근속 20·30년 해외여행. long_service_leave 재코딩 후보"
-    },
-    {
-      "comp": "kakao_pay",
-      "h": "33a3c31ad2",
-      "exclude": true,
-      "why": "「근속 3년마다 30일 유급 휴가 + 휴가비」 — 근속 연수에 맞춰 주는 휴가다. 같은 모양의 카카오뱅크(만 3년 근속 시 유급 휴가 및 휴가비)는 long_service_leave 에 있다. 재코딩 후보"
-    },
-    {
-      "comp": "apr",
-      "h": "4f01f815e5",
-      "exclude": true,
-      "why": "「3,6,9년 마다 3,6,9일 리프레시 휴가」 — 근속 연수에 맞춰 주는 휴가다. 같은 모양의 JYP(3·6·10·15·20년 근속 시 15일, 리프레시 제도)는 long_service_leave 에 있다. 재코딩 후보"
-    },
-    {
-      "comp": "lg_cns",
-      "h": "dc1e456dcc",
-      "exclude": true,
-      "why": "「일정 근속 기준연한에 따라 유급휴가 및 휴가비」 — 근속 연수에 맞춰 주는 휴가다(삼성E&A 「장기근속 기간에 따른 유급휴가」는 long_service_leave). 재코딩 후보"
-    },
-    {
-      "comp": "naver",
-      "h": "882b3bbd43",
-      "exclude": true,
-      "why": "「2년 근속 시 15일 추가 유급휴가」 — 근속 연수에 맞춰 주는 휴가다(네오위즈 「3년 근속 시 리프레시 휴가 10일」은 long_service_leave). ⚠ NAVER 는 long_service_leave 에 이미 「근속 기념 선물」 행이 있어 재코딩은 병합이다. 뒤 절 「연차 2일 이상 사용 시 휴가비」는 별개 복지"
-    },
-    {
       "comp": "hyundai_steel",
       "h": "e801564d44",
       "facets_remove": [

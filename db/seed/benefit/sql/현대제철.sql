@@ -18,11 +18,14 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
+  -- ── 보상·금전 (compensation) ──
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 31) → long_service_bonus(compensation, 29) — 휴가 없이 기념품·포상금·여행만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
+   'est', NULL, TRUE, '10년 이후 5년마다 기념품, 15년 포상금+기념품, 20년 배우자 동반 해외여행', 29),
+
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'refresh_leave', '하기/리프레시 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '하기휴가 5일, 반기별 Refresh 휴가, 승진휴가, 휴가비 지원', 30),
-  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
-   'est', NULL, TRUE, '10년 이후 5년마다 기념품, 15년 포상금+기념품, 20년 배우자 동반 해외여행', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',
@@ -50,7 +53,8 @@ VALUES
    'est', NULL, TRUE, '다양한 동아리 활동 지원', 71),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '서울/당진/인천/포항/순천 전 지역 (추정)', FALSE, NULL, 80),
   (@comp_id, 'discount', '차량/백화점 할인', NULL, 'perks',
    'est', NULL, TRUE, '현대/기아 차량 할인(근속별 추가), 현대백화점 상시 10% 할인카드+인터넷몰', 81),

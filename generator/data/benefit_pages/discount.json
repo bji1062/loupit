@@ -92,12 +92,6 @@
   ],
   "overrides": [
     {
-      "comp": "kt",
-      "h": "53be784e30",
-      "exclude": true,
-      "why": "항목명 「통신비/단말기 지원」, 원문 「휴대폰 통신비 및 단말기」 — 할인이 아니라 통신비 보조(telecom). KT 는 telecom 행이 없다. 재코딩 후보"
-    },
-    {
       "comp": "amorepacific",
       "h": "39ce10df59",
       "facets_add": [

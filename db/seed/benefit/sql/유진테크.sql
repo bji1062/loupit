@@ -59,8 +59,9 @@ VALUES
    'est', '임직원 자녀 중 고교·대학생 자녀에게 학자금 지원 (연 200만원 추정)', FALSE, NULL, 40),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '각종 경조사 발생 시 경조휴가·경조금 등 지원', 41),
+  -- 2026-09-22 원문 정리 — 원문 끝에 섞인 수집 메모(코드명·선례 설명)가 화면에 보였다: db/migrations/20260922_recode_benefit_rows.sql
   (@comp_id, 'birthday_gift', '결혼기념일 선물', NULL, 'perks',
-   'est', NULL, TRUE, '결혼기념일 축하 꽃바구니 지급(기념일 선물 — 삼성카드 birthday_gift 선례)', 42),
+   'est', NULL, TRUE, '결혼기념일 축하 꽃바구니 지급', 42),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '사외·사이버 교육 지원', NULL, 'growth',

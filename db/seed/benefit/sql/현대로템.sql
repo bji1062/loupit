@@ -53,7 +53,8 @@ VALUES
    'est', '상/하반기 지급 (추정)', FALSE, NULL, 80),
   (@comp_id, 'meal', '구내식당', 288, 'perks',
    'est', '중식 무료(조석 유료), 일 12,000원 x 240일 (추정)', FALSE, NULL, 81),
-  (@comp_id, 'transport', '통근버스', 120, 'perks',
+  -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '(추정)', FALSE, NULL, 82),
   (@comp_id, 'housing_loan', '주택자금 지원', NULL, 'perks',
    'est', NULL, TRUE, '주택구입/전세자금, 부임이사 지원', 83),

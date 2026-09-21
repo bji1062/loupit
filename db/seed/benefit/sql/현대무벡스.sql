@@ -18,9 +18,10 @@ INSERT INTO TCOMPANY_BENEFIT
   (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD,
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
-  -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'long_service_leave', '장기근속 포상', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속 포상금 지원', 30),
+  -- ── 보상·금전 (compensation) ──
+  -- 2026-09-22 재코딩 long_service_leave(time_off, 30) → long_service_bonus(compensation, 39) — 휴가 없이 포상금만: db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_bonus', '장기근속 포상', NULL, 'compensation',
+   'est', NULL, TRUE, '장기근속 포상금 지원', 39),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',

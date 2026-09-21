@@ -40,7 +40,8 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'leave_general', '셀프 승인 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '휴가 셀프 승인제도 운영', 30),
-  (@comp_id, 'refresh_leave', '리프레시 휴가 (3/6/9년)', NULL, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속 연수에 맞춰 주는 휴가(JYP 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '리프레시 휴가 (3/6/9년)', NULL, 'time_off',
    'est', NULL, TRUE, '3,6,9년 마다 3,6,9일 리프레시 휴가 제공', 31),
   (@comp_id, 'birthday_leave', '생일 조기퇴근+선물', NULL, 'time_off',
    'est', NULL, TRUE, '생일자 2시간 조기퇴근 + 생일선물 제공', 32),

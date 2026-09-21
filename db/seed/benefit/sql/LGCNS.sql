@@ -44,7 +44,8 @@ VALUES
    'est', NULL, TRUE, '패스트파이브·위워크 등 다양한 공유 오피스 지원', 21),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'refresh_leave', '안식휴가', NULL, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속 기준연한에 따라 주는 휴가(삼성E&A 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '안식휴가', NULL, 'time_off',
    'est', NULL, TRUE, '일정 근속 기준연한에 따라 유급휴가 및 휴가비 지급', 30),
 
   -- ── 건강·의료 (health) ──
@@ -72,7 +73,8 @@ VALUES
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '학자금 이자 지원', NULL, 'growth',
    'est', NULL, TRUE, '학자금 대출 이자비용 지원', 60),
-  (@comp_id, 'career', '자격증 취득 지원', NULL, 'growth',
+  -- 2026-09-22 재코딩 career → self_development — 커리어 제도가 아니라 자격증 취득 비용 지원(어휘표 self_development 대표 명칭): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'self_development', '자격증 취득 지원', NULL, 'growth',
    'est', NULL, TRUE, '응시전형료·협회비 등 자격증 취득 비용 지원', 61),
 
   -- ── 여가·라이프 (leisure) ──

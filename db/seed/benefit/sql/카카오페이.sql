@@ -36,7 +36,8 @@ VALUES
    'est', NULL, TRUE, '전사 전면 재택근무', 11),
 
   -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'refresh_leave', '안식 휴가(3년마다)', 200, 'time_off',
+  -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속 3년마다 주는 휴가(카카오뱅크 같은 모양 선례): db/migrations/20260922_recode_benefit_rows.sql
+  (@comp_id, 'long_service_leave', '안식 휴가(3년마다)', 200, 'time_off',
    'est', '근속 3년마다 30일 유급 휴가 + 휴가비 200만원', FALSE, NULL, 30),
 
   -- ── 건강·의료 (health) ──
