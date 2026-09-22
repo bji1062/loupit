@@ -107,15 +107,21 @@ SQL_MEMBERS = """
 
 # 한 페이지 회원들의 재직 인증(활성·만료·폐기 전부)과 대기 중 수동 승인 요청 — IN 목록 한 번씩
 # (회원마다 조회하면 N+1). 회사가 지워졌으면(`ON DELETE SET NULL`) 이름이 NULL 이다.
+# 도메인 인증은 로그인 이메일이 아니라 **회사 메일**로 코드를 받아 통과한 것이다 — 그런데 회사 메일은
+# HMAC 만 남아(T9) 화면에는 로그인 이메일만 보이고, 「네이버 가입자가 회사 인증됐다」는 오해를 낳았다
+# (2026-09-22). 그래서 그 회사의 **등록 도메인**(인증 때 통과해야 했던 목록)을 함께 싣는다. ⚠ 지금 등록된
+# 활성 도메인이다 — 인증 뒤 도메인이 바뀌었을 수 있고, 여러 개면 어느 것을 썼는지는 알 수 없다.
 SQL_MEMBER_VERIFICATIONS = """
-  SELECT v.MBR_ID, v.COMP_ID, c.COMP_NM, v.VRF_METHOD_CD,
+  SELECT v.MBR_ID, v.COMP_ID, c.COMP_NM, v.VRF_METHOD_CD, v.INS_DTM,
          CASE WHEN v.REVOKED_DTM IS NOT NULL THEN 'revoked'
               WHEN v.EXPIRES_DTM IS NOT NULL AND v.EXPIRES_DTM <= UTC_TIMESTAMP() THEN 'expired'
-              ELSE 'active' END AS STATE
+              ELSE 'active' END AS STATE,
+         (SELECT GROUP_CONCAT(d.EMAIL_DOMAIN_NM ORDER BY d.EMAIL_DOMAIN_NM SEPARATOR ',')
+            FROM TCOMPANY_EMAIL_DOMAIN d WHERE d.COMP_ID = v.COMP_ID AND d.ACTIVE_YN = TRUE) AS DOMAINS
     FROM TEMPLOY_VERIFICATION v LEFT JOIN TCOMPANY c ON c.COMP_ID = v.COMP_ID
    WHERE v.MBR_ID IN ({ids}) ORDER BY v.EMPLOY_VRF_ID DESC"""
 SQL_MEMBER_PENDING_REQUESTS = """
-  SELECT r.MBR_ID, r.COMP_ID, c.COMP_NM
+  SELECT r.MBR_ID, r.COMP_ID, c.COMP_NM, r.INS_DTM
     FROM TEMPLOY_VRF_REQUEST r LEFT JOIN TCOMPANY c ON c.COMP_ID = r.COMP_ID
    WHERE r.MBR_ID IN ({ids}) AND r.STATUS_CD='pending' ORDER BY r.VRF_REQUEST_ID DESC"""
 
@@ -135,11 +141,16 @@ async def list_members(limit: int, before: int | None) -> tuple[list[dict], int 
         ids = tuple(by_member)
         marks = ",".join(["%s"] * len(ids))
         for v in await database.fetch_all(SQL_MEMBER_VERIFICATIONS.format(ids=marks), ids):
-            by_member[v["MBR_ID"]].append({"company": v["COMP_NM"], "company_id": v["COMP_ID"],
-                                           "method": v["VRF_METHOD_CD"], "state": v["STATE"]})
+            by_member[v["MBR_ID"]].append({
+                "company": v["COMP_NM"], "company_id": v["COMP_ID"],
+                "method": v["VRF_METHOD_CD"], "state": v["STATE"], "since": _dt(v["INS_DTM"]),
+                # 수동 승인은 메일을 거치지 않았다 — 도메인을 붙이면 메일로 확인한 것처럼 읽힌다.
+                "domains": v["DOMAINS"].split(",") if v["VRF_METHOD_CD"] == "domain" and v["DOMAINS"] else [],
+            })
         for q in await database.fetch_all(SQL_MEMBER_PENDING_REQUESTS.format(ids=marks), ids):
             by_member[q["MBR_ID"]].append({"company": q["COMP_NM"], "company_id": q["COMP_ID"],
-                                           "method": "manual", "state": "pending"})
+                                           "method": "manual", "state": "pending", "since": _dt(q["INS_DTM"]),
+                                           "domains": []})
     items = [
         {
             "member_id": r["MBR_ID"], "nickname": r["NICKNAME_NM"],

@@ -497,7 +497,6 @@ function kst(s) {
 const LABEL = {
   active: '공개', hidden: '숨김', deleted: '삭제(작성자)', withdrawn: '탈퇴',
   expired: '만료', revoked: '폐기', pending: '승인 대기',
-  domain: '메일', manual: '수동',
   create: '등록', update: '수정', delete: '삭제',
   notice: '공지', free: '자유', career: '커리어', suggestion: '건의',
   hide: '숨김', restore: '복구', board: '게시판', report: '신고 처리',
@@ -809,6 +808,11 @@ async function renderQueues() {
 }
 
 // ── 탭 3: 회원 ───────────────────────────────────────────────────────────────
+// 인증 방식은 풀어 쓴다 — 예전 「메일」 한 글자가 옆 칸의 로그인 이메일로 읽혀, 네이버 가입자가
+// 회사 인증을 받은 것처럼 보였다(2026-09-22). 도메인 인증은 로그인 이메일과 **별개의 회사 메일**로
+// 코드를 받아 통과한 것이고, 그 주소 원문은 저장하지 않으므로 회사의 등록 도메인만 보여 준다.
+const METHOD_LABEL = { domain: '회사 메일로 인증', manual: '운영자 수동 승인' };
+
 function verificationList(list) {
   if (!list.length) return '—';
   const ul = $('ul', 'diff');
@@ -816,7 +820,10 @@ function verificationList(list) {
     const li = $('li');
     li.appendChild(document.createTextNode((v.company || '(삭제된 회사 ' + v.company_id + ')') + ' '));
     li.appendChild(pill(v.state, lab(v.state, VRF_LABEL)));
-    li.appendChild(document.createTextNode(' ' + lab(v.method)));
+    const how = v.state === 'pending' ? '수동 승인 요청' : lab(v.method, METHOD_LABEL);
+    const domains = (v.domains || []).length ? ' (@' + v.domains.join(' · @') + ')' : '';
+    li.appendChild(document.createTextNode(' ' + how + domains));
+    if (v.since) li.appendChild($('span', 'sub', ' · ' + kst(v.since)));
     ul.appendChild(li);
   });
   return ul;
@@ -825,7 +832,9 @@ function verificationList(list) {
 async function renderMembers() {
   root.appendChild($('div', 'warn',
     '로그인 이메일은 개인정보다 — 이 화면 밖으로 옮기지 마라(캡처·복사 주의). ' +
-    '「최근 세션」은 보존 중인 세션 기준이다(만료·로그아웃 세션은 매일 지워진다).'));
+    '「최근 세션」은 보존 중인 세션 기준이다(만료·로그아웃 세션은 매일 지워진다). ' +
+    '재직 인증은 로그인 이메일과 별개다 — 「회사 메일로 인증」은 괄호 안 도메인의 회사 주소로 코드를 받아 ' +
+    '통과한 것이고, 그 주소 원문은 저장하지 않는다(도메인은 지금 등록된 목록).'));
   root.appendChild(await pagedTable([
     { label: 'ID', cls: 'nw', get: (m) => String(m.member_id) },
     { label: '닉네임', get: (m) => m.nickname },

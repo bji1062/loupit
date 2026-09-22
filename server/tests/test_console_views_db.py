@@ -90,6 +90,11 @@ async def cv(schema_db, monkeypatch):
         await database.execute("INSERT INTO TCOMPANY (COMP_NM, COMP_ENG_NM, COMP_TP_ID) VALUES ('콘솔테스트사', %s, %s)",
                                (COMP_ENG, tp))
         comp = (await database.fetch_one("SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM=%s", (COMP_ENG,)))["COMP_ID"]
+        # 등록 도메인 2개 + 비활성 1개 — 회원 탭은 활성만, 이름순으로 싣는다(회사 삭제 시 CASCADE 로 정리된다).
+        await database.execute(
+            "INSERT INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN) VALUES "
+            "(%s, 'z-cvtest.example', TRUE), (%s, 'cvtest.example', TRUE), (%s, 'old-cvtest.example', FALSE)",
+            (comp, comp, comp))
         await database.execute(
             "INSERT INTO TEMPLOY_VERIFICATION (MBR_ID, COMP_ID, VRF_METHOD_CD, COMP_EMAIL_HASH_VAL, EXPIRES_DTM) "
             "VALUES (%s, %s, 'domain', %s, UTC_TIMESTAMP() + INTERVAL 30 DAY)", (ids["cv-alice"], comp, "e" * 64))
@@ -180,10 +185,17 @@ async def test_CV2_회원_목록은_운영자에게만_이메일을_보여준다
     by = {m["nickname"]: m for m in items}
     assert by["cv-alice"]["email"] == ALICE_EMAIL
     assert by["cv-gone"]["email"] is None and by["cv-gone"]["status"] == "withdrawn", "파기된 이메일을 지어냈다"
-    assert by["cv-alice"]["verifications"] == [
-        {"company": "콘솔테스트사", "company_id": cv["comp"], "method": "domain", "state": "active"}]
-    assert by["cv-bob"]["verifications"] == [
-        {"company": "콘솔테스트사", "company_id": cv["comp"], "method": "manual", "state": "pending"}]
+    # 인증 시각(since)은 DB 가 찍는다 — 값이 있는지만 보고 나머지는 정확히 맞춘다.
+    [alice_v] = by["cv-alice"]["verifications"]
+    [bob_v] = by["cv-bob"]["verifications"]
+    assert alice_v.pop("since") and bob_v.pop("since"), "인증·요청 시각이 비었다"
+    # 도메인 인증은 로그인 이메일이 아니라 회사 메일로 통과한 것이다 — 그 회사의 **활성** 등록 도메인을
+    # 이름순으로 함께 싣는다(2026-09-22: 네이버 가입자가 회사 인증된 것처럼 보였다). 비활성은 뺀다.
+    assert alice_v == {"company": "콘솔테스트사", "company_id": cv["comp"], "method": "domain", "state": "active",
+                       "domains": ["cvtest.example", "z-cvtest.example"]}
+    # 수동 승인(대기)은 메일을 거치지 않았다 — 도메인을 붙이면 메일로 확인한 것처럼 읽힌다.
+    assert bob_v == {"company": "콘솔테스트사", "company_id": cv["comp"], "method": "manual", "state": "pending",
+                     "domains": []}
     assert by["cv-op"]["last_session_at"] is not None, "세션을 발급했는데 최근 세션이 비었다"
     assert by["cv-bob"]["last_session_at"] is None
 
