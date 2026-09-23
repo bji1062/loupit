@@ -1515,11 +1515,11 @@ main h3.calc-pt { flex:1; min-width:0; margin:0; font-family:var(--font-sans); f
 .calc-numrow { display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-2); }
 .calc-gap { margin-top:var(--sp-2); }
 #view-input .calc-num {
-  width:104px; max-width:100%; min-height:var(--tap-min); padding:0 var(--sp-3);
+  width:88px; max-width:100%; min-height:var(--tap-min); padding:0 var(--sp-3);
   background:var(--bg-1); color:var(--t1); border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm);
   font-size:var(--fs-base); text-align:right; font-variant-numeric:tabular-nums;
 }
-#view-input .calc-num.calc-num-short { width:84px; }
+#view-input .calc-num.calc-num-short { width:76px; }
 .calc-unit { color:var(--t3); font-size:var(--fs-xs); }
 .calc-step {
   min-width:var(--tap-min); min-height:var(--tap-min); padding:0 var(--sp-2);
@@ -1963,6 +1963,7 @@ main p.calc-privacy { margin-top:var(--sp-2); }
   .calc-chip { flex:0 0 auto; white-space:nowrap; padding:0 var(--sp-3); }
   .calc-seg .calc-chip { flex:auto; }
   #view-input .calc-num { width:120px; }
+  #view-input .calc-num.calc-num-short { width:84px; }
 
   /* 이직 계산기 결과(SP-FE-14) — 타일 3칸 가로, 브리지 세로 기둥, 표는 원래 열로 */
   .calc-axisbar .calc-seg { max-width:460px; }
