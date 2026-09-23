@@ -580,7 +580,8 @@ export function restoreInputDraft(state = App.state, hooks = {}) {
   // 2026-09-23 계산기 개편 필드 — 옛 초안에는 없다(없으면 기본값 그대로).
   if (draft.rateMode === 'salary' || draft.rateMode === 'rate') state.rateMode = draft.rateMode;
   if (draft.offerSal != null && Number.isFinite(Number(draft.offerSal))) state.offerSal = Number(draft.offerSal);
-  if (draft.tenureYears != null && Number.isFinite(Number(draft.tenureYears))) state.tenureYears = Number(draft.tenureYears);
+  // 근속은 햇수(정수)만 — 소수를 받던 때의 초안(2.5)은 버림(LOW-2: 화면이 반올림해 「근속 3년 · 1년 남음」이라 했다).
+  if (draft.tenureYears != null && Number.isFinite(Number(draft.tenureYears))) state.tenureYears = Math.max(0, Math.floor(Number(draft.tenureYears)));
   if (draft.cmtS) state.cmtS = { a: null, b: null, ...draft.cmtS };
   if (draft.wsState) {
     for (const slot of ['a', 'b']) {
@@ -921,7 +922,7 @@ export function restoreComparison(record, deps = {}, state = App.state) {
   state.selectedRate = inp.selectedRate ?? null;
   state.rateMode = inp.rateMode === 'salary' ? 'salary' : 'rate';
   state.offerSal = inp.offerSal ?? null;
-  state.tenureYears = inp.tenureYears ?? null;
+  state.tenureYears = inp.tenureYears != null && Number.isFinite(Number(inp.tenureYears)) ? Math.max(0, Math.floor(Number(inp.tenureYears))) : null;
   state.cmtS = inp.cmtS || { a: null, b: null };
   state.wsState = inp.wsState || { a: blankWs(), b: blankWs() };
   // 폐기된 축('브랜드')이 담긴 옛 레코드는 기본값으로 정규화한다 — 그대로 두면 우선순위

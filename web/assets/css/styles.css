@@ -1465,6 +1465,12 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .calc-lbl { font-weight:var(--fw-bold); margin-bottom:var(--sp-2); }
 .calc-help { color:var(--t3); font-size:var(--fs-xs); margin-top:var(--sp-2); }
 main p.calc-help { margin-top:var(--sp-2); }
+/* 숫자 칸 아래 안내 — 못 읽은 값(오류, aria-invalid)은 빨강, 받아들이며 고친 값(근속 버림)은 회색(LOW-2·LOW-8). */
+.calc-fmsg { font-size:var(--fs-xs); color:var(--t2); margin-top:var(--sp-1); }
+main p.calc-fmsg { margin-top:var(--sp-1); }
+.calc-fmsg-err { color:var(--red); font-weight:var(--fw-medium); }
+.calc-fmsg[hidden] { display:none; }
+#view-input .calc-num[aria-invalid="true"] { border-color:var(--red); }
 .calc-muted { color:var(--t3); }
 .calc-sym { display:inline-block; width:.72em; height:.72em; margin-right:.35em; vertical-align:-.02em; }
 .calc-sym-a { border-radius:50%; background:var(--brand); }

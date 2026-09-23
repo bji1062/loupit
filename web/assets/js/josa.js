@@ -54,6 +54,13 @@ export function fmt(n) {
   return (v < 0 ? MINUS : '') + Math.abs(v).toLocaleString('ko-KR');
 }
 
+/** 소수 한 자리까지(정수면 정수) — 주 근무시간 3.5 → '3.5', 45 → '45', 9.25 → '9.3'. */
+export function fmt1(n) {
+  const v = Math.round((Number(n) || 0) * 10) / 10;
+  if (Number.isInteger(v)) return fmt(v);
+  return (v < 0 ? MINUS : '') + Math.abs(v).toLocaleString('ko-KR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
+
 /** 부호 붙인 정수(+900 / −2,211 / 0). */
 export function fmtSigned(n) {
   const v = Math.round(Number(n) || 0);

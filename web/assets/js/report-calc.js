@@ -12,7 +12,7 @@
 //  · 결과 문장은 회사 이름으로 · 금액 없는 칸은 「금액 미등록」(「—」「0」 금지)
 //  · 판단하기 어려움(unsure) 티어에서는 판정 카드·첫 타일·보조 줄에 총보상 차액 숫자를 두지 않는다
 import { el } from './dom.js';
-import { withJosa, fmt, fmtSigned, fmtPct } from './josa.js';
+import { withJosa, fmt, fmt1, fmtSigned, fmtPct } from './josa.js';
 import { badgeKind, badgeClassBem, BADGE_LABEL_SHORT } from './badge.js';
 import { CATEGORY_LABEL } from './categories.js';
 
@@ -101,7 +101,7 @@ function makeCtx(report, ctx) {
 const moreLess = (d) => (d < 0 ? '줄어듭니다' : '늘어납니다');
 
 // ══ #0 조건 줄 ══════════════════════════════════════════════════════════════
-function hoursWord(h) { return h ? (HOURS_WORD[h] || '주 ' + fmt(h) + '시간') : null; }
+function hoursWord(h) { return h ? (HOURS_WORD[h] || '주 ' + fmt1(h) + '시간') : null; }
 function condLine(X) {
   const { nm, input, ws, report } = X;
   const box = el('div', { class: 'calc-cond' });
@@ -120,7 +120,7 @@ function condLine(X) {
   else add('야근 미입력');
   const c = input.commute || {};
   if (c.a != null || c.b != null) add('통근 ' + (c.a != null ? fmt(c.a) : '미입력') + ' → ' + (c.b != null ? fmt(c.b) + '분' : '미입력'));
-  if (input.tenureYears != null) add('근속 ' + fmt(input.tenureYears) + '년');
+  if (input.tenureYears != null) add('근속 ' + fmt1(input.tenureYears) + '년');
   const edit = el('button', { type: 'button', class: 'calc-link calc-cond-edit', text: '조건 고치기' });
   edit.addEventListener('click', () => { if (typeof X.ctx.onEdit === 'function') X.ctx.onEdit(); });
   box.append(edit);
@@ -168,12 +168,24 @@ function how(text) {
 function chip(...kids) { return el('span', { class: 'calc-stat' }, ...kids); }
 const hatch = () => el('span', { class: 'calc-hatch-sw', 'aria-hidden': 'true' });
 
-function causes(v, sign) { // sign<0: 줄이는 원인, >0: 늘리는 원인
+// 총보상 차이의 원인(연봉 밖) — sign<0: 줄이는 원인, >0: 늘리는 원인. { text, note }.
+// 한쪽 주 근무시간만 없으면 야근수당은 **아는 쪽만** 계산한 값이라 「야근수당 차이」가 아니다(LOW-9) — 그 회사에서
+// 받는 야근수당이라 부르고, 모르는 쪽은 모른다고(note) 적는다.
+function causes(X, v, sign) {
+  const hit = (x) => Math.sign(x) === sign && x !== 0;
+  const miss = ['a', 'b'].filter((s) => !X.report[s].wsHours);
+  const benHit = hit(v.parts.ben), otHit = hit(v.parts.ot);
+  if (otHit && miss.length === 1) {
+    const known = miss[0] === 'a' ? 'b' : 'a';
+    const ot = X.nm[known] + '에서 받는 야근수당';
+    return { text: benHit ? '복지 차이와 ' + ot : ot, note: '(' + X.nm[miss[0]] + ' 쪽은 주 근무시간이 없어 계산하지 않음)' };
+  }
   const out = [];
-  if (Math.sign(v.parts.ben) === sign && v.parts.ben !== 0) out.push('복지');
-  if (Math.sign(v.parts.ot) === sign && v.parts.ot !== 0) out.push('야근수당');
-  return out.length ? out.join('와 ') + ' 차이' : '복지 차이';
+  if (benHit) out.push('복지');
+  if (otHit) out.push('야근수당');
+  return { text: out.length ? out.join('와 ') + ' 차이' : '복지 차이', note: '' };
 }
+const causeText = (X, v, sign) => { const c = causes(X, v, sign); return c.text + c.note; };
 
 // 「NAVER에만 금액이 등록된」 — 혼합 항목이 한쪽으로만 쏠렸을 때 그 회사, 섞였으면 「한쪽 회사에만」.
 function onlyRegistered(X) {
@@ -307,13 +319,13 @@ function salaryCard(X) {
     tone = d < 0 ? 'neg' : 'pos';
     if (v.shape === 'reverse' && d < 0) {
       badgeText = '연봉은 오르지만 총보상은 줄어듭니다';
-      hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 ' + causes(v, -1) + ' 때문에 총보상은 오히려 ', b('연 ' + m(abs(d)) + ' 줄어듭니다.'));
+      hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 ' + causeText(X, v, -1) + ' 때문에 총보상은 오히려 ', b('연 ' + m(abs(d)) + ' 줄어듭니다.'));
     } else if (v.shape === 'reverse') {
       badgeText = '연봉은 줄지만 총보상은 늘어납니다';
-      hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 ' + causes(v, 1) + ' 덕분에 총보상은 오히려 ', b('연 ' + m(d) + ' 늘어납니다.'));
+      hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 ' + causeText(X, v, 1) + ' 덕분에 총보상은 오히려 ', b('연 ' + m(d) + ' 늘어납니다.'));
     } else if (v.shape === 'flat') {
       badgeText = d < 0 ? '총보상은 줄어듭니다' : '총보상은 늘어납니다';
-      hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 ' + causes(v, Math.sign(d)) + ' 때문에 총보상은 ', b('연 ' + m(abs(d)) + ' ' + moreLess(d) + '.'));
+      hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 ' + causeText(X, v, Math.sign(d)) + ' 때문에 총보상은 ', b('연 ' + m(abs(d)) + ' ' + moreLess(d) + '.'));
     } else {
       badgeText = d > 0 ? '연봉도 총보상도 늘어납니다' : '연봉도 총보상도 줄어듭니다';
       hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '고, 복지와 야근수당까지 더한 총보상도 ', b('연 ' + m(abs(d)) + ' ' + moreLess(d) + '.'));
@@ -374,7 +386,7 @@ function wlbHeadline(X, hl) {
   };
   if (v.decidedBy === 'hours') {
     const more = h.weekDiff > 0 ? 'b' : 'a';
-    hl.append('입력하신 야근 시간대로라면 ' + nm[more] + '에서는 일주일에 ', b(fmt(abs(h.weekDiff)) + '시간'),
+    hl.append('입력하신 야근 시간대로라면 ' + nm[more] + '에서는 일주일에 ', b(fmt1(abs(h.weekDiff)) + '시간'),
       '(1년이면 ' + fmt(abs(h.annDiff)) + '시간, 약 ' + fmt(h.days) + '일치) 더 일하고');
     const tail = commuteTail(more);
     if (tail == null) hl.append(', 출퇴근에도 1년에 ', b(fmt(abs(c.annDiff)) + '시간'), '을 더 씁니다.' + conclude);
@@ -383,7 +395,7 @@ function wlbHeadline(X, hl) {
   }
   if (v.decidedBy === 'commute') {
     const more = c.annDiff > 0 ? 'b' : 'a';
-    const pre = h ? (h.weekDiff === 0 ? '입력하신 근무시간은 두 회사가 같고, ' : '입력하신 근무시간 차이는 주 ' + fmt(abs(h.weekDiff)) + '시간뿐이고, ')
+    const pre = h ? (h.weekDiff === 0 ? '입력하신 근무시간은 두 회사가 같고, ' : '입력하신 근무시간 차이는 주 ' + fmt1(abs(h.weekDiff)) + '시간뿐이고, ')
       : '주 근무시간은 입력하지 않으셨고, 입력하신 통근 시간대로라면 ';
     hl.append(pre + nm[more] + '에서 출퇴근에 1년에 ', b(fmt(abs(c.annDiff)) + '시간'), '을 더 씁니다.' + conclude);
     return;
@@ -458,7 +470,7 @@ function wlbWarnLine(X) {
     const w = (ws[s] || {}).wage;
     const h = report[s].wsHours;
     if (h > 40 && w === 'inclusive') {
-      out.push(line('calc-line-warn', '입력하신 대로 ' + withJosa(nm[s], '이/가') + ' 포괄임금제라면, 주 ' + fmt(h) + '시간을 일해도 야근수당은 따로 계산하지 않았습니다.'));
+      out.push(line('calc-line-warn', '입력하신 대로 ' + withJosa(nm[s], '이/가') + ' 포괄임금제라면, 주 ' + fmt1(h) + '시간을 일해도 야근수당은 따로 계산하지 않았습니다.'));
     } else if (h > 40 && w == null) {
       out.push(line('calc-line-warn', '입력하신 조건에 ' + nm[s] + '의 야근수당 여부가 없어, 포괄·비포괄 두 경우는 연봉 기준 화면에 나란히 적었습니다.'));
     }
@@ -475,7 +487,7 @@ function wlbCard(X) {
   wlbHeadline(X, hl);
   sec.append(hl);
   const ev = el('div', { class: 'calc-evid' });
-  if (v.hours) ev.append(chip('주 근무 ' + fmt(v.hours.a) + ' → ' + fmt(v.hours.b) + '시간'));
+  if (v.hours) ev.append(chip('주 근무 ' + fmt1(v.hours.a) + ' → ' + fmt1(v.hours.b) + '시간'));
   if (v.commute) ev.append(chip('통근 연 ' + fmt(v.commute.annA) + ' → ' + fmt(v.commute.annB) + '시간'));
   ev.append(chip('휴가·근무제도 ' + v.count.a + '개 : ' + v.count.b + '개'));
   sec.append(ev, autonomyLine(X));
@@ -597,7 +609,7 @@ function tiles(X, axis) {
   if (axis === 'wlb') {
     const v = report.axes.wlb;
     const signH = (n) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(abs(n));
-    if (v.hours) box.append(tile('1년 근무시간', [signH(v.hours.annDiff), small('시간')], '약 ' + fmt(v.hours.days) + '일치 · 주 ' + fmt(v.hours.a) + ' → ' + fmt(v.hours.b) + '시간'));
+    if (v.hours) box.append(tile('1년 근무시간', [signH(v.hours.annDiff), small('시간')], '약 ' + fmt(v.hours.days) + '일치 · 주 ' + fmt1(v.hours.a) + ' → ' + fmt1(v.hours.b) + '시간'));
     else box.append(tile('1년 근무시간', ['계산하지 않음'], '두 회사의 주 근무시간을 넣으면 계산합니다'));
     if (v.commute) box.append(tile('1년 통근시간', [signH(v.commute.annDiff), small('시간')], '편도 ' + fmt(v.commute.a) + ' → ' + fmt(v.commute.b) + '분 · 약 ' + fmt(v.commute.days) + '일치'));
     else box.append(tile('1년 통근시간', ['계산하지 않음'], '두 회사의 편도 통근시간을 넣으면 계산합니다'));
@@ -637,7 +649,7 @@ function auxWlb(X) {
   const v = report.axes.wlb;
   const h = v.hours, c = v.commute;
   const bits = [];
-  if (h && h.weekDiff) bits.push('입력하신 야근 시간대로라면 ' + nm[h.weekDiff > 0 ? 'b' : 'a'] + '에서 주 ' + fmt(abs(h.weekDiff)) + '시간 더 일하고');
+  if (h && h.weekDiff) bits.push('입력하신 야근 시간대로라면 ' + nm[h.weekDiff > 0 ? 'b' : 'a'] + '에서 주 ' + fmt1(abs(h.weekDiff)) + '시간 더 일하고');
   else if (h) bits.push('입력하신 주 근무시간은 같고');
   if (c && c.annDiff) {
     const cm = c.annDiff > 0 ? 'b' : 'a';
@@ -803,7 +815,7 @@ function bridgeSummary(X) {
   if (v.tier === 'range') return sal + (v.shape === 'same' ? '고, ' : '지만, ') + '복지·야근수당까지 더한 총보상은 야근수당에 따라 연 ' + fmt(abs(v.span[0])) + ' ~ ' + m(abs(v.span[1])) + ' ' + moreLess(v.wage.dir);
   if (!directional(v.tier)) return sal + '고, 복지·야근수당까지 더한 총보상은 ' + (v.tier === 'near' ? '거의 같습니다' : v.tier === 'depends' ? '야근수당에 따라 달라집니다' : '어느 쪽이 많은지 말하기 어렵습니다');
   const same = (v.salMid > 0 && v.d > 0) || (v.salMid < 0 && v.d < 0);
-  return sal + (same ? '고, ' : '지만, ') + causes(v, Math.sign(v.d)).replace(' 차이', '') + ' 차이로 총보상은 ' + moreLess(v.d);
+  return sal + (same ? '고, ' : '지만, ') + withJosa(causes(X, v, Math.sign(v.d)).text, '로/으로') + ' 총보상은 ' + moreLess(v.d);
 }
 
 function bridgeBlock(X) {
@@ -943,10 +955,11 @@ function timeBlock(X) {
   const t = report.time;
   const none = '입력 없음';
   const hIn = t.hoursIn, cIn = t.commuteIn;
-  const hrs = (v) => (v ? fmt(v) + '시간' : none);
+  const hrs = (v) => (v ? fmt1(v) + '시간' : none);
   const signed = (n, unit) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt(abs(n)) + unit;
+  const signed1 = (n, unit) => (n > 0 ? '+' : n < 0 ? '−' : '') + fmt1(abs(n)) + unit;
   const rows = [
-    el('tr', {}, td('주 근무시간(입력)'), td(hrs(hIn.a)), td(hrs(hIn.b)), td(t.hours ? [b(signed(t.hours.weekDiff, '시간'))] : '')),
+    el('tr', {}, td('주 근무시간(입력)'), td(hrs(hIn.a)), td(hrs(hIn.b)), td(t.hours ? [b(signed1(t.hours.weekDiff, '시간'))] : '')),
     el('tr', {}, td('1년 근무시간'), td(t.hours ? fmt(t.hours.annA) + '시간' : none), td(t.hours ? fmt(t.hours.annB) + '시간' : none),
       td(t.hours ? [b(signed(t.hours.annDiff, '시간') + '(약 ' + fmt(t.hours.days) + '일치)')] : '')),
     el('tr', {}, td('편도 통근(입력)'), td(cIn.a != null ? fmt(cIn.a) + '분' : none), td(cIn.b != null ? fmt(cIn.b) + '분' : none),
@@ -1347,8 +1360,8 @@ function sensText(X, s) {
   const { nm, report } = X;
   if (s.key === 'b_wage_flip') {
     if (s.to === 'separate') {
-      const main = el('span', {}, withJosa(nm.b, '이/가') + ' ', b('야근수당을 따로 준다면'), '(주 40시간을 넘는 ' + fmt(s.extraHrs) + '시간분 → 연 ' + m(s.otB) + ')');
-      const sub = el('div', { class: 'calc-sens-sub', text: '계산: 시급 ' + fmt(s.hourlyBase) + '원(' + m(report.b.salRange.mid) + ' ÷ 12개월 ÷ 209시간) × ' + fmt(s.extraHrs) + '시간 × 1.5배 × 4.33주 × 12개월 = ' + m(s.otB) + '.'
+      const main = el('span', {}, withJosa(nm.b, '이/가') + ' ', b('야근수당을 따로 준다면'), '(주 40시간을 넘는 ' + fmt1(s.extraHrs) + '시간분 → 연 ' + m(s.otB) + ')');
+      const sub = el('div', { class: 'calc-sens-sub', text: '계산: 시급 ' + fmt(s.hourlyBase) + '원(' + m(report.b.salRange.mid) + ' ÷ 12개월 ÷ 209시간) × ' + fmt1(s.extraHrs) + '시간 × 1.5배 × 4.33주 × 12개월 = ' + m(s.otB) + '.'
         + beSensText(X, s.breakeven) });
       return [main, sub];
     }

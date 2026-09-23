@@ -627,5 +627,29 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     assert.match(txt(g, '#calc-b-parts h3'), /어디서 왔나 막대 눈금 −2,179 ~ \+434만원/);
     assert.match(txt(g, '#calc-b-contrast > summary'), /^복지 전체 비교표 — NAVER 23개/, '법정 행이 없으면 제목 그대로');
   });
+
+  test('LOW-9 이직 후보의 주 근무시간만 없을 때 — 「야근수당 차이 때문에」가 아니라 아는 쪽의 야근수당 + 모르는 쪽은 모른다', () => {
+    const st = goldenEngineState({ selectedRate: 10, wsState: { ...WS(), b: { wage: 'inclusive' } } });
+    const { mount } = render(st, 'salary');
+    const hl = txt(mount, '.calc-hl');
+    assert.ok(!hl.includes('야근수당 차이'), hl);
+    assert.equal(hl, '입력하신 조건으로 계산하면, 연봉은 10% 올라 6,600만원이 되지만 복지 차이와 NAVER에서 받는 야근수당(카카오 쪽은 주 근무시간이 없어 계산하지 않음) 때문에 총보상은 오히려 연 2,511만원 줄어듭니다.');
+    assert.match(txt(mount, '#calc-b-bridge summary'), /복지 차이와 NAVER에서 받는 야근수당으로 총보상은 줄어듭니다/);
+  });
+
+  test('LOW-8 주 근무시간 3.5 는 조건 줄에 「주 3.5시간」(반올림해 「주 4시간」이 아니다)', () => {
+    const st = goldenEngineState({ wsState: { ...WS(), b: { hours: 3.5, wage: 'inclusive' } } });
+    const { mount } = render(st, 'wlb');
+    assert.match(txt(mount, '.calc-cond'), /주 3\.5시간\(포괄\)/);
+    assert.match(txt(mount, '.calc-tiles'), /주 45 → 3\.5시간/);
+  });
+
+  test('LOW-2 근속 2년(2.5 를 버린 값)이면 조건 줄·장부가 서로 맞는다', () => {
+    const { mount } = render(goldenEngineState({ tenureYears: 2 }), 'salary');
+    assert.match(txt(mount, '.calc-cond'), /근속 2년/);
+    const led = txt(mount, '#calc-b-ledger');
+    assert.match(led, /^근속 2년 덕분에 지금 받는 복지 1개/);
+    assert.match(led, /자기돌봄 휴직 — 근속 3년 이상 · 1년 남음/);
+  });
 });
 

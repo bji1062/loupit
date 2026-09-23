@@ -1,7 +1,7 @@
 // web/assets/js/josa.test.js — 회사 이름 조사·숫자 표기(이직 계산기 문장 재료).
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { finalSound, josa, withJosa, fmt, fmtSigned, fmtPct } from './josa.js';
+import { finalSound, josa, withJosa, fmt, fmt1, fmtSigned, fmtPct } from './josa.js';
 
 test('JOSA-1: 한글 받침', () => {
   assert.equal(withJosa('카카오', '이/가'), '카카오가');
@@ -38,4 +38,12 @@ test('JOSA-3: 숫자 — 유니코드 빼기·천 단위', () => {
   assert.equal(fmtPct(null), '');
   assert.equal(fmtPct(9111 / 6000 - 1), '+51.9%', '부동소수 51.8499… 도 사람 셈으로 올린다');
   assert.equal(fmtPct(0), '0.0%');
+});
+
+test('fmt1 — 소수 한 자리까지(주 근무시간 3.5 → 「3.5」, 정수는 정수 · LOW-8)', () => {
+  assert.equal(fmt1(3.5), '3.5');
+  assert.equal(fmt1(45), '45');
+  assert.equal(fmt1(9.25), '9.3');
+  assert.equal(fmt1(-8.5), '−8.5');
+  assert.equal(fmt1(1234.5), '1,234.5');
 });

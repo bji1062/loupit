@@ -260,6 +260,71 @@ export function parseNum(v, { decimal = false, signed = false } = {}) {
 }
 const won = (n) => Math.round(n).toLocaleString('ko-KR');
 
+// 숫자 칸 읽기(적대 검증 LOW-2·LOW-8) — 흔한 표기(6,000 · 6000원 · 6000만원 · 45시간 · 30분 · 1시간 30분 · 12%)는
+// 받아 주고, 못 읽으면 **무엇이 문제인지** 말한다(조용한 null 금지). 빈칸은 { value: null }(미입력 — 0 아님).
+// kind: 'manwon'(연봉) · 'minutes'(통근) · 'hours'(주 근무시간 1~168, 소수 한 자리) · 'years'(근속, 소수는 버림 안내) ·
+// 'percent'(상승률, 부호). 반환 { value, error?, note? } — error 면 value 는 null, note 는 받아들인 값에 대한 안내.
+export function readNum(v, kind) {
+  let t = String(v == null ? '' : v).replace(/[,\s]/g, '').replace(/^[−–]/, '-');
+  if (t === '') return { value: null };
+  const INT = /^\d+$/, DEC = /^\d*\.\d+$/;
+  if (kind === 'manwon') {
+    t = t.replace(/(만원|만|원)$/, '');
+    if (INT.test(t)) {
+      const n = Number(t);
+      if (n > 1000000) return { value: null, error: '원 단위로 적으신 것 같습니다 — 만원 단위로 적어 주세요(6,000만원이면 6000).' };
+      return { value: n };
+    }
+    if (DEC.test(t)) return { value: null, error: '소수점 없이 만원 단위로 적어 주세요(예: 6000).' };
+    return { value: null, error: '숫자로 읽지 못했습니다 — 만원 단위 숫자로 적어 주세요(예: 6000).' };
+  }
+  if (kind === 'minutes') {
+    const hm = t.match(/^(\d+)시간(?:(\d+)분?)?$/);
+    if (hm) return { value: Number(hm[1]) * 60 + Number(hm[2] || 0) };
+    t = t.replace(/분$/, '');
+    if (INT.test(t)) return { value: Number(t) };
+    if (DEC.test(t)) return { value: null, error: '분 단위 정수로 적어 주세요(예: 30).' };
+    return { value: null, error: '숫자로 읽지 못했습니다 — 편도 통근 시간을 분으로 적어 주세요(예: 30).' };
+  }
+  if (kind === 'hours') {
+    t = t.replace(/(시간|h)$/i, '');
+    if (!INT.test(t) && !DEC.test(t)) return { value: null, error: '숫자로 읽지 못했습니다 — 주 근무시간을 시간으로 적어 주세요(예: 45).' };
+    const n = Number(t);
+    if (n < 1 || n > 168) return { value: null, error: '주 근무시간은 1~168시간 사이로 적어 주세요(일주일은 168시간입니다).' };
+    return { value: Math.round(n * 10) / 10 };
+  }
+  if (kind === 'years') {
+    t = t.replace(/년$/, '');
+    if (INT.test(t)) return { value: Number(t) };
+    if (DEC.test(t)) {
+      const n = Math.floor(Number(t));
+      return { value: n, note: '근속은 햇수로 계산합니다 — ' + t + '년은 ' + n + '년으로 봅니다.' };
+    }
+    return { value: null, error: '숫자로 읽지 못했습니다 — 근속 햇수를 적어 주세요(예: 3).' };
+  }
+  if (kind === 'percent') {
+    t = t.replace(/%$/, '').replace(/^\+/, '');
+    if (/^-?(\d+|\d*\.\d+)$/.test(t)) return { value: Number(t) };
+    return { value: null, error: '숫자로 읽지 못했습니다 — 상승률을 %로 적어 주세요(예: 12, 줄었으면 -5).' };
+  }
+  return { value: parseNum(v) };
+}
+
+// 칸 아래 안내 한 줄 — 오류면 aria-invalid, 참고(근속 버림)면 안내만. 둘 다 aria-describedby 로 칸에 묶는다.
+function fieldMsg(inp) {
+  const msg = el('p', { class: 'calc-fmsg', id: inp.id + '-msg' });
+  msg.hidden = true;
+  const show = (r = {}) => {
+    const text = r.error || r.note || '';
+    msg.textContent = text;
+    msg.hidden = !text;
+    msg.classList.toggle('calc-fmsg-err', !!r.error);
+    if (r.error) inp.setAttribute('aria-invalid', 'true'); else inp.removeAttribute('aria-invalid');
+    if (text) addDescribedBy(inp, msg.id); else removeDescribedBy(inp, msg.id);
+  };
+  return { msg, show };
+}
+
 /** 현재 연봉(만원) — 단일 칸. 옛 초안의 범위(최소~최대)는 가운데 값으로 보여 준다(엔진도 mid 를 쓴다). */
 export function currentSalary(state) {
   const s = (state.salS && state.salS.a) || {};
@@ -392,18 +457,20 @@ function salaryCell(state, refresh) {
   const row = el('div', { class: 'calc-numrow' });
   const inp = numInput('calc-sal', { value: currentSalary(state), short: false, placeholder: '예: 6000', describedby: 'calc-sal-help' });
   const set = (n) => { state.salS.a = n == null ? { low: null, high: null } : { low: n, high: n }; refresh(); };
-  inp.addEventListener('input', () => set(parseNum(inp.value)));
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => { const r = readNum(inp.value, 'manwon'); fm.show(r); set(r.value); });
   row.append(inp, el('span', { class: 'calc-unit', text: '만원' }));
   for (const [d, t, aria] of [[-100, '−100', '100만원 줄이기'], [100, '+100', '100만원 늘리기'], [500, '+500', '500만원 늘리기']]) {
     const b = el('button', { type: 'button', class: 'calc-step', 'aria-label': aria, text: t });
     b.addEventListener('click', () => {
-      const v = Math.max(0, (parseNum(inp.value) || 0) + d);
+      const v = Math.max(0, (readNum(inp.value, 'manwon').value || 0) + d);
       inp.value = String(v);
+      fm.show();
       set(v);
     });
     row.append(b);
   }
-  c.append(row, help('세전 연봉을 만원 단위로 적어 주세요.', 'calc-sal-help'));
+  c.append(row, fm.msg, help('세전 연봉을 만원 단위로 적어 주세요.', 'calc-sal-help'));
   return c;
 }
 
@@ -415,7 +482,7 @@ function raiseCell(state, refresh) {
     id: 'calc-raise', labelledby: 'calc-rate-lbl',
     options: RAISE_CHIPS.map((v) => [v, '+' + v]),
     selected: state.rateMode !== 'salary' && RAISE_CHIPS.includes(state.selectedRate) ? state.selectedRate : null,
-    onPick: (v) => { state.selectedRate = v; inp.value = ''; refresh(); },
+    onPick: (v) => { state.selectedRate = v; inp.value = ''; fm.show(); refresh(); },
   });
   chips.hidden = state.rateMode === 'salary';
   c.append(chips);
@@ -430,12 +497,15 @@ function raiseCell(state, refresh) {
   const directLbl = el('label', { class: 'calc-unit', for: 'calc-rate', text: state.rateMode === 'salary' ? '연봉' : '직접 입력' });
   const unit = el('span', { class: 'calc-unit', text: state.rateMode === 'salary' ? '만원' : '%' });
   const eq = el('span', { class: 'calc-eq', id: 'calc-eq', 'aria-live': 'polite', text: eqText(state) });
+  const fm = fieldMsg(inp);
   inp.addEventListener('input', () => {
+    const r = readNum(inp.value, state.rateMode === 'salary' ? 'manwon' : 'percent');
+    fm.show(r);
     if (state.rateMode === 'salary') {
-      state.offerSal = parseNum(inp.value);
+      state.offerSal = r.value;
       state.selectedRate = effectiveRate(state);
     } else {
-      state.selectedRate = parseNum(inp.value, { decimal: true, signed: true });
+      state.selectedRate = r.value;
       setChecked(chips, RAISE_CHIPS.includes(state.selectedRate) ? String(state.selectedRate) : null);
     }
     refresh();
@@ -460,7 +530,7 @@ function raiseCell(state, refresh) {
     if (t) t.focus();
   });
   row.append(directLbl, inp, unit, eq, toggle);
-  c.append(row, help('잡코리아 설문에서 직장인이 가장 많이 꼽은 희망 인상률은 13%입니다. 값을 미리 채워 두지는 않았습니다.'));
+  c.append(row, fm.msg, help('잡코리아 설문에서 직장인이 가장 많이 꼽은 희망 인상률은 13%입니다. 값을 미리 채워 두지는 않았습니다.'));
   return c;
 }
 
@@ -481,10 +551,14 @@ function hoursCell(state, slot) {
       ws.hours = h;
       ws.ot = h == null ? null : HOURS_CHIPS.find(([x]) => x === h)[1];
       inp.value = h == null ? '' : String(h);
+      fm.show();
     },
   });
+  const fm = fieldMsg(inp);
   inp.addEventListener('input', () => {
-    const h = parseNum(inp.value, { decimal: true });
+    const r = readNum(inp.value, 'hours');
+    fm.show(r);
+    const h = r.value;
     ws.hours = h;
     const hit = HOURS_CHIPS.find(([x]) => x === h);
     ws.ot = hit ? hit[1] : null;
@@ -492,7 +566,7 @@ function hoursCell(state, slot) {
   });
   const row = el('div', { class: 'calc-numrow calc-gap' });
   row.append(el('label', { class: 'calc-unit', for: 'calc-hours-' + slot, text: '또는 주 근무시간 직접 입력' }), inp, el('span', { class: 'calc-unit', text: '시간' }));
-  c.append(chips, row, help('회사별 야근 정보가 없어 직접 골라 주셔야 합니다. 비워 두면 시간당 총보상과 야근수당은 계산하지 않습니다.'));
+  c.append(chips, row, fm.msg, help('회사별 야근 정보가 없어 직접 골라 주셔야 합니다. 비워 두면 시간당 총보상과 야근수당은 계산하지 않습니다.'));
   return c;
 }
 
@@ -560,8 +634,9 @@ function commuteCell(state, slot) {
   const id = 'calc-commute-' + slot;
   c.append(el('div', { class: 'calc-rule' }), label('편도 통근시간(분)', { opt: true, forId: id }));
   const inp = numInput(id, { value: state.cmtS[slot] });
-  inp.addEventListener('input', () => { state.cmtS[slot] = parseNum(inp.value); });
-  c.append(el('div', { class: 'calc-numrow' }, inp, el('span', { class: 'calc-unit', text: '분' })),
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => { const r = readNum(inp.value, 'minutes'); fm.show(r); state.cmtS[slot] = r.value; });
+  c.append(el('div', { class: 'calc-numrow' }, inp, el('span', { class: 'calc-unit', text: '분' })), fm.msg,
     help('비워 두면 통근 시간은 계산에서 뺍니다(0분으로 치지 않습니다).'));
   return c;
 }
@@ -569,9 +644,11 @@ function commuteCell(state, slot) {
 function tenureCell(state) {
   const c = cell('a', 'calc-bot');
   c.append(el('div', { class: 'calc-rule' }), label('현재 직장 근속(년)', { opt: true, forId: 'calc-tenure' }));
-  const inp = numInput('calc-tenure', { value: state.tenureYears, mode: 'decimal' });
-  inp.addEventListener('input', () => { state.tenureYears = parseNum(inp.value, { decimal: true }); });
-  c.append(el('div', { class: 'calc-numrow' }, inp, el('span', { class: 'calc-unit', text: '년' })));
+  // 근속은 햇수(정수)만 — 2.5 를 받아 두고 화면이 3년이라 부르면 「근속 3년 · 1년 남음」처럼 서로 어긋난다(LOW-2).
+  const inp = numInput('calc-tenure', { value: state.tenureYears, mode: 'numeric' });
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => { const r = readNum(inp.value, 'years'); fm.show(r); state.tenureYears = r.value; });
+  c.append(el('div', { class: 'calc-numrow' }, inp, el('span', { class: 'calc-unit', text: '년' })), fm.msg);
   const n = tenureItems(state.benS.a || []).length;
   if (n) {
     c.append(help(companyName(state, 'a') + '에는 근속 연수에 따라 받는 복지가 ' + n + '개 있습니다. '
@@ -695,13 +772,17 @@ export const MISSING_LABEL = {
 };
 
 // 결측 코드 배열 → 사용자 안내 문구. 입력 화면의 말이라 칸 이름으로 부른다.
-export function missingMessage(missing, state = null) {
-  const names = (missing || []).map((k) => {
-    if (k === 'raise' && state && state.rateMode === 'salary') return '이직 후보 연봉';
-    return MISSING_LABEL[k] || k;
-  });
-  if (!names.length) return '필수 입력값이 비어 있습니다.';
-  return names.join('과 ') + '을 입력해 주세요.';
+// invalid: 칸에 글자는 있는데 읽지 못한 결측 코드 — 「입력해 주세요」가 아니라 칸 아래 안내를 보라고 한다(LOW-8).
+export function missingMessage(missing, state = null, invalid = []) {
+  const name = (k) => (k === 'raise' && state && state.rateMode === 'salary' ? '이직 후보 연봉' : MISSING_LABEL[k] || k);
+  const list = missing || [];
+  if (!list.length) return '필수 입력값이 비어 있습니다.';
+  const bad = list.filter((k) => invalid.includes(k)).map(name);
+  const empty = list.filter((k) => !invalid.includes(k)).map(name);
+  const parts = [];
+  if (bad.length) parts.push(bad.join('과 ') + '을 읽지 못했습니다 — 칸 아래 안내를 확인해 주세요.');
+  if (empty.length) parts.push(empty.join('과 ') + '을 입력해 주세요.');
+  return parts.join(' ');
 }
 
 function showMissingAlert(missing, state) {
@@ -713,12 +794,14 @@ function showMissingAlert(missing, state) {
     if (btn && btn.parentNode && typeof btn.parentNode.insertBefore === 'function') btn.parentNode.insertBefore(box, btn);
     else { const view = byId('view-input'); if (view && view.append) view.append(box); }
   }
-  box.textContent = missingMessage(missing, state);
+  const bad = (k) => { const inp = byId(k === 'salary' ? 'calc-sal' : k === 'raise' ? 'calc-rate' : ''); return !!(inp && inp.getAttribute('aria-invalid') === 'true'); };
+  const invalid = (missing || []).filter(bad);
+  box.textContent = missingMessage(missing, state, invalid);
   box.hidden = false;
-  // 무엇이 비었는지 손가락으로 — 첫 결측 칸으로 커서를 옮긴다.
+  // 무엇이 비었는지 손가락으로 — 첫 결측 칸으로 커서를 옮긴다(글자를 못 읽은 칸이면 그 칸).
   const first = (missing || [])[0];
   const target = first === 'salary' ? byId('calc-sal')
-    : first === 'raise' ? (state && state.rateMode === 'salary' ? byId('calc-rate') : (qs('#calc-raise [role="radio"]') || byId('calc-rate')))
+    : first === 'raise' ? (state && (state.rateMode === 'salary' || invalid.includes('raise')) ? byId('calc-rate') : (qs('#calc-raise [role="radio"]') || byId('calc-rate')))
       : null;
   if (target && typeof target.focus === 'function') target.focus();
 }

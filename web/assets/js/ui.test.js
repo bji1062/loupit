@@ -20,7 +20,7 @@ import { JSDOM } from 'jsdom';
 import {
   mountUI, renderInputView, ensureInputScaffold, parseNum, currentSalary, effectiveRate, remoteHint,
   bindSearchView, bindInputView, bindReportNav, reflectSearchUI, reflectSlotLabel, maybeAdvance,
-  missingMessage, notePrefill, clearSearchGoHint,
+  missingMessage, notePrefill, clearSearchGoHint, readNum,
 } from './ui.js';
 import { createInitialState, boot, App } from './app.js';
 import { setSearchState } from './search.js';
@@ -268,6 +268,70 @@ describe('UI-3 입력 뷰(이직 계산기 개편 2026-09-23, SP-FE-14)', () => 
     state.benS.a.push({ benefit_cd: 'long_service_leave', benefit_nm: '리프레시 휴가', qual_yn: true, qual_desc_ctnt: '2년 근속 시 15일 추가 유급휴가', checked: true });
     renderInputView(state, {});
     assert.match(document.getElementById('input-slot-a').textContent, /A사에는 근속 연수에 따라 받는 복지가 1개 있습니다/);
+  });
+
+  test('LOW-8 readNum — 흔한 표기는 받고, 못 읽으면 무엇이 문제인지 말한다(조용한 null 금지)', () => {
+    assert.deepEqual(readNum('6,000', 'manwon'), { value: 6000 });
+    assert.deepEqual(readNum('6000원', 'manwon'), { value: 6000 });
+    assert.deepEqual(readNum('6000 만원', 'manwon'), { value: 6000 });
+    assert.match(readNum('6000.5', 'manwon').error, /소수점 없이 만원 단위로/);
+    assert.match(readNum('육천', 'manwon').error, /숫자로 읽지 못했습니다/);
+    assert.match(readNum('60000000', 'manwon').error, /원 단위로 적으신 것 같습니다/);
+    assert.equal(readNum('', 'manwon').value, null);
+    assert.equal(readNum('', 'manwon').error, undefined, '빈칸은 오류가 아니라 미입력');
+    assert.deepEqual(readNum('30분', 'minutes'), { value: 30 });
+    assert.deepEqual(readNum('1시간 30분', 'minutes'), { value: 90 });
+    assert.match(readNum('30.5', 'minutes').error, /분 단위 정수로/);
+    assert.deepEqual(readNum('3.5', 'hours'), { value: 3.5 });
+    assert.deepEqual(readNum('45시간', 'hours'), { value: 45 });
+    assert.match(readNum('200', 'hours').error, /1~168시간/);
+    assert.match(readNum('0', 'hours').error, /1~168시간/);
+    assert.deepEqual(readNum('12%', 'percent'), { value: 12 });
+    assert.deepEqual(readNum('−5', 'percent'), { value: -5 });
+    assert.deepEqual(readNum('3년', 'years'), { value: 3 });
+    const t = readNum('2.5', 'years');
+    assert.equal(t.value, 2);
+    assert.match(t.note, /근속은 햇수로 계산합니다 — 2\.5년은 2년으로 봅니다/);
+  });
+
+  test('LOW-8 칸 아래 안내 — 못 읽으면 aria-invalid + 안내 한 줄(describedby), 고치면 사라진다', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    input('calc-sal', '6000원');
+    assert.deepEqual(state.salS.a, { low: 6000, high: 6000 });
+    input('calc-sal', '6000.5');
+    const sal = document.getElementById('calc-sal');
+    const msg = document.getElementById('calc-sal-msg');
+    assert.equal(sal.getAttribute('aria-invalid'), 'true');
+    assert.equal(msg.hidden, false);
+    assert.match(msg.textContent, /소수점 없이 만원 단위로/);
+    assert.ok(sal.getAttribute('aria-describedby').split(' ').includes('calc-sal-msg'));
+    assert.deepEqual(state.salS.a, { low: null, high: null });
+    assert.match(missingMessage(['salary'], state, ['salary']), /현재 연봉을 읽지 못했습니다 — 칸 아래 안내를 확인해 주세요/);
+    input('calc-sal', '6000');
+    assert.equal(sal.getAttribute('aria-invalid'), null);
+    assert.equal(msg.hidden, true);
+    input('calc-hours-a', '200');
+    assert.equal(state.wsState.a.hours, null, '주 168시간을 넘는 값은 쓰지 않는다');
+    assert.match(document.getElementById('calc-hours-a-msg').textContent, /1~168시간/);
+    input('calc-hours-a', '3.5');
+    assert.equal(state.wsState.a.hours, 3.5);
+    input('calc-commute-a', '30.5');
+    assert.equal(state.cmtS.a, null);
+    assert.match(document.getElementById('calc-commute-a-msg').textContent, /분 단위 정수로/);
+  });
+
+  test('LOW-2 근속은 정수만 — 숫자 자판(inputmode=numeric) · 2.5 는 2년으로 보고 그렇다고 말한다', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    const t = document.getElementById('calc-tenure');
+    assert.equal(t.getAttribute('inputmode'), 'numeric');
+    input('calc-tenure', '2.5');
+    assert.equal(state.tenureYears, 2);
+    const msg = document.getElementById('calc-tenure-msg');
+    assert.equal(msg.hidden, false);
+    assert.equal(t.getAttribute('aria-invalid'), null, '버림은 오류가 아니라 안내');
+    assert.match(msg.textContent, /2\.5년은 2년으로 봅니다/);
   });
 
   test('parseNum · currentSalary(옛 초안 범위는 가운데 값)', () => {
