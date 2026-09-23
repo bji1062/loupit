@@ -381,6 +381,22 @@ describe('RC-5 상호작용 — 축 전환 · 행별 「빼고 다시 계산」(
     assert.equal(s.benS.a.every((b) => b.checked), true);
   });
 
+  test('LOW-4 「N건」은 누른 행 수 — 두 회사 금액 짝 스위치 하나 = 1건, 한쪽만 금액 등록 4건 버튼 = 4건', () => {
+    const s = appState();
+    run(s);
+    const sw = document.querySelector('.calc-ct tr[data-sec="1"] .calc-sw');
+    assert.ok(sw, '사전조건: 두 회사 모두 금액인 행의 스위치');
+    const id = sw.id;
+    sw.click();
+    assert.equal(['a', 'b'].map((k) => s.benS[k].filter((b) => !b.checked).length).join('+'), '1+1', '한 행이 두 항목을 끈다');
+    assert.match(document.querySelector('.calc-excl').textContent, /^1건을 빼고 다시 계산한 결과입니다/);
+    assert.match(document.getElementById('calc-recalc').textContent, /1건 뺌 · NAVER .*만원 · 카카오 .*만원 제외/);
+    assert.match(document.getElementById('calc-live').textContent, /^1건을 빼고 다시 계산했습니다\./);
+    document.getElementById('calc-iso-btn').click();
+    assert.match(document.querySelector('.calc-excl').textContent, /^5건을 빼고 다시 계산한 결과입니다/);
+    assert.equal(document.getElementById(id).getAttribute('aria-pressed'), 'true');
+  });
+
   test('비교표 필터 — 달라지는 것만(기본)은 같은 금액·둘 다 금액 미등록 행을 숨긴다', () => {
     const s = appState();
     run(s);
@@ -509,6 +525,35 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     const nego = txt(mount, '.calc-nego');
     assert.match(nego, /^NAVER는 복지와 야근수당 차이만으로 총보상이 훨씬 많아, 리메드 연봉이 현재 연봉의 두 배가 되어도 따라잡지 못합니다/);
     assert.ok(!allText(mount).includes('5,786만원'));
+  });
+
+  test('MED-5 NAVER → 카카오 · 보상 분야 금액 행 3개를 빼면: 나비 차트·요약·표가 「금액 미등록」이 아니라 「빼고 계산함」', () => {
+    const st = goldenEngineState();
+    for (const b of st.benS.a) if (b.benefit_ctgr_cd === 'compensation' && b.benefit_amt != null && !b.qual_yn) b.checked = false;
+    assert.equal(st.benS.a.filter((b) => !b.checked).length, 3, '사전조건: 전 직원 주식 부여 · 주식 매입 리워드 · 명절 네이버페이');
+    const { mount } = render(st, 'benefits');
+    const row = [...mount.querySelectorAll('.calc-bf-row')].find((r) => r.textContent.includes('보상'));
+    assert.match(row.textContent.replace(/\s+/g, ' '), /NAVER 빼고 계산함 · 항목 4개/);
+    assert.ok(!row.textContent.includes('금액 미등록'));
+    const sum = txt(mount, '#calc-b-parts summary');
+    assert.match(sum, /보상은 NAVER 금액을 빼고 계산/);
+    assert.ok(!/보상은 NAVER 금액 미등록/.test(sum));
+    const sr = [...mount.querySelectorAll('.calc-bf ~ .sr-only td, #calc-b-parts .sr-only td')].map((n) => n.textContent).join(' | ');
+    assert.match(sr, /빼고 계산함 · 항목 4개/);
+    assert.ok(!/금액 미등록 · 항목 4개/.test(sr));
+    assert.match(txt(mount, '.calc-parts'), /전 직원 주식 부여 1,000\(뺌\)/, '목록에도 뺀 것을 적는다');
+  });
+
+  test('MED-5 금액 행 20개를 모두 빼면: 「두 회사 모두 금액이 등록된 복지가 없어」가 아니라 「모두 빼서」', () => {
+    const st = goldenEngineState();
+    for (const k of ['a', 'b']) for (const b of st.benS[k]) if (b.benefit_amt != null && !b.qual_yn) b.checked = false;
+    const { r, mount } = render(st, 'benefits');
+    assert.equal(r.axes.benefits.unsureBy, 'excluded');
+    assert.equal(txt(mount, '.calc-hl'), '금액이 있는 복지를 모두 빼서, 남은 금액으로는 비교할 수 없습니다. 「모두 되돌리기」를 누르면 다시 넣어 계산합니다.');
+    const all = allText(mount);
+    assert.ok(!all.includes('금액이 등록된 복지가 없어'));
+    assert.match(txt(mount, '.calc-excl'), /^16건을 빼고 다시 계산한 결과입니다/, '두 회사 금액 짝 4개는 1건씩(LOW-4)');
+    assert.match(txt(mount, '.calc-tile'), /금액이 있는 복지를 모두 뺐습니다/);
   });
 });
 

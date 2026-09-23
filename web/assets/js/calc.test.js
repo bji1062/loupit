@@ -22,7 +22,7 @@ import {
   compareCore, AXIS_THRESHOLDS, deltaBand, verdictTier, classifyPairs, benDiffParts,
   cappedRows, facetOf, tenureItems, tenureGate, catProfile, hourlyWithCommute, breakevenRate,
   weeklyHours, overtimePay, timeSheet, wageScenarios, sensitivity, robustness, askList,
-  buildAllVdCards, calculatorExtras, unsureCause, BREAKEVEN_BOUNDS,
+  buildAllVdCards, calculatorExtras, unsureCause, BREAKEVEN_BOUNDS, exclusionSummary,
 } from './calc.js';
 import { isLegalRow } from './legal.js';
 
@@ -1194,5 +1194,49 @@ describe('CALC-BEB 같아지는 연봉의 범위 표식(MED-4)', () => {
   test('골든(6,000)은 세 눈금 모두 범위 안', () => {
     const be = compare(goldenState(), NOW_CALC).breakeven;
     assert.deepEqual([be.full.bound, be.exMixed.bound, be.noBenefit.bound], [null, null, null]);
+  });
+});
+
+describe('CALC-EXCL 뺀 금액 ≠ 미등록(MED-5) · 「N건」 = 누른 행 수(LOW-4)', () => {
+  const offWhere = (st, pred) => { for (const k of ['a', 'b']) for (const b of st.benS[k]) if (pred(k, b)) b.checked = false; return st; };
+  const isAmt = (b) => b.benefit_amt != null && !b.qual_yn;
+  test('catProfile: NAVER 보상 금액 행 3개를 빼면 보상 칸은 bOnly + exclA 3(등록 4개 중 금액 3개 모두 뺌)', () => {
+    const st = offWhere(goldenState(), (k, b) => k === 'a' && b.benefit_ctgr_cd === 'compensation' && isAmt(b));
+    const c = compare(st, NOW_CALC).cat.find((x) => x.ctgr === 'compensation');
+    assert.equal(c.verdict, 'bOnly');
+    assert.deepEqual([c.exclA, c.amtCntA, c.cntA, c.sumA], [3, 3, 4, 0]);
+    assert.equal(compare(goldenState(), NOW_CALC).cat.find((x) => x.ctgr === 'compensation').exclA, 0);
+  });
+  test('양쪽 금액을 모두 빼서 합이 0 인 칸은 excluded(항목 수만 있는 countOnly 와 다르다)', () => {
+    const st = offWhere(goldenState(), (k, b) => b.benefit_ctgr_cd === 'compensation' && isAmt(b));
+    assert.equal(compare(st, NOW_CALC).cat.find((x) => x.ctgr === 'compensation').verdict, 'excluded');
+  });
+  test('금액 행을 모두 빼면 복지 축은 unsure(excluded) — noAmounts(등록이 없음)가 아니다', () => {
+    const v = compare(offWhere(goldenState(), (k, b) => isAmt(b)), NOW_CALC).axes.benefits;
+    assert.deepEqual([v.tier, v.unsureBy, v.allExcluded, v.noAmounts], ['unsure', 'excluded', true, false]);
+  });
+  test('두 회사 모두 금액이 등록되지 않았으면 unsure(none)', () => {
+    const q = (cd) => ({ benefit_cd: cd, benefit_nm: cd, benefit_amt: null, qual_yn: true, benefit_ctgr_cd: 'perks', amt_source: 'none', checked: true });
+    const v = compare({ ...goldenState(), benS: { a: [q('x')], b: [q('y')] } }, NOW_CALC).axes.benefits;
+    assert.deepEqual([v.tier, v.unsureBy, v.allExcluded, v.noAmounts], ['unsure', 'none', false, true]);
+  });
+  test('exclusionSummary: 두 회사 금액 짝 1행 = 1건 · 혼합 4건 = 4건 · 금액은 등록 금액 합', () => {
+    const st = goldenState();
+    const pairs = classifyPairs(st.benS.a, st.benS.b);
+    const pr = pairs.bothAmt[0];
+    pr.a.checked = false; pr.b.checked = false;
+    let ex = exclusionSummary(st.benS.a, st.benS.b, pairs);
+    assert.equal(ex.rows, 1);
+    assert.deepEqual([ex.a.n, ex.b.n], [1, 1]);
+    assert.equal(ex.a.amt, Number(pr.a.benefit_amt));
+    for (const r of pairs.mixed) r[r.side].checked = false;
+    ex = exclusionSummary(st.benS.a, st.benS.b, pairs);
+    assert.equal(ex.rows, 5);
+    assert.equal(compare(st, NOW_CALC).exclusions.rows, 5, 'compare 가 같은 값을 싣는다');
+  });
+  test('법정 행(checked:false · legal_yn)은 사용자의 뺌이 아니다', () => {
+    const st = verifyState('KT', '네패스');
+    assert.ok(st.benS.a.some((b) => b.legal_yn) || st.benS.b.some((b) => b.legal_yn), '사전조건: 법정 행');
+    assert.equal(compare(st, NOW_VERIFY).exclusions.rows, 0);
   });
 });

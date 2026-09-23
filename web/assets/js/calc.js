@@ -783,7 +783,9 @@ export function tenureGate(listA, listB, tenureYears) {
 /**
  * 카테고리 9칸 — 금액·폭·항목 수 + verdict:
  * 'a'|'b'(양쪽 금액, 폭 안 겹침) · 'similar'(겹침 — 차액을 말하지 않는다) · 'aOnly'|'bOnly'(한쪽만 금액) ·
- * 'countOnly'(양쪽 금액 없음 — 항목 수만) · 'empty'(양쪽 등록 없음).
+ * 'excluded'(금액이 등록돼 있지만 사용자가 모두 빼서 양쪽 합이 0) · 'countOnly'(양쪽 금액 없음 — 항목 수만) ·
+ * 'empty'(양쪽 등록 없음). 합(sum)은 **계산에 넣은 것**(checked)이고 amtCnt 는 **등록**이다 — 둘이 어긋나는 칸은
+ * exclA/exclB(등록됐지만 뺀 금액 행 수)로 가린다: 뺀 칸을 「금액 미등록」이라 부르면 데이터 사실을 거짓으로 말한다(MED-5).
  */
 export function catProfile(listA, listB, now) {
   const A = live(listA), B = live(listB);
@@ -795,6 +797,8 @@ export function catProfile(listA, listB, now) {
     const bandB = sumBy(b, (it) => effAmt(it) * bandCoeff(it, now));
     const amtCntA = a.filter((it) => amtOf(it) != null).length;
     const amtCntB = b.filter((it) => amtOf(it) != null).length;
+    const offAmt = (it) => amtOf(it) != null && it.checked === false;
+    const exclA = a.filter(offAmt).length, exclB = b.filter(offAmt).length;
     let verdict;
     if (!a.length && !b.length) verdict = 'empty';
     else if (sumA > 0 && sumB > 0) {
@@ -802,12 +806,31 @@ export function catProfile(listA, listB, now) {
       verdict = overlap ? 'similar' : (sumA > sumB ? 'a' : 'b');
     } else if (sumA > 0) verdict = 'aOnly';
     else if (sumB > 0) verdict = 'bOnly';
-    else verdict = 'countOnly';
+    else verdict = exclA + exclB ? 'excluded' : 'countOnly';
     return {
       ctgr, cntA: a.length, cntB: b.length, amtCntA, amtCntB, qualA: a.length - amtCntA, qualB: b.length - amtCntB,
-      sumA, sumB, bandA, bandB, delta: sumB - sumA, verdict,
+      exclA, exclB, sumA, sumB, bandA, bandB, delta: sumB - sumA, verdict,
     };
   });
+}
+
+/**
+ * 사용자가 결과 화면에서 뺀 것(checked === false, 법정 제외) — 「N건」은 **사용자가 누른 행 수**로 센다(LOW-4):
+ * 두 회사 모두 금액인 짝은 스위치 하나라 1건, 그 밖의 항목은 1건씩(혼합 칸 「이 4건」 버튼 = 4건).
+ * a·b = 그 회사에서 뺀 항목 수와 등록 금액 합.
+ */
+export function exclusionSummary(listA, listB, pairs = classifyPairs(listA, listB)) {
+  const offA = live(listA).filter((it) => it.checked === false);
+  const offB = live(listB).filter((it) => it.checked === false);
+  const off = new Set([...offA, ...offB]);
+  const inPair = new Set();
+  let rows = 0;
+  for (const r of pairs.bothAmt) {
+    if (off.has(r.a) || off.has(r.b)) { rows += 1; inPair.add(r.a); inPair.add(r.b); }
+  }
+  rows += [...off].filter((it) => !inPair.has(it)).length;
+  const side = (L) => ({ n: L.length, amt: sumBy(L, (it) => amtOf(it) || 0) });
+  return { rows, a: side(offA), b: side(offB) };
 }
 
 /** 통근까지 넣은 시간당 가치(원) — 통근은 돈으로 바꾸지 않고 **분모에만** 더한다. */
@@ -1115,14 +1138,18 @@ export function buildAllVdCards(ctx) {
   const benBase = Math.max(core.a.net, core.b.net);
   const exMixedBen = pairs.mixed.length ? { diff: bd - parts.mixed, band: Math.max(0, band - mixedBand) } : null;
   if (exMixedBen) exMixedBen.tier = verdictTier(exMixedBen.diff, exMixedBen.band, benBase);
-  // 두 회사 모두 금액이 등록된 복지가 없으면(합 0 · 0) 「거의 같음」이 아니라 금액으로는 말할 수 없다.
-  const noAmounts = !core.a.net && !core.b.net;
+  // 합이 0 · 0 이면 「거의 같음」이 아니라 금액으로는 말할 수 없다. 이유는 둘 — 두 회사 모두 금액이 등록된 복지가
+  // 없거나(noAmounts), 등록돼 있지만 사용자가 모두 뺐다(allExcluded — 「금액이 없다」고 말하면 거짓이다, MED-5).
+  const excl = ctx.exclusions || exclusionSummary(core._benA, core._benB, pairs);
+  const netZero = !core.a.net && !core.b.net;
+  const allExcluded = netZero && excl.a.amt + excl.b.amt > 0;
+  const noAmounts = netZero && !allExcluded;
   const benGuard = exMixedBen ? exMixedBen.diff : null;
-  const benTier = noAmounts ? 'unsure' : verdictTier(bd, band, benBase, benGuard);
+  const benTier = netZero ? 'unsure' : verdictTier(bd, band, benBase, benGuard);
   const liveA = live(core._benA), liveB = live(core._benB);
   const mixedSides = new Set(pairs.mixed.map((r) => r.side));
   const benefits = {
-    axis: 'benefits', tier: benTier, unsureBy: noAmounts ? 'none' : unsureCause(bd, band, benGuard), noAmounts,
+    axis: 'benefits', tier: benTier, unsureBy: noAmounts ? 'none' : allExcluded ? 'excluded' : unsureCause(bd, band, benGuard), noAmounts, allExcluded,
     nearKind: nearKind(benTier, bd, benBase), d: bd, band, exMixed: exMixedBen,
     netA: core.a.net, netB: core.b.net,
     counts: { a: liveA.length, b: liveB.length, onlyA: pairs.onlyA.length, onlyB: pairs.onlyB.length,
@@ -1176,11 +1203,12 @@ export function calculatorExtras(state, core, now = Date.now()) {
   const wage = wageScenarios(state, core, now, { pairs });
   const tenure = tenureGate(benA, benB, state.tenureYears);
   const breakeven = breakevenRate(core, robust.exMixedCore, state.wsState.b);
-  const axes = buildAllVdCards({ core: { ...core, _benA: benA, _benB: benB }, band, parts, pairs, time, robust, sens, wage, tenure, now });
+  const exclusions = exclusionSummary(benA, benB, pairs);
+  const axes = buildAllVdCards({ core: { ...core, _benA: benA, _benB: benB }, band, parts, pairs, time, robust, sens, wage, tenure, exclusions, now });
   const { exMixedCore: _drop, ...robustOut } = robust; // 코어 통째는 브레이크이븐 재료일 뿐 — 반환하지 않는다
   return {
     band: { a: core.a.sumBand, b: core.b.sumBand, delta: band },
     pairs, parts, cat: catProfile(benA, benB, now), time, robust: robustOut, sens, wage, tenure, breakeven,
-    ask: askList(core, { sens, wage, pairs }), axes, basis: basisOf(benA, benB, now),
+    ask: askList(core, { sens, wage, pairs }), axes, basis: basisOf(benA, benB, now), exclusions,
   };
 }

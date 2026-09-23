@@ -91,7 +91,10 @@ function makeCtx(report, ctx) {
     }
   }
   const isOff = (slot, it) => !!(it && (benS[slot] || []).some((x) => keyOf(x) === keyOf(it) && x.checked === false));
-  return { report, ctx, nm, now, input, ws, benS, excluded, isOff, J: withJosa };
+  // 「N건」은 사용자가 누른 **행** 수(엔진 exclusionSummary — 두 회사 금액 짝은 1건, LOW-4).
+  const amtSum = (slot) => excluded.filter((x) => x.slot === slot).reduce((acc, x) => acc + (amtOf(x.it) || 0), 0);
+  const ex = report.exclusions || { rows: excluded.length, a: { amt: amtSum('a') }, b: { amt: amtSum('b') } };
+  return { report, ctx, nm, now, input, ws, benS, excluded, ex, isOff, J: withJosa };
 }
 
 // 원화 차이의 방향 말 — 이직(A→B) 관점.
@@ -505,6 +508,8 @@ function benefitsCard(X) {
     hl.append('등록된 복지 금액은 ' + withJosa(nm[d < 0 ? 'a' : 'b'], '이/가') + ' ', b('1년에 ' + m(abs(d)) + ' 많지만'), '(' + fmt(v.netA) + ' → ' + m(v.netB) + '), 오차 범위(±' + fmt(v.band) + ')를 겨우 넘는 차이라 한쪽이 낫다고 말하기엔 약합니다.');
   } else if (v.tier === 'near') {
     hl.append('등록된 복지 금액은 거의 같습니다 — 1년 복지 금액이 ' + fmt(v.netA) + '만원에서 ' + m(v.netB) + '으로, 차이는 ', b(m(abs(d))), '입니다.');
+  } else if (v.unsureBy === 'excluded') {
+    hl.append('금액이 있는 복지를 모두 빼서, ', b('남은 금액으로는 비교할 수 없습니다.'), ' 「모두 되돌리기」를 누르면 다시 넣어 계산합니다.');
   } else if (v.unsureBy === 'none') {
     hl.append('두 회사 모두 금액이 등록된 복지가 없어, ', b('등록된 금액으로는 비교할 수 없습니다.'), ' 아래 「이직하면 달라지는 복지」에서 항목을 나란히 보세요.');
   } else if (v.unsureBy === 'guard') {
@@ -598,7 +603,7 @@ function tiles(X, axis) {
     return box;
   }
   const v = report.axes.benefits;
-  const why = { guard: guardShort(X, v.mixed.count), none: '두 회사 모두 금액 미등록', band: '오차 범위가 겹칩니다' };
+  const why = { guard: guardShort(X, v.mixed.count), none: '두 회사 모두 금액 미등록', excluded: '금액이 있는 복지를 모두 뺐습니다', band: '오차 범위가 겹칩니다' };
   const t1s = v.tier === 'unsure' ? (why[v.unsureBy] || why.band) + ' · 항목 수는 ' + v.counts.a + ' → ' + v.counts.b + '개'
     : ['차이 ', el('b', { class: v.d < 0 ? 'calc-neg' : 'calc-pos', text: fmtSigned(v.d) }), ' (±' + fmt(v.band) + ') · 항목 수는 ' + v.counts.a + ' → ' + v.counts.b + '개'];
   box.append(tile('1년 복지 금액', [fmt(v.netA) + ' → ' + fmt(v.netB), small('만원')], t1s));
@@ -1211,16 +1216,18 @@ function partsBlock(X) {
     }
     return trk;
   };
-  const list = (items) => items.filter((it) => amtOf(it) != null).map((it) => it.benefit_nm + ' ' + fmt(amtOf(it))).join(' · ');
+  // 뺀 항목은 「(뺌)」 — 합계는 뺀 뒤의 값이라 목록만 보면 숫자가 안 맞는다.
+  const cut = (slot, it) => (X.isOff(slot, it) ? '(뺌)' : '');
+  const list = (items, slot) => items.filter((it) => amtOf(it) != null).map((it) => it.benefit_nm + ' ' + fmt(amtOf(it)) + cut(slot, it)).join(' · ');
   const aAmt = p.onlyA.filter((it) => amtOf(it) != null).length, bAmt = p.onlyB.filter((it) => amtOf(it) != null).length;
   const row = (label, v, items, extra = '', total = false) => el('div', { class: 'calc-pt-row' + (total ? ' calc-pt-total' : '') },
     el('span', { class: 'calc-pt-lbl' }, ...(Array.isArray(label) ? label : [label])), bar(v, extra),
     el('span', { class: 'calc-pt-v ' + (v < 0 ? 'calc-neg' : v > 0 ? 'calc-pos' : ''), text: fmtSigned(v) }), el('span', { class: 'calc-pt-items', text: items }));
   const partsBox = el('div', { class: 'calc-parts' },
-    row(nm.b + '에 등록되지 않은 복지(금액 있는 ' + aAmt + '개)', pr.onlyA, list(p.onlyA)),
-    row('새로 생기는 복지(금액 있는 ' + bAmt + '개)', pr.onlyB, list(p.onlyB)),
-    row('같은 복지의 금액 차이', pr.sameBoth, p.bothAmt.map((r) => r.a.benefit_nm + ' ' + fmt(amtOf(r.b)) + '−' + fmt(amtOf(r.a)) + ' = ' + fmtSigned(amtOf(r.b) - amtOf(r.a))).join(' · ')));
-  if (p.mixed.length) partsBox.append(row([hatch(), onlyRegistered(X) + ' 복지'], pr.mixed, [...p.mixed].sort(byAmtDesc((r) => r[r.side])).map((r) => r[r.side].benefit_nm + ' ' + fmt(amtOf(r[r.side]))).join(' · '), ' calc-pt-hatch'));
+    row(nm.b + '에 등록되지 않은 복지(금액 있는 ' + aAmt + '개)', pr.onlyA, list(p.onlyA, 'a')),
+    row('새로 생기는 복지(금액 있는 ' + bAmt + '개)', pr.onlyB, list(p.onlyB, 'b')),
+    row('같은 복지의 금액 차이', pr.sameBoth, p.bothAmt.map((r) => r.a.benefit_nm + ' ' + fmt(amtOf(r.b)) + '−' + fmt(amtOf(r.a)) + ' = ' + fmtSigned(amtOf(r.b) - amtOf(r.a)) + (cut('a', r.a) || cut('b', r.b))).join(' · ')));
+  if (p.mixed.length) partsBox.append(row([hatch(), onlyRegistered(X) + ' 복지'], pr.mixed, [...p.mixed].sort(byAmtDesc((r) => r[r.side])).map((r) => r[r.side].benefit_nm + ' ' + fmt(amtOf(r[r.side])) + cut(r.side, r[r.side])).join(' · '), ' calc-pt-hatch'));
   const rest = abs(pr.onlyA + pr.onlyB + pr.mixed);
   partsBox.append(row(el('b', { text: '합계' }), pr.total, '= 복지 금액 차이 · 같은 복지끼리의 차이는 ' + m(abs(pr.sameBoth)) + '뿐이고, 나머지 ' + m(rest) + '은 한쪽에만 금액이 있는 항목에서 생깁니다', '', true));
 
@@ -1229,7 +1236,15 @@ function partsBlock(X) {
   const both = cats.filter((c) => c.verdict === 'a' || c.verdict === 'b').sort((x, y) => abs(y.delta) - abs(x.delta));
   const sim = cats.filter((c) => c.verdict === 'similar');
   const one = cats.filter((c) => c.verdict === 'aOnly' || c.verdict === 'bOnly');
+  const exc = cats.filter((c) => c.verdict === 'excluded');
   const cnt = cats.filter((c) => c.verdict === 'countOnly');
+  // 금액이 없는 쪽의 말 — 뺀 것(빼고 계산함)과 등록되지 않은 것(금액 미등록)은 다른 사실이다(MED-5).
+  const exOf = (c, slot) => (slot === 'a' ? c.exclA : c.exclB);
+  const missTxt = (c, slot) => {
+    const n = slot === 'a' ? c.cntA : c.cntB;
+    return nm[slot] + ' ' + (exOf(c, slot) ? '빼고 계산함 · 항목 ' + n + '개' : n ? '금액 미등록 · 항목 ' + n + '개' : '등록 없음');
+  };
+  const missSlot = (c) => (c.verdict === 'aOnly' ? 'b' : 'a');
   const MAX = Math.max(100, ...cats.map((c) => Math.max(c.sumA + c.bandA, c.sumB + c.bandB)));
   const scaleMax = Math.ceil(MAX / 100) * 100;
   const pc = (v) => ((v / scaleMax) * 100).toFixed(2) + '%';
@@ -1254,23 +1269,28 @@ function partsBlock(X) {
     if (cls === 'l') c.append(el('span', { text: String(n) }));
     return s;
   };
-  const bfly = el('div', { class: 'calc-bf', role: 'img', 'aria-label': '분야별 복지 금액 비교: ' + cats.map((c) => cat(c.ctgr) + ' ' + (c.verdict === 'countOnly' ? '항목 ' + c.cntA + ' 대 ' + c.cntB : fmt(c.sumA) + ' 대 ' + fmt(c.sumB) + (c.verdict === 'similar' ? '(비슷함)' : ''))).join(', ') });
+  const ariaSide = (c, slot) => {
+    const sum = slot === 'a' ? c.sumA : c.sumB;
+    return sum > 0 ? fmt(sum) : exOf(c, slot) ? nm[slot] + ' 빼고 계산함' : nm[slot] + ' 금액 미등록';
+  };
+  const bfly = el('div', { class: 'calc-bf', role: 'img', 'aria-label': '분야별 복지 금액 비교: ' + cats.map((c) => cat(c.ctgr) + ' ' + (c.verdict === 'countOnly' ? '항목 ' + c.cntA + ' 대 ' + c.cntB : ariaSide(c, 'a') + ' 대 ' + ariaSide(c, 'b') + (c.verdict === 'similar' ? '(비슷함)' : ''))).join(', ') });
   bfly.append(el('div', { class: 'calc-bf-hd', 'aria-hidden': 'true' }, el('span', { class: 'calc-bf-ha' }, sym('a'), nm.a + ' (만원)'), el('span', { class: 'calc-bf-hc', text: '분야' }), el('span', { class: 'calc-bf-hb' }, sym('b'), nm.b + ' (만원)'), el('span', { class: 'calc-bf-hd4', text: '차이' })));
   const addRow = (c) => {
     const r = el('div', { class: 'calc-bf-row calc-bf-' + c.verdict, 'aria-hidden': 'true' });
     if (c.verdict === 'countOnly') {
       r.append(dots('l', c.cntA), el('span', { class: 'calc-bf-cat', text: cat(c.ctgr) }), dots('rt', c.cntB), el('span', { class: 'calc-bf-diff calc-muted', text: '항목 수 ' + c.cntA + ' : ' + c.cntB }));
-    } else if (c.verdict === 'aOnly' || c.verdict === 'bOnly') {
-      const aSide = c.verdict === 'aOnly' ? side('l', c.sumA, c.bandA) : side('l', null, 0, nm.a + ' ' + (c.cntA ? '금액 미등록 · 항목 ' + c.cntA + '개' : '등록 없음'));
-      const bSide = c.verdict === 'bOnly' ? side('rt', c.sumB, c.bandB) : side('rt', null, 0, nm.b + ' ' + (c.cntB ? '금액 미등록 · 항목 ' + c.cntB + '개' : '등록 없음'));
-      r.append(aSide, el('span', { class: 'calc-bf-cat', text: cat(c.ctgr) }), bSide, el('span', { class: 'calc-bf-diff calc-muted', text: '비교 불가' }));
+    } else if (c.verdict === 'aOnly' || c.verdict === 'bOnly' || c.verdict === 'excluded') {
+      const aSide = c.verdict === 'aOnly' ? side('l', c.sumA, c.bandA) : side('l', null, 0, missTxt(c, 'a'));
+      const bSide = c.verdict === 'bOnly' ? side('rt', c.sumB, c.bandB) : side('rt', null, 0, missTxt(c, 'b'));
+      const cutHere = c.verdict === 'excluded' || exOf(c, missSlot(c));
+      r.append(aSide, el('span', { class: 'calc-bf-cat', text: cat(c.ctgr) }), bSide, el('span', { class: 'calc-bf-diff calc-muted', text: cutHere ? '빼고 계산함' : '비교 불가' }));
     } else {
       r.append(side('l', c.sumA, c.bandA), el('span', { class: 'calc-bf-cat', text: cat(c.ctgr) }), side('rt', c.sumB, c.bandB),
         c.verdict === 'similar' ? el('span', { class: 'calc-bf-diff' }, el('span', { class: 'calc-stat', text: '비슷함' })) : el('span', { class: 'calc-bf-diff ' + (c.delta < 0 ? 'calc-neg' : 'calc-pos'), text: fmtSigned(c.delta) }));
     }
     bfly.append(r);
   };
-  [...both, ...sim, ...one].forEach(addRow);
+  [...both, ...sim, ...one, ...exc].forEach(addRow);
   if (cnt.length) {
     bfly.append(el('div', { class: 'calc-bf-sub', 'aria-hidden': 'true', text: '금액이 등록되지 않은 분야 — 항목 수만 표시(결론에는 쓰지 않음)' }));
     cnt.forEach(addRow);
@@ -1280,10 +1300,13 @@ function partsBlock(X) {
   // 요약 줄
   const bits = [];
   if (both[0]) bits.push(cat(both[0].ctgr) + ' 분야에서 ' + m(abs(both[0].delta)));
-  const aOnly = one.filter((c) => c.verdict === 'aOnly').map((c) => cat(c.ctgr));
-  const bOnly = one.filter((c) => c.verdict === 'bOnly').map((c) => cat(c.ctgr));
-  if (aOnly.length) bits.push(withJosa(aOnly.join('·'), '은/는') + ' ' + nm.b + ' 금액 미등록');
-  if (bOnly.length) bits.push(withJosa(bOnly.join('·'), '은/는') + ' ' + nm.a + ' 금액 미등록');
+  const noReg = { a: [], b: [] }, cutOut = { a: [], b: [] };
+  for (const c of one) (exOf(c, missSlot(c)) ? cutOut : noReg)[missSlot(c)].push(cat(c.ctgr));
+  if (noReg.b.length) bits.push(withJosa(noReg.b.join('·'), '은/는') + ' ' + nm.b + ' 금액 미등록');
+  if (noReg.a.length) bits.push(withJosa(noReg.a.join('·'), '은/는') + ' ' + nm.a + ' 금액 미등록');
+  if (cutOut.b.length) bits.push(withJosa(cutOut.b.join('·'), '은/는') + ' ' + nm.b + ' 금액을 빼고 계산');
+  if (cutOut.a.length) bits.push(withJosa(cutOut.a.join('·'), '은/는') + ' ' + nm.a + ' 금액을 빼고 계산');
+  if (exc.length) bits.push(withJosa(exc.map((c) => cat(c.ctgr)).join('·'), '은/는') + ' 금액을 모두 빼고 계산');
   if (sim.length) bits.push(withJosa(sim.map((c) => cat(c.ctgr)).join('·'), '은/는') + ' 비슷함');
   const summary = '복지 차이는 어디서 생기나' + (bits.length ? ' — ' + bits.join(' · ') : '');
   return blk('parts', summary, '차이 나누어 보기', [
@@ -1300,10 +1323,12 @@ function catTable(X, cats) {
   t.append(el('thead', {}, el('tr', {}, el('th', { text: '분야' }), el('th', { text: X.nm.a }), el('th', { text: X.nm.b }), el('th', { text: '차이' }))));
   const tb = el('tbody');
   for (const c of cats) {
-    const cell = (sum, band, cnt, amtCnt) => (amtCnt && sum > 0 ? fmt(sum) + ' (±' + fmt(band) + ')' : cnt ? '금액 미등록 · 항목 ' + cnt + '개' : '등록 없음');
-    const diff = c.verdict === 'similar' ? '비슷함(오차 범위 겹침)' : c.verdict === 'countOnly' ? '항목 수만' : (c.verdict === 'aOnly' || c.verdict === 'bOnly') ? '비교 불가' : fmtSigned(c.delta);
-    tb.append(el('tr', {}, el('td', { text: cat(c.ctgr) }), el('td', { text: c.verdict === 'countOnly' ? '항목 ' + c.cntA : cell(c.sumA, c.bandA, c.cntA, c.amtCntA) }),
-      el('td', { text: c.verdict === 'countOnly' ? '항목 ' + c.cntB : cell(c.sumB, c.bandB, c.cntB, c.amtCntB) }), el('td', { text: diff })));
+    const cell = (sum, band, cnt, excl) => (sum > 0 ? fmt(sum) + ' (±' + fmt(band) + ')' : excl ? '빼고 계산함 · 항목 ' + cnt + '개' : cnt ? '금액 미등록 · 항목 ' + cnt + '개' : '등록 없음');
+    const cutHere = c.verdict === 'excluded' || (c.verdict === 'aOnly' && c.exclB) || (c.verdict === 'bOnly' && c.exclA);
+    const diff = c.verdict === 'similar' ? '비슷함(오차 범위 겹침)' : c.verdict === 'countOnly' ? '항목 수만' : cutHere ? '빼고 계산함'
+      : (c.verdict === 'aOnly' || c.verdict === 'bOnly') ? '비교 불가' : fmtSigned(c.delta);
+    tb.append(el('tr', {}, el('td', { text: cat(c.ctgr) }), el('td', { text: c.verdict === 'countOnly' ? '항목 ' + c.cntA : cell(c.sumA, c.bandA, c.cntA, c.exclA) }),
+      el('td', { text: c.verdict === 'countOnly' ? '항목 ' + c.cntB : cell(c.sumB, c.bandB, c.cntB, c.exclB) }), el('td', { text: diff })));
   }
   t.append(tb);
   return srOnly(t);
@@ -1431,7 +1456,7 @@ function ctCell(X, it, slot) {
   return td([lab, amountCell(it, X.now), desc ? srcText(desc, 'calc-src calc-block') : ''], cls);
 }
 function contrastBlock(X) {
-  const { report, nm, excluded } = X;
+  const { report, nm, ex } = X;
   const view = X.ctx.view || {};
   const filter = view.ctFilter || 'diff';
   const rows = contrastRows(X);
@@ -1447,20 +1472,18 @@ function contrastBlock(X) {
   const base = X.ctx.baseline;
   const baseTier = base && base.axes ? base.axes.salary.baseTier : tier;
   const recalc = el('div', { class: 'calc-recalc', id: 'calc-recalc' });
-  const exA = excluded.filter((x) => x.slot === 'a').reduce((s, x) => s + (amtOf(x.it) || 0), 0);
-  const exB = excluded.filter((x) => x.slot === 'b').reduce((s, x) => s + (amtOf(x.it) || 0), 0);
   recalc.append(el('span', { class: 'calc-muted calc-small', text: '다시 계산한 총보상 차이' }),
-    el('span', { class: 'calc-small', text: excluded.length ? excluded.length + '건 뺌 · ' + nm.a + ' ' + m(exA) + ' · ' + nm.b + ' ' + m(exB) + ' 제외' : '뺀 항목 없음' }));
+    el('span', { class: 'calc-small', text: ex.rows ? ex.rows + '건 뺌 · ' + nm.a + ' ' + m(ex.a.amt) + ' · ' + nm.b + ' ' + m(ex.b.amt) + ' 제외' : '뺀 항목 없음' }));
   recalc.append(tier === 'unsure' ? el('span', { class: 'calc-recalc-v calc-recalc-na', text: '판단 불가' }) : el('span', { class: 'calc-recalc-v' }, fmt(d), el('small', { text: '만원' })));
   recalc.append(el('span', { class: 'calc-small calc-muted', text: '범위 ' + fmt(d - band) + ' ~ ' + fmt(d + band) }));
   let st;
-  if (!excluded.length) st = null;
+  if (!ex.rows) st = null;
   else if (tier === 'unsure') st = el('span', { class: 'calc-bd calc-bd-q', text: '오차 범위가 겹칩니다' });
   else if (tier === baseTier) st = el('span', { class: 'calc-bd calc-bd-neutral', text: '결론 그대로' });
   else st = el('span', { class: 'calc-bd calc-bd-warn', text: '결론 바뀜' });
   if (st) recalc.append(el('span', { class: 'calc-recalc-st' }, st));
   const reset = el('button', { type: 'button', class: 'calc-btn-sm', id: 'calc-ct-reset', text: '모두 되돌리기' });
-  reset.disabled = !excluded.length;
+  reset.disabled = !ex.rows;
   reset.addEventListener('click', () => { if (typeof X.ctx.onReset === 'function') X.ctx.onReset(); });
   recalc.append(reset);
 
@@ -1594,8 +1617,8 @@ export function renderCalcReport(report, mountEl, ctx = {}) {
   const X = makeCtx(report, ctx);
   mountEl.replaceChildren();
   const root = el('div', { class: 'calc-rp', 'data-axis': axis });
-  if (X.excluded.length) {
-    const n = el('p', { class: 'calc-excl', role: 'status' }, X.excluded.length + '건을 빼고 다시 계산한 결과입니다 · ');
+  if (X.ex.rows) {
+    const n = el('p', { class: 'calc-excl', role: 'status' }, X.ex.rows + '건을 빼고 다시 계산한 결과입니다 · ');
     const reset = el('button', { type: 'button', class: 'calc-link', id: 'calc-excl-reset', text: '모두 되돌리기' });
     reset.addEventListener('click', () => { if (typeof ctx.onReset === 'function') ctx.onReset(); });
     n.append(reset);
@@ -1646,7 +1669,7 @@ export function renderCalcReport(report, mountEl, ctx = {}) {
   }
   if (ctx.preserve) {
     const live = liveRegion(mountEl);
-    if (live) live.textContent = (X.excluded.length ? X.excluded.length + '건을 빼고 다시 계산했습니다. ' : '다시 계산했습니다. ') + headlineText(report, ctx, axis);
+    if (live) live.textContent = (X.ex.rows ? X.ex.rows + '건을 빼고 다시 계산했습니다. ' : '다시 계산했습니다. ') + headlineText(report, ctx, axis);
   }
   return mountEl;
 }
