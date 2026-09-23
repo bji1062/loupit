@@ -1011,8 +1011,10 @@ export function buildAllVdCards(ctx) {
   const salTier = verdictTier(d, band, core.a.total, guard);
   const salMid = core.deltas.salMid;
   const flip = sens.rows.find((r) => r.flips) || null;
+  // near 의 두 갈래 — 'small'(기준값의 3% 안: 정말 작다) · 'weak'(오차 범위를 겨우 넘었을 뿐 금액은 작지 않을 수 있다).
+  const nearKind = (tier, diff, base) => (tier !== 'near' ? null : Math.abs(diff) <= Math.abs(base) * T.nearTotalPct ? 'small' : 'weak');
   const salary = {
-    axis: 'salary', tier: wage && !wage.agree ? 'depends' : salTier, baseTier: salTier,
+    axis: 'salary', tier: wage && !wage.agree ? 'depends' : salTier, baseTier: salTier, nearKind: nearKind(salTier, d, core.a.total),
     shape: salMid === 0 ? 'flat' : Math.sign(salMid) === Math.sign(d) ? 'same' : 'reverse',
     d, band, range: [d - band, d + band], guard: robust.exMixed,
     salA: core.a.salRange.mid, salB: core.b.salRange.mid, salMid,
@@ -1049,11 +1051,13 @@ export function buildAllVdCards(ctx) {
   });
   const exMixedBen = pairs.mixed.length ? { diff: bd - parts.mixed, band: Math.max(0, band - mixedBand) } : null;
   // 기준값 = 복지 금액 합(큰 쪽) — 총보상을 쓰면 연봉 렌즈가 섞여 고연봉자에게 복지 250만원 차이도 「거의 같음」이 된다(실측).
-  const benTier = verdictTier(bd, band, Math.max(core.a.net, core.b.net), exMixedBen ? exMixedBen.diff : null);
+  // 두 회사 모두 금액이 등록된 복지가 없으면(합 0 · 0) 「거의 같음」이 아니라 금액으로는 말할 수 없다.
+  const noAmounts = !core.a.net && !core.b.net;
+  const benTier = noAmounts ? 'unsure' : verdictTier(bd, band, Math.max(core.a.net, core.b.net), exMixedBen ? exMixedBen.diff : null);
   const liveA = live(core._benA), liveB = live(core._benB);
   const mixedSides = new Set(pairs.mixed.map((r) => r.side));
   const benefits = {
-    axis: 'benefits', tier: benTier, d: bd, band, exMixed: exMixedBen,
+    axis: 'benefits', tier: benTier, noAmounts, nearKind: nearKind(benTier, bd, Math.max(core.a.net, core.b.net)), d: bd, band, exMixed: exMixedBen,
     netA: core.a.net, netB: core.b.net,
     counts: { a: liveA.length, b: liveB.length, onlyA: pairs.onlyA.length, onlyB: pairs.onlyB.length,
       both: pairs.bothAmt.length + pairs.mixed.length + pairs.bothQual.length },

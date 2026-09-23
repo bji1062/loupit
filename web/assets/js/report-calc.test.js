@@ -203,6 +203,18 @@ describe('RC-3 판단하기 어려움 · 야근수당 미선택 · 시간 미입
     assert.ok(!headlineText(r, { matched: st.matched, input: {} }, 'salary').includes(d), '낭독 줄에 차액');
   });
 
+  test('오차 범위를 겨우 넘는 차이(near·weak)는 「거의 같다」고 부르지 않는다', () => {
+    const it = (cd, amt) => ({ benefit_cd: cd, benefit_nm: cd + ' 지원', benefit_amt: amt, qual_yn: false, amt_source: 'estimated', benefit_ctgr_cd: 'perks', checked: true, expires_dtm: null });
+    const st = goldenEngineState({
+      selectedRate: 0, benS: { a: [it('x', 1000)], b: [it('y', 1600)] },
+      wsState: { a: {}, b: {} }, matched: { a: { comp_nm: '가사' }, b: { comp_nm: '나사' } },
+    });
+    const { r, mount } = render(st, 'salary');
+    assert.equal(r.axes.salary.nearKind, 'weak', '사전조건');
+    assert.equal(txt(mount, '.calc-vd-top .calc-bd'), '차이가 크지 않습니다');
+    assert.match(txt(mount, '.calc-hl'), /나사의 총보상이 연 600만원 많지만, 오차 범위\(±520\)를 겨우 넘는 차이라 한쪽이 낫다고 말하기엔 약합니다/);
+  });
+
   test('야근수당 미선택(결정 4) — 포괄이면 / 비포괄이면 나란히, 결론이 갈리면 「야근수당에 따라」', () => {
     const { mount } = render(scenarios().wageUnknown, 'salary');
     assert.equal(txt(mount, '.calc-vd-top .calc-bd'), '야근수당에 따라 결론이 달라집니다');

@@ -813,6 +813,18 @@ describe('CALC-TIER verdictTier', () => {
   test('폭 0 · 차이 0 은 near(차이가 없다) — 「말할 수 없음」이 아니다', () => {
     assert.equal(verdictTier(0, 0, 9000), 'near');
   });
+  test('near 는 두 갈래 — 기준값 3% 안(small) · 오차 범위를 겨우 넘음(weak)', () => {
+    const mk = (amt) => ({ benefit_cd: 'x', benefit_nm: 'x', benefit_amt: amt, qual_yn: false, amt_source: 'estimated', benefit_ctgr_cd: 'perks', checked: true, expires_dtm: null });
+    const st = (a, b) => ({ salStr: '5000-5000', selectedRate: 0, benS: { a: [mk(a)], b: [{ ...mk(b), benefit_cd: 'y' }] }, wsState: { a: {}, b: {} }, com: { a: 0, b: 0 }, commuteIn: { a: null, b: null }, tenureYears: null, curPri: 'salary', matched: { a: null, b: null } });
+    // 폭 = (1000+1300)×0.2 = 460 · 차이 300 ≤ 460 → unsure / 폭 = (1000+1600)×0.2 = 520 · 차이 600 → near(≤780), 600 > 5,000×… → weak
+    assert.equal(compare(st(1000, 1300), NOW_CALC).axes.salary.tier, 'unsure');
+    const w = compare(st(1000, 1600), NOW_CALC).axes.salary;
+    assert.equal(w.tier, 'near');
+    assert.equal(w.nearKind, 'weak');
+    const sm = compare({ ...st(0, 0), benS: { a: [], b: [] }, selectedRate: 2 }, NOW_CALC).axes.salary;
+    assert.equal(sm.tier, 'near');
+    assert.equal(sm.nearKind, 'small', '연봉 2% 차이(100) ≤ 총보상 3%(150)');
+  });
   test('AXIS_THRESHOLDS 는 동결된 설계 상수', () => {
     assert.equal(Object.isFrozen(AXIS_THRESHOLDS), true);
     assert.deepEqual(Object.keys(AXIS_THRESHOLDS).sort(), ['nearBandMult', 'nearTotalPct', 'wlbCommuteAnnHrs', 'wlbQualCount', 'wlbWeekHrs']);
@@ -913,6 +925,11 @@ describe('CALC-BEN 복지 축 금액 판정(결정 1)', () => {
     const rep = compare(base(a, b), NOW_CALC);
     assert.equal(rep.axes.benefits.tier, 'b');
     assert.equal(rep.axes.benefits.counts.a, 5);
+  });
+  test('두 회사 모두 금액이 등록된 복지가 없으면 「거의 같음」이 아니라 말할 수 없음', () => {
+    const rep = compare(base([mk('x', null)], [mk('y', null)]), NOW_CALC);
+    assert.equal(rep.axes.benefits.noAmounts, true);
+    assert.equal(rep.axes.benefits.tier, 'unsure');
   });
   test('오차 범위가 겹치면 unsure', () => {
     const rep = compare(base([mk('m', 500, 'estimated')], [mk('m', 560, 'estimated')]), NOW_CALC);
