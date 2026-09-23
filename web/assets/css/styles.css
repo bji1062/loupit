@@ -1527,9 +1527,11 @@ main h3.calc-pt { flex:1; min-width:0; margin:0; font-family:var(--font-sans); f
 }
 #view-input .calc-num.calc-num-short { width:76px; }
 /* 현재 연봉 줄(칸 + 단위 + 스텝 버튼 셋)이 폰 한 줄에 서게(LOW-3 실측 — 전에는 360px 에서 +500 이 둘째 줄로 내려갔다:
-   칸 88 + 단위 22 + 버튼 51×3 + 간격 32 = 295 > 줄 폭 294). 버튼은 탭 최소 44px 로 좁히고, 칸은 56~88px 사이에서 먼저 준다
-   (flex-basis 56 이라 줄바꿈 판단도 56 기준 — 320px 까지 한 줄, 그보다 좁으면 그때 줄바꿈). */
-#view-input .calc-numrow-steps .calc-num { flex:1 1 56px; width:auto; max-width:88px; min-width:0; }
+   칸 88 + 단위 22 + 버튼 51×3 + 간격 32 = 295 > 줄 폭 294). 버튼은 탭 최소 44px, 이 줄의 간격은 4px. 칸은 72~96px
+   (재확인 R-5 — 56px 바탕이면 320px 에서 칸이 68px 라 「15000」 부터 앞자리가 잘렸다). 줄바꿈 판단은 72 기준:
+   72 + 22 + 44×3 + 4×4 = 242 ≤ 320px 줄 폭 254 → 한 줄, 칸은 남는 폭만큼 84px 까지 는다. 그보다 좁으면 그때 줄바꿈. */
+#view-input .calc-numrow-steps .calc-num { flex:1 1 72px; width:auto; max-width:96px; min-width:0; padding:0 var(--sp-2); }
+.calc-numrow-steps { column-gap:var(--sp-1); }
 .calc-numrow-steps .calc-step { padding:0 var(--sp-1); }
 .calc-unit { color:var(--t3); font-size:var(--fs-xs); }
 .calc-step {
@@ -1981,7 +1983,8 @@ main p.calc-exnote { margin:0; }
   .calc-seg .calc-chip { flex:auto; }
   #view-input .calc-num { width:120px; }
   #view-input .calc-num.calc-num-short { width:84px; }
-  #view-input .calc-numrow-steps .calc-num { flex-basis:120px; max-width:120px; }
+  #view-input .calc-numrow-steps .calc-num { flex-basis:120px; max-width:120px; padding:0 var(--sp-3); }
+  .calc-numrow-steps { column-gap:var(--sp-2); }
 
   /* 이직 계산기 결과(SP-FE-14) — 타일 3칸 가로, 브리지 세로 기둥, 표는 원래 열로 */
   .calc-axisbar .calc-seg { max-width:460px; }
