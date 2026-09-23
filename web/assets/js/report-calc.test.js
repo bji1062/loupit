@@ -780,3 +780,38 @@ describe('RC-8 재확인(2026-09-23 RECHECK-REPORT) — 새 발견 R-1~R-6', () 
   });
 });
 
+
+describe('후속 소문구(2026-09-23) — 「모두」는 둘 이상일 때만 · 폭이 0 이면 범위·(±0) 없음', () => {
+  beforeEach(() => loadShell());
+  const autonomy = (mount) => [...mount.querySelectorAll('.calc-line')].map((n) => n.textContent).find((t) => t.includes('근무 시간 자율성')) || '';
+
+  test('한 회사에만 유연근무 하나 → 「모두」 없이 「유연근무가 있어」', () => {
+    const ws = { a: { ...WS().a, flex: true, remote: false }, b: { ...WS().b, flex: false, remote: false } };
+    const t = autonomy(render(goldenEngineState({ wsState: ws }), 'wlb').mount);
+    assert.match(t, /NAVER에는 유연근무가 있어 더 자유롭습니다/);
+    assert.ok(!t.includes('모두 있어'), t);
+  });
+
+  test('둘 다 있으면 그대로 「모두 있어」', () => {
+    const ws = { a: { ...WS().a, flex: true, remote: true }, b: { ...WS().b, flex: false, remote: false } };
+    assert.match(autonomy(render(goldenEngineState({ wsState: ws }), 'wlb').mount), /모두 있어 더 자유롭습니다/);
+  });
+
+  test('금액 행을 전부 빼면(오차 범위 0) 「X ~ X」「(±0)」이 어디에도 없다 — 세 축', () => {
+    const st = goldenEngineState();
+    for (const k of ['a', 'b']) for (const b2 of st.benS[k]) if (b2.benefit_amt != null && !b2.qual_yn) b2.checked = false;
+    for (const axis of ['salary', 'wlb', 'benefits']) {
+      const all = allText(render(st, axis).mount);
+      assert.ok(!all.includes('(±0)') && !all.includes('±0 '), `${axis}: ±0`);
+      const same = [...all.matchAll(/(−?[\d,]+) ~ (−?[\d,]+)/g)].filter((x) => x[1] === x[2]);
+      assert.equal(same.length, 0, `${axis}: 같은 숫자 범위 ${same.map((x) => x[0]).join(', ')}`);
+      if (axis === 'salary') assert.match(all, /한 달로 치면/, '연봉 축 첫 타일의 한 달 환산은 남는다');
+    }
+  });
+
+  test('골든(폭 있음)은 범위·(±452)를 그대로 쓴다', () => {
+    const all = allText(render(goldenEngineState(), 'salary').mount);
+    assert.match(all, /범위 −2,663 ~ −1,759/);
+    assert.match(all, /±452/);
+  });
+});
