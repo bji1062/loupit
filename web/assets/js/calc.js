@@ -36,7 +36,8 @@
 
 /** @typedef {{
  *   ot:     'low'|'mid'|'high'|null,     // 야근 빈도 → 주간근무시간
- *   wage:   'inclusive'|'separate'|null, // 포괄/비포괄
+ *   hours?: number|null,                  // 주 근무시간 직접 입력(h). 있으면 ot 보다 우선(2026-09-23)
+ *   wage:   'inclusive'|'separate'|null, // 포괄/비포괄. null = 미선택(두 경우를 모두 계산)
  *   remote: boolean|'none'|'partial'|'hybrid'|'free'|null, // 실데이터·UI는 불리언, 레거시 enum도 수용(#2)
  *   flex:   boolean|'none'|'stagger'|'flexible'|null
  * }} WorkStyle */
@@ -67,6 +68,8 @@
  *   curPri:        PriKey,
  *   curSacrifice:  PriKey|null,           // ≠ curPri
  *   matched:       { a:SlotMeta|null, b:SlotMeta|null },
+ *   commuteIn?:    { a:number|null, b:number|null }, // 편도 통근 원입력(null=미입력 ≠ 0분, 2026-09-23)
+ *   tenureYears?:  number|null,           // 현재 직장 근속(년). null=미입력(판정하지 않는다)
  * }} CompareState */
 
 /** @typedef {{
@@ -237,6 +240,32 @@ export function getOTPay(ws, salRange) {
   if (!mid) return 0;                                          // 연봉 미입력 → 0
   const hourlyBase = mid * WON_PER_MANWON / 12 / MONTHLY_STD_HRS; // 통상시급(원)
   const extraHrs   = OT_HRS[ws.ot] - LEGAL_WEEK_HRS;              // 주당 연장근로(h)
+  return Math.round(extraHrs * hourlyBase * OT_MULT * WEEKS_PER_MONTH * 12 / WON_PER_MANWON);
+}
+
+/**
+ * 주 근무시간(h) — 직접 입력(`ws.hours`)이 있으면 그것, 없으면 칩(`ws.ot` → OT_HRS). 미입력 0.
+ * 계산기 입력(2026-09-23)은 칩 3개(40·45·54h)와 숫자 칸이 양방향으로 묶여 있어, 44시간처럼 칩에
+ * 없는 값도 들어온다. `ot` 만 주는 옛 상태에서는 `getWSHours` 와 값이 같다.
+ */
+export function weeklyHours(ws) {
+  const h = ws && ws.hours != null && ws.hours !== '' ? Number(ws.hours) : NaN;
+  if (Number.isFinite(h) && h > 0) return h;
+  return OT_HRS[ws && ws.ot] || 0;
+}
+
+/**
+ * 야근수당(만원/년, ≥0) — `getOTPay` 와 같은 공식, 시간만 `weeklyHours` 에서 읽는다.
+ * 비포괄(`separate`)이고 주 40시간을 넘길 때만 발생한다. 임금 형태 미선택(null)은 0 — 두 경우를
+ * 모두 보이는 일은 `wageScenarios`(§16)가 한다.
+ */
+export function overtimePay(ws, salRange) {
+  if (!ws || ws.wage !== 'separate') return 0;
+  const extraHrs = weeklyHours(ws) - LEGAL_WEEK_HRS;
+  if (!(extraHrs > 0)) return 0;
+  const mid = salRange && salRange.mid;
+  if (!mid) return 0;
+  const hourlyBase = mid * WON_PER_MANWON / 12 / MONTHLY_STD_HRS;
   return Math.round(extraHrs * hourlyBase * OT_MULT * WEEKS_PER_MONTH * 12 / WON_PER_MANWON);
 }
 
@@ -457,8 +486,19 @@ export function sacrificeCost(sacrifice, m) {
 // 15. 오케스트레이터 — compare · calc · restSummary — SP-ENGINE-15 (FR-30, FR-42)
 // ─────────────────────────────────────────────────────────────────────
 
-/** 전체 리포트(FR-30). 필수값(연봉) 결측이면 ok:false + missing(부분 미산출, throw 없음). */
+/**
+ * 전체 리포트(FR-30). 필수값(연봉) 결측이면 ok:false + missing(부분 미산출, throw 없음).
+ * 이직 계산기 개편(2026-09-23): 핵심 수치(`compareCore`) 위에 축 3벌·총보상 흐름·복지 변화 분류를
+ * 얹는다(`calculatorExtras`, §16). 기존 키는 한 글자도 바뀌지 않고 새 키만 더해진다.
+ */
 export function compare(state, now = Date.now()) {
+  const core = compareCore(state, now);
+  if (!core.ok) return core; // 결측이면 화면이 리포트로 가지 않는다 — 덧붙일 것도 없다
+  return { ...core, ...calculatorExtras(state, core, now) };
+}
+
+/** 핵심 수치만(§15). 감도·임금 형태 시나리오가 상태를 바꿔 다시 부르는 단위다(재귀 방지). */
+export function compareCore(state, now = Date.now()) {
   const salA = parseSalRange(state.salStr);
   const salB = deriveOfferRange(salA, state.selectedRate);
   const missing = [];
@@ -471,8 +511,8 @@ export function compare(state, now = Date.now()) {
     const ws  = state.wsState[s];
     const { ben, net } = benTotal(state.benS[s]);
     const eff = effSalary(sal, net);
-    const wsHours = getWSHours(ws);
-    const otPay   = getOTPay(ws, sal);
+    const wsHours = weeklyHours(ws);     // 직접 입력(hours) 우선, 없으면 칩(ot) — ot 만 주면 getWSHours 와 같다
+    const otPay   = overtimePay(ws, sal); // 〃 getOTPay 와 같은 공식, 시간만 hours 에서 읽는다
     const total   = eff.mid + otPay;
     const hourly  = hourlyValue(eff.mid, otPay, wsHours);
     const auto    = autonomyPerks(ws, state.matched[s]);   // #2: 보유 자율성 요소 라벨 배열
@@ -493,11 +533,18 @@ export function compare(state, now = Date.now()) {
   const warnings = [];
   const effDiffMid = R.b.eff.mid - R.a.eff.mid, salDiffMid = salB.mid - salA.mid;
   if (salDiffMid > 0 && effDiffMid < salDiffMid && R.a.ben > R.b.ben) warnings.push('eff_shrink');
-  const incA = R.a.otPay === 0 && state.wsState.a.wage === 'inclusive' && state.wsState.a.ot !== 'low';
-  const incB = R.b.otPay === 0 && state.wsState.b.wage === 'inclusive' && state.wsState.b.ot !== 'low';
+  // 「포괄이라 야근수당 0」은 **야근을 한다고 입력했을 때만** 말할 거리다(주 40시간 초과). 예전에는
+  // 야근 빈도 미선택(ot null)도 `!== 'low'` 에 걸려 경고가 떴다.
+  const incA = R.a.otPay === 0 && state.wsState.a.wage === 'inclusive' && R.a.wsHours > LEGAL_WEEK_HRS;
+  const incB = R.b.otPay === 0 && state.wsState.b.wage === 'inclusive' && R.b.wsHours > LEGAL_WEEK_HRS;
   if (incA && incB) warnings.push('both_inclusive');
   else if (incA) warnings.push('inclusive_a');
   else if (incB) warnings.push('inclusive_b');
+  // 임금 형태 미선택 + 야근 → 두 경우를 모두 계산했다(계산기가 「포괄이면 / 비포괄이면」을 나란히 보인다).
+  for (const s of ['a', 'b']) {
+    const ws = state.wsState[s] || {};
+    if (ws.wage == null && R[s].wsHours > LEGAL_WEEK_HRS) warnings.push('wage_unknown_' + s);
+  }
 
   const hourlyDiff = (R.a.hourly != null && R.b.hourly != null) ? R.b.hourly - R.a.hourly : null;
 
@@ -508,6 +555,9 @@ export function compare(state, now = Date.now()) {
       effMid: effDiffMid, effMin: R.b.eff.min - R.a.eff.min, effMax: R.b.eff.max - R.a.eff.max,
       salMid: salDiffMid, totalDiff: R.b.total - R.a.total, hourlyDiff,
       benDiff: R.b.ben - R.a.ben,
+      // 2026-09-23 추가 — 총보상 흐름(브리지)의 세 조각은 salMid + benDiff + otDiff = totalDiff(오차 0)
+      otDiff: R.b.otPay - R.a.otPay,
+      effRate: R.a.total ? (R.b.total - R.a.total) / R.a.total : null,
     },
     catDelta: benCatCompare(state.benS.a, state.benS.b),
     qual:     qualCompare(state.benS.a, state.benS.b),
@@ -552,4 +602,507 @@ export function restSummary(pri, sac, m, R) {
     const d = m.benB - m.benA;
     return { axis, winner: d > 0 ? 'b' : d < 0 ? 'a' : 'tie', value: { diff: d } };
   });
+}
+
+// ─────────────────────────────────────────────────────────────────────
+// 16. 이직 계산기 개편(2026-09-23) — 축 3벌 · 총보상 흐름 · 복지 변화 분류
+// ─────────────────────────────────────────────────────────────────────
+// 근거: loupit-evidence/2026-09-22-calc-redesign/FINAL-DESIGN.md §3·§4·§5·§8-2 + IMPL-BRIEF §2(사용자 결정).
+// 전부 순수 함수(now 주입)이고 **데이터만** 돌려준다 — 문장은 report.js 가 만든다(SP-FE-1.2 규칙 5).
+// 분류(혼합·상한·짝짓기·4분해)를 여기 두는 이유: 감도(`sensitivity`)가 그 분류로 상태를 바꿔
+// compareCore 를 다시 불러야 한다(렌더 계층에 두면 계산이 두 벌이 된다).
+
+/**
+ * 축 판정 문턱 — **설계 상수**. 데이터로 잴 수 있는 것은 전체 회사 쌍으로 실측해 정했다
+ * (SPEC 05 §16.3 · `infra/tools/calc_thresholds.mjs`). 주 근무시간·통근은 사용자 입력이라 실측 대상이 아니다.
+ */
+export const AXIS_THRESHOLDS = Object.freeze({
+  wlbWeekHrs: 2,         // 주 근무시간 차(h) ≥ 이면 워라밸 축 1순위가 결론을 낸다(입력)
+  wlbCommuteAnnHrs: 40,  // 연 통근시간 차(h) ≥ 이면 2순위(입력)
+  wlbQualCount: 2,       // 휴가·근무제도 등록 항목 수 차 ≥ 이면 4순위(등록 데이터 — 실측)
+  nearBandMult: 1.5,     // 「거의 같음」 상한 = max(오차 폭 × 1.5, 현재 총보상 × 3%) (실측)
+  nearTotalPct: 0.03,
+});
+
+export const CAPPED_RE = /최대|한도|상한/;          // 금액 행 설명에 이 말이 있으면 실제로 받는 돈은 더 적을 수 있다
+export const FAMILY_RE = /가족|배우자|자녀/;        // 표시 전용 — 「가족까지 확대」 같은 해석 문장을 만들지 않는다
+const TENURE_RE = /근속|주년/;
+// 「근속 3·5·7·10년」·「5, 10, 15, 20년」처럼 나열된 연수는 **가장 작은 값**이 첫 자격이다. `2025년` 의 25 를
+// 연수로 읽지 않도록 앞자리가 숫자면 거른다.
+const TENURE_YEARS_RE = /(?<![\d.])((?:\d{1,2}\s*[·,/]\s*)*\d{1,2})\s*(?:년|주년)/;
+// 수집 메모(「(… 근속 연수 기준 미기재)」·「— … 미기재」)는 회사가 밝힌 조건이 아니다 — 근속 판정에서 뺀다.
+const ANNOTATION_RE = /\([^()]*미기재[^()]*\)|—[^—]*미기재[^—]*$/g;
+
+const CAT_SET = new Set(BENEFIT_CATEGORIES);
+const catOf = (it) => (CAT_SET.has(it && it.benefit_ctgr_cd) ? it.benefit_ctgr_cd : 'perks'); // benByCat 과 같은 폴백
+
+/** 등록된 금액(정성·미기재면 null). 체크 여부와 무관 — 「회사에 등록된 것」의 분류용. */
+function amtOf(it) {
+  if (!it || it.qual_yn || it.benefit_amt == null) return null;
+  const n = Number(it.benefit_amt);
+  return Number.isFinite(n) ? n : null;
+}
+/** 합산에 들어가는 금액 — benTotal 과 같은 규칙(체크된 비정성). 행별 「빼고 다시 계산」이 checked 로 끈다. */
+function effAmt(it) { return it && it.checked && !it.qual_yn ? (Number(it.benefit_amt) || 0) : 0; }
+function descOf(it) { return [it && it.qual_desc_ctnt, it && it.note_ctnt].filter(Boolean).join(' '); }
+const sumBy = (arr, f) => (arr || []).reduce((acc, x) => acc + f(x), 0);
+const live = (list) => (list || []).filter((it) => it && !it.legal_yn); // 법정 행은 표시만, 비교·집계에서 뺀다(SP-LEGAL-5)
+
+/** 차이의 흔들림 폭 = 두 회사 폭의 **합**(구간 산술 — 제곱합 금지: 추정 금액은 독립 오차가 아니다). */
+export function deltaBand(a, b) { return (Number(a && a.sumBand) || 0) + (Number(b && b.sumBand) || 0); }
+
+/**
+ * 판정 티어 — 세 축이 같은 함수를 쓴다(사용자 결정 1). `'unsure' | 'near' | 'a' | 'b'`.
+ * - 가드: 「그대로」(d)와 「한쪽만 금액 등록 제외」(guardD)의 부호가 갈리면 unsure.
+ * - |d| ≤ band(>0) → unsure(두 회사의 오차 범위가 겹친다). 이 티어에서는 화면이 차액 숫자를 내지 않는다.
+ * - |d| ≤ max(band × nearBandMult, |base| × nearTotalPct) → near.
+ * - 그 밖에는 큰 쪽(d = B − A 이므로 d > 0 → 'b').
+ */
+export function verdictTier(d, band, base, guardD = null, T = AXIS_THRESHOLDS) {
+  const diff = Number(d) || 0;
+  const bd = Math.max(0, Number(band) || 0);
+  if (guardD != null && Math.sign(guardD) !== Math.sign(diff)) return 'unsure';
+  if (bd > 0 && Math.abs(diff) <= bd) return 'unsure';
+  const nearHi = Math.max(bd * T.nearBandMult, Math.abs(Number(base) || 0) * T.nearTotalPct);
+  if (Math.abs(diff) <= nearHi) return 'near';
+  return diff > 0 ? 'b' : 'a';
+}
+
+/**
+ * benefit_cd 1:1 짝짓기 — 통 5개는 **배타**다(한 항목은 정확히 한 통). 법정 행(`legal_yn`)은 `legal` 로 빠진다.
+ * 분류는 **등록** 기준(금액 유무)이라 행별 「빼고 다시 계산」으로 checked 가 바뀌어도 목록은 흔들리지 않는다.
+ * 같은 회사에 같은 코드가 둘 이상이면 뒤의 것은 `cd#2` 로 따로 센다(현 데이터 0건, 방어).
+ */
+export function classifyPairs(listA, listB) {
+  const keyed = (list) => {
+    const seen = new Map();
+    return live(list).map((it) => {
+      const base = String(it.benefit_cd || it.benefit_nm || '');
+      const n = (seen.get(base) || 0) + 1;
+      seen.set(base, n);
+      return [n > 1 ? base + '#' + n : base, it];
+    });
+  };
+  const out = {
+    bothAmt: [], mixed: [], bothQual: [], onlyA: [], onlyB: [],
+    legal: { a: (listA || []).filter((it) => it && it.legal_yn), b: (listB || []).filter((it) => it && it.legal_yn) },
+  };
+  const B = new Map(keyed(listB));
+  const used = new Set();
+  for (const [key, a] of keyed(listA)) {
+    const b = B.get(key);
+    if (!b) { out.onlyA.push(a); continue; }
+    used.add(key);
+    const ha = amtOf(a) != null, hb = amtOf(b) != null;
+    if (ha && hb) out.bothAmt.push({ key, a, b });
+    else if (ha || hb) out.mixed.push({ key, a, b, side: ha ? 'a' : 'b' }); // side = 금액이 등록된 쪽
+    else out.bothQual.push({ key, a, b });
+  }
+  for (const [key, b] of B) if (!used.has(key)) out.onlyB.push(b);
+  return out;
+}
+
+/**
+ * 복지 환산 가치 차이(B − A)의 4분해 — 항등식 `onlyA + onlyB + sameBoth + mixed (+ legal) === benDiff`.
+ * onlyA 는 음수(이직 후보에 등록 없음), onlyB 는 양수(새로 생김), mixed 는 「한쪽만 금액 등록」의 몫.
+ */
+export function benDiffParts(listA, listB, pairs = classifyPairs(listA, listB)) {
+  const onlyA = -sumBy(pairs.onlyA, effAmt);
+  const onlyB = sumBy(pairs.onlyB, effAmt);
+  const sameBoth = sumBy(pairs.bothAmt, (r) => effAmt(r.b) - effAmt(r.a));
+  const mixed = sumBy(pairs.mixed, (r) => effAmt(r.b) - effAmt(r.a));
+  const legal = sumBy(pairs.legal.b, effAmt) - sumBy(pairs.legal.a, effAmt); // 법정 행은 정성이라 현재 0
+  return { onlyA, onlyB, sameBoth, mixed, legal, total: onlyA + onlyB + sameBoth + mixed + legal };
+}
+
+/** 설명에 「최대·한도·상한」이 적힌 금액 행 — 실제로 받는 돈은 더 적을 수 있다(감도 ③). */
+export function cappedRows(list) {
+  return live(list).filter((it) => amtOf(it) != null && CAPPED_RE.test(descOf(it)));
+}
+
+/**
+ * 항목 표식 — **표시 전용**, 판정에 쓰지 않는다.
+ * tenure: 이름·설명에 「근속·주년」이 있으면 `{ years }`(연수를 못 뽑으면 null). familyMention: 설명에 가족·배우자·자녀.
+ * capped: 금액 행이고 설명에 최대·한도·상한.
+ */
+export function facetOf(item) {
+  const desc = descOf(item);
+  const hay = String((item && item.benefit_nm) || '') + ' ' + desc.replace(ANNOTATION_RE, ' ');
+  let tenure = null;
+  if (TENURE_RE.test(hay)) {
+    const m = hay.match(TENURE_YEARS_RE);
+    const ys = m ? m[1].split(/[·,/\s]+/).map(Number).filter((n) => Number.isFinite(n) && n > 0 && n <= 40) : [];
+    tenure = { years: ys.length ? Math.min(...ys) : null };
+  }
+  return { tenure, familyMention: FAMILY_RE.test(desc), capped: amtOf(item) != null && CAPPED_RE.test(desc) };
+}
+
+/** 근속 조건이 붙은 항목(법정 행 제외). 입력 화면 보조문(「근속 연수에 따라 받는 복지가 N개」)도 이것을 센다. */
+export function tenureItems(list) {
+  return live(list).map((item) => ({ item, facet: facetOf(item) })).filter((x) => x.facet.tenure)
+    .map((x) => ({ item: x.item, years: x.facet.tenure.years }));
+}
+
+/**
+ * 근속 장부 — 이직하면 근속은 0 부터다. A 의 근속 조건 항목을 「받는 중 / 아직 / 연수 모름」으로 가른다.
+ * 근속 입력이 없으면(null) 판정하지 않는다 — 기본값으로 「받고 있습니다」를 지어내지 않는다(J3).
+ */
+export function tenureGate(listA, listB, tenureYears) {
+  const A = tenureItems(listA);
+  const B = tenureItems(listB);
+  const ty = tenureYears != null && tenureYears !== '' && Number.isFinite(Number(tenureYears)) && Number(tenureYears) >= 0
+    ? Number(tenureYears) : null;
+  if (ty == null) return { tenureYears: null, a: A, earned: [], pending: [], unjudged: A, b: B, otherSideCount: B.length };
+  return {
+    tenureYears: ty, a: A,
+    earned: A.filter((x) => x.years != null && ty >= x.years),
+    pending: A.filter((x) => x.years != null && ty < x.years).map((x) => ({ ...x, left: x.years - ty })),
+    unjudged: A.filter((x) => x.years == null),
+    b: B, otherSideCount: B.length,
+  };
+}
+
+/**
+ * 카테고리 9칸 — 금액·폭·항목 수 + verdict:
+ * 'a'|'b'(양쪽 금액, 폭 안 겹침) · 'similar'(겹침 — 차액을 말하지 않는다) · 'aOnly'|'bOnly'(한쪽만 금액) ·
+ * 'countOnly'(양쪽 금액 없음 — 항목 수만) · 'empty'(양쪽 등록 없음).
+ */
+export function catProfile(listA, listB, now) {
+  const A = live(listA), B = live(listB);
+  return BENEFIT_CATEGORIES.map((ctgr) => {
+    const a = A.filter((it) => catOf(it) === ctgr);
+    const b = B.filter((it) => catOf(it) === ctgr);
+    const sumA = sumBy(a, effAmt), sumB = sumBy(b, effAmt);
+    const bandA = sumBy(a, (it) => effAmt(it) * bandCoeff(it, now));
+    const bandB = sumBy(b, (it) => effAmt(it) * bandCoeff(it, now));
+    const amtCntA = a.filter((it) => amtOf(it) != null).length;
+    const amtCntB = b.filter((it) => amtOf(it) != null).length;
+    let verdict;
+    if (!a.length && !b.length) verdict = 'empty';
+    else if (sumA > 0 && sumB > 0) {
+      const overlap = sumA - bandA <= sumB + bandB && sumB - bandB <= sumA + bandA;
+      verdict = overlap ? 'similar' : (sumA > sumB ? 'a' : 'b');
+    } else if (sumA > 0) verdict = 'aOnly';
+    else if (sumB > 0) verdict = 'bOnly';
+    else verdict = 'countOnly';
+    return {
+      ctgr, cntA: a.length, cntB: b.length, amtCntA, amtCntB, qualA: a.length - amtCntA, qualB: b.length - amtCntB,
+      sumA, sumB, bandA, bandB, delta: sumB - sumA, verdict,
+    };
+  });
+}
+
+/** 통근까지 넣은 시간당 가치(원) — 통근은 돈으로 바꾸지 않고 **분모에만** 더한다. */
+export function hourlyWithCommute(effMid, otPay, wsHours, commuteMin) {
+  if (!(wsHours > 0) || commuteMin == null || !Number.isFinite(Number(commuteMin))) return null;
+  const ann = wsHours * WEEKS_PER_YEAR + commuteCompare(Number(commuteMin), 0).annA;
+  return ann > 0 ? Math.round((effMid + otPay) * WON_PER_MANWON / ann) : null;
+}
+
+// 상태 변형(불변) — 조건에 맞는 항목을 체크 해제한 **새** 상태. 감도·튼튼함이 compareCore 를 다시 부르는 재료다.
+function withExcluded(state, predA, predB = predA) {
+  const map = (list, pred) => (list || []).map((it) => (it && it.checked && pred(it) ? { ...it, checked: false } : it));
+  return { ...state, benS: { a: map(state.benS.a, predA), b: map(state.benS.b, predB) } };
+}
+function withWage(state, slot, wage) {
+  return { ...state, wsState: { ...state.wsState, [slot]: { ...(state.wsState[slot] || {}), wage } } };
+}
+const inSet = (set) => (it) => set.has(it);
+
+// B 연봉 1만원이 B 야근수당을 얼마나 움직이나 — 비포괄·야근이면 otPay = 연장h × 연봉 × 1.5 × 4.33 / 209.
+function otSlope(ws) {
+  if (!ws || ws.wage !== 'separate') return 0;
+  const extra = weeklyHours(ws) - LEGAL_WEEK_HRS;
+  return extra > 0 ? extra * OT_MULT * WEEKS_PER_MONTH / MONTHLY_STD_HRS : 0;
+}
+
+/**
+ * 총보상이 같아지는 B 연봉 — B 가 비포괄·야근이면 연봉이 오를수록 야근수당도 오르므로 선형 역산이 아니라
+ * `(totalA − netB) / (1 + k)` 다(k = otSlope). 눈금 세 개(등록 그대로 · 한쪽만 등록 제외 · 복지 0)를 함께 낸다.
+ */
+export function breakevenRate(core, exMixedCore, wsB) {
+  const salA = core && core.a && core.a.salRange ? core.a.salRange.mid : 0;
+  if (!salA) return null;
+  const k = otSlope(wsB);
+  const at = (totalA, netB) => {
+    const sal = (totalA - netB) / (1 + k);
+    return { sal: Math.round(sal), rate: sal / salA - 1 };
+  };
+  return {
+    full: at(core.a.total, core.b.net),
+    exMixed: exMixedCore ? at(exMixedCore.a.total, exMixedCore.b.net) : null,
+    noBenefit: at(core.a.salRange.mid + core.a.otPay, 0),
+    k,
+  };
+}
+
+/** 시간 계산서 — 근무·통근을 시간 그대로(통근은 금액으로 바꾸지 않는다). 미입력 칸은 null. */
+export function timeSheet(core, commuteIn) {
+  const hA = core.a.wsHours || null, hB = core.b.wsHours || null;
+  const cin = commuteIn || {};
+  const num = (v) => (v != null && v !== '' && Number.isFinite(Number(v)) && Number(v) >= 0 ? Number(v) : null);
+  const cA = num(cin.a), cB = num(cin.b);
+  const hours = hA && hB ? {
+    a: hA, b: hB, weekDiff: hB - hA, annA: hA * WEEKS_PER_YEAR, annB: hB * WEEKS_PER_YEAR,
+    annDiff: (hB - hA) * WEEKS_PER_YEAR, days: Math.round(Math.abs(hB - hA) * WEEKS_PER_YEAR / WORKDAY_HRS),
+  } : null;
+  let commute = null;
+  if (cA != null && cB != null) {
+    const cc = commuteCompare(cA, cB);
+    commute = { a: cA, b: cB, annA: cc.annA, annB: cc.annB, annDiff: cc.annB - cc.annA, days: Math.round(Math.abs(cc.annB - cc.annA) / WORKDAY_HRS) };
+  }
+  const ha = core.a.hourly, hb = core.b.hourly;
+  const hourly = ha != null && hb != null ? { a: ha, b: hb, diff: hb - ha, pct: ha ? (hb - ha) / ha : null } : null;
+  let hourlyCommute = null;
+  if (hours && commute) {
+    const wa = hourlyWithCommute(core.a.eff.mid, core.a.otPay, hA, cA);
+    const wb = hourlyWithCommute(core.b.eff.mid, core.b.otPay, hB, cB);
+    if (wa != null && wb != null) hourlyCommute = { a: wa, b: wb, diff: wb - wa, pct: wa ? (wb - wa) / wa : null };
+  }
+  return { hours, hoursIn: { a: hA, b: hB }, commute, commuteIn: { a: cA, b: cB }, hourly, hourlyCommute };
+}
+
+// 감도 한 줄의 결과 — 'same'(결론 그대로) · 'flip'(뒤집힘) · 'near'(거의 같음) · 'unsure'(말할 수 없음).
+function scenarioResult(tier, baseTier) {
+  if (tier === 'unsure' || tier === 'near') return tier;
+  return tier === baseTier ? 'same' : 'flip';
+}
+function coreDiff(c, now) {
+  return { diff: c.b.total - c.a.total, band: c.a.sumBand + c.b.sumBand, totalA: c.a.total };
+}
+
+/**
+ * 임금 형태 미선택 + 야근(주 40h 초과)인 슬롯마다 포괄·비포괄 두 경우를 계산한다(사용자 결정 4).
+ * 미선택 슬롯이 없으면 null. 결과는 「포괄이면 / 비포괄이면」 병치의 재료다.
+ */
+export function wageScenarios(state, core, now) {
+  const need = ['a', 'b'].filter((s) => {
+    const ws = state.wsState[s] || {};
+    return ws.wage == null && weeklyHours(ws) > LEGAL_WEEK_HRS;
+  });
+  if (!need.length) return null;
+  const combos = need.reduce((acc, s) => acc.flatMap((c) => [{ ...c, [s]: 'inclusive' }, { ...c, [s]: 'separate' }]), [{}]);
+  const cases = combos.map((w) => {
+    let st = state;
+    for (const s of need) st = withWage(st, s, w[s]);
+    const c = compareCore(st, now);
+    const { diff, band, totalA } = coreDiff(c, now);
+    return { wage: w, diff, band, totalA, tier: verdictTier(diff, band, totalA), otA: c.a.otPay, otB: c.b.otPay };
+  });
+  const tiers = new Set(cases.map((c) => c.tier));
+  return { slots: need, cases, agree: tiers.size === 1 };
+}
+
+/**
+ * 「이 결론을 뒤집는 것」 — 전부 실제 재계산(compareCore). 조건이 없으면 그 줄은 만들지 않는다.
+ * ① b_wage_flip: 이직 후보 임금 형태를 반대로(입력돼 있고 야근이 있을 때) ② drop_mixed: 한쪽만 금액이 등록된 항목을 빼면
+ * ③ drop_capped: 최대·한도 금액을 빼면 ④ drop_both: ②+③ 합집합 ⑤ no_benefits: 복지를 하나도 세지 않으면.
+ */
+export function sensitivity(state, core, now, ctx = {}) {
+  const pairs = ctx.pairs || classifyPairs(state.benS.a, state.benS.b);
+  const base = coreDiff(core, now);
+  const baseTier = verdictTier(base.diff, base.band, base.totalA);
+  const out = [];
+  const push = (key, st, extra = {}) => {
+    const c = compareCore(st, now);
+    const r = coreDiff(c, now);
+    const tier = verdictTier(r.diff, r.band, r.totalA);
+    const result = scenarioResult(tier, baseTier);
+    out.push({ key, totalDiff: r.diff, band: r.band, tier, result, flips: result === 'flip', ...extra, core: { otB: c.b.otPay, totalB: c.b.total } });
+  };
+  const wsB = state.wsState.b || {};
+  if ((wsB.wage === 'inclusive' || wsB.wage === 'separate') && weeklyHours(wsB) > LEGAL_WEEK_HRS) {
+    const to = wsB.wage === 'inclusive' ? 'separate' : 'inclusive';
+    const st = withWage(state, 'b', to);
+    const flipped = compareCore(st, now);
+    const be = breakevenRate(core, null, { ...wsB, wage: to });
+    push('b_wage_flip', st, {
+      to, extraHrs: weeklyHours(wsB) - LEGAL_WEEK_HRS,
+      hourlyBase: Math.round((core.b.salRange.mid * WON_PER_MANWON) / 12 / MONTHLY_STD_HRS),
+      otB: flipped.b.otPay, breakeven: be ? be.full : null,
+    });
+  }
+  const mixedA = new Set(pairs.mixed.filter((r) => r.side === 'a').map((r) => r.a).filter((it) => it.checked));
+  const mixedB = new Set(pairs.mixed.filter((r) => r.side === 'b').map((r) => r.b).filter((it) => it.checked));
+  const capA = new Set(cappedRows(state.benS.a).filter((it) => it.checked));
+  const capB = new Set(cappedRows(state.benS.b).filter((it) => it.checked));
+  const listed = (setA, setB) => [...[...setA].map((it) => ({ side: 'a', nm: it.benefit_nm, amt: amtOf(it) })),
+    ...[...setB].map((it) => ({ side: 'b', nm: it.benefit_nm, amt: amtOf(it) }))];
+  const amountOf = (items) => sumBy(items, (x) => x.amt || 0);
+  if (mixedA.size + mixedB.size) {
+    const items = listed(mixedA, mixedB);
+    push('drop_mixed', withExcluded(state, inSet(mixedA), inSet(mixedB)), { count: items.length, amount: amountOf(items), items });
+  }
+  if (capA.size + capB.size) {
+    const items = listed(capA, capB);
+    push('drop_capped', withExcluded(state, inSet(capA), inSet(capB)), { count: items.length, amount: amountOf(items), items });
+  }
+  const uA = new Set([...mixedA, ...capA]), uB = new Set([...mixedB, ...capB]);
+  const union = uA.size + uB.size;
+  if ((mixedA.size + mixedB.size) && (capA.size + capB.size) && union > Math.max(mixedA.size + mixedB.size, capA.size + capB.size)) {
+    const items = listed(uA, uB);
+    push('drop_both', withExcluded(state, inSet(uA), inSet(uB)), { count: items.length, amount: amountOf(items), items });
+  }
+  if (core.a.net || core.b.net) push('no_benefits', withExcluded(state, () => true));
+  return { baseTier, rows: out };
+}
+
+/** 튼튼함 눈금 3단 — ① 등록 금액 그대로 ② 한쪽만 등록된 항목을 빼면(없으면 null) ③ 복지를 하나도 세지 않으면. */
+export function robustness(state, core, now, ctx = {}) {
+  const pairs = ctx.pairs || classifyPairs(state.benS.a, state.benS.b);
+  const full = coreDiff(core, now);
+  let exMixed = null, exMixedCore = null;
+  if (pairs.mixed.length) {
+    const mixedSet = new Set(pairs.mixed.map((r) => (r.side === 'a' ? r.a : r.b)));
+    exMixedCore = compareCore(withExcluded(state, inSet(mixedSet)), now);
+    exMixed = coreDiff(exMixedCore, now);
+  }
+  const noCore = compareCore(withExcluded(state, () => true), now);
+  const noBenefit = coreDiff(noCore, now);
+  const tierOf = (x) => (x ? verdictTier(x.diff, x.band, x.totalA) : null);
+  return {
+    full: { ...full, tier: tierOf(full) }, exMixed: exMixed && { ...exMixed, tier: tierOf(exMixed) },
+    noBenefit: { ...noBenefit, tier: tierOf(noBenefit) }, exMixedCore,
+  };
+}
+
+/**
+ * 「이직 후보에 물어볼 것」 — 조건을 못 채우면 그 줄은 없다(빈 배열 가능). 데이터만, 문장은 report.js.
+ * wage: 임금 형태 하나로 결론이 뒤집히거나(①이 flip) 미선택 병치가 갈릴 때 · mixed: 이직 후보 쪽 금액이 없는
+ * 혼합 항목 상위 2건 · topOnlyA: 현재 직장에만 있는 금액 항목 최댓값(복지 차이가 현재 직장 쪽으로 기울 때).
+ */
+export function askList(core, ctx) {
+  const out = [];
+  const { sens, wage, pairs } = ctx;
+  const flip = sens && sens.rows.find((r) => r.key === 'b_wage_flip' && r.flips);
+  if (flip) out.push({ kind: 'wage', amount: Math.abs(flip.otB - core.b.otPay) });
+  else if (wage && wage.slots.includes('b') && !wage.agree) {
+    const sep = wage.cases.find((c) => c.wage.b === 'separate');
+    const inc = wage.cases.find((c) => c.wage.b === 'inclusive');
+    if (sep && inc) out.push({ kind: 'wage', amount: Math.abs(sep.otB - inc.otB) });
+  }
+  const mixedAside = pairs.mixed.filter((r) => r.side === 'a').sort((x, y) => (amtOf(y.a) || 0) - (amtOf(x.a) || 0));
+  if (mixedAside.length) out.push({ kind: 'mixed', names: mixedAside.slice(0, 2).map((r) => r.b.benefit_nm) });
+  const benDiff = core.deltas.benDiff;
+  if (benDiff < 0) {
+    const top = pairs.onlyA.filter((it) => effAmt(it) > 0).sort((x, y) => effAmt(y) - effAmt(x))[0];
+    if (top) out.push({ kind: 'topOnlyA', nm: top.benefit_nm, ctgr: catOf(top), amt: effAmt(top), share: effAmt(top) / Math.abs(benDiff) });
+  }
+  return out;
+}
+
+// 워라밸 축 4순위 재료 — 휴가(time_off)·근무제도(flexibility) 등록 항목(법정 제외).
+function wlbItems(list) { return live(list).filter((it) => catOf(it) === 'time_off' || catOf(it) === 'flexibility'); }
+
+/**
+ * 세 축 판정 카드(데이터) — 세그먼트 전환은 재계산 0, 이 셋 중 하나를 고를 뿐이다.
+ * 축마다 **판정 기준이 다르다**(요청 5): 연봉 = 실효 총보상 차 ± 폭 · 워라밸 = 입력 시간 → 통근 → 자율성 → 등록 수
+ * · 복지 = 등록 금액 합 차 ± 폭(항목 수는 참고 표기만, 사용자 결정 1).
+ */
+export function buildAllVdCards(ctx) {
+  const { core, band, parts, pairs, time, robust, sens, wage, tenure } = ctx;
+  const T = AXIS_THRESHOLDS;
+  const d = core.deltas.totalDiff;
+  const guard = robust.exMixed ? robust.exMixed.diff : null;
+  const salTier = verdictTier(d, band, core.a.total, guard);
+  const salMid = core.deltas.salMid;
+  const flip = sens.rows.find((r) => r.flips) || null;
+  const salary = {
+    axis: 'salary', tier: wage && !wage.agree ? 'depends' : salTier, baseTier: salTier,
+    shape: salMid === 0 ? 'flat' : Math.sign(salMid) === Math.sign(d) ? 'same' : 'reverse',
+    d, band, range: [d - band, d + band], guard: robust.exMixed,
+    salA: core.a.salRange.mid, salB: core.b.salRange.mid, salMid,
+    effRate: core.deltas.effRate,
+    effRateNoOt: core.a.eff.mid ? (core.b.eff.mid - core.a.eff.mid) / core.a.eff.mid : null,
+    monthly: Math.round(d / 12),
+    parts: { sal: salMid, ben: core.deltas.benDiff, mixed: parts.mixed, ot: core.deltas.otDiff },
+    hourly: time.hourly, flip, wage,
+  };
+
+  // 워라밸 — 위에서부터 보고 승패가 갈리면 멈춘다(FINAL-DESIGN §3-3 나).
+  const cntA = wlbItems(core._benA).length, cntB = wlbItems(core._benB).length;
+  const autoW = autonomyWinner(core.a.autonomy, core.b.autonomy);
+  const steps = [
+    ['hours', time.hours && Math.abs(time.hours.weekDiff) >= T.wlbWeekHrs ? (time.hours.weekDiff > 0 ? 'a' : 'b') : null],
+    ['commute', time.commute && Math.abs(time.commute.annDiff) >= T.wlbCommuteAnnHrs ? (time.commute.annDiff > 0 ? 'a' : 'b') : null],
+    ['autonomy', autoW === 'tie' ? null : autoW],
+    ['count', Math.abs(cntA - cntB) >= T.wlbQualCount ? (cntA > cntB ? 'a' : 'b') : null],
+  ];
+  const hit = steps.find(([, w]) => w);
+  const wlb = {
+    axis: 'wlb', tier: hit ? hit[1] : 'unsure', decidedBy: hit ? hit[0] : null,
+    hours: time.hours, hoursIn: time.hoursIn, commute: time.commute, commuteIn: time.commuteIn,
+    autonomy: { perksA: core.a.autonomy, perksB: core.b.autonomy, winner: autoW },
+    count: { a: cntA, b: cntB, tenureA: wlbItems(core._benA).filter((it) => facetOf(it).tenure).length },
+    money: { tier: salTier, d },
+  };
+
+  // 복지 — 등록 금액 합의 차이 ± 폭, 가드 = 한쪽만 금액 등록 제외 값(사용자 결정 1).
+  const bd = core.deltas.benDiff;
+  const mixedBand = sumBy(pairs.mixed, (r) => {
+    const it = r.side === 'a' ? r.a : r.b;
+    return effAmt(it) * bandCoeff(it, ctx.now);
+  });
+  const exMixedBen = pairs.mixed.length ? { diff: bd - parts.mixed, band: Math.max(0, band - mixedBand) } : null;
+  const benTier = verdictTier(bd, band, core.a.total, exMixedBen ? exMixedBen.diff : null);
+  const liveA = live(core._benA), liveB = live(core._benB);
+  const mixedSides = new Set(pairs.mixed.map((r) => r.side));
+  const benefits = {
+    axis: 'benefits', tier: benTier, d: bd, band, exMixed: exMixedBen,
+    netA: core.a.net, netB: core.b.net,
+    counts: { a: liveA.length, b: liveB.length, onlyA: pairs.onlyA.length, onlyB: pairs.onlyB.length,
+      both: pairs.bothAmt.length + pairs.mixed.length + pairs.bothQual.length },
+    noAmt: { a: liveA.filter((it) => amtOf(it) == null).length, b: liveB.filter((it) => amtOf(it) == null).length },
+    mixed: {
+      count: pairs.mixed.length, net: parts.mixed, side: mixedSides.size === 1 ? [...mixedSides][0] : (mixedSides.size ? 'both' : null),
+      names: pairs.mixed.map((r) => (r.side === 'a' ? r.a : r.b))
+        .sort((x, y) => (amtOf(y) || 0) - (amtOf(x) || 0)).map((it) => it.benefit_nm), // 금액 큰 순
+      share: bd && Math.sign(parts.mixed) === Math.sign(bd) ? Math.abs(parts.mixed) / Math.abs(bd) : null,
+    },
+    salOffset: { salMid, benDiff: bd, gap: salMid + bd },
+    tenure: { a: tenure.a.length, b: tenure.otherSideCount },
+  };
+  return { salary, wlb, benefits };
+}
+
+/** 자료 근거(와플·배지 설명) — 금액 출처(공식/추정)·금액 없음·최대/한도·만료 여부. */
+function basisOf(listA, listB, now) {
+  const side = (list) => {
+    const L = live(list);
+    const amt = L.filter((it) => amtOf(it) != null);
+    return {
+      total: L.length, amt: amt.length, qual: L.length - amt.length,
+      stated: amt.filter((it) => it.amt_source === 'stated').length,
+      estimated: amt.filter((it) => it.amt_source !== 'stated').length,
+      capped: cappedRows(L).map((it) => ({ nm: it.benefit_nm, amt: amtOf(it) })),
+      expired: amt.filter((it) => it.expires_dtm != null && Date.parse(it.expires_dtm) < now).length,
+      legal: (list || []).filter((it) => it && it.legal_yn).length,
+    };
+  };
+  const all = [...live(listA), ...live(listB)].filter((it) => amtOf(it) != null && it.expires_dtm);
+  const earliest = all.map((it) => it.expires_dtm).sort()[0] || null;
+  return { a: side(listA), b: side(listB), earliestExpiry: earliest };
+}
+
+/**
+ * 계산기 전용 산출 묶음 — compare() 가 핵심 수치에 덧붙인다. 감도·임금 시나리오는 compareCore 만 다시 부른다.
+ */
+export function calculatorExtras(state, core, now = Date.now()) {
+  const benA = state.benS.a || [], benB = state.benS.b || [];
+  const pairs = classifyPairs(benA, benB);
+  const parts = benDiffParts(benA, benB, pairs);
+  const band = deltaBand(core.a, core.b);
+  const time = timeSheet(core, state.commuteIn);
+  const robust = robustness(state, core, now, { pairs });
+  const sens = sensitivity(state, core, now, { pairs });
+  const wage = wageScenarios(state, core, now);
+  const tenure = tenureGate(benA, benB, state.tenureYears);
+  const breakeven = breakevenRate(core, robust.exMixedCore, state.wsState.b);
+  const axes = buildAllVdCards({ core: { ...core, _benA: benA, _benB: benB }, band, parts, pairs, time, robust, sens, wage, tenure, now });
+  const { exMixedCore: _drop, ...robustOut } = robust; // 코어 통째는 브레이크이븐 재료일 뿐 — 반환하지 않는다
+  return {
+    band: { a: core.a.sumBand, b: core.b.sumBand, delta: band },
+    pairs, parts, cat: catProfile(benA, benB, now), time, robust: robustOut, sens, wage, tenure, breakeven,
+    ask: askList(core, { sens, wage, pairs }), axes, basis: basisOf(benA, benB, now),
+  };
 }
