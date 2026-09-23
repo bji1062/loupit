@@ -282,12 +282,13 @@ function flipLine(X) {
 function guardClause(X, d, ex, n, noun = null) {
   const { nm } = X;
   const who = (s) => (noun ? nm[s] + '의 ' + withJosa(noun, '이/가') : withJosa(nm[s], '이/가'));
-  const head = '등록된 금액 그대로 계산하면 ' + who(d < 0 ? 'a' : 'b') + ' 많지만, ' + onlyRegistered(X) + ' ' + n + '건을 빼면 ';
+  const head = (X.ex && X.ex.rows ? '빼고 남은 금액 그대로 계산하면 ' : '등록된 금액 그대로 계산하면 ') + who(d < 0 ? 'a' : 'b') + ' 많지만, ' + onlyRegistered(X) + ' ' + n + '건을 빼면 ';
   if (!ex || ex.diff === 0) return head + '두 회사가 같아져';
   if (directional(ex.tier)) return head + withJosa(ex.diff < 0 ? nm.a : nm.b, '이/가') + ' 많아져';
   return head + (ex.tier === 'unsure' ? '방향이 바뀝니다(바뀐 차이는 오차 범위 안입니다). 그래서' : '방향이 바뀝니다(바뀐 차이는 크지 않습니다). 그래서');
 }
-const guardShort = (X, n) => '한쪽에만 금액이 등록된 ' + n + '건을 빼면 방향이 바뀝니다';
+// 빼고 계산한 차이가 딱 0 이면 「방향이 바뀝니다」가 아니라 「두 회사가 같아집니다」(재확인 R-3 — 카드만 그렇게 말했다).
+const guardShort = (X, n, ex) => '한쪽에만 금액이 등록된 ' + n + '건을 빼면 ' + (ex && ex.diff === 0 ? '두 회사가 같아집니다' : '방향이 바뀝니다');
 // 야근수당 미선택 — 누가 야근수당을 주는지(주어) · 같은 방향일 때의 범위 글자(MED-3).
 function wageWho(X, w) {
   const { nm } = X;
@@ -316,7 +317,11 @@ function salaryCard(X) {
     hl.append('입력하신 조건으로는 야근수당을 따로 주든 아니든 두 회사 총보상이 비슷해, ', b('어느 쪽이 많다고 말하기 어렵습니다.'));
   } else if (v.tier === 'depends') {
     tone = 'warn'; badgeText = '야근수당에 따라 결론이 달라집니다';
-    hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 총보상이 늘지 줄지는 ', b(wageWho(X, v.wage) + '에 달려 있습니다.'));
+    // 경우들이 실제로 가리키는 것만 말한다(재확인 R-4) — {늘어남, 거의 같음} 은 「늘지 줄지」가 아니라 「거의 같을지 늘지」.
+    const cs = v.wage.cases;
+    const inc = cs.some((c) => c.tier === 'b'), dec = cs.some((c) => c.tier === 'a'), nr = cs.some((c) => c.tier === 'near');
+    const q = inc && dec ? '늘지 줄지는 ' : inc ? (nr ? '거의 같을지 늘지는 ' : '늘어날지는 ') : (nr ? '거의 같을지 줄지는 ' : '줄어들지는 ');
+    hl.append('입력하신 조건으로 계산하면, ' + salPhrase + '지만 총보상이 ' + q, b(wageWho(X, v.wage) + '에 달려 있습니다.'));
   } else if (v.tier === 'range') {
     // 경우마다 같은 쪽 — 「얼마나」만 야근수당에 달렸다(MED-3). 방향 배지 + 범위.
     const dir = v.wage.dir;
@@ -478,7 +483,7 @@ function moneyLine(X) {
   }
   if (s.tier === 'unsure') {
     return line('', '총보상은 어느 쪽이 많은지 말하기 어렵습니다 — '
-      + (s.unsureBy === 'guard' ? guardShort(X, X.report.axes.benefits.mixed.count) + '.' : '오차 범위가 겹칩니다.'));
+      + (s.unsureBy === 'guard' ? guardShort(X, X.report.axes.benefits.mixed.count, s.guard) + '.' : '오차 범위가 겹칩니다.'));
   }
   if (s.tier === 'near') return line('', s.nearKind === 'weak' ? '총보상 차이(연 ' + m(abs(s.d)) + ')는 오차 범위를 겨우 넘는 정도입니다.' : '총보상은 두 회사가 거의 같습니다(연 ' + m(abs(s.d)) + ' 차이).');
   if (s.tier === v.tier) return line('', lead + ' ', b('손해 보는 돈도 없습니다'), ' — 총보상도 ' + withJosa(W, '이/가') + ' 연 ' + m(abs(s.d)) + ' 많습니다.');
@@ -531,17 +536,22 @@ function benefitsCard(X) {
   const sec = card('benefits', dir ? v.tier : 'neutral', badgeText, '등록된 복지로 보면');
   const hl = el('p', { class: 'calc-hl' });
   const exSame = v.exMixed && Math.sign(v.exMixed.diff) === Math.sign(d);
+  // 결과 화면에서 뺀 것이 있으면 금액은 「등록된」 것이 아니라 「빼고 남은」 것이다(재확인 R-2 — 「NAVER 0만원에서」라고 했다).
+  const cut = X.ex.rows > 0;
+  const regW = cut ? '빼고 남은' : '등록된';
+  const yearW = cut ? '남은 1년 복지 금액' : '1년 복지 금액';
+  const mixedLive = report.pairs.mixed.some((r) => !X.isOff(r.side, r[r.side])); // 한쪽만 등록 항목이 아직 계산에 들어 있나
   if (dir) {
-    hl.append('등록된 복지 금액으로 보면 ' + withJosa(nm[v.tier], '이/가') + ' 낫습니다. 1년 복지 금액이 ',
+    hl.append(regW + ' 복지 금액으로 보면 ' + withJosa(nm[v.tier], '이/가') + ' 낫습니다. ' + yearW + '이 ',
       b(fmt(v.netA) + '만원에서 ' + m(v.netB) + '으로, ' + m(abs(d))), '(±' + fmt(v.band) + ') ' + moreLess(d) + '.');
-    if (v.exMixed && exSame) {
+    if (v.exMixed && exSame && mixedLive) {
       hl.append(' ' + onlyRegistered(X) + ' ' + v.mixed.count + '건을 빼고 계산해도 ' + m(abs(v.exMixed.diff)) + '(±' + fmt(v.exMixed.band) + ') '
         + (d < 0 ? '줄어들어' : '늘어나') + (directional(v.exMixed.tier) ? ' 결론은 같습니다.' : ' 방향은 같지만, 그 차이만으로는 한쪽이 낫다고 말하기 어렵습니다.'));
     }
   } else if (v.tier === 'near' && v.nearKind === 'weak') {
-    hl.append('등록된 복지 금액은 ' + withJosa(nm[d < 0 ? 'a' : 'b'], '이/가') + ' ', b('1년에 ' + m(abs(d)) + ' 많지만'), '(' + fmt(v.netA) + ' → ' + m(v.netB) + '), 오차 범위(±' + fmt(v.band) + ')를 겨우 넘는 차이라 한쪽이 낫다고 말하기엔 약합니다.');
+    hl.append(regW + ' 복지 금액은 ' + withJosa(nm[d < 0 ? 'a' : 'b'], '이/가') + ' ', b('1년에 ' + m(abs(d)) + ' 많지만'), '(' + fmt(v.netA) + ' → ' + m(v.netB) + '), 오차 범위(±' + fmt(v.band) + ')를 겨우 넘는 차이라 한쪽이 낫다고 말하기엔 약합니다.');
   } else if (v.tier === 'near') {
-    hl.append('등록된 복지 금액은 거의 같습니다 — 1년 복지 금액이 ' + fmt(v.netA) + '만원에서 ' + m(v.netB) + '으로, 차이는 ', b(m(abs(d))), '입니다.');
+    hl.append(regW + ' 복지 금액은 거의 같습니다 — ' + yearW + '이 ' + fmt(v.netA) + '만원에서 ' + m(v.netB) + '으로, 차이는 ', b(m(abs(d))), '입니다.');
   } else if (v.unsureBy === 'excluded') {
     hl.append('금액이 있는 복지를 모두 빼서, ', b('남은 금액으로는 비교할 수 없습니다.'), ' 「모두 되돌리기」를 누르면 다시 넣어 계산합니다.');
   } else if (v.unsureBy === 'none') {
@@ -549,7 +559,7 @@ function benefitsCard(X) {
   } else if (v.unsureBy === 'guard') {
     hl.append(guardClause(X, d, v.exMixed, v.mixed.count, '복지 금액') + ' ', b('어느 쪽이 낫다고 말하기 어렵습니다.'));
   } else {
-    hl.append('등록된 복지 금액으로는 ', b('어느 쪽이 낫다고 말하기 어렵습니다.'), ' 두 회사의 오차 범위가 겹칩니다.');
+    hl.append(regW + ' 복지 금액으로는 ', b('어느 쪽이 낫다고 말하기 어렵습니다.'), ' 두 회사의 오차 범위가 겹칩니다.');
   }
   sec.append(hl);
   if (v.mixed.count) {
@@ -558,28 +568,29 @@ function benefitsCard(X) {
     const p = line('calc-line-must');
     if (other) p.append('다만 그중 ' + v.mixed.count + '개(' + names + ')는 ' + other + '에도 비슷한 제도가 있는데 ', b('금액이 등록되어 있지 않습니다.'));
     else p.append('다만 ' + v.mixed.count + '개(' + names + ')는 두 회사 모두 제도가 있는데 ', b('한쪽에만 금액이 등록되어 있습니다.'));
-    if (v.mixed.share != null) p.append(' 이 ' + v.mixed.count + '개가 차이의 ' + Math.round(v.mixed.share * 100) + '%(' + m(abs(v.mixed.net)) + ')를 차지합니다.');
+    if (!mixedLive) p.append(' 이 ' + v.mixed.count + '개는 지금 계산에서 뺐습니다.');
+    else if (v.mixed.share != null) p.append(' 이 ' + v.mixed.count + '개가 차이의 ' + Math.round(v.mixed.share * 100) + '%(' + m(abs(v.mixed.net)) + ')를 차지합니다.');
     else p.append(' 이 ' + v.mixed.count + '개의 금액은 ' + m(abs(v.mixed.net)) + '입니다.');
     sec.append(p);
   }
   const ev = el('div', { class: 'calc-evid' });
-  ev.append(chip('복지 금액 ' + fmt(v.netA) + ' → ' + m(v.netB)));
-  if (v.mixed.count) ev.append(chip(hatch(), onlyRegistered(X).replace(' 금액이 등록된', ' 금액 등록') + ' ' + v.mixed.count + '건 · ' + fmt(abs(v.mixed.net))));
+  ev.append(chip((cut ? '남은 ' : '') + '복지 금액 ' + fmt(v.netA) + ' → ' + m(v.netB)));
+  if (v.mixed.count) ev.append(chip(hatch(), onlyRegistered(X).replace(' 금액이 등록된', ' 금액 등록') + ' ' + v.mixed.count + '건 · ' + (mixedLive ? fmt(abs(v.mixed.net)) : '뺌')));
   ev.append(chip('참고: ' + nm.b + ' 미등록 ' + v.counts.onlyA + '개 · 새로 생기는 복지 ' + v.counts.onlyB + '개'));
   sec.append(ev);
   if (v.tier !== 'unsure') {
     const o = v.salOffset;
     let t = null;
     if (o.salMid > 0 && o.benDiff < 0) {
-      t = o.gap < 0 ? ['연봉이 ' + m(o.salMid) + ' 오르지만, 복지 금액 차이 ' + m(abs(o.benDiff)) + '을 메우기에는 ', b(m(abs(o.gap)) + '이 모자랍니다.')]
-        : ['연봉이 ' + m(o.salMid) + ' 오르면 복지 금액 차이 ' + m(abs(o.benDiff)) + '을 메우고도 ', b(m(o.gap) + '이 남습니다.')];
+      t = o.gap < 0 ? ['연봉이 ' + m(o.salMid) + ' 오르지만, ' + (cut ? '남은 ' : '') + '복지 금액 차이 ' + m(abs(o.benDiff)) + '을 메우기에는 ', b(m(abs(o.gap)) + '이 모자랍니다.')]
+        : ['연봉이 ' + m(o.salMid) + ' 오르면 ' + (cut ? '남은 ' : '') + '복지 금액 차이 ' + m(abs(o.benDiff)) + '을 메우고도 ', b(m(o.gap) + '이 남습니다.')];
     } else if (o.salMid < 0 && o.benDiff > 0) {
-      t = o.gap > 0 ? ['연봉은 ' + m(abs(o.salMid)) + ' 줄지만, 등록된 복지 금액이 ' + m(o.benDiff) + ' 늘어 ', b('줄어든 연봉을 메우고도 ' + m(o.gap) + '이 남습니다.')]
-        : ['연봉은 ' + m(abs(o.salMid)) + ' 줄고, 등록된 복지 금액이 ' + m(o.benDiff) + ' 늘어도 ', b(m(abs(o.gap)) + '이 모자랍니다.')];
+      t = o.gap > 0 ? ['연봉은 ' + m(abs(o.salMid)) + ' 줄지만, ' + regW + ' 복지 금액이 ' + m(o.benDiff) + ' 늘어 ', b('줄어든 연봉을 메우고도 ' + m(o.gap) + '이 남습니다.')]
+        : ['연봉은 ' + m(abs(o.salMid)) + ' 줄고, ' + regW + ' 복지 금액이 ' + m(o.benDiff) + ' 늘어도 ', b(m(abs(o.gap)) + '이 모자랍니다.')];
     } else if (o.salMid === 0) {
-      t = ['연봉은 그대로이고, 등록된 복지 금액은 ' + m(abs(o.benDiff)) + ' ' + moreLess(o.benDiff) + '.'];
+      t = ['연봉은 그대로이고, ' + regW + ' 복지 금액은 ' + m(abs(o.benDiff)) + ' ' + moreLess(o.benDiff) + '.'];
     } else {
-      t = ['연봉' + (o.salMid > 0 ? '도 ' + m(o.salMid) + ' 오르고' : '도 ' + m(abs(o.salMid)) + ' 줄고') + ', 등록된 복지 금액도 ' + m(abs(o.benDiff)) + ' ' + moreLess(o.benDiff) + '.'];
+      t = ['연봉' + (o.salMid > 0 ? '도 ' + m(o.salMid) + ' 오르고' : '도 ' + m(abs(o.salMid)) + ' 줄고') + ', ' + regW + ' 복지 금액도 ' + m(abs(o.benDiff)) + ' ' + moreLess(o.benDiff) + '.'];
     }
     sec.append(line('', ...t));
   }
@@ -608,7 +619,7 @@ function tiles(X, axis) {
     const v = report.axes.salary;
     if (v.tier === 'unsure') {
       // 두 총보상을 나란히 두면 뺄셈 한 번으로 차액이 나온다 — 첫 타일에는 이유만(LOW-1).
-      box.append(tile('실효 총보상 차이', ['판단하기 어렵습니다'], v.unsureBy === 'guard' ? guardShort(X, report.axes.benefits.mixed.count) : '두 회사의 오차 범위가 겹칩니다', ''));
+      box.append(tile('실효 총보상 차이', ['판단하기 어렵습니다'], v.unsureBy === 'guard' ? guardShort(X, report.axes.benefits.mixed.count, v.guard) : '두 회사의 오차 범위가 겹칩니다', ''));
     } else if (v.tier === 'range') {
       box.append(tile('실효 총보상 차이', [spanText(v.span), small('만원')], v.wage.cases.map((c) => wageCaseLabel(X, c, v.wage.slots) + ' ' + fmtSigned(c.diff)).join(' · '), v.wage.dir < 0 ? 'neg' : 'pos'));
     } else if (v.tier === 'depends') {
@@ -640,11 +651,15 @@ function tiles(X, axis) {
     return box;
   }
   const v = report.axes.benefits;
-  const why = { guard: guardShort(X, v.mixed.count), none: '두 회사 모두 금액 미등록', excluded: '금액이 있는 복지를 모두 뺐습니다', band: '오차 범위가 겹칩니다' };
+  const why = { guard: guardShort(X, v.mixed.count, v.exMixed), none: '두 회사 모두 금액 미등록', excluded: '금액이 있는 복지를 모두 뺐습니다', band: '오차 범위가 겹칩니다' };
   const t1s = v.tier === 'unsure' ? (why[v.unsureBy] || why.band) + ' · 항목 수는 ' + v.counts.a + ' → ' + v.counts.b + '개'
     : ['차이 ', el('b', { class: v.d < 0 ? 'calc-neg' : 'calc-pos', text: fmtSigned(v.d) }), ' (±' + fmt(v.band) + ') · 항목 수는 ' + v.counts.a + ' → ' + v.counts.b + '개'];
-  box.append(tile('1년 복지 금액', [fmt(v.netA) + ' → ' + fmt(v.netB), small('만원')], t1s));
-  if (v.mixed.count) {
+  const cut = X.ex.rows > 0;
+  box.append(tile(cut ? '남은 1년 복지 금액' : '1년 복지 금액', [fmt(v.netA) + ' → ' + fmt(v.netB), small('만원')], t1s));
+  const mixedLive = report.pairs.mixed.some((r) => !X.isOff(r.side, r[r.side]));
+  if (v.mixed.count && !mixedLive) {
+    box.append(tile(onlyRegistered(X) + ' 복지', [String(v.mixed.count), small('건'), ' · 뺌'], '지금 계산에서 뺐습니다'));
+  } else if (v.mixed.count) {
     const sub = v.exMixed ? (v.mixed.share != null ? '차이의 ' + Math.round(v.mixed.share * 100) + '% · ' : '') + '빼고 계산하면 ' + fmtSigned(v.exMixed.diff) + ' (±' + fmt(v.exMixed.band) + ')' : '';
     box.append(tile(onlyRegistered(X) + ' 복지', [String(v.mixed.count), small('건'), ' · ' + fmt(abs(v.mixed.net)), small('만원')], sub));
   } else {
@@ -658,7 +673,7 @@ function tiles(X, axis) {
 function auxSalary(X) {
   const s = X.report.axes.salary;
   if (s.tier === 'unsure') {
-    return s.unsureBy === 'guard' ? ['총보상은 ', b('판단하기 어렵습니다'), '(한쪽에만 금액이 등록된 ' + X.report.axes.benefits.mixed.count + '건을 빼면 방향이 바뀜)']
+    return s.unsureBy === 'guard' ? ['총보상은 ', b('판단하기 어렵습니다'), '(한쪽에만 금액이 등록된 ' + X.report.axes.benefits.mixed.count + '건을 빼면 ' + (s.guard && s.guard.diff === 0 ? '두 회사가 같아짐)' : '방향이 바뀜)')]
       : ['총보상은 ', b('오차 범위가 겹쳐 판단하기 어렵습니다')];
   }
   if (s.tier === 'depends') return ['총보상은 ', b('야근수당에 따라 달라집니다')];
@@ -682,7 +697,7 @@ function auxWlb(X) {
 }
 function auxBen(X) {
   const v = X.report.axes.benefits;
-  return ['1년 복지 금액 ' + fmt(v.netA) + ' → ' + m(v.netB)];
+  return [(X.ex.rows ? '남은 1년 복지 금액 ' : '1년 복지 금액 ') + fmt(v.netA) + ' → ' + m(v.netB)];
 }
 function auxRow(X, axis) {
   const box = el('div', { class: 'calc-aux', 'data-axis': axis });
@@ -917,7 +932,7 @@ function robustBlock(X) {
   const sv = report.axes.salary;
   const n = report.axes.benefits.mixed.count;
   let summary;
-  if (rb.full.tier === 'unsure' && rb.full.unsureBy === 'guard') summary = '한쪽에만 금액이 등록된 ' + n + '건을 빼면 앞서는 회사가 바뀌어, 어느 쪽 총보상이 많은지 말하기 어렵습니다';
+  if (rb.full.tier === 'unsure' && rb.full.unsureBy === 'guard') summary = '한쪽에만 금액이 등록된 ' + n + '건을 빼면 ' + (rb.exMixed && rb.exMixed.diff === 0 ? '두 회사가 같아져' : '앞서는 회사가 바뀌어') + ', 어느 쪽 총보상이 많은지 말하기 어렵습니다';
   else if (rb.full.tier === 'unsure') summary = '두 회사의 오차 범위가 겹쳐, 어느 쪽 총보상이 많은지 말하기 어렵습니다';
   else if (rb.full.tier === 'near') summary = sv.nearKind === 'weak' ? '총보상 차이가 오차 범위를 겨우 넘는 정도라, 한쪽이 낫다고 말하기엔 약합니다' : '등록된 금액으로는 두 회사 총보상이 거의 같습니다';
   else if (flips) summary = '복지 금액을 어떻게 잡느냐에 따라 결론이 달라집니다';
@@ -933,7 +948,8 @@ function robustBlock(X) {
   let arrow;
   if (rb.full.tier === 'unsure' && rb.full.unsureBy === 'guard') {
     const ex = rb.exMixed;
-    arrow = directional(ex.tier)
+    arrow = ex.diff === 0 ? '→ ②에서는 두 회사가 같아집니다. 그래서 어느 쪽이 낫다고 말하지 않습니다.'
+      : directional(ex.tier)
       ? '→ ①에서는 ' + withJosa(d < 0 ? nm.a : nm.b, '이/가') + ', ②에서는 ' + withJosa(ex.diff < 0 ? nm.a : nm.b, '이/가') + ' 많습니다. 그래서 어느 쪽이 낫다고 말하지 않습니다.'
       : '→ ②에서는 방향이 바뀌지만 ' + (ex.tier === 'unsure' ? '그 차이는 오차 범위 안입니다' : '그 차이는 크지 않습니다') + '. 그래서 어느 쪽이 낫다고 말하지 않습니다.';
   } else if (rb.full.tier === 'unsure') arrow = '→ ①의 차이가 오차 범위 안이라 어느 쪽이 많다고 말하지 않습니다.';

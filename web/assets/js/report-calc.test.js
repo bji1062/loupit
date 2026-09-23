@@ -734,5 +734,49 @@ describe('RC-8 재확인(2026-09-23 RECHECK-REPORT) — 새 발견 R-1~R-6', () 
     const { mount } = render(verifyState('CJ올리브네트웍스', 'LS'), 'salary', V);
     assert.equal(mount.querySelectorAll('.calc-assume').length, 0, '야근수당을 고르면 가정이 없다');
   });
+
+  test('R-2 NAVER 금액 행 12개를 모두 빼면: 「등록된 … 0만원에서」가 아니라 「빼고 남은」 · 이미 뺀 4건을 「빼고 계산해도」로 되풀이하지 않는다', () => {
+    const st = goldenEngineState();
+    for (const b2 of st.benS.a) if (b2.benefit_amt != null && !b2.qual_yn) b2.checked = false;
+    const { mount } = render(st, 'benefits');
+    const hl = txt(mount, '.calc-hl');
+    assert.equal(hl, '빼고 남은 복지 금액으로 보면 카카오가 낫습니다. 남은 1년 복지 금액이 0만원에서 839만원으로, 839만원(±145) 늘어납니다.');
+    assert.ok(!hl.includes('빼고 계산해도'));
+    assert.match(txt(mount, '.calc-line-must'), /이 4개는 지금 계산에서 뺐습니다\./);
+    assert.ok(!/이 4개의 금액은 0만원/.test(allText(mount)));
+    assert.match(txt(mount, '.calc-tiles'), /남은 1년 복지 금액0 → 839만원.*4건 · 뺌지금 계산에서 뺐습니다/);
+  });
+
+  test('R-2 일부만 뺀 경우(보상 3행) — 「남은 1년 복지 금액이 1,778만원에서」, 혼합 4건은 아직 들어 있어 「빼고 계산해도」 문장은 남는다', () => {
+    const st = goldenEngineState();
+    for (const b2 of st.benS.a) if (b2.benefit_ctgr_cd === 'compensation' && b2.benefit_amt != null && !b2.qual_yn) b2.checked = false;
+    const { mount } = render(st, 'benefits');
+    assert.match(txt(mount, '.calc-hl'), /^빼고 남은 복지 금액으로 보면 NAVER가 낫습니다\. 남은 1년 복지 금액이 1,778만원에서 839만원으로.*4건을 빼고 계산해도/);
+    const { mount: m2 } = render(goldenEngineState(), 'benefits');
+    assert.match(txt(m2, '.calc-hl'), /^등록된 복지 금액으로 보면 NAVER가 낫습니다\. 1년 복지 금액이 3,018만원에서/, '뺀 것이 없으면 종전 그대로');
+  });
+
+  test('R-3 뺀 계산의 차이가 0 이면 모든 자리가 「두 회사가 같아집니다」 — 기업은행 → 기아(연봉) · CJ올리브네트웍스 → 삼성카드(복지)', () => {
+    const { r, mount } = render(verifyState('기업은행', '기아'), 'salary', V);
+    assert.deepEqual([r.axes.salary.unsureBy, r.robust.exMixed.diff], ['guard', 0], '사전조건');
+    openAll(mount);
+    assert.match(txt(mount, '.calc-hl'), /2건을 빼면 두 회사가 같아져 어느 쪽이 낫다고 말하기 어렵습니다/);
+    assert.match(txt(mount, '.calc-tile'), /2건을 빼면 두 회사가 같아집니다$/);
+    assert.match(txt(mount, '#calc-b-robust summary'), /2건을 빼면 두 회사가 같아져, 어느 쪽 총보상이 많은지 말하기 어렵습니다/);
+    assert.equal(txt(mount, '.calc-arrow'), '→ ②에서는 두 회사가 같아집니다. 그래서 어느 쪽이 낫다고 말하지 않습니다.');
+    const { mount: w } = render(verifyState('기업은행', '기아'), 'wlb', V);
+    assert.match(txt(w, '.calc-aux'), /2건을 빼면 두 회사가 같아짐\)/);
+    assert.ok(!/방향이 바뀌/.test(txt(mount, '.calc-vd') + txt(mount, '.calc-tile') + txt(w, '.calc-aux')));
+    const { r: rb, mount: bm } = render(verifyState('CJ올리브네트웍스', '삼성카드'), 'benefits', V);
+    assert.deepEqual([rb.axes.benefits.unsureBy, rb.axes.benefits.exMixed.diff], ['guard', 0], '사전조건');
+    assert.match(txt(bm, '.calc-tile'), /6건을 빼면 두 회사가 같아집니다/);
+  });
+
+  test('R-4 야근수당 미선택 depends 에서 한 경우가 「거의 같음」이면 「거의 같을지 늘지는」 — CJ올리브네트웍스 → 두산에너빌리티', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', '두산에너빌리티', { wsB: { wage: null } }), 'salary', V);
+    assert.equal(txt(mount, '.calc-hl'), '입력하신 조건으로 계산하면, 연봉은 10% 올라 6,600만원이 되지만 총보상이 거의 같을지 늘지는 두산에너빌리티가 야근수당을 따로 주는지에 달려 있습니다.');
+    const { mount: m2 } = render(verifyState('CJ올리브네트웍스', 'LS', { wsB: { wage: null } }), 'salary', V);
+    assert.match(txt(m2, '.calc-hl'), /총보상이 늘지 줄지는 LS가/, '{줄어듦, 늘어남} 은 그대로');
+  });
 });
 
