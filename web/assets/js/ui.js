@@ -454,7 +454,7 @@ function eqText(state) {
 function salaryCell(state, refresh) {
   const c = cell('a');
   c.append(label('현재 연봉(만원)', { req: true, forId: 'calc-sal' }));
-  const row = el('div', { class: 'calc-numrow' });
+  const row = el('div', { class: 'calc-numrow calc-numrow-steps' });
   const inp = numInput('calc-sal', { value: currentSalary(state), short: false, placeholder: '예: 6000', describedby: 'calc-sal-help' });
   const set = (n) => { state.salS.a = n == null ? { low: null, high: null } : { low: n, high: n }; refresh(); };
   const fm = fieldMsg(inp);
