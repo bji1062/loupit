@@ -11,10 +11,8 @@
 import { el } from './dom.js';
 import { pairTarget } from './benefits.js'; // 두 슬롯이 찼을 때의 목적지(SP-CMP-2) — 집은 하나다
 import { onSearchInput, selectCompany, clearSlot } from './search.js';
+import { tenureItems, exclusionSummary } from './calc.js'; // 근속 조건 항목 수(입력 보조문)·뺀 행 수 — 순수 함수, 결과 화면과 같은 판정
 
-export const PRIORITIES = ['연봉', '워라밸', '복지'];
-const OT_OPTS = [['', '야근 빈도'], ['low', '거의 없음'], ['mid', '보통'], ['high', '잦음']];
-const WAGE_OPTS = [['', '임금 형태'], ['inclusive', '포괄임금'], ['separate', '비포괄(야근수당 별도)']];
 
 function byId(id) {
   return (typeof document !== 'undefined' && typeof document.getElementById === 'function') ? document.getElementById(id) : null;
@@ -237,118 +235,187 @@ export function bindSearchView(state, deps) {
   if (goBtn) goBtn.addEventListener('click', () => searchGo(state, deps));
 }
 
-// ── 입력 뷰 컨트롤 렌더(빈 #input-slot-a/b·#priority-picker 채움) ──────────────
-function benefitCheckboxes(state, slot) {
-  const wrap = el('fieldset', { class: 'in-benefits' });
-  wrap.append(el('legend', { text: '복지 항목' }));
-  const items = state.benS[slot] || [];
-  items.forEach((b, i) => {
-    const id = 'ben-' + slot + '-' + i;
-    const row = el('label', { class: 'in-ben-row', for: id });
-    const cb = el('input', { type: 'checkbox', id });
-    cb.checked = !!b.checked;
-    cb.addEventListener('change', () => { state.benS[slot][i].checked = cb.checked; });
-    row.append(cb);
-    row.append(el('span', { text: b.benefit_nm + (b.benefit_amt != null ? ' (' + b.benefit_amt + '만원)' : '') }));
-    wrap.append(row);
-  });
-  if (!items.length) wrap.append(el('p', { class: 'in-ben-empty', text: '복지 항목 없음' }));
-  return wrap;
-}
+// ── 입력 뷰(이직 계산기 개편 2026-09-23 — SPEC 06 §SP-FE-14) ─────────────────────
+// 승인 목업(calc-mockup-fable v2) 그대로: 맨 위 「어떤 기준으로 볼까요?」 → A·B 칸이 **한 줄씩 맞는** 두 열
+// (현재 연봉 | 연봉 상승률 → 야근 → 야근수당 → 회사 등록 정보 → 통근 → 근속) → 고정된 「비교 결과 보기」.
+// 복지 체크박스 39개는 없앴다(사용자 결정 6) — 빼고 싶은 복지는 결과 화면 비교표에서 뺀다(같은 checked 계약).
+// 두 열은 각자 한 덩어리의 DOM(A 전부 → B 전부)이라 읽기·탭 순서가 사람이 읽는 순서와 같고, 줄 맞춤은
+// CSS subgrid 가 한다(모바일은 한 열로 A 다음 B).
+export const PRIORITIES = ['연봉', '워라밸', '복지'];
+const HOURS_CHIPS = [[40, 'low', '거의 없음(주 40h)'], [45, 'mid', '보통(주 45h)'], [54, 'high', '잦음(주 54h)']];
+const WAGE_CHIPS = [['separate', '따로 받음(비포괄)'], ['inclusive', '연봉에 포함(포괄)']];
+const RAISE_CHIPS = [10, 13, 15, 20];
+const SLOT_TITLE = { a: '현재 직장(A)', b: '이직 후보(B)' };
+const SLOT_SUB = { a: '지금 다니는 회사', b: '옮길지 고민하는 회사' };
+const CALC_PRIVACY = '계산은 브라우저 안에서만 이뤄지고, 입력값은 어디로도 전송되지 않습니다.';
 
-function workStyleControls(state, slot) {
-  const wrap = el('fieldset', { class: 'in-ws' });
-  wrap.append(el('legend', { text: '근무 형태' }));
-  const ws = state.wsState[slot] || {};
-  // 야근 빈도 — 첫 옵션은 안내용 placeholder(선택 불가): disabled+hidden으로 재선택 방지
-  const otSel = el('select', { 'aria-label': '야근 빈도(' + slot + ')' });
-  OT_OPTS.forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === '') { o.disabled = true; o.hidden = true; } if (ws.ot === v || (ws.ot == null && v === '')) o.selected = true; otSel.append(o); });
-  otSel.addEventListener('change', () => { state.wsState[slot].ot = otSel.value || null; });
-  wrap.append(otSel);
-  // 임금 형태 — 첫 옵션은 안내용 placeholder(선택 불가): disabled+hidden으로 재선택 방지
-  const wageSel = el('select', { 'aria-label': '임금 형태(' + slot + ')' });
-  WAGE_OPTS.forEach(([v, t]) => { const o = el('option', { value: v, text: t }); if (v === '') { o.disabled = true; o.hidden = true; } if (ws.wage === v || (ws.wage == null && v === '')) o.selected = true; wageSel.append(o); });
-  wageSel.addEventListener('change', () => { state.wsState[slot].wage = wageSel.value || null; });
-  wrap.append(wageSel);
-  // 재택·유연근무(회사 제안값 초기 반영)
-  for (const key of ['remote', 'flex']) {
-    const id = 'ws-' + key + '-' + slot;
-    const row = el('label', { class: 'in-ws-row', for: id });
-    const cb = el('input', { type: 'checkbox', id });
-    cb.checked = !!ws[key];
-    cb.addEventListener('change', () => { state.wsState[slot][key] = cb.checked; });
-    row.append(cb);
-    row.append(el('span', { text: key === 'remote' ? '재택근무' : '유연근무' }));
-    wrap.append(row);
+// 숫자 칸 파싱 — 쉼표·공백을 무시한다. 빈칸은 null(0 아님: 통근·근속 「미입력」은 「0」과 다르다).
+export function parseNum(v, { decimal = false, signed = false } = {}) {
+  const t = String(v == null ? '' : v).replace(/[,\s]/g, '');
+  if (t === '') return null;
+  const re = decimal ? (signed ? /^-?\d*\.?\d+$/ : /^\d*\.?\d+$/) : (signed ? /^-?\d+$/ : /^\d+$/);
+  if (!re.test(t)) return null;
+  const n = Number(t);
+  return Number.isFinite(n) ? n : null;
+}
+const won = (n) => Math.round(n).toLocaleString('ko-KR');
+
+// 숫자 칸 읽기(적대 검증 LOW-2·LOW-8) — 흔한 표기(6,000 · 6000원 · 6000만원 · 45시간 · 30분 · 1시간 30분 · 12%)는
+// 받아 주고, 못 읽으면 **무엇이 문제인지** 말한다(조용한 null 금지). 빈칸은 { value: null }(미입력 — 0 아님).
+// kind: 'manwon'(연봉) · 'minutes'(통근) · 'hours'(주 근무시간 1~168, 소수 한 자리) · 'years'(근속, 소수는 버림 안내) ·
+// 'percent'(상승률, 부호). 반환 { value, error?, note? } — error 면 value 는 null, note 는 받아들인 값에 대한 안내.
+export function readNum(v, kind) {
+  let t = String(v == null ? '' : v).replace(/[,\s]/g, '').replace(/^[−–]/, '-');
+  if (t === '') return { value: null };
+  const INT = /^\d+$/, DEC = /^\d*\.\d+$/;
+  if (kind === 'manwon') {
+    t = t.replace(/(만원|만|원)$/, '');
+    if (INT.test(t)) {
+      const n = Number(t);
+      if (n > 1000000) return { value: null, error: '원 단위로 적으신 것 같습니다 — 만원 단위로 적어 주세요(6,000만원이면 6000).' };
+      return { value: n };
+    }
+    if (DEC.test(t)) return { value: null, error: '소수점 없이 만원 단위로 적어 주세요(예: 6000).' };
+    return { value: null, error: '숫자로 읽지 못했습니다 — 만원 단위 숫자로 적어 주세요(예: 6000).' };
   }
-  return wrap;
+  if (kind === 'minutes') {
+    const hm = t.match(/^(\d+)시간(?:(\d+)분?)?$/);
+    if (hm) return { value: Number(hm[1]) * 60 + Number(hm[2] || 0) };
+    t = t.replace(/분$/, '');
+    if (INT.test(t)) return { value: Number(t) };
+    if (DEC.test(t)) return { value: null, error: '분 단위 정수로 적어 주세요(예: 30).' };
+    return { value: null, error: '숫자로 읽지 못했습니다 — 편도 통근 시간을 분으로 적어 주세요(예: 30).' };
+  }
+  if (kind === 'hours') {
+    t = t.replace(/(시간|h)$/i, '');
+    if (!INT.test(t) && !DEC.test(t)) return { value: null, error: '숫자로 읽지 못했습니다 — 주 근무시간을 시간으로 적어 주세요(예: 45).' };
+    const n = Number(t);
+    if (n < 1 || n > 168) return { value: null, error: '주 근무시간은 1~168시간 사이로 적어 주세요(일주일은 168시간입니다).' };
+    return { value: Math.round(n * 10) / 10 };
+  }
+  if (kind === 'years') {
+    t = t.replace(/년$/, '');
+    if (INT.test(t)) return { value: Number(t) };
+    if (DEC.test(t)) {
+      const n = Math.floor(Number(t));
+      return { value: n, note: '근속은 햇수로 계산합니다 — ' + t + '년은 ' + n + '년으로 봅니다.' };
+    }
+    return { value: null, error: '숫자로 읽지 못했습니다 — 근속 햇수를 적어 주세요(예: 3).' };
+  }
+  if (kind === 'percent') {
+    t = t.replace(/%$/, '').replace(/^\+/, '');
+    if (/^-?(\d+|\d*\.\d+)$/.test(t)) return { value: Number(t) };
+    return { value: null, error: '숫자로 읽지 못했습니다 — 상승률을 %로 적어 주세요(예: 12, 줄었으면 -5).' };
+  }
+  return { value: parseNum(v) };
 }
 
-function commuteInput(state, slot) {
-  const id = 'cmt-' + slot;
-  const wrap = el('div', { class: 'in-commute' });
-  wrap.append(el('label', { for: id, text: '편도 통근시간(분)' }));
-  const inp = el('input', { type: 'number', id, min: '0', step: '5' });
-  if (state.cmtS[slot] != null) inp.value = String(state.cmtS[slot]);
-  inp.addEventListener('input', () => { const n = Number(inp.value); state.cmtS[slot] = inp.value.trim() === '' || !Number.isFinite(n) ? null : n; });
-  wrap.append(inp);
-  return wrap;
-}
-
-function salaryControls(state) {
-  // 슬롯 a: 현재 연봉 범위(만원). 필수(compare가 salary 결측 판정).
-  const wrap = el('fieldset', { class: 'in-salary' });
-  wrap.append(el('legend', { text: '현재 연봉(만원)' }));
-  const cur = state.salS.a || { low: null, high: null };
-  const low = el('input', { type: 'number', id: 'sal-low', min: '0', step: '100', placeholder: '최소', 'aria-label': '연봉 최소(만원)' });
-  const high = el('input', { type: 'number', id: 'sal-high', min: '0', step: '100', placeholder: '최대', 'aria-label': '연봉 최대(만원)' });
-  if (cur.low != null) low.value = String(cur.low);
-  if (cur.high != null) high.value = String(cur.high);
-  const upd = () => {
-    state.salS.a = {
-      low: low.value.trim() === '' ? null : Number(low.value),
-      high: high.value.trim() === '' ? null : Number(high.value),
-    };
+// 칸 아래 안내 한 줄 — 오류면 aria-invalid, 참고(근속 버림)면 안내만. 둘 다 aria-describedby 로 칸에 묶는다.
+function fieldMsg(inp) {
+  const msg = el('p', { class: 'calc-fmsg', id: inp.id + '-msg' });
+  msg.hidden = true;
+  const show = (r = {}) => {
+    const text = r.error || r.note || '';
+    msg.textContent = text;
+    msg.hidden = !text;
+    msg.classList.toggle('calc-fmsg-err', !!r.error);
+    if (r.error) inp.setAttribute('aria-invalid', 'true'); else inp.removeAttribute('aria-invalid');
+    if (text) addDescribedBy(inp, msg.id); else removeDescribedBy(inp, msg.id);
   };
-  low.addEventListener('input', upd);
-  high.addEventListener('input', upd);
-  wrap.append(low, el('span', { text: ' ~ ' }), high);
-  return wrap;
+  return { msg, show };
 }
 
-function rateControl(state) {
-  // 슬롯 b: 이직 후보 상승률(%). b 연봉은 a에서 파생(deriveOfferRange).
-  const wrap = el('div', { class: 'in-rate' });
-  wrap.append(el('label', { for: 'offer-rate', text: '이직 후보 연봉 상승률(%)' }));
-  const inp = el('input', { type: 'number', id: 'offer-rate', step: '1', placeholder: '예: 10' });
-  if (state.selectedRate != null) inp.value = String(state.selectedRate);
-  inp.addEventListener('input', () => { state.selectedRate = inp.value.trim() === '' ? null : Number(inp.value); });
-  wrap.append(inp);
-  return wrap;
+/** 현재 연봉(만원) — 단일 칸. 옛 초안의 범위(최소~최대)는 가운데 값으로 보여 준다(엔진도 mid 를 쓴다). */
+export function currentSalary(state) {
+  const s = (state.salS && state.salS.a) || {};
+  if (s.low == null && s.high == null) return null;
+  if (s.low == null || s.high == null) return s.low ?? s.high;
+  return s.low === s.high ? s.low : Math.round((s.low + s.high) / 2);
 }
 
-// 미선택 슬롯의 머리는 예전에 "… — 직접 입력"이었다. 직접 입력 모드(setDirectType, FR-17)는
-// UI 진입점이 한 번도 만들어지지 않은 죽은 모드라, 그 라벨은 사용자에게 "여기서 뭘 어떻게
-// 하라는 것인지 알 수 없는" 막다른 골목이었다. 대신 **검색 뷰로 돌아가는 길**을 화면 안에 둔다
-// (안전망 — 프리필은 이제 한 슬롯이면 검색 뷰에 머물지만, REF 에서 사라진 comp_id 를 담은
-//  '최근 비교' 복원처럼 한 슬롯만 찬 입력 뷰가 만들어지는 경로가 남아 있다).
-function slotHeader(state, slot) {
-  const m = state.matched[slot];
-  const label = slot === 'a' ? '현재 직장(A)' : '이직 후보(B)';
-  return el('h3', { class: 'in-slot-title', text: label + ' — ' + (m ? m.comp_nm : '미선택') });
+/** 이직 후보 연봉을 직접 넣었으면 그 값에서 상승률을 되짚는다(엔진 계약은 상승률 하나). */
+export function effectiveRate(state) {
+  if (state.rateMode === 'salary') {
+    const sal = currentSalary(state);
+    return sal && state.offerSal != null ? (state.offerSal / sal - 1) * 100 : null;
+  }
+  return state.selectedRate ?? null;
 }
 
-// 검색 뷰로 돌아가는 길. **선택된 슬롯에도 단다**(2026-09-05): 입력 뷰에는 원래 회사를 바꿀
-// 컨트롤이 하나도 없었다. 24시간 초안이 B 를 들고 있으면 다른 회사 페이지의 "이 회사로
-// 비교하기"(`/compare/?a=lg_elec`)가 **사용자가 고른 적 없는 B** 와 짝지어진 입력 뷰를 띄우는데,
-// hash 가 '' 이라 뒤로가기는 사이트 밖으로 나가고 "새 비교"는 리포트 뷰 소유라 — B 를 바꾸려면
-// 주소창을 다시 치는 수밖에 없었다. 화면 안에 길이 없으면 그것은 막다른 골목이다.
-// 클래스 `btn` 을 함께 다는 이유: 이 저장소의 버튼 스타일은 styles.css(SP-DSN 소유)의 `.btn`
-// 규칙이 정본이고, 새 규칙을 추가하지 않고 기존 규칙을 재사용해야 h3 의 serif 를 물려받은
-// 이질적인 버튼이 생기지 않는다.
+// 역할 radio 인 칩 묶음 — 이미 고른 칩을 다시 누르면 선택이 풀린다(기본값 없음 · 미선택 허용).
+// 방향키로 이웃 칩으로 옮겨 고른다(WAI-ARIA radiogroup). 탭 멈춤은 고른 칩 하나(없으면 첫 칩).
+function chipGroup({ id, labelledby, options, selected, onPick }) {
+  const g = el('div', { class: 'calc-chips', role: 'radiogroup', id, 'aria-labelledby': labelledby });
+  const btns = options.map(([v, text]) => {
+    const b = el('button', { type: 'button', class: 'calc-chip', role: 'radio', 'data-v': String(v), text });
+    b.addEventListener('click', () => {
+      const on = b.getAttribute('aria-checked') === 'true';
+      setChecked(g, on ? null : String(v));
+      onPick(on ? null : v);
+    });
+    b.addEventListener('keydown', (e) => {
+      const dir = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!dir) return;
+      e.preventDefault();
+      const i = btns.indexOf(b);
+      const next = btns[(i + dir + btns.length) % btns.length];
+      next.focus();
+      // 방향키는 **고르기만** 한다 — 이미 고른 칩에 도착했을 때 click 하면 선택이 풀린다(라디오답지 않다).
+      if (next.getAttribute('aria-checked') !== 'true') next.click();
+    });
+    return b;
+  });
+  g.append(...btns);
+  setChecked(g, selected == null ? null : String(selected));
+  return g;
+}
+function setChecked(group, value) {
+  if (!group) return;
+  const btns = [...group.querySelectorAll('[role="radio"]')];
+  btns.forEach((b) => b.setAttribute('aria-checked', String(b.getAttribute('data-v') === value)));
+  const on = btns.find((b) => b.getAttribute('aria-checked') === 'true') || btns[0];
+  btns.forEach((b) => b.setAttribute('tabindex', b === on ? '0' : '-1'));
+}
+
+function label(text, { req = false, opt = false, forId = null, id = null } = {}) {
+  const attrs = { class: 'calc-fl' };
+  if (forId) attrs.for = forId;
+  if (id) attrs.id = id;
+  const node = el(forId ? 'label' : 'div', attrs, text);
+  if (req) node.append(' ', el('span', { class: 'calc-req', text: '★ 필수' }));
+  if (opt) node.append(' ', el('span', { class: 'calc-opt', text: '(선택)' }));
+  return node;
+}
+const help = (text, id) => el('p', id ? { class: 'calc-help', id, text } : { class: 'calc-help', text });
+function numInput(id, { value = null, mode = 'numeric', placeholder = '', aria = null, short = true, describedby = null } = {}) {
+  const attrs = { id, class: short ? 'calc-num calc-num-short' : 'calc-num', type: 'text', inputmode: mode, autocomplete: 'off' };
+  if (placeholder) attrs.placeholder = placeholder;
+  if (aria) attrs['aria-label'] = aria;
+  if (describedby) attrs['aria-describedby'] = describedby;
+  const inp = el('input', attrs);
+  if (value != null) inp.value = String(value);
+  return inp;
+}
+const cell = (slot, extra = '') => el('div', { class: 'calc-pc calc-p' + slot + (extra ? ' ' + extra : '') });
+
+function companyName(state, slot) {
+  const m = state.matched && state.matched[slot];
+  return m && m.comp_nm ? m.comp_nm : '';
+}
+
+// 회사 로고 자리 — 글자 배지(목업). 로고 파일이 없는 회사가 대부분이라 이름 첫 글자를 쓴다.
+function logoLetter(name) {
+  const ch = String(name || '').trim().charAt(0);
+  return ch ? ch.toUpperCase() : '?';
+}
+
+// 검색 뷰로 돌아가는 길(「회사 변경」·미선택이면 「회사 선택」). **선택된 슬롯에도 단다**(2026-09-05): 24시간
+// 초안이 B 를 들고 있으면 「이 회사로 비교하기」(`/compare/?a=lg_elec`)가 사용자가 고른 적 없는 B 와 짝지어진
+// 입력 뷰를 띄운다 — 화면 안에 회사를 바꿀 길이 없으면 그것은 막다른 골목이다. REF 에서 사라진 comp_id 를
+// 담은 「최근 비교」 복원처럼 한 슬롯만 찬 입력 뷰가 만들어지는 경로의 안전망이기도 하다.
 function slotPickButton(slot, deps = {}, picked = false) {
   const btn = el('button', {
-    type: 'button', class: 'in-slot-pick btn', 'data-pick-slot': slot,
+    type: 'button', class: 'in-slot-pick calc-btn-sm', 'data-pick-slot': slot,
     text: picked ? '회사 변경' : '회사 선택',
   });
   btn.addEventListener('click', () => {
@@ -359,59 +426,366 @@ function slotPickButton(slot, deps = {}, picked = false) {
   return btn;
 }
 
-export function renderInputSlot(state, slot, deps = {}) {
-  const host = byId('input-slot-' + slot);
-  if (!host) return;
-  host.replaceChildren();
-  host.append(slotHeader(state, slot));
-  host.append(slotPickButton(slot, deps, !!state.matched[slot]));
-  if (slot === 'a') host.append(salaryControls(state)); else host.append(rateControl(state));
-  host.append(benefitCheckboxes(state, slot));
-  host.append(workStyleControls(state, slot));
-  host.append(commuteInput(state, slot));
+function slotHeaderCell(state, slot, deps) {
+  const c = cell(slot, 'calc-top');
+  const nm = companyName(state, slot);
+  const head = el('div', { class: 'calc-ph' });
+  head.append(el('span', { class: 'calc-logo', 'aria-hidden': 'true', text: logoLetter(nm) }));
+  const title = el('h3', { class: 'calc-pt' });
+  title.append(el('span', { class: 'calc-sym calc-sym-' + slot, 'aria-hidden': 'true' }),
+    SLOT_TITLE[slot] + ' — ' + (nm || '미선택'), el('small', { text: SLOT_SUB[slot] }));
+  head.append(title, slotPickButton(slot, deps, !!(state.matched && state.matched[slot])));
+  c.append(head);
+  return c;
 }
 
-export function renderPriorityPicker(state) {
-  const host = byId('priority-picker');
-  if (!host) return;
-  host.replaceChildren();
-  const fs = el('fieldset', {});
-  fs.append(el('legend', { text: '가장 중요한 것' }));
-  PRIORITIES.forEach((p) => {
-    const id = 'pri-' + p;
-    const row = el('label', { class: 'pri-row', for: id });
-    const rb = el('input', { type: 'radio', name: 'priority', id, value: p });
-    rb.checked = (state.curPri === p);
-    rb.addEventListener('change', () => { if (rb.checked) state.curPri = p; });
-    row.append(rb);
-    row.append(el('span', { text: p }));
-    fs.append(row);
+function eqText(state) {
+  const sal = currentSalary(state);
+  if (state.rateMode === 'salary') {
+    const r = effectiveRate(state);
+    if (r == null) return '= 연봉을 넣으면 상승률을 계산합니다';
+    return '= 지금보다 ' + (r >= 0 ? '+' : '−') + Math.abs(r).toFixed(1) + '%';
+  }
+  const r = state.selectedRate;
+  if (!sal || r == null) return '= 상승률을 고르면 계산합니다';
+  return '= ' + won(sal * (1 + r / 100)) + '만원';
+}
+
+function salaryCell(state, refresh) {
+  const c = cell('a');
+  c.append(label('현재 연봉(만원)', { req: true, forId: 'calc-sal' }));
+  const row = el('div', { class: 'calc-numrow calc-numrow-steps' });
+  const inp = numInput('calc-sal', { value: currentSalary(state), short: false, placeholder: '예: 6000', describedby: 'calc-sal-help' });
+  const set = (n) => { state.salS.a = n == null ? { low: null, high: null } : { low: n, high: n }; refresh(); };
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => { const r = readNum(inp.value, 'manwon'); fm.show(r); set(r.value); });
+  row.append(inp, el('span', { class: 'calc-unit', text: '만원' }));
+  for (const [d, t, aria] of [[-100, '−100', '100만원 줄이기'], [100, '+100', '100만원 늘리기'], [500, '+500', '500만원 늘리기']]) {
+    const b = el('button', { type: 'button', class: 'calc-step', 'aria-label': aria, text: t });
+    b.addEventListener('click', () => {
+      const v = Math.max(0, (readNum(inp.value, 'manwon').value || 0) + d);
+      inp.value = String(v);
+      fm.show();
+      set(v);
+    });
+    row.append(b);
+  }
+  c.append(row, fm.msg, help('세전 연봉을 만원 단위로 적어 주세요.', 'calc-sal-help'));
+  return c;
+}
+
+function raiseCell(state, refresh) {
+  const c = cell('b');
+  const lbl = label(state.rateMode === 'salary' ? '이직 후보 연봉(만원)' : '연봉 상승률(%)', { req: true, id: 'calc-rate-lbl' });
+  c.append(lbl);
+  const chips = chipGroup({
+    id: 'calc-raise', labelledby: 'calc-rate-lbl',
+    options: RAISE_CHIPS.map((v) => [v, '+' + v]),
+    selected: state.rateMode !== 'salary' && RAISE_CHIPS.includes(state.selectedRate) ? state.selectedRate : null,
+    onPick: (v) => { state.selectedRate = v; inp.value = ''; fm.show(); refresh(); },
   });
-  host.append(fs);
+  chips.hidden = state.rateMode === 'salary';
+  c.append(chips);
+  const row = el('div', { class: 'calc-numrow calc-gap' });
+  const direct = state.rateMode === 'salary' ? state.offerSal
+    : (state.selectedRate != null && !RAISE_CHIPS.includes(state.selectedRate) ? state.selectedRate : null);
+  const inp = numInput('calc-rate', {
+    value: direct, mode: 'decimal',
+    placeholder: state.rateMode === 'salary' ? '예: 6900' : '예: 12',
+    aria: state.rateMode === 'salary' ? '이직 후보 연봉 직접 입력(만원)' : '연봉 상승률 직접 입력(%)',
+  });
+  const directLbl = el('label', { class: 'calc-unit', for: 'calc-rate', text: state.rateMode === 'salary' ? '연봉' : '직접 입력' });
+  const unit = el('span', { class: 'calc-unit', text: state.rateMode === 'salary' ? '만원' : '%' });
+  const eq = el('span', { class: 'calc-eq', id: 'calc-eq', 'aria-live': 'polite', text: eqText(state) });
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => {
+    const r = readNum(inp.value, state.rateMode === 'salary' ? 'manwon' : 'percent');
+    fm.show(r);
+    if (state.rateMode === 'salary') {
+      state.offerSal = r.value;
+      state.selectedRate = effectiveRate(state);
+    } else {
+      state.selectedRate = r.value;
+      setChecked(chips, RAISE_CHIPS.includes(state.selectedRate) ? String(state.selectedRate) : null);
+    }
+    refresh();
+  });
+  const toggle = el('button', {
+    type: 'button', class: 'calc-link', id: 'calc-rate-mode',
+    text: state.rateMode === 'salary' ? '상승률로 넣기' : '연봉으로 직접 넣기',
+  });
+  toggle.addEventListener('click', () => {
+    const sal = currentSalary(state);
+    if (state.rateMode === 'salary') {
+      state.rateMode = 'rate';
+      state.selectedRate = effectiveRate(state) == null ? null : Math.round(effectiveRate(state) * 10) / 10;
+    } else {
+      state.rateMode = 'salary';
+      state.offerSal = sal && state.selectedRate != null ? Math.round(sal * (1 + state.selectedRate / 100)) : null;
+      state.selectedRate = effectiveRate(state);
+    }
+    const fresh = raiseCell(state, refresh);
+    c.replaceWith(fresh);
+    const t = fresh.querySelector('#calc-rate-mode');
+    if (t) t.focus();
+  });
+  row.append(directLbl, inp, unit, eq, toggle);
+  c.append(row, fm.msg, help('잡코리아 설문에서 직장인이 가장 많이 꼽은 희망 인상률은 13%입니다. 값을 미리 채워 두지는 않았습니다.'));
+  return c;
+}
+
+function hoursCell(state, slot) {
+  const c = cell(slot);
+  const ws = state.wsState[slot] || (state.wsState[slot] = {});
+  const lblId = 'calc-ot-lbl-' + slot;
+  c.append(el('div', { class: 'calc-rule' }), label('야근은 얼마나 하세요?', { id: lblId }));
+  const hoursNow = ws.hours != null ? Number(ws.hours) : (HOURS_CHIPS.find(([, k]) => k === ws.ot) || [null])[0];
+  const inp = numInput('calc-hours-' + slot, {
+    value: hoursNow, aria: (slot === 'a' ? '현재 직장' : '이직 후보') + ' 주 근무시간 직접 입력',
+  });
+  const chips = chipGroup({
+    id: 'calc-ot-' + slot, labelledby: lblId,
+    options: HOURS_CHIPS.map(([h, , t]) => [h, t]),
+    selected: HOURS_CHIPS.some(([h]) => h === hoursNow) ? hoursNow : null,
+    onPick: (h) => {
+      ws.hours = h;
+      ws.ot = h == null ? null : HOURS_CHIPS.find(([x]) => x === h)[1];
+      inp.value = h == null ? '' : String(h);
+      fm.show();
+    },
+  });
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => {
+    const r = readNum(inp.value, 'hours');
+    fm.show(r);
+    const h = r.value;
+    ws.hours = h;
+    const hit = HOURS_CHIPS.find(([x]) => x === h);
+    ws.ot = hit ? hit[1] : null;
+    setChecked(chips, hit ? String(h) : null);
+  });
+  const row = el('div', { class: 'calc-numrow calc-gap' });
+  row.append(el('label', { class: 'calc-unit', for: 'calc-hours-' + slot, text: '또는 주 근무시간 직접 입력' }), inp, el('span', { class: 'calc-unit', text: '시간' }));
+  c.append(chips, row, fm.msg, help('회사별 야근 정보가 없어 직접 골라 주셔야 합니다. 비워 두면 시간당 총보상과 야근수당은 계산하지 않습니다.'));
+  return c;
+}
+
+function wageCell(state, slot) {
+  const c = cell(slot);
+  const ws = state.wsState[slot] || (state.wsState[slot] = {});
+  const lblId = 'calc-wage-lbl-' + slot;
+  c.append(el('div', { class: 'calc-rule' }), label('야근수당은?', { id: lblId }));
+  c.append(chipGroup({
+    id: 'calc-wage-' + slot, labelledby: lblId, options: WAGE_CHIPS,
+    selected: ws.wage === 'separate' || ws.wage === 'inclusive' ? ws.wage : null,
+    onPick: (v) => { ws.wage = v; },
+  }));
+  c.append(help('고르지 않으면 포괄·비포괄 두 경우의 결과를 나란히 보여 드립니다.'));
+  return c;
+}
+
+// 재택 플래그는 `remote_work` 행 유무의 파생이라 틀릴 수 있다(NAVER: 「Type_R(원격) 개인 선택」인데 false).
+// 우리가 판단하지 않고 **원문을 보여 주고** 사용자가 고친다(FINAL-DESIGN §2-6).
+export function remoteHint(state, slot) {
+  const m = state.matched && state.matched[slot];
+  const ws = state.wsState[slot] || {};
+  if (!m || ws.remote) return null;
+  for (const b of (state.benS && state.benS[slot]) || []) {
+    const text = b.qual_desc_ctnt || b.note_ctnt || '';
+    if (/재택|원격|Type_R/.test(text)) return { name: b.benefit_nm, text };
+  }
+  return null;
+}
+
+function fillSummaryText(ws) {
+  return (ws.flex ? '유연근무 있음' : '유연근무 없음') + ' · ' + (ws.remote ? '재택 있음' : '재택 없음');
+}
+
+function prefillCell(state, slot) {
+  const c = cell(slot);
+  const ws = state.wsState[slot] || (state.wsState[slot] = {});
+  const d = el('details', { class: 'calc-fill', id: 'calc-fill-' + slot });
+  const sum = el('summary');
+  const b = el('b', { text: fillSummaryText(ws) });
+  sum.append(el('span', {}, '회사에 등록된 정보로 미리 채웠습니다 — ', b), el('span', { class: 'calc-fix', 'aria-hidden': 'true', text: '고치기' }));
+  d.append(sum);
+  const body = el('div', { class: 'calc-fill-body' });
+  for (const [key, text] of [['flex', '유연근무'], ['remote', '재택근무']]) {
+    const id = 'ws-' + key + '-' + slot;
+    const cb = el('input', { type: 'checkbox', id });
+    cb.checked = !!ws[key];
+    cb.addEventListener('change', () => { ws[key] = cb.checked; b.textContent = fillSummaryText(ws); });
+    body.append(el('label', { class: 'calc-check', for: id }, cb, ' ' + text));
+  }
+  const hint = remoteHint(state, slot);
+  if (hint) {
+    const p = el('p', { class: 'calc-fill-note' });
+    p.append('다만 ' + companyName(state, slot) + '의 「' + hint.name + '」 설명에는 원격 근무를 고를 수 있다고 되어 있습니다. ',
+      el('q', { text: hint.text }), ' 실제와 다르면 고쳐 주세요.');
+    body.append(p);
+  }
+  d.append(body);
+  c.append(el('div', { class: 'calc-rule' }), d);
+  return c;
+}
+
+function commuteCell(state, slot) {
+  const c = cell(slot);
+  const id = 'calc-commute-' + slot;
+  c.append(el('div', { class: 'calc-rule' }), label('편도 통근시간(분)', { opt: true, forId: id }));
+  const inp = numInput(id, { value: state.cmtS[slot] });
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => { const r = readNum(inp.value, 'minutes'); fm.show(r); state.cmtS[slot] = r.value; });
+  c.append(el('div', { class: 'calc-numrow' }, inp, el('span', { class: 'calc-unit', text: '분' })), fm.msg,
+    help('비워 두면 통근 시간은 계산에서 뺍니다(0분으로 치지 않습니다).'));
+  return c;
+}
+
+function tenureCell(state) {
+  const c = cell('a', 'calc-bot');
+  c.append(el('div', { class: 'calc-rule' }), label('현재 직장 근속(년)', { opt: true, forId: 'calc-tenure' }));
+  // 근속은 햇수(정수)만 — 2.5 를 받아 두고 화면이 3년이라 부르면 「근속 3년 · 1년 남음」처럼 서로 어긋난다(LOW-2).
+  const inp = numInput('calc-tenure', { value: state.tenureYears, mode: 'numeric' });
+  const fm = fieldMsg(inp);
+  inp.addEventListener('input', () => { const r = readNum(inp.value, 'years'); fm.show(r); state.tenureYears = r.value; });
+  c.append(el('div', { class: 'calc-numrow' }, inp, el('span', { class: 'calc-unit', text: '년' })), fm.msg);
+  const n = tenureItems(state.benS.a || []).length;
+  if (n) {
+    c.append(help(companyName(state, 'a') + '에는 근속 연수에 따라 받는 복지가 ' + n + '개 있습니다. '
+      + '근속 연수를 넣으면 지금 받는 것과 아직 못 받는 것을 나눠 보여 드립니다.'));
+  }
+  return c;
+}
+
+function tenureNoteCell() {
+  const c = cell('b', 'calc-bot');
+  c.append(el('div', { class: 'calc-rule' }), el('div', { class: 'calc-fl calc-muted', text: '근속' }),
+    el('p', { class: 'calc-muted calc-note', text: '이직하면 근속 연수는 처음부터 다시 셉니다.' }));
+  return c;
+}
+
+/** 입력·결과 화면의 「어떤 기준으로 볼까요?」 — 고른 축이 결과의 결론과 먼저 보이는 내용을 정한다(결정 5). */
+function axisCard(state) {
+  const card = el('div', { class: 'calc-card calc-axis', id: 'calc-axis' });
+  card.append(el('div', { class: 'calc-lbl', id: 'calc-axis-lbl', text: '어떤 기준으로 볼까요?' }));
+  const seg = chipGroup({
+    id: 'calc-axis-seg', labelledby: 'calc-axis-lbl',
+    options: PRIORITIES.map((p) => [p, p]),
+    selected: PRIORITIES.includes(state.curPri) ? state.curPri : '연봉',
+    onPick: (v) => {
+      state.curPri = v || '연봉';
+      if (!v) setChecked(seg, '연봉'); // 기준은 언제나 하나 — 다시 눌러도 풀리지 않는다
+    },
+  });
+  seg.classList.add('calc-seg');
+  card.append(seg, help('고른 기준에 따라 결론과 먼저 보여 드리는 내용이 달라집니다. 결과 화면에서도 언제든 바꿔 볼 수 있습니다.'));
+  return card;
+}
+
+/** 결과 화면에서 기준을 바꾸면 입력 화면의 세그먼트도 따라온다(같은 상태 하나). */
+export function syncAxisSegment(state) {
+  setChecked(byId('calc-axis-seg'), PRIORITIES.includes(state.curPri) ? state.curPri : '연봉');
+}
+
+// 새 JS 가 **옛 셸**(#input-slot-a/b · #priority-picker · 맨몸의 #btn-compare)을 만나도 죽지 않게 — 머지 뒤
+// pull 과 캐시된 HTML 사이 틈. 옛 빈 칸은 걷고(아이디 중복 방지) #calc-form·고정 버튼 띠를 만든다.
+export function ensureInputScaffold() {
+  if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+  const view = byId('view-input');
+  if (!view || typeof view.append !== 'function') return null;
+  let form = byId('calc-form');
+  const btn = byId('btn-compare');
+  if (!form) {
+    form = el('div', { id: 'calc-form', class: 'calc-form' });
+    if (btn && btn.parentNode === view) view.insertBefore(form, btn); else view.append(form);
+  }
+  for (const id of ['priority-picker']) {
+    const old = byId(id);
+    if (old && old.parentNode && !form.contains(old)) old.remove();
+  }
+  for (const id of ['input-slot-a', 'input-slot-b']) {
+    const old = byId(id);
+    if (old && old.parentNode && !form.contains(old)) old.remove();
+  }
+  if (btn && !(btn.parentNode && btn.parentNode.classList && btn.parentNode.classList.contains('calc-cta'))) {
+    const cta = el('div', { class: 'calc-cta' });
+    btn.parentNode.insertBefore(cta, btn);
+    cta.append(btn, el('p', { class: 'calc-privacy', text: CALC_PRIVACY }));
+  }
+  if (btn && btn.textContent !== '비교 결과 보기') btn.textContent = '비교 결과 보기';
+  return form;
 }
 
 export function renderInputView(state, deps = {}) {
-  renderInputSlot(state, 'a', deps);
-  renderInputSlot(state, 'b', deps);
-  renderPriorityPicker(state);
+  const form = ensureInputScaffold();
+  if (!form) return;
+  form.replaceChildren();
+  // 「= 6,900만원」은 상승률 칸이 모드 전환으로 새로 그려질 수 있어 매번 찾아 쓴다.
+  const refresh = () => {
+    const eq = form.querySelector('#calc-eq');
+    if (eq) eq.textContent = eqText(state);
+    clearMissingAlert();
+  };
+  const colA = el('div', { class: 'calc-col calc-col-a', id: 'input-slot-a', 'data-slot': 'a' });
+  const colB = el('div', { class: 'calc-col calc-col-b', id: 'input-slot-b', 'data-slot': 'b' });
+  colA.append(slotHeaderCell(state, 'a', deps), salaryCell(state, refresh), hoursCell(state, 'a'),
+    wageCell(state, 'a'), prefillCell(state, 'a'), commuteCell(state, 'a'), tenureCell(state));
+  colB.append(slotHeaderCell(state, 'b', deps), raiseCell(state, refresh), hoursCell(state, 'b'),
+    wageCell(state, 'b'), prefillCell(state, 'b'), commuteCell(state, 'b'), tenureNoteCell());
+  const pair = el('div', { class: 'calc-pair' });
+  pair.append(colA, colB);
+  const note = el('p', { class: 'calc-exnote', id: 'calc-exnote', role: 'status' });
+  form.append(axisCard(state), pair, note);
+  syncExclusionNote(state, note);
 }
 
-// ── 결측 안내(#3): 어느 슬롯의 어느 필수값이 비었는지 특정해 안내(role="alert") ──────────────
+/** 결과 화면에서 뺀 복지를 모두 되살린다(「모두 되돌리기」·입력 화면 「다시 넣기」 공용). */
+export function clearExclusions(state) {
+  for (const slot of ['a', 'b']) for (const b of state.benS[slot] || []) if (b) b.checked = true;
+}
+
+// 결과 화면에서 뺀 복지는 초안에 실려 새로고침·재진입에도 남는다 — 입력 화면에는 체크박스가 없으니 한 줄로 알리고
+// 되살릴 길을 둔다(적대 검증 LOW-7). 「N개」는 결과 화면의 「N건」과 같은 셈(두 회사 금액 짝 = 1).
+export function syncExclusionNote(state, note = byId('calc-exnote')) {
+  if (!note || typeof note.replaceChildren !== 'function') return;
+  const n = exclusionSummary((state.benS && state.benS.a) || [], (state.benS && state.benS.b) || []).rows;
+  note.replaceChildren();
+  note.hidden = !n;
+  if (!n) return;
+  const btn = el('button', { type: 'button', class: 'calc-link', id: 'calc-exnote-reset', text: '다시 넣기' });
+  btn.addEventListener('click', () => {
+    clearExclusions(state);
+    // 뺀 채로 계산한 옛 결과가 뒤로·앞으로 가기로 되살아나지 않게 비운다(유령 리포트 방지 — 상태와 화면을 같이).
+    const body = byId('report-body');
+    if (body && typeof body.replaceChildren === 'function') body.replaceChildren();
+    syncExclusionNote(state, note);
+    const cta = byId('btn-compare');
+    if (cta && typeof cta.focus === 'function') cta.focus(); // 안내가 사라진 자리 대신 다음 할 일로
+  });
+  note.append('결과에서 뺀 복지 ' + n + '개 · ', btn);
+}
+
+// ── 결측 안내(#3): 비었을 때 무엇을 넣어야 하는지 한 줄(role="alert") ────────────────
 export const MISSING_LABEL = {
-  salary: '현재 직장(A)의 현재 연봉',
-  raise: '이직 후보(B)의 연봉 상승률',
+  salary: '현재 연봉',
+  raise: '연봉 상승률',
 };
 
-// 결측 코드 배열 → 사용자 안내 문구.
-export function missingMessage(missing) {
-  const names = (missing || []).map((k) => MISSING_LABEL[k] || k);
-  return names.length
-    ? names.join(', ') + '을(를) 입력해야 비교할 수 있습니다.'
-    : '필수 입력값이 비어 있습니다.';
+// 결측 코드 배열 → 사용자 안내 문구. 입력 화면의 말이라 칸 이름으로 부른다.
+// invalid: 칸에 글자는 있는데 읽지 못한 결측 코드 — 「입력해 주세요」가 아니라 칸 아래 안내를 보라고 한다(LOW-8).
+export function missingMessage(missing, state = null, invalid = []) {
+  const name = (k) => (k === 'raise' && state && state.rateMode === 'salary' ? '이직 후보 연봉' : MISSING_LABEL[k] || k);
+  const list = missing || [];
+  if (!list.length) return '필수 입력값이 비어 있습니다.';
+  const bad = list.filter((k) => invalid.includes(k)).map(name);
+  const empty = list.filter((k) => !invalid.includes(k)).map(name);
+  const parts = [];
+  if (bad.length) parts.push(bad.join('과 ') + '을 읽지 못했습니다 — 칸 아래 안내를 확인해 주세요.');
+  if (empty.length) parts.push(empty.join('과 ') + '을 입력해 주세요.');
+  return parts.join(' ');
 }
 
-function showMissingAlert(missing) {
-  if (typeof document === 'undefined') return;
+function alertBox() {
   let box = byId('input-missing-alert');
   if (!box) { // 셸에 없으면 비교하기 버튼 앞에 동적 생성(index/compare 공통 — JS 소유)
     box = el('p', { id: 'input-missing-alert', role: 'alert', class: 'input-missing-alert' });
@@ -419,8 +793,40 @@ function showMissingAlert(missing) {
     if (btn && btn.parentNode && typeof btn.parentNode.insertBefore === 'function') btn.parentNode.insertBefore(box, btn);
     else { const view = byId('view-input'); if (view && view.append) view.append(box); }
   }
-  box.textContent = missingMessage(missing);
+  return box;
+}
+
+// 선택 칸(주 근무시간·통근·근속)이 「읽지 못했다」(aria-invalid)인 채로 계산하면 그 값은 조용히 빠져 결과가 「미입력」이
+// 된다(재확인 R-6) — 필수 칸처럼 막고 무엇을 고칠지 말한다. 필수 칸(연봉·상승률)은 결측 안내가 따로 말한다.
+const OPTIONAL_FIELDS = [
+  ['calc-hours-a', '현재 직장 주 근무시간'], ['calc-hours-b', '이직 후보 주 근무시간'],
+  ['calc-commute-a', '현재 직장 통근시간'], ['calc-commute-b', '이직 후보 통근시간'], ['calc-tenure', '근속'],
+];
+export function invalidOptionalFields() {
+  return OPTIONAL_FIELDS.map(([id, name]) => ({ el: byId(id), name }))
+    .filter((x) => x.el && typeof x.el.getAttribute === 'function' && x.el.getAttribute('aria-invalid') === 'true');
+}
+function showInvalidAlert(bad) {
+  if (typeof document === 'undefined' || !bad.length) return;
+  const box = alertBox();
+  box.textContent = bad.map((x) => x.name).join('·') + '을 읽지 못했습니다 — 칸 아래 안내대로 고치거나 비워 주세요.';
   box.hidden = false;
+  if (typeof bad[0].el.focus === 'function') bad[0].el.focus();
+}
+
+function showMissingAlert(missing, state) {
+  if (typeof document === 'undefined') return;
+  const box = alertBox();
+  const bad = (k) => { const inp = byId(k === 'salary' ? 'calc-sal' : k === 'raise' ? 'calc-rate' : ''); return !!(inp && inp.getAttribute('aria-invalid') === 'true'); };
+  const invalid = (missing || []).filter(bad);
+  box.textContent = missingMessage(missing, state, invalid);
+  box.hidden = false;
+  // 무엇이 비었는지 손가락으로 — 첫 결측 칸으로 커서를 옮긴다(글자를 못 읽은 칸이면 그 칸).
+  const first = (missing || [])[0];
+  const target = first === 'salary' ? byId('calc-sal')
+    : first === 'raise' ? (state && (state.rateMode === 'salary' || invalid.includes('raise')) ? byId('calc-rate') : (qs('#calc-raise [role="radio"]') || byId('calc-rate')))
+      : null;
+  if (target && typeof target.focus === 'function') target.focus();
 }
 
 function clearMissingAlert() {
@@ -428,15 +834,30 @@ function clearMissingAlert() {
   if (box) { box.textContent = ''; box.hidden = true; }
 }
 
+// 결과의 첫 화면은 결론이다 — 대문 히어로(제목·소개 ~280px)를 지나 「비교 결과」 머리로 내려간다(폰 390×844 에서
+// 결론 + 타일이 첫 화면에 들어오게, FINAL-DESIGN §3-0). 고정 헤더 높이는 실측한다(360px 에서 두 줄이 된다).
+export function scrollToReport() {
+  if (typeof window === 'undefined' || typeof window.scrollTo !== 'function') return;
+  const view = byId('view-report');
+  if (!view || typeof view.getBoundingClientRect !== 'function') return;
+  const header = qs('header');
+  const headH = header && typeof header.getBoundingClientRect === 'function' ? header.getBoundingClientRect().height : 0;
+  const top = view.getBoundingClientRect().top + (window.scrollY || 0) - headH;
+  if (top > 0) window.scrollTo(0, top);
+}
+
 // ── 입력 뷰 배선(비교하기) ───────────────────────────────────────────────────
 export function bindInputView(state, deps) {
   const btn = byId('btn-compare');
   if (btn) {
     btn.addEventListener('click', () => {
+      const bad = invalidOptionalFields();
+      if (bad.length) { showInvalidAlert(bad); return; }
       const report = (typeof deps.runReport === 'function') ? deps.runReport({ state, mountEl: byId('report-body') }) : null;
-      if (report && report.ok === false) { showMissingAlert(report.missing); return; } // 결측 → 리포트 이동 차단·안내(#3)
+      if (report && report.ok === false) { showMissingAlert(report.missing, state); return; } // 결측 → 리포트 이동 차단·안내(#3)
       clearMissingAlert();
       if (typeof deps.go === 'function') deps.go('report');
+      scrollToReport();
       if (typeof deps.mountAds === 'function') { try { deps.mountAds('result'); } catch { /* 광고 실패 무손상(MON6) */ } }
     });
   }
@@ -446,7 +867,7 @@ export function bindInputView(state, deps) {
 // 뒤로가기 시 유령 리포트가 남으므로, 상태를 비우는 쪽이 DOM도 함께 책임진다.
 // 셸 컨테이너 자체는 남기고 내용만 비운다(광고 슬롯·버튼은 셸 소유, SP-ADS-9.2).
 export function clearRenderedViews() {
-  for (const id of ['report-body', 'input-slot-a', 'input-slot-b', 'priority-picker']) {
+  for (const id of ['report-body', 'calc-form', 'input-slot-a', 'input-slot-b', 'priority-picker']) {
     const el = byId(id);
     if (el && typeof el.replaceChildren === 'function') el.replaceChildren();
   }
@@ -461,6 +882,9 @@ export function bindReportNav(state, deps) {
     for (const slot of ['a', 'b']) { clearSlot(state, slot, reflectSlotLabel); clearCandidatesDom(slot); }
     state.salS = { a: { low: null, high: null } };
     state.selectedRate = null;
+    state.rateMode = 'rate';
+    state.offerSal = null;
+    state.tenureYears = null;
     state.cmtS = { a: null, b: null }; // 눈에 안 보이는 잔존 입력도 초기화("새" 비교)
     // 렌더된 DOM까지 비운다. 상태만 비우면 뒤로가기로 돌아왔을 때 초기화된 상태와 무관한
     // 옛 리포트가 그대로 보인다 — 빈 화면보다 위험한 오정보다(유령 리포트, 2026-07-20).

@@ -70,14 +70,19 @@ beforeEach(() => {
 
 // ── T-06.4.1: App.state 초기 shape·프로파일러 키 부재 (UT-STATE-1) ─────────
 describe('T-06.4.1 App.state 초기 shape (UT-STATE-1)', () => {
-  test('UT-STATE-1: 프로파일러 키 부재, curPri==="워라밸"', () => {
+  // ⚠ 2026-09-23 의도된 계약 변경(이직 계산기 개편 결정 5): 결과의 기본 축 = 입력 맨 위에서 고른 축, 기본 「연봉」.
+  test('UT-STATE-1: 프로파일러 키 부재, curPri==="연봉"', () => {
     const state = createInitialState();
     const keys = Object.keys(state);
     for (const forbidden of ['pfShuffled', 'pfCur', 'pfAnswers', 'pfResult', 'pfJob']) {
       assert.ok(!keys.includes(forbidden), forbidden + ' 키가 존재하면 안 됨(INV-2·SP-FE-4.3)');
     }
-    assert.equal(state.curPri, '워라밸');
+    assert.equal(state.curPri, '연봉');
     assert.equal(state.curSacrifice, null);
+    // 계산기 입력 새 칸 — 전부 기본값 없음(우리 값도 사용자 값도 아닌 숫자가 결과를 만들지 않는다)
+    assert.equal(state.tenureYears, null);
+    assert.equal(state.offerSal, null);
+    assert.equal(state.rateMode, 'rate');
   });
 
   test('salS는 슬롯 a만 보유(슬롯 b는 selectedRate로 파생, 중복 없음)', () => {
@@ -91,7 +96,7 @@ describe('T-06.4.1 App.state 초기 shape (UT-STATE-1)', () => {
   });
 
   test('App.state는 위와 동일 shape로 초기화되어 있다', () => {
-    assert.equal(App.state.curPri, '워라밸');
+    assert.equal(App.state.curPri, '연봉');
     assert.deepEqual(App.state.matched, { a: null, b: null });
   });
 });
@@ -199,6 +204,26 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     assert.deepEqual(went, { screen: 'search', opts: { push: false } });
     assert.deepEqual(reflected, [['a', '삼성전자']], '검색 뷰의 A 입력칸이 비어 보이면 안 된다');
     assert.deepEqual(focused, ['b'], '남은 슬롯으로 커서를 옮겨야 다음 할 일이 보인다');
+  });
+
+  // 2026-09-23: 계산기 화면 새로고침(`?a=&b=#input`)은 초안 → 프리필 순서라, 프리필이 같은 회사를 다시 채우며
+  // 방금 넣은 주 근무시간·야근수당·뺀 복지를 지웠다. 초안이 되살린 회사와 같으면 그 슬롯의 입력은 둔다.
+  test('초안이 되살린 회사와 URL 이 같으면 그 슬롯의 입력(주 근무시간·뺀 복지)은 지우지 않는다', () => {
+    const state = refState();
+    state.REF = { company_types: [], benefit_presets: {}, companies: [
+      { comp_id: 1, comp_nm: '삼성전자', benefits: [{ benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 100, qual_yn: false }] },
+      { comp_id: 2, comp_nm: 'SK하이닉스', benefits: [] },
+    ] };
+    restoreInputDraft(state, { draft: { slots: { a: { comp_id: 1, excluded: ['meal'] }, b: { comp_id: 2 } }, wsState: { a: { hours: 44, wage: 'separate' } } }, reflect: () => {} });
+    assert.equal(state.wsState.a.hours, 44, '사전조건');
+    globalThis.location.search = '?a=1&b=2';
+    restoreFromPrefill(state, { goFn: () => {}, focusSlot: () => {} });
+    assert.equal(state.wsState.a.hours, 44);
+    assert.equal(state.wsState.a.wage, 'separate');
+    assert.equal(state.benS.a[0].checked, false, '결과 화면에서 뺀 복지도 그대로');
+    globalThis.location.search = '?a=2&b=1';
+    restoreFromPrefill(state, { goFn: () => {}, focusSlot: () => {} });
+    assert.equal(state.wsState.a.hours ?? null, null, '다른 회사로 바뀌면 그 슬롯은 새로 시작한다');
   });
 
   test('무효 지시자 → 미선택 유지, go 미호출', () => {
@@ -774,7 +799,10 @@ describe('입력 초안 snapshotInput·restoreInputDraft', () => {
     st.selectedRate = 10;
     const snap = snapshotInput(st);
     assert.equal(snap.slots.a.comp_id, 1);
-    assert.deepEqual(snap.slots.a.checked, ['meal', 'bus'], '체크 상태는 cd 목록으로');
+    assert.deepEqual(snap.slots.a.excluded, [], '뺀 복지만 cd 목록으로(옛 checked 목록은 싣지 않는다)');
+    assert.equal('checked' in snap.slots.a, false);
+    st.benS.a[1].checked = false;
+    assert.deepEqual(snapshotInput(st).slots.a.excluded, ['bus']);
     assert.equal(JSON.stringify(snap).includes('benefit_nm'), false, '복지 본문이 스냅샷에 새면 낡은 값이 되살아난다');
     assert.deepEqual(snap.salS.a, { low: 4000, high: 6000 });
     assert.equal(snap.selectedRate, 10);
@@ -800,10 +828,17 @@ describe('입력 초안 snapshotInput·restoreInputDraft', () => {
     assert.equal(b.benS.a.length, 2, '복지는 REF 최신본에서 다시 채운다');
   });
 
-  test('체크 해제가 보존된다(기본은 전부 체크라 복원 안 하면 조용히 뒤집힌다)', () => {
+  test('결과 화면에서 뺀 복지(새 형식 excluded)는 새로고침 뒤에도 남는다', () => {
     const st = refState();
-    restoreInputDraft(st, { draft: { slots: { a: { comp_id: 1, checked: ['meal'] } } }, reflect: () => {} });
+    restoreInputDraft(st, { draft: { slots: { a: { comp_id: 1, excluded: ['bus'] } } }, reflect: () => {} });
     assert.deepEqual(st.benS.a.map((b) => [b.benefit_cd, b.checked]), [['meal', true], ['bus', false]]);
+  });
+
+  test('LOW-7 옛 형식 초안(체크박스 시절 checked 목록)의 체크 해제는 되살리지 않는다 — 입력 화면에 보일 칸이 없다', () => {
+    const st = refState();
+    // 적대 검증 edge-dump 8번: 전 직원 주식 부여를 체크 해제한 옛 초안 → 새 결과가 곧바로 「1건을 빼고」로 떴다.
+    restoreInputDraft(st, { draft: { slots: { a: { comp_id: 1, checked: ['meal'] } } }, reflect: () => {} });
+    assert.deepEqual(st.benS.a.map((b) => [b.benefit_cd, b.checked]), [['meal', true], ['bus', true]]);
   });
 
   test('REF 에 없는 회사(시드에서 사라진 초안) → 조용히 건너뛴다', () => {

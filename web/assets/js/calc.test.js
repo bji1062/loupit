@@ -18,7 +18,13 @@ import {
   effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks, commuteCompare,
   bandCoeff, pairVerdict, sumBand, buildVdCard, sacrificeCost,
   compare, calc, restSummary,
+  // 이직 계산기 개편(2026-09-23, SPEC 05 §15.7 SP-MOVE)
+  compareCore, AXIS_THRESHOLDS, deltaBand, verdictTier, classifyPairs, benDiffParts,
+  cappedRows, facetOf, tenureItems, tenureGate, catProfile, hourlyWithCommute, breakevenRate,
+  weeklyHours, overtimePay, timeSheet, wageScenarios, sensitivity, robustness, askList,
+  buildAllVdCards, calculatorExtras, unsureCause, BREAKEVEN_BOUNDS, exclusionSummary,
 } from './calc.js';
+import { isLegalRow } from './legal.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CALC_SRC = readFileSync(join(HERE, 'calc.js'), 'utf8');
@@ -344,6 +350,15 @@ describe('T-05.7 vdCard·희생', () => {
     assert.equal(card.p2.detail.pct, 20);
   });
 
+  test('T-ENGINE-31b: buildVdCard(salary) — 시간당 % 분모는 현재 직장(A)', () => {
+    // A 가 클 때 min(A,B) 분모는 감소율을 부풀린다 — 골든 쌍(NAVER→카카오) 42,521 → 27,561 은 35% 다(54% 아님).
+    const card = buildVdCard('salary', { totalA: 9950, totalB: 7739, hourlyA: 42521, hourlyB: 27561 });
+    assert.equal(card.p2.winner, 'a');
+    assert.equal(card.p2.detail.pct, 35);
+    const down = buildVdCard('salary', { totalA: 6000, totalB: 5000, hourlyA: 30000, hourlyB: 25000 });
+    assert.equal(down.p2.detail.pct, 17, '5,000 / 30,000 = 16.7% → 17 (min 분모였다면 20)');
+  });
+
   test('T-ENGINE-32: buildVdCard(salary) — hourlyA null → p2 tie/missing', () => {
     const m = { totalA: 6000, totalB: 7000, hourlyA: null, hourlyB: 30000 };
     const card = buildVdCard('salary', m);
@@ -555,5 +570,696 @@ describe('T-05.9 순수성·프로파일러 제거', () => {
     const baseline = compare(makeState(), NOW);
     const withProfiler = compare(makeState({ pfResult: { some: 'weighted-vector' }, pfJob: 'dev' }), NOW);
     assert.deepEqual(withProfiler, baseline);
+  });
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// 이직 계산기 개편(2026-09-23) — SPEC 05 §15.7(SP-MOVE) · FINAL-DESIGN §8-3 ⓐ~ⓓ·ⓖ·ⓗ + IMPL-BRIEF 결정 1·4·6
+// 문구 회귀(ⓔ·ⓕ)는 렌더가 소유하므로 report-calc.test.js 에 있다.
+// ═════════════════════════════════════════════════════════════════════════════
+const G = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-golden-naver-kakao.json'), 'utf8'));
+const NOW_CALC = new Date('2026-09-22T00:00:00+09:00').getTime();
+
+const items = (c) => c.benefits.map((b) => ({ ...b, checked: true }));
+
+// 골든 시나리오(FINAL-DESIGN 전 절 공통): NAVER → 카카오 · 연봉 6,000 · +15% · A 주 45h 비포괄 · B 주 54h 포괄
+// · 통근 40/60분 · 근속 3년.
+function goldenState(over = {}) {
+  return {
+    salStr: '6000-6000', selectedRate: 15,
+    benS: { a: items(G.naver), b: items(G.kakao) },
+    wsState: {
+      a: { ot: 'mid', hours: 45, wage: 'separate', remote: false, flex: true },
+      b: { ot: 'high', hours: 54, wage: 'inclusive', remote: false, flex: true },
+    },
+    com: { a: 40, b: 60 }, commuteIn: { a: 40, b: 60 }, tenureYears: 3,
+    curPri: 'salary', curSacrifice: null,
+    matched: { a: G.naver, b: G.kakao },
+    ...over,
+  };
+}
+
+// ── 결정적 의사난수(시드 고정) — 「랜덤 쌍 100개」를 매번 같은 쌍으로 ──────────────
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => { s = (s * 1664525 + 1013904223) >>> 0; return s / 2 ** 32; };
+}
+const CATS = ['compensation', 'flexibility', 'work_env', 'time_off', 'health', 'family', 'growth', 'leisure', 'perks'];
+const CODES = Array.from({ length: 24 }, (_, i) => 'cd' + i);
+function randomList(r) {
+  const n = Math.floor(r() * 14) + 1;
+  const pool = [...CODES].sort(() => r() - 0.5).slice(0, n);
+  return pool.map((cd) => {
+    const qual = r() < 0.5;
+    return {
+      benefit_cd: cd, benefit_nm: '항목 ' + cd, benefit_ctgr_cd: CATS[Math.floor(r() * 9)],
+      qual_yn: qual, benefit_amt: qual ? null : Math.round(r() * 800) + 10,
+      amt_source: qual ? 'none' : (r() < 0.3 ? 'stated' : 'estimated'),
+      expires_dtm: r() < 0.2 ? '2020-01-01T00:00:00Z' : null,
+      checked: r() < 0.9, note_ctnt: r() < 0.15 ? '연간 최대 100만원' : null,
+    };
+  });
+}
+function randomState(r) {
+  const ot = ['low', 'mid', 'high', null];
+  const wage = ['inclusive', 'separate', null];
+  return {
+    salStr: (() => { const v = Math.round(r() * 8000) + 2500; return v + '-' + v; })(),
+    selectedRate: Math.round(r() * 40) - 5,
+    benS: { a: randomList(r), b: randomList(r) },
+    wsState: {
+      a: { ot: ot[Math.floor(r() * 4)], wage: wage[Math.floor(r() * 3)], remote: r() < 0.5, flex: r() < 0.5 },
+      b: { ot: ot[Math.floor(r() * 4)], wage: wage[Math.floor(r() * 3)], remote: r() < 0.5, flex: r() < 0.5 },
+    },
+    com: { a: 30, b: 50 }, commuteIn: { a: r() < 0.5 ? 30 : null, b: 50 }, tenureYears: r() < 0.5 ? 2 : null,
+    curPri: 'salary', curSacrifice: null, matched: { a: null, b: null },
+  };
+}
+
+// ── ⓗ 골든 픽스처 ─────────────────────────────────────────────────────────────
+describe('CALC-G 골든 픽스처 NAVER → 카카오(FINAL-DESIGN §6-0)', () => {
+  const r = compare(goldenState(), NOW_CALC);
+
+  test('실효 총보상 9,950 / 7,739 / 차이 −2,211 · 폭 ±452', () => {
+    assert.equal(r.a.total, 9950);
+    assert.equal(r.b.total, 7739);
+    assert.equal(r.deltas.totalDiff, -2211);
+    assert.equal(Math.round(r.band.delta), 452);
+    assert.equal(r.deltas.otDiff, -932);
+    assert.equal(Math.round(r.deltas.effRate * 1000) / 10, -22.2);
+  });
+
+  test('짝짓기: 현재 직장에만 12 · 새로 생김 5 · 공통 11(금액 4 · 한쪽만 금액 4 · 둘 다 금액 없음 3)', () => {
+    assert.equal(r.pairs.onlyA.length, 12);
+    assert.equal(r.pairs.onlyB.length, 5);
+    assert.equal(r.pairs.bothAmt.length + r.pairs.mixed.length + r.pairs.bothQual.length, 11);
+    assert.equal(r.pairs.bothAmt.length, 4);
+    assert.equal(r.pairs.mixed.length, 4);
+    assert.equal(r.pairs.bothQual.length, 3);
+  });
+
+  test('4분해 −1,540 · +434 · −217 · −856 = −2,179', () => {
+    assert.deepEqual(
+      [r.parts.onlyA, r.parts.onlyB, r.parts.sameBoth, r.parts.mixed, r.parts.total],
+      [-1540, 434, -217, -856, -2179],
+    );
+    assert.equal(r.parts.total, r.deltas.benDiff);
+  });
+
+  test('튼튼함: 한쪽만 등록 제외 −1,355(±355) · 복지 0 이면 −32(거의 같음)', () => {
+    assert.equal(r.robust.exMixed.diff, -1355);
+    assert.equal(Math.round(r.robust.exMixed.band), 355);
+    assert.equal(r.robust.noBenefit.diff, -32);
+    assert.equal(r.robust.noBenefit.tier, 'near');
+  });
+
+  test('감도 ①~⑤: +791(뒤집힘) · −1,355 · −1,411 · −915(±333) · −32', () => {
+    const by = Object.fromEntries(r.sens.rows.map((x) => [x.key, x]));
+    assert.equal(by.b_wage_flip.totalDiff, 791);
+    assert.equal(by.b_wage_flip.flips, true);
+    assert.equal(by.b_wage_flip.otB, 3002);
+    assert.equal(by.b_wage_flip.hourlyBase, 27512);
+    assert.equal(by.b_wage_flip.breakeven.sal, 6349);
+    assert.equal(by.drop_mixed.totalDiff, -1355);
+    assert.equal(by.drop_mixed.amount, 856);
+    assert.equal(by.drop_capped.totalDiff, -1411);
+    assert.equal(by.drop_capped.amount, 800);
+    assert.equal(by.drop_both.totalDiff, -915);
+    assert.equal(by.drop_both.count, 6);
+    assert.equal(by.drop_both.amount, 1296);
+    assert.equal(Math.round(by.drop_both.band), 333);
+    assert.equal(by.no_benefits.totalDiff, -32);
+    assert.equal(by.no_benefits.result, 'near');
+    assert.deepEqual(r.sens.rows.filter((x) => x.flips).map((x) => x.key), ['b_wage_flip']);
+  });
+
+  test('같아지는 연봉 9,111(+51.9%) · 8,255(+37.6%) · 6,932(+15.5%)', () => {
+    assert.equal(r.breakeven.full.sal, 9111);
+    assert.equal(Math.round(r.breakeven.full.rate * 10000) / 100, 51.85);
+    assert.equal(r.breakeven.exMixed.sal, 8255);
+    assert.equal(r.breakeven.noBenefit.sal, 6932);
+  });
+
+  test('시간: 주 +9h · 연 +468h(59일) · 통근 +160h(20일) · 시간당 42,521 → 27,561(−35%) · 통근 포함 37,406 → 23,537', () => {
+    const t = r.time;
+    assert.deepEqual([t.hours.weekDiff, t.hours.annDiff, t.hours.days], [9, 468, 59]);
+    assert.deepEqual([t.commute.annA, t.commute.annB, t.commute.days], [320, 480, 20]);
+    assert.deepEqual([t.hourly.a, t.hourly.b], [42521, 27561]);
+    assert.equal(Math.round(t.hourly.pct * 100), -35);
+    assert.deepEqual([t.hourlyCommute.a, t.hourlyCommute.b], [37406, 23537]);
+  });
+
+  test('축 3벌: 연봉 = 현재 직장(연봉은 오르지만 줄어듦) · 워라밸 = 시간으로 현재 직장 · 복지 = 금액으로 현재 직장', () => {
+    assert.equal(r.axes.salary.tier, 'a');
+    assert.equal(r.axes.salary.shape, 'reverse');
+    assert.equal(r.axes.salary.flip.key, 'b_wage_flip');
+    assert.equal(r.axes.wlb.tier, 'a');
+    assert.equal(r.axes.wlb.decidedBy, 'hours');
+    assert.deepEqual([r.axes.wlb.count.a, r.axes.wlb.count.b, r.axes.wlb.count.tenureA], [3, 1, 2]);
+    assert.equal(r.axes.benefits.tier, 'a');
+    assert.equal(r.axes.benefits.d, -2179);
+    assert.equal(r.axes.benefits.exMixed.diff, -1323);
+    assert.equal(Math.round(r.axes.benefits.mixed.share * 100), 39);
+    assert.equal(r.axes.benefits.salOffset.gap, -1279);
+    assert.deepEqual(r.axes.benefits.mixed.names, ['개인 업무 지원비', '업무 장비 예산', '네이버 서비스 이용권', 'Club Greeny']);
+  });
+
+  test('ⓖ 카테고리: 생활·편의는 폭이 겹쳐 「비슷함」, 보상·건강·여가는 현재 직장, 성장·근무환경은 한쪽만 금액', () => {
+    const v = Object.fromEntries(r.cat.map((c) => [c.ctgr, c.verdict]));
+    assert.equal(v.perks, 'similar');
+    assert.equal(v.compensation, 'a');
+    assert.equal(v.health, 'a');
+    assert.equal(v.leisure, 'a');
+    assert.equal(v.growth, 'aOnly');
+    assert.equal(v.work_env, 'aOnly');
+    assert.equal(v.family, 'countOnly');
+    const perks = r.cat.find((c) => c.ctgr === 'perks');
+    assert.deepEqual([perks.sumA, perks.sumB], [532, 644]);
+  });
+
+  test('근속 3년: 받는 중 2(리프레시 2년 · 자기돌봄 3년) · 아직 1(근속 기념 선물 10년, 7년 남음) · 이직 후보 0', () => {
+    assert.deepEqual(r.tenure.earned.map((x) => [x.item.benefit_nm, x.years]), [['리프레시 플러스 휴가', 2], ['자기돌봄 휴직', 3]]);
+    assert.deepEqual(r.tenure.pending.map((x) => [x.item.benefit_nm, x.years, x.left]), [['근속 기념 선물', 10, 7]]);
+    assert.equal(r.tenure.otherSideCount, 0);
+  });
+
+  test('물어볼 것 3줄: 임금 형태(3,002만원) · 금액 미등록 2건 · 주식 1,000만원(46%)', () => {
+    assert.deepEqual(r.ask.map((x) => x.kind), ['wage', 'mixed', 'topOnlyA']);
+    assert.equal(r.ask[0].amount, 3002);
+    assert.deepEqual(r.ask[1].names, ['자기계발비', '최신 업무장비']);
+    assert.equal(r.ask[2].nm, '전 직원 주식 부여');
+    assert.equal(Math.round(r.ask[2].share * 100), 46);
+  });
+
+  test('자료 근거: 금액 20건(공식 9 · 추정 11) · 금액 없음 19 · 최대·한도 3건(NAVER)', () => {
+    assert.equal(r.basis.a.amt + r.basis.b.amt, 20);
+    assert.equal(r.basis.a.stated + r.basis.b.stated, 9);
+    assert.equal(r.basis.a.qual + r.basis.b.qual, 19);
+    assert.deepEqual(r.basis.a.capped.map((x) => x.amt).sort((x, y) => x - y), [200, 240, 360]);
+    assert.equal(r.warnings.includes('inclusive_b'), true);
+  });
+});
+
+// ── ⓐ 브리지 항등식 · ⓑ 4분해 항등식 + 통 배타성 ──────────────────────────────
+describe('CALC-ID 항등식(시드 고정 랜덤 쌍 100개)', () => {
+  const r = rng(20260923);
+  const states = Array.from({ length: 100 }, () => randomState(r));
+
+  test('ⓐ totalDiff === salMid + benDiff + otDiff (오차 0)', () => {
+    for (const st of states) {
+      const rep = compare(st, NOW_CALC);
+      if (!rep.ok) continue;
+      assert.equal(rep.deltas.totalDiff, rep.deltas.salMid + rep.deltas.benDiff + rep.deltas.otDiff);
+    }
+  });
+
+  test('ⓑ benDiffParts 합 === benDiff, 통은 배타(항목 수 보존)', () => {
+    for (const st of states) {
+      const rep = compareCore(st, NOW_CALC);
+      const parts = benDiffParts(st.benS.a, st.benS.b);
+      assert.equal(parts.total, rep.deltas.benDiff);
+      const p = classifyPairs(st.benS.a, st.benS.b);
+      const nA = p.onlyA.length + p.bothAmt.length + p.mixed.length + p.bothQual.length;
+      const nB = p.onlyB.length + p.bothAmt.length + p.mixed.length + p.bothQual.length;
+      assert.equal(nA, st.benS.a.length);
+      assert.equal(nB, st.benS.b.length);
+      for (const m of p.mixed) assert.notEqual(m.a.qual_yn, m.b.qual_yn);
+    }
+  });
+
+  test('compare 는 입력을 바꾸지 않는다(감도·시나리오가 복제본에서 돈다)', () => {
+    const st = goldenState();
+    const snap = JSON.stringify(st);
+    compare(st, NOW_CALC);
+    assert.equal(JSON.stringify(st), snap);
+  });
+});
+
+// ── ⓒ 판정 티어 경계 ───────────────────────────────────────────────────────────
+describe('CALC-TIER verdictTier', () => {
+  test('|d| ≤ 폭 → unsure, 폭 < |d| ≤ max(폭×1.5, 기준×3%) → near, 그 밖 → 방향', () => {
+    assert.equal(verdictTier(-452, 452, 9950), 'unsure');
+    assert.equal(verdictTier(-453, 452, 9950), 'near');
+    assert.equal(verdictTier(-678, 452, 9950), 'near');
+    assert.equal(verdictTier(-679, 452, 9950), 'a');
+    assert.equal(verdictTier(679, 452, 9950), 'b');
+    // 폭이 작으면 기준의 3% 가 near 상한이 된다
+    assert.equal(verdictTier(-290, 10, 10000), 'near');
+    assert.equal(verdictTier(-301, 10, 10000), 'a');
+  });
+  test('가드: 「그대로」와 「한쪽만 금액 등록 제외」의 부호가 갈리면 unsure', () => {
+    assert.equal(verdictTier(-2000, 100, 9000, 300), 'unsure');
+    assert.equal(verdictTier(-2000, 100, 9000, -300), 'a');
+  });
+  test('폭 0 · 차이 0 은 near(차이가 없다) — 「말할 수 없음」이 아니다', () => {
+    assert.equal(verdictTier(0, 0, 9000), 'near');
+  });
+  test('near 는 두 갈래 — 기준값 3% 안(small) · 오차 범위를 겨우 넘음(weak)', () => {
+    const mk = (amt) => ({ benefit_cd: 'x', benefit_nm: 'x', benefit_amt: amt, qual_yn: false, amt_source: 'estimated', benefit_ctgr_cd: 'perks', checked: true, expires_dtm: null });
+    const st = (a, b) => ({ salStr: '5000-5000', selectedRate: 0, benS: { a: [mk(a)], b: [{ ...mk(b), benefit_cd: 'y' }] }, wsState: { a: {}, b: {} }, com: { a: 0, b: 0 }, commuteIn: { a: null, b: null }, tenureYears: null, curPri: 'salary', matched: { a: null, b: null } });
+    // 폭 = (1000+1300)×0.2 = 460 · 차이 300 ≤ 460 → unsure / 폭 = (1000+1600)×0.2 = 520 · 차이 600 → near(≤780), 600 > 5,000×… → weak
+    assert.equal(compare(st(1000, 1300), NOW_CALC).axes.salary.tier, 'unsure');
+    const w = compare(st(1000, 1600), NOW_CALC).axes.salary;
+    assert.equal(w.tier, 'near');
+    assert.equal(w.nearKind, 'weak');
+    const sm = compare({ ...st(0, 0), benS: { a: [], b: [] }, selectedRate: 2 }, NOW_CALC).axes.salary;
+    assert.equal(sm.tier, 'near');
+    assert.equal(sm.nearKind, 'small', '연봉 2% 차이(100) ≤ 총보상 3%(150)');
+  });
+  test('AXIS_THRESHOLDS 는 동결된 설계 상수', () => {
+    assert.equal(Object.isFrozen(AXIS_THRESHOLDS), true);
+    assert.deepEqual(Object.keys(AXIS_THRESHOLDS).sort(), ['nearBandMult', 'nearTotalPct', 'wlbCommuteAnnHrs', 'wlbQualCount', 'wlbWeekHrs']);
+  });
+  test('deltaBand = 두 폭의 합(제곱합 아님)', () => {
+    assert.equal(deltaBand({ sumBand: 300 }, { sumBand: 400 }), 700);
+  });
+});
+
+// ── ⓓ 브레이크이븐 왕복 ────────────────────────────────────────────────────────
+describe('CALC-BE breakevenRate 왕복', () => {
+  for (const wageB of ['inclusive', 'separate']) {
+    test(`구한 연봉을 넣으면 총보상 차이 ≈ 0 (B ${wageB})`, () => {
+      const st = goldenState({ wsState: { ...goldenState().wsState, b: { ot: 'high', hours: 54, wage: wageB } } });
+      const rep = compare(st, NOW_CALC);
+      const be = rep.breakeven.full;
+      const back = compareCore({ ...st, selectedRate: be.rate * 100 }, NOW_CALC);
+      assert.ok(Math.abs(back.deltas.totalDiff) <= 2, `왕복 오차 ${back.deltas.totalDiff}`);
+      if (wageB === 'separate') assert.ok(rep.breakeven.k > 0.4 && rep.breakeven.k < 0.44);
+    });
+  }
+  test('연봉 미입력이면 null', () => {
+    assert.equal(breakevenRate({ a: { salRange: { mid: 0 } } }, null, {}), null);
+  });
+});
+
+// ── 결정 4: 주 근무시간 직접 입력 · 임금 형태 미선택 → 두 경우 병치 ─────────────────
+describe('CALC-WS 주 근무시간 · 임금 형태(결정 4)', () => {
+  test('weeklyHours: 직접 입력이 칩보다 우선, ot 만 있으면 getWSHours 와 같다', () => {
+    assert.equal(weeklyHours({ ot: 'mid', hours: 44 }), 44);
+    assert.equal(weeklyHours({ ot: 'mid' }), getWSHours({ ot: 'mid' }));
+    assert.equal(weeklyHours({ ot: null, hours: null }), 0);
+    assert.equal(weeklyHours({ ot: 'high', hours: '' }), OT_HRS.high);
+  });
+  test('overtimePay: ot 만 주면 getOTPay 와 같고, 주 44h 는 4시간분', () => {
+    const sal = { mid: 6000 };
+    for (const ot of ['low', 'mid', 'high']) {
+      assert.equal(overtimePay({ ot, wage: 'separate' }, sal), getOTPay({ ot, wage: 'separate' }, sal));
+    }
+    assert.equal(overtimePay({ hours: 44, wage: 'separate' }, sal), Math.round(4 * (6000 * 10000 / 12 / 209) * 1.5 * 4.33 * 12 / 10000));
+    assert.equal(overtimePay({ hours: 38, wage: 'separate' }, sal), 0, '40시간 미만은 0(음수 아님)');
+    assert.equal(overtimePay({ hours: 54, wage: null }, sal), 0, '미선택은 이 함수에서 0 — 병치는 wageScenarios 몫');
+  });
+  test('임금 형태 미선택(B, 주 54h) → wage_unknown_b 경고 + 포괄/비포괄 두 경우', () => {
+    const st = goldenState();
+    st.wsState = { ...st.wsState, b: { ot: 'high', hours: 54, wage: null } };
+    const rep = compare(st, NOW_CALC);
+    assert.ok(rep.warnings.includes('wage_unknown_b'));
+    assert.deepEqual(rep.wage.slots, ['b']);
+    const byWage = Object.fromEntries(rep.wage.cases.map((c) => [c.wage.b, c.diff]));
+    assert.equal(byWage.inclusive, -2211);
+    assert.equal(byWage.separate, 791);
+    assert.equal(rep.wage.agree, false);
+    assert.equal(rep.axes.salary.tier, 'depends', '두 경우의 결론이 갈리면 연봉 축은 「야근수당에 따라 달라진다」');
+    assert.equal(rep.sens.rows.some((x) => x.key === 'b_wage_flip'), false, '미선택이면 ① 대신 병치가 그 일을 한다');
+    assert.equal(rep.ask[0].kind, 'wage');
+  });
+  test('양쪽 미선택 → 네 가지 조합', () => {
+    const st = goldenState();
+    st.wsState = { a: { hours: 45, wage: null }, b: { hours: 54, wage: null } };
+    const rep = compare(st, NOW_CALC);
+    assert.equal(rep.wage.cases.length, 4);
+  });
+  test('주 근무시간 미입력 → 시간당·야근수당 미산출, 시간 계산서 null', () => {
+    const st = goldenState();
+    st.wsState = { a: { ot: null, wage: 'separate' }, b: { ot: null, wage: 'inclusive' } };
+    const rep = compare(st, NOW_CALC);
+    assert.equal(rep.a.hourly, null);
+    assert.equal(rep.a.otPay, 0);
+    assert.equal(rep.time.hours, null);
+    assert.equal(rep.time.hourly, null);
+    assert.equal(rep.wage, null, '야근이 없으면 임금 형태는 결과를 바꾸지 않는다');
+    assert.notEqual(rep.axes.wlb.decidedBy, 'hours');
+  });
+  test('포괄 경고는 야근이 있을 때만(주 40h 이하·미선택이면 경고 없음)', () => {
+    const st = goldenState();
+    st.wsState = { a: { ot: null, wage: 'inclusive' }, b: { ot: 'low', wage: 'inclusive' } };
+    const rep = compare(st, NOW_CALC);
+    assert.equal(rep.warnings.some((w) => w.startsWith('inclusive') || w === 'both_inclusive'), false);
+  });
+});
+
+// ── 결정 1: 복지 축 = 등록 금액 합의 차이 ± 폭 · 가드 ───────────────────────────
+describe('CALC-BEN 복지 축 금액 판정(결정 1)', () => {
+  const mk = (cd, amt, src = 'stated', extra = {}) => ({
+    benefit_cd: cd, benefit_nm: cd, benefit_amt: amt, qual_yn: amt == null, amt_source: amt == null ? 'none' : src,
+    benefit_ctgr_cd: 'perks', checked: true, expires_dtm: null, ...extra,
+  });
+  const base = (a, b) => ({
+    salStr: '5000-5000', selectedRate: 10, benS: { a, b },
+    wsState: { a: { ot: null, wage: null }, b: { ot: null, wage: null } },
+    com: { a: 0, b: 0 }, commuteIn: { a: null, b: null }, tenureYears: null, curPri: 'benefits', matched: { a: null, b: null },
+  });
+
+  test('항목 수가 많아도 금액이 적으면 금액 쪽이 이긴다(항목 수는 판정에 안 쓴다)', () => {
+    const a = [mk('x1', null), mk('x2', null), mk('x3', null), mk('x4', null), mk('m', 100)];
+    const b = [mk('m', 1000)];
+    const rep = compare(base(a, b), NOW_CALC);
+    assert.equal(rep.axes.benefits.tier, 'b');
+    assert.equal(rep.axes.benefits.counts.a, 5);
+  });
+  test('두 회사 모두 금액이 등록된 복지가 없으면 「거의 같음」이 아니라 말할 수 없음', () => {
+    const rep = compare(base([mk('x', null)], [mk('y', null)]), NOW_CALC);
+    assert.equal(rep.axes.benefits.noAmounts, true);
+    assert.equal(rep.axes.benefits.tier, 'unsure');
+  });
+  test('오차 범위가 겹치면 unsure', () => {
+    const rep = compare(base([mk('m', 500, 'estimated')], [mk('m', 560, 'estimated')]), NOW_CALC);
+    assert.equal(rep.axes.benefits.tier, 'unsure');
+  });
+  test('가드: 한쪽만 금액이 등록된 항목을 빼면 방향이 뒤집히는 쌍 → unsure', () => {
+    // A: 혼합 1,000(B 는 제도만) + 공통 200 / B: 공통 900 → 그대로는 A +300, 혼합 빼면 B +700
+    const a = [mk('mix', 1000), mk('same', 200)];
+    const b = [mk('mix', null), mk('same', 900)];
+    const rep = compare(base(a, b), NOW_CALC);
+    assert.equal(rep.axes.benefits.d, -300);
+    assert.equal(rep.axes.benefits.exMixed.diff, 700);
+    assert.equal(rep.axes.benefits.tier, 'unsure');
+  });
+});
+
+// ── 결정 6: 행별 「빼고 다시 계산」 = checked 계약 ─────────────────────────────────
+describe('CALC-EX 행별 빼기(checked=false) 재계산', () => {
+  test('주식 1,000 을 빼면 A 총보상이 1,000 줄고 분류(목록)는 그대로다', () => {
+    const st = goldenState();
+    st.benS.a = st.benS.a.map((b) => (b.benefit_cd === 'stock_grant' ? { ...b, checked: false } : b));
+    const rep = compare(st, NOW_CALC);
+    assert.equal(rep.a.total, 8950);
+    assert.equal(rep.deltas.totalDiff, -1211);
+    assert.equal(rep.pairs.onlyA.length, 12, '뺀 항목도 목록에는 남는다(등록 기준 분류)');
+    assert.equal(rep.parts.onlyA, -540);
+    assert.equal(rep.parts.total, rep.deltas.benDiff);
+  });
+});
+
+// ── 표식 · 근속 · 법정 ─────────────────────────────────────────────────────────
+describe('CALC-FACET 표식(표시 전용)', () => {
+  const it = (nm, desc, amt = null) => ({ benefit_nm: nm, qual_desc_ctnt: amt == null ? desc : null, note_ctnt: amt == null ? null : desc, benefit_amt: amt, qual_yn: amt == null });
+  test('근속 연수 — 나열은 가장 작은 값, 연도 숫자는 연수가 아니다', () => {
+    assert.deepEqual(facetOf(it('CREATIVE WEEK', '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가')).tenure, { years: 3 });
+    assert.deepEqual(facetOf(it('근속 포상', '5, 10, 15, 20년 근속 포상')).tenure, { years: 5 });
+    assert.deepEqual(facetOf(it('리프레시 플러스 휴가', '2년 근속 시 15일 추가 유급휴가')).tenure, { years: 2 });
+    assert.deepEqual(facetOf(it('근속 기념 선물', '근속 10주년/20주년 선물 지급')).tenure, { years: 10 });
+    assert.deepEqual(facetOf(it('장기근속 포상', '장기근속자 포상 (2025년 보고서)')).tenure, { years: null });
+  });
+  test('수집 메모(「… 미기재」)의 「근속」은 조건이 아니다', () => {
+    assert.equal(facetOf(it('주택 담보 대출', '무이자 대출 (공식 페이지 — 대출 한도·근속 요건 미기재)')).tenure, null);
+  });
+  test('가족 언급 · 최대/한도', () => {
+    assert.equal(facetOf(it('단체상해보험', '직원 및 가족 단체상해보험', 30)).familyMention, true);
+    assert.equal(facetOf(it('어학', '연간 최대 240만원 어학 교육비', 240)).capped, true);
+    assert.equal(facetOf(it('어학', '연간 최대 240만원 어학 교육비')).capped, false, '정성 행은 상한 표식이 없다');
+    assert.equal(cappedRows(items(G.naver)).length, 3);
+  });
+  test('근속 미입력이면 판정하지 않는다(받는 중/아직 없음)', () => {
+    const g = tenureGate(items(G.naver), items(G.kakao), null);
+    assert.equal(g.tenureYears, null);
+    assert.deepEqual([g.earned.length, g.pending.length, g.unjudged.length], [0, 0, 3]);
+    assert.equal(tenureItems(items(G.naver)).length, 3);
+  });
+  test('법정 행(legal_yn)은 짝짓기·카테고리·근속·항목 수에서 빠진다', () => {
+    const a = items(G.naver).concat([{ benefit_cd: 'parenting2', benefit_nm: '육아휴직', qual_yn: true, benefit_amt: null, benefit_ctgr_cd: 'family', legal_yn: true, checked: false }]);
+    const p = classifyPairs(a, items(G.kakao));
+    assert.equal(p.onlyA.length, 12);
+    assert.equal(p.legal.a.length, 1);
+    const fam = catProfile(a, items(G.kakao), NOW_CALC).find((c) => c.ctgr === 'family');
+    assert.equal(fam.cntA, 3);
+  });
+});
+
+describe('CALC-WLB 워라밸 축 순서(시간 → 통근 → 자율성 → 등록 수)', () => {
+  const qual = (cd, ctgr) => ({ benefit_cd: cd, benefit_nm: cd, qual_yn: true, benefit_amt: null, amt_source: 'none', benefit_ctgr_cd: ctgr, checked: true });
+  const st = (a, b, over = {}) => ({
+    salStr: '5000-5000', selectedRate: 5, benS: { a, b },
+    wsState: { a: { remote: true, flex: true }, b: { remote: true, flex: true } },
+    com: { a: 0, b: 0 }, commuteIn: { a: null, b: null }, tenureYears: null, curPri: 'wlb', matched: { a: null, b: null }, ...over,
+  });
+  const leave = (n, p) => Array.from({ length: n }, (_, i) => qual(p + i, 'time_off'));
+  test(`등록 수 차이가 문턱(${AXIS_THRESHOLDS.wlbQualCount}) 미만이면 말할 수 없음, 이상이면 많은 쪽`, () => {
+    const k = AXIS_THRESHOLDS.wlbQualCount;
+    const below = compare(st(leave(k - 1, 'x'), []), NOW_CALC);
+    assert.equal(below.axes.wlb.tier, 'unsure');
+    const at = compare(st(leave(k, 'x'), []), NOW_CALC);
+    assert.equal(at.axes.wlb.tier, 'a');
+    assert.equal(at.axes.wlb.decidedBy, 'count');
+  });
+  test('주 근무시간 차(2h 이상)가 있으면 등록 수보다 먼저 결론', () => {
+    const r = compare(st([], leave(5, 'y'), { wsState: { a: { hours: 52, remote: true, flex: true }, b: { hours: 45, remote: true, flex: true } } }), NOW_CALC);
+    assert.equal(r.axes.wlb.decidedBy, 'hours');
+    assert.equal(r.axes.wlb.tier, 'b');
+  });
+  test('통근 연 40시간 이상 차이 — 시간이 같을 때 2순위', () => {
+    const r = compare(st([], [], { commuteIn: { a: 60, b: 50 } }), NOW_CALC);
+    assert.equal(r.axes.wlb.decidedBy, 'commute');
+    assert.equal(r.axes.wlb.tier, 'b');
+  });
+});
+
+describe('CALC-HWC hourlyWithCommute', () => {
+  test('통근은 분모에만(시간당 가치가 줄어든다) · 미입력이면 null', () => {
+    assert.equal(hourlyWithCommute(9018, 932, 45, 40), 37406);
+    assert.equal(hourlyWithCommute(9018, 932, 45, null), null);
+    assert.equal(hourlyWithCommute(9018, 932, 0, 40), null);
+  });
+});
+
+describe('CALC-SURF 산출 묶음 구성(calculatorExtras = compare 의 덧붙임)', () => {
+  test('compare 결과의 새 키는 calculatorExtras 가 만든 것과 같다(timeSheet·wageScenarios·sensitivity·robustness·askList·buildAllVdCards 경유)', () => {
+    const st = goldenState();
+    const core = compareCore(st, NOW_CALC);
+    const ex = calculatorExtras(st, core, NOW_CALC);
+    const full = compare(st, NOW_CALC);
+    for (const k of ['band', 'pairs', 'parts', 'cat', 'time', 'robust', 'sens', 'wage', 'tenure', 'breakeven', 'ask', 'axes', 'basis']) {
+      assert.deepEqual(full[k], ex[k], k);
+    }
+    assert.deepEqual(timeSheet(core, st.commuteIn), ex.time);
+    assert.equal(wageScenarios(st, core, NOW_CALC), null);
+    assert.deepEqual(sensitivity(st, core, NOW_CALC).rows.map((r) => r.key), ex.sens.rows.map((r) => r.key));
+    assert.equal(robustness(st, core, NOW_CALC).exMixed.diff, -1355);
+    assert.equal(askList(core, { sens: ex.sens, wage: null, pairs: ex.pairs }).length, 3);
+    assert.equal(buildAllVdCards({ core: { ...core, _benA: st.benS.a, _benB: st.benS.b }, band: ex.band.delta, parts: ex.parts, pairs: ex.pairs, time: ex.time, robust: { ...ex.robust }, sens: ex.sens, wage: null, tenure: ex.tenure, now: NOW_CALC }).salary.d, -2211);
+  });
+});
+
+// ── 적대 검증(2026-09-23 VERIFY-REPORT) 재현 쌍 — 보고서의 실제 쌍·입력 그대로 ─────────────────────
+// 공통 입력: 현재 연봉 6,000 · +10% · A 주 45h 비포괄 · B 주 54h 포괄 · 통근 40/60분 · 근속 3년 · now 2026-09-23.
+const VP = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-verify-pairs.json'), 'utf8'));
+const NOW_VERIFY = Date.parse('2026-09-23T00:00:00+09:00');
+const vpc = (nm) => VP.companies.find((c) => c.comp_nm === nm);
+// 앱의 조립(assembleCompareState)과 같다: 전부 체크 · 법정 행은 legal_yn + checked:false(SP-LEGAL-5).
+function verifyState(an, bn, o = {}) {
+  const side = (c) => c.benefits.map((b) => (isLegalRow(c.comp_eng_nm, b.benefit_cd, b.benefit_nm) ? { ...b, legal_yn: true, checked: false } : { ...b, checked: true }));
+  const A = vpc(an), B = vpc(bn);
+  const sal = o.sal ?? 6000;
+  const ws = (c) => ({ remote: !!(c.work_style_val && c.work_style_val.remote), flex: !!(c.work_style_val && c.work_style_val.flex) });
+  return {
+    salStr: sal + '-' + sal, selectedRate: o.rate ?? 10, benS: { a: side(A), b: side(B) },
+    wsState: { a: { ot: 'mid', hours: 45, wage: 'separate', ...ws(A), ...(o.wsA || {}) }, b: { ot: 'high', hours: 54, wage: 'inclusive', ...ws(B), ...(o.wsB || {}) } },
+    com: { a: 40, b: 60 }, commuteIn: { a: 40, b: 60 }, tenureYears: o.tenure ?? 3, curPri: 'salary', curSacrifice: null,
+    matched: { a: A, b: B },
+  };
+}
+
+describe('CALC-UNSURE 「판단하기 어렵다」의 원인(MED-1)', () => {
+  test('unsureCause: 오차 범위 안이면 band · 범위 밖인데 부호가 갈리면 guard · 둘 다면 band · 아니면 null', () => {
+    assert.equal(unsureCause(870, 319.9, -80), 'guard');
+    assert.equal(unsureCause(-300, 452, 100), 'band', '둘 다 맞으면 오차 범위가 충분한 이유다');
+    assert.equal(unsureCause(-300, 452), 'band');
+    assert.equal(unsureCause(-2000, 100, -300), null);
+    assert.equal(unsureCause(0, 0), null, '폭 0 · 차이 0 은 near 다');
+  });
+  test('verdictTier 가 unsure ⇔ unsureCause 가 원인을 낸다(격자 전수)', () => {
+    for (const d of [-900, -452, -300, 0, 120, 452, 453, 900]) {
+      for (const band of [0, 100, 452]) {
+        for (const g of [null, -500, 0, 500]) {
+          assert.equal(verdictTier(d, band, 9000, g) === 'unsure', unsureCause(d, band, g) != null, `d=${d} band=${band} g=${g}`);
+        }
+      }
+    }
+  });
+  test('CJ올리브네트웍스 → 더블유게임즈: d +870 · 폭 ±320 · 가드 −80 → 연봉 축 unsure 의 원인은 guard(오차 범위는 겹치지 않는다)', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', '더블유게임즈'), NOW_VERIFY);
+    assert.equal(r.axes.salary.d, 870);
+    assert.equal(Math.round(r.axes.salary.band), 320);
+    assert.equal(r.robust.exMixed.diff, -80);
+    assert.equal(r.axes.salary.tier, 'unsure');
+    assert.equal(r.axes.salary.unsureBy, 'guard');
+    assert.equal(r.robust.full.unsureBy, 'guard');
+  });
+  test('CJ올리브네트웍스 → 롯데케미칼: 복지 축 d −240 · 폭 ±173 · 가드 +10 → unsure(guard)', () => {
+    const v = compare(verifyState('CJ올리브네트웍스', '롯데케미칼'), NOW_VERIFY).axes.benefits;
+    assert.equal(v.d, -240);
+    assert.equal(Math.round(v.band), 173);
+    assert.equal(v.exMixed.diff, 10);
+    assert.equal(v.tier, 'unsure');
+    assert.equal(v.unsureBy, 'guard');
+    assert.equal(v.exMixed.tier, 'unsure', '빼고 계산한 값 +10 도 오차 범위 안');
+  });
+});
+
+describe('CALC-ONE 티어 원천은 하나(MED-2 · LOW-12)', () => {
+  test('CJ올리브네트웍스 → CJ ENM 커머스부문: 카드·튼튼함·감도가 모두 가드 포함 unsure — 감도 줄은 「뒤집힘」이 아니라 「말할 수 있게 됨」', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', 'CJ ENM 커머스부문'), NOW_VERIFY);
+    assert.equal(r.axes.salary.d, -332);
+    assert.equal(r.robust.exMixed.diff, 168);
+    assert.equal(r.axes.salary.baseTier, 'unsure');
+    assert.equal(r.robust.full.tier, 'unsure');
+    assert.equal(r.sens.baseTier, 'unsure');
+    assert.equal(r.robust.exMixed.tier, 'near', '빼면 방향은 바뀌지만 차이가 작다');
+    const w = r.sens.rows.find((x) => x.key === 'b_wage_flip');
+    assert.equal(w.result, 'decide');
+    assert.equal(w.flips, false);
+    assert.equal(w.decides, true);
+    assert.equal(r.axes.salary.flip.key, 'b_wage_flip');
+  });
+  test('재현 쌍 전부(16곳 × 15곳): robust.full.tier === salary.baseTier === sens.baseTier', () => {
+    const names = VP.companies.map((c) => c.comp_nm);
+    let n = 0;
+    for (const a of names) {
+      for (const b of names) {
+        if (a === b) continue;
+        const r = compare(verifyState(a, b), NOW_VERIFY);
+        assert.equal(r.robust.full.tier, r.axes.salary.baseTier, a + ' → ' + b);
+        assert.equal(r.sens.baseTier, r.axes.salary.baseTier, a + ' → ' + b);
+        for (const row of r.sens.rows) assert.ok(!(row.flips && !['a', 'b'].includes(r.sens.baseTier)), '방향 없는 기준에서 「뒤집힘」은 없다');
+        n += 1;
+      }
+    }
+    assert.equal(n, names.length * (names.length - 1));
+    assert.equal(names.length, 16);
+  });
+  test('NAVER → NAVER(같은 회사): 기준이 오차 범위 안(unsure)이면 비포괄 가정은 「결론 바뀜」이 아니라 「말할 수 있게 됨」', () => {
+    const r = compare(verifyState('NAVER', 'NAVER'), NOW_VERIFY);
+    assert.equal(r.sens.baseTier, 'unsure');
+    assert.equal(r.sens.rows.find((x) => x.key === 'b_wage_flip').result, 'decide');
+  });
+  test('기준이 방향이면 반대 방향 줄은 여전히 flip(골든 NAVER → 카카오)', () => {
+    const r = compare(goldenState(), NOW_CALC);
+    assert.equal(r.sens.rows.find((x) => x.key === 'b_wage_flip').result, 'flip');
+  });
+});
+
+describe('CALC-WAGE 야근수당 미선택 — 「달라진다」는 부호가 갈릴 때만(MED-3)', () => {
+  test('CJ올리브네트웍스 → LG디스플레이(B 54h 미선택): 포괄 near +518 · 비포괄 b +3,389 → 같은 방향이라 range', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', 'LG디스플레이', { wsB: { wage: null } }), NOW_VERIFY);
+    assert.deepEqual(r.wage.cases.map((c) => [c.wage.b, c.tier, c.diff]), [['inclusive', 'near', 518], ['separate', 'b', 3389]]);
+    assert.equal(r.wage.dir, 1);
+    assert.deepEqual(r.wage.span, [518, 3389]);
+    assert.equal(r.axes.salary.tier, 'range');
+    assert.equal(r.axes.salary.shape, 'same');
+  });
+  test('골든 NAVER → 카카오(B 미선택): 포괄 −2,211 · 비포괄 +791 → 부호가 갈려 depends', () => {
+    const st = goldenState({ wsState: { ...goldenState().wsState, b: { ot: 'high', hours: 54, wage: null } } });
+    const r = compare(st, NOW_CALC);
+    assert.equal(r.wage.dir, 0);
+    assert.equal(r.axes.salary.tier, 'depends');
+  });
+});
+
+describe('CALC-NEAR 「결론이 얼마나 확실한가」 재료 — near 쌍(LOW-10)', () => {
+  test('리메드 → CJ올리브네트웍스: +148(±144) 은 near(small) — 튼튼함 ① 도 같은 near', () => {
+    const r = compare(verifyState('리메드', 'CJ올리브네트웍스'), NOW_VERIFY);
+    assert.equal(r.axes.salary.tier, 'near');
+    assert.equal(r.axes.salary.nearKind, 'small');
+    assert.equal(r.robust.full.tier, 'near');
+  });
+});
+
+describe('CALC-BEB 같아지는 연봉의 범위 표식(MED-4)', () => {
+  test('BREAKEVEN_BOUNDS 는 동결된 설계 상수 — 현재 연봉의 절반 미만 · 두 배 초과', () => {
+    assert.equal(Object.isFrozen(BREAKEVEN_BOUNDS), true);
+    assert.deepEqual({ ...BREAKEVEN_BOUNDS }, { low: 0.5, high: 2 });
+  });
+  test('리메드 → NAVER(현재 연봉 2,500): 등록 그대로 −10만원 → low · 한쪽만 등록 제외 422 → low · 복지 0 은 2,888 → 범위 안', () => {
+    const be = compare(verifyState('리메드', 'NAVER', { sal: 2500 }), NOW_VERIFY).breakeven;
+    assert.deepEqual([be.full.sal, be.full.bound], [-10, 'low']);
+    assert.deepEqual([be.exMixed.sal, be.exMixed.bound], [422, 'low']);
+    assert.deepEqual([be.noBenefit.sal, be.noBenefit.bound], [2888, null]);
+  });
+  test('카카오 → NAVER(2,500): 709만원(−71.6%)도 절반 미만 → low', () => {
+    assert.equal(compare(verifyState('카카오', 'NAVER', { sal: 2500 }), NOW_VERIFY).breakeven.full.bound, 'low');
+  });
+  test('반대 방향 상한 — NAVER → 리메드(2,500): 5,786만원(+131%) → high', () => {
+    const be = compare(verifyState('NAVER', '리메드', { sal: 2500 }), NOW_VERIFY).breakeven;
+    assert.deepEqual([be.full.sal, be.full.bound], [5786, 'high']);
+  });
+  test('골든(6,000)은 세 눈금 모두 범위 안', () => {
+    const be = compare(goldenState(), NOW_CALC).breakeven;
+    assert.deepEqual([be.full.bound, be.exMixed.bound, be.noBenefit.bound], [null, null, null]);
+  });
+});
+
+describe('CALC-EXCL 뺀 금액 ≠ 미등록(MED-5) · 「N건」 = 누른 행 수(LOW-4)', () => {
+  const offWhere = (st, pred) => { for (const k of ['a', 'b']) for (const b of st.benS[k]) if (pred(k, b)) b.checked = false; return st; };
+  const isAmt = (b) => b.benefit_amt != null && !b.qual_yn;
+  test('catProfile: NAVER 보상 금액 행 3개를 빼면 보상 칸은 bOnly + exclA 3(등록 4개 중 금액 3개 모두 뺌)', () => {
+    const st = offWhere(goldenState(), (k, b) => k === 'a' && b.benefit_ctgr_cd === 'compensation' && isAmt(b));
+    const c = compare(st, NOW_CALC).cat.find((x) => x.ctgr === 'compensation');
+    assert.equal(c.verdict, 'bOnly');
+    assert.deepEqual([c.exclA, c.amtCntA, c.cntA, c.sumA], [3, 3, 4, 0]);
+    assert.equal(compare(goldenState(), NOW_CALC).cat.find((x) => x.ctgr === 'compensation').exclA, 0);
+  });
+  test('양쪽 금액을 모두 빼서 합이 0 인 칸은 excluded(항목 수만 있는 countOnly 와 다르다)', () => {
+    const st = offWhere(goldenState(), (k, b) => b.benefit_ctgr_cd === 'compensation' && isAmt(b));
+    assert.equal(compare(st, NOW_CALC).cat.find((x) => x.ctgr === 'compensation').verdict, 'excluded');
+  });
+  test('금액 행을 모두 빼면 복지 축은 unsure(excluded) — noAmounts(등록이 없음)가 아니다', () => {
+    const v = compare(offWhere(goldenState(), (k, b) => isAmt(b)), NOW_CALC).axes.benefits;
+    assert.deepEqual([v.tier, v.unsureBy, v.allExcluded, v.noAmounts], ['unsure', 'excluded', true, false]);
+  });
+  test('두 회사 모두 금액이 등록되지 않았으면 unsure(none)', () => {
+    const q = (cd) => ({ benefit_cd: cd, benefit_nm: cd, benefit_amt: null, qual_yn: true, benefit_ctgr_cd: 'perks', amt_source: 'none', checked: true });
+    const v = compare({ ...goldenState(), benS: { a: [q('x')], b: [q('y')] } }, NOW_CALC).axes.benefits;
+    assert.deepEqual([v.tier, v.unsureBy, v.allExcluded, v.noAmounts], ['unsure', 'none', false, true]);
+  });
+  test('exclusionSummary: 두 회사 금액 짝 1행 = 1건 · 혼합 4건 = 4건 · 금액은 등록 금액 합', () => {
+    const st = goldenState();
+    const pairs = classifyPairs(st.benS.a, st.benS.b);
+    const pr = pairs.bothAmt[0];
+    pr.a.checked = false; pr.b.checked = false;
+    let ex = exclusionSummary(st.benS.a, st.benS.b, pairs);
+    assert.equal(ex.rows, 1);
+    assert.deepEqual([ex.a.n, ex.b.n], [1, 1]);
+    assert.equal(ex.a.amt, Number(pr.a.benefit_amt));
+    for (const r of pairs.mixed) r[r.side].checked = false;
+    ex = exclusionSummary(st.benS.a, st.benS.b, pairs);
+    assert.equal(ex.rows, 5);
+    assert.equal(compare(st, NOW_CALC).exclusions.rows, 5, 'compare 가 같은 값을 싣는다');
+  });
+  test('법정 행(checked:false · legal_yn)은 사용자의 뺌이 아니다', () => {
+    const st = verifyState('KT', '네패스');
+    assert.ok(st.benS.a.some((b) => b.legal_yn) || st.benS.b.some((b) => b.legal_yn), '사전조건: 법정 행');
+    assert.equal(compare(st, NOW_VERIFY).exclusions.rows, 0);
+  });
+});
+
+describe('CALC-WBE 야근수당 미선택 — 같아지는 연봉도 경우마다(재확인 R-1)', () => {
+  test('CJ올리브네트웍스 → LS(B 54h 미선택): 포괄 7,352만원(+22.5%) · 비포괄 5,123만원 — core 의 값은 포괄 경우와 같다', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', 'LS', { wsB: { wage: null } }), NOW_VERIFY);
+    assert.equal(r.axes.salary.tier, 'depends');
+    const [inc, sep] = r.wage.cases;
+    assert.deepEqual([inc.wage.b, inc.diff, sep.wage.b, sep.diff], ['inclusive', -752, 'separate', 2119]);
+    assert.equal(inc.breakeven.full.sal, 7352);
+    assert.equal(inc.breakeven.full.sal, r.breakeven.full.sal, 'core(미선택) = 포괄 가정');
+    assert.equal(sep.breakeven.full.sal, 5123);
+    assert.ok(sep.breakeven.k > 0, '비포괄이면 연봉과 함께 야근수당도 오른다');
+    assert.equal(inc.breakeven.k, 0);
+  });
+  test('A 만 미선택 · 양쪽 미선택(4조합)도 경우마다 같아지는 연봉이 있다', () => {
+    const a = compare(verifyState('CJ올리브네트웍스', 'LS', { wsA: { wage: null, hours: 52 } }), NOW_VERIFY);
+    assert.deepEqual(a.wage.slots, ['a']);
+    assert.deepEqual(a.wage.cases.map((c) => c.breakeven.full.sal), [6420, 8658]);
+    const both = compare(verifyState('CJ올리브네트웍스', 'LS', { wsA: { wage: null, hours: 52 }, wsB: { wage: null } }), NOW_VERIFY);
+    assert.equal(both.wage.cases.length, 4);
+    assert.ok(both.wage.cases.every((c) => c.breakeven && Number.isFinite(c.breakeven.full.sal)));
   });
 });

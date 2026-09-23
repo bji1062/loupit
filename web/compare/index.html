@@ -108,16 +108,19 @@
       <div id="benefits-body"></div>
     </section>
 
+    <!-- 이직 계산기 입력(2026-09-23 개편, SPEC 06 SP-FE-14). ui.js 가 #calc-form 을 채운다 — 맨 위 「어떤 기준으로
+         볼까요?」 → A·B 두 열(줄 맞춤) → 고정 버튼 띠. 복지 체크박스는 없다(빼기는 결과 화면 비교표에서). -->
     <section id="view-input" class="view" data-screen="input" hidden>
-      <h2>비교 입력</h2>
-      <div id="input-slot-a" class="input-slot" data-slot="a"></div>
-      <div id="input-slot-b" class="input-slot" data-slot="b"></div>
-      <div id="priority-picker"></div>
-      <button id="btn-compare" type="button">비교하기</button>
+      <h2>비교 입력 <small class="calc-h2-note">★ 표시한 두 칸만 채우면 됩니다</small></h2>
+      <div id="calc-form" class="calc-form"></div>
+      <div class="calc-cta">
+        <button id="btn-compare" type="button">비교 결과 보기</button>
+        <p class="calc-privacy">계산은 브라우저 안에서만 이뤄지고, 입력값은 어디로도 전송되지 않습니다.</p>
+      </div>
     </section>
 
     <section id="view-report" class="view" data-screen="report" hidden>
-      <h2>비교 리포트</h2>
+      <h2>비교 결과 <small class="calc-h2-note">실효 총보상 = 연봉 + 복지 환산 가치 + 야근수당</small></h2>
       <div id="report-body"></div>
       <!-- SP-ADS-9.2: report 뷰 하단 절제 광고 슬롯 정확히 1개(판정 상단·중간 삽입 금지) -->
       <div data-ad-position="report_bottom"></div>
@@ -146,9 +149,9 @@
   <section aria-label="특징">
     <h2>이런 걸 알려드립니다</h2>
     <ul>
-      <li><strong>실효연봉</strong> — 야근·근무시간을 반영해 시간당 가치까지 환산</li>
-      <li><strong>복지 총가치</strong> — 9개 카테고리 복지를 금액·정성으로 비교(추정치는 정직하게 표기)</li>
-      <li><strong>워라밸·문화</strong> — 유연근무·재택·시차출퇴근 등 근무형태와 조직문화 비교</li>
+      <li><strong>실효 총보상</strong> — 연봉에 복지와 야근수당까지 더한 금액, 시간당으로도 환산</li>
+      <li><strong>복지 비교</strong> — 두 회사 모두 있는 복지와 한쪽에만 있는 복지를 나눠 금액과 설명으로 비교(추정한 금액은 추정이라고 표시)</li>
+      <li><strong>워라밸·문화</strong> — 유연근무·재택·근무시간·통근을 비교</li>
     </ul>
   </section>
 

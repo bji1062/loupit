@@ -5,8 +5,6 @@
 import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { compare } from './calc.js';
-// 실경로 회귀용 — 정규화 단계를 건너뛰지 않는 테스트가 하나는 있어야 한다(아래 주석 참조).
-import { normalizeCompany, fillBenefits, blankWs } from './inputs.js';
 
 // ── 최소 in-memory document 스텁(search.test.js와 동일 패턴) ───────────────
 class FakeElement {
@@ -55,11 +53,13 @@ class FakeLocalStorage {
 globalThis.localStorage = new FakeLocalStorage();
 
 const {
-  renderReport, renderVdCard, renderCatDelta, renderCatButterfly, renderBands,
+  renderCatDelta, renderCatButterfly,
   WARN_COPY, warnCopy, renderRecentUI, buildRecentRecord, saveRecentComparison,
-  matchBenefitRows, benefitDiffSummary, renderBenefitMatrix,
-  benefitTotals, renderBenefitHeadline,
+  matchBenefitRows,
 } = await import('./report.js');
+// renderReport(이직 계산기 결과 화면, 2026-09-23 개편)는 실 DOM 이 필요해 report-calc.test.js(jsdom)가 잰다.
+// 옛 판정카드(renderVdCard)·밴드 목록(renderBands)·복지 매트릭스는 새 화면으로 대체돼 함께 걷었다 —
+// 그 테스트가 지키던 계약(출처 URL 비노출·계보 배지·만료 우선·실경로 회귀)은 report-calc.test.js 로 옮겼다.
 const { recent } = await import('./store.js');
 
 beforeEach(() => { globalThis.localStorage.clear(); });
@@ -85,27 +85,6 @@ function fixtureState(overrides = {}) {
     ...overrides,
   };
 }
-
-// ── T-06.11.2: renderVdCard 판정카드·승자색·tie/limited ─────────────────────
-describe('T-06.11.2 renderVdCard', () => {
-  test('승자 클래스·tie 표기', () => {
-    const report = compare(fixtureState());
-    const mount = new FakeElement('div');
-    renderVdCard(report.vdCard, mount, { sacrifice: report.sacrifice });
-    const card = mount.children[0];
-    assert.equal(card.attributes['data-axis'], 'wlb');
-    const persps = card.findAll((n) => n.className && n.className.includes('vd-persp--'));
-    assert.ok(persps.length >= 1);
-  });
-
-  test('멱등 재호출: 두 번 호출해도 카드 1개만 유지', () => {
-    const report = compare(fixtureState());
-    const mount = new FakeElement('div');
-    renderVdCard(report.vdCard, mount);
-    renderVdCard(report.vdCard, mount);
-    assert.equal(mount.children.length, 1);
-  });
-});
 
 // ── T-06.11.3: renderCatDelta 9카테고리 고정 순서 ───────────────────────────
 describe('T-06.11.3 renderCatDelta', () => {
@@ -158,163 +137,20 @@ describe('renderCatButterfly 버터플라이 차트', () => {
   });
 });
 
-// ── T-06.11.4: renderBands 배지 라벨·만료 경고 (2026-07-30 개정: 출처 링크 제거) ──
-//
-// 구 테스트는 "https 는 <a> 로, javascript: 는 '비표시' 텍스트로"라는 **스킴 화이트리스트**를
-// 쟀다. 이제 출처를 아예 렌더하지 않으므로 더 강한 명제를 잰다 — 검증이 느슨해진 게 아니라
-// **검증할 대상 자체를 없앴다**(URL 주입 경로 소멸). URL 은 응답에 계속 실려 오지만 화면엔
-// 나오지 않는다(사용자 결정: 저장하되 노출하지 않는다).
-describe('T-06.11.4 renderBands', () => {
-  const ITEMS = [
-    { benefit_nm: '공식항목', badge_cd: 'official', expires_dtm: null, badge_src_url_ctnt: 'https://x.co/a' },
-    { benefit_nm: '추정항목', badge_cd: 'est', expires_dtm: null, badge_src_url_ctnt: null },
-    { benefit_nm: '만료항목', badge_cd: 'official', expires_dtm: '2000-01-01T00:00:00Z', badge_src_url_ctnt: 'javascript:alert(1)' },
-  ];
-
-  test('공식/추정/만료 배지 라벨 + 밴드 표시', () => {
-    const mount = new FakeElement('div');
-    renderBands({ totalRange: [100, 200] }, ITEMS, mount, Date.now());
-    const list = mount.children[0];
-    assert.equal(list.children.length, 3);
-    assert.equal(list.children[0].children[1].textContent, '공식');
-    assert.equal(list.children[1].children[1].textContent, '추정');
-    assert.equal(list.children[2].children[1].textContent, '만료');
-    // 계수 재계산 없이 slotResult.totalRange 를 그대로 표시(RP-1)
-    assert.ok(mount.allText().includes('100'));
-    assert.ok(mount.allText().includes('200'));
-  });
-
-  test('출처 URL 은 어떤 형태로도 렌더되지 않는다', () => {
-    const mount = new FakeElement('div');
-    renderBands({ totalRange: [100, 200] }, ITEMS, mount, Date.now());
-    const list = mount.children[0];
-    // 항목당 노드는 이름·배지 **둘뿐**이다. 셋째가 생기면 출처가 되살아난 것이다.
-    for (const li of list.children) assert.equal(li.children.length, 2, '출처 노드가 남아 있다');
-    const text = mount.allText();
-    assert.ok(!text.includes('x.co/a'), '출처 URL 이 노출됐다');
-    assert.ok(!text.includes('javascript:'), '위험 스킴이 노출됐다');
-    assert.ok(!text.includes('출처'), '출처 라벨이 남아 있다');
-  });
-
-  test('출처 계보 배지 — 재직자 등록/수정이 badge_cd 를 이긴다', () => {
-    // 배지가 "누가 마지막으로 손댔나"를 말한다. 편집은 require_employment 게이트 뒤라
-    // 그 회사 재직 인증자만 남길 수 있다 — 그래서 '사용자'가 아니라 '재직자'다.
-    const items = [
-      { benefit_nm: '식대', badge_cd: 'official', expires_dtm: null, edit_origin: 'seed' },
-      { benefit_nm: '기숙사', badge_cd: 'official', expires_dtm: null, edit_origin: 'edited' },
-      { benefit_nm: '카페', badge_cd: 'official', expires_dtm: null, edit_origin: 'member' },
-    ];
-    const mount = new FakeElement('div');
-    renderBands({ totalRange: [0, 0] }, items, mount, Date.now());
-    const list = mount.children[0];
-    assert.equal(list.children[0].children[1].textContent, '공식');
-    assert.equal(list.children[1].children[1].textContent, '공식·수정');
-    assert.equal(list.children[2].children[1].textContent, '재직자 등록');
-    // 클래스도 갈라져야 색이 구분된다(라벨만 바뀌면 색맹 사용자에겐 같은 배지다).
-    assert.equal(list.children[1].children[1].className, 'badge badge--edited');
-    assert.equal(list.children[2].children[1].className, 'badge badge--member');
-  });
-
-  // 🚨 위 두 테스트는 renderBands 에 항목을 **직접 주입**해 정규화 단계를 건너뛴다.
-  // 그래서 전부 초록이면서도 실제 화면에서는 계보가 죽어 있었다: REF → normalizeCompany →
-  // fillBenefits → benS 경로에서 `edit_origin` 이 화이트리스트에 없어 사라졌기 때문이다
-  // (함정 (54) — 테스트가 결함을 고정한다). 아래는 **실제 데이터 경로 전체**를 통과시킨다.
-  test('실경로 회귀 — REF → normalizeCompany → fillBenefits → renderBands 로 계보가 살아온다', () => {
-    const state = {
-      REF: { company_types: [], benefit_presets: {}, companies: [] },
-      matched: { a: null, b: null }, benS: { a: [], b: [] },
-      wsState: { a: blankWs(), b: blankWs() }, chosenType: { a: null, b: null },
-      inputMode: { a: 'company', b: 'company' },
-    };
-    // REF 번들이 실제로 주는 모양(server/models/reference.py Benefit)
-    state.matched.a = normalizeCompany({
-      comp_id: 1, comp_nm: '삼성전자', comp_eng_nm: 'samsung_elec', comp_tp_cd: 'large',
-      benefits: [
-        { benefit_cd: 'a', benefit_nm: '카페', benefit_amt: 10, benefit_ctgr_cd: 'perks', badge_cd: 'official', amt_source: 'stated', qual_yn: false, expires_dtm: null, edit_origin: 'member' },
-        { benefit_cd: 'b', benefit_nm: '식대', benefit_amt: 20, benefit_ctgr_cd: 'perks', badge_cd: 'official', amt_source: 'stated', qual_yn: false, expires_dtm: null, edit_origin: 'seed' },
-      ],
-    });
-    fillBenefits(state, 'a');
-
-    const mount = new FakeElement('div');
-    renderBands({ totalRange: [0, 0] }, state.benS.a, mount, Date.now());
-    const list = mount.children[0];
-    assert.equal(list.children[0].children[1].textContent, '재직자 등록',
-      'edit_origin 이 정규화에서 사라지면 여기서 "공식" 이 나온다 — 실제로 그랬다');
-    assert.equal(list.children[1].children[1].textContent, '공식');
-  });
-
-  test('만료가 출처 계보를 이긴다 — 신선도가 최우선', () => {
-    // 뒤집히면 만료된 재직자 등록 항목이 '재직자 등록'으로만 보여, 사용자는 그 값이
-    // 낡았다는 가장 급한 정보를 놓친다. generator/format.py 와 같은 우선순위여야 한다.
-    const mount = new FakeElement('div');
-    renderBands({ totalRange: [0, 0] }, [
-      { benefit_nm: 'x', badge_cd: 'official', expires_dtm: '2000-01-01T00:00:00Z', edit_origin: 'member' },
-    ], mount, Date.now());
-    assert.equal(mount.children[0].children[0].children[1].textContent, '만료');
-  });
-
-  test('자기검증 — 표본이 실제로 URL 을 담고 있다', () => {
-    // 표본에 URL 이 없으면 "URL 이 안 보인다"는 언제나 참이라 아무것도 증명하지 못한다(함정 ㉙).
-    assert.ok(ITEMS.some((i) => (i.badge_src_url_ctnt || '').startsWith('https://')));
-    assert.ok(ITEMS.some((i) => (i.badge_src_url_ctnt || '').startsWith('javascript:')));
-  });
-});
-
 // ── T-06.11.5: 경고문구 매핑 ─────────────────────────────────────────────
 describe('T-06.11.5 warnCopy', () => {
   test('코드→문구 매핑', () => {
     assert.equal(warnCopy('both_inclusive'), WARN_COPY.both_inclusive);
     assert.ok(WARN_COPY.eff_shrink.length > 0);
   });
+  test('임금 형태는 회사 사실이 아니라 입력한 조건 — 「입력하신」 · 미선택 코드 문구 존재', () => {
+    for (const code of ['both_inclusive', 'inclusive_a', 'inclusive_b', 'wage_unknown_a', 'wage_unknown_b']) {
+      assert.match(WARN_COPY[code], /입력하신/, code);
+    }
+  });
   test('미지 코드 방어(크래시 없이 안내문 반환)', () => {
     assert.doesNotThrow(() => warnCopy('unknown_code_xyz'));
     assert.match(warnCopy('unknown_code_xyz'), /unknown_code_xyz/);
-  });
-});
-
-// ── T-06.11.1: renderReport 골격·멱등 재구성·카드 순서 ──────────────────────
-describe('T-06.11.1 renderReport', () => {
-  test('블록 존재(판정→총보상→시간조정→워라밸→카테고리→정성→경고→최근비교)', () => {
-    const report = compare(fixtureState());
-    const mount = new FakeElement('div');
-    renderReport(report, mount, { benS: fixtureState().benS, matched: fixtureState().matched });
-    const classes = mount.children.map((c) => c.className);
-    assert.ok(classes.some((c) => c.includes('rp-vdcard')));
-    assert.ok(classes.some((c) => c.includes('rp-total')));
-    assert.ok(classes.some((c) => c.includes('rp-hourly')));
-    assert.ok(classes.some((c) => c.includes('rp-wlb')));
-    assert.ok(classes.some((c) => c.includes('rp-catdelta')));
-    assert.ok(classes.some((c) => c.includes('rp-qual')));
-  });
-
-  test('replaceChildren 멱등 재호출 — 두 번 호출해도 중복 누적 없음', () => {
-    const report = compare(fixtureState());
-    const mount = new FakeElement('div');
-    renderReport(report, mount);
-    const firstCount = mount.children.length;
-    renderReport(report, mount);
-    assert.equal(mount.children.length, firstCount);
-  });
-
-  test('hourly===null(근무시간 미입력) → "미산출" 표시(무효화 금지, FR-40 2a)', () => {
-    const state = fixtureState({ wsState: { a: { ot: null, wage: null, remote: null, flex: null }, b: { ot: null, wage: null, remote: null, flex: null } } });
-    const report = compare(state);
-    const mount = new FakeElement('div');
-    renderReport(report, mount);
-    assert.ok(mount.allText().includes('미산출'));
-  });
-
-  test('경고 배너: warnings 있으면 rp-warnings 블록, 없으면 생략', () => {
-    // both_inclusive 유도: 양측 포괄임금 + ot!=='low'
-    const state = fixtureState({ wsState: { a: { ot: 'mid', wage: 'inclusive', remote: null, flex: null }, b: { ot: 'mid', wage: 'inclusive', remote: null, flex: null } } });
-    const report = compare(state);
-    assert.ok(report.warnings.includes('both_inclusive'));
-    const mount = new FakeElement('div');
-    renderReport(report, mount);
-    const warnBlock = mount.children.find((c) => c.className && c.className.includes('rp-warnings'));
-    assert.ok(warnBlock);
-    assert.ok(warnBlock.allText().includes(WARN_COPY.both_inclusive));
   });
 });
 
@@ -424,203 +260,5 @@ describe('matchBenefitRows — 항목 정렬 매칭', () => {
       [],
     );
     assert.deepEqual(rows.map((r) => r.key), ['big', 'small', 'q1']);
-  });
-});
-
-describe('benefitDiffSummary — 새로 생김/사라짐 집계', () => {
-  test('gained·lost 개수/합계, 정성은 count만·common 집계', () => {
-    const rows = matchBenefitRows(
-      [
-        benItem({ benefit_cd: 'meal', benefit_amt: 240 }),                       // 공통
-        benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 }), // lost(금액)
-        benItem({ benefit_cd: 'daycare', benefit_nm: '어린이집', benefit_amt: null, qual_yn: true }), // lost(정성)
-      ],
-      [
-        benItem({ benefit_cd: 'meal', benefit_amt: 180 }),
-        benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' }), // gained
-      ],
-    );
-    const s = benefitDiffSummary(rows);
-    assert.deepEqual(s, { gained: { count: 1, sum: 300 }, lost: { count: 2, sum: 120 }, common: 1 });
-  });
-});
-
-describe('renderBenefitMatrix — 표 렌더·마커·우세 하이라이트', () => {
-  function fixtureRows() {
-    return matchBenefitRows(
-      [
-        benItem({ benefit_cd: 'meal', benefit_amt: 240 }),
-        benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 }),
-      ],
-      [
-        benItem({ benefit_cd: 'meal', benefit_amt: 180, badge_cd: 'est' }),
-        benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' }),
-      ],
-    );
-  }
-
-  test('헤더(회사명) + 카테고리 소계(엔진 catDelta 표기) + 차이 열 헤더', () => {
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(fixtureRows(), mount, {
-      labels: { a: '삼성전자', b: '네이버' },
-      catDelta: [{ ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 }, { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 }],
-    });
-    const text = mount.allText();
-    assert.ok(text.includes('삼성전자') && text.includes('네이버'), '헤더 회사명');
-    assert.ok(text.includes('360만원'), '카테고리 소계(엔진 값)');
-    assert.ok(text.includes('차이'), '차이 열 헤더');
-  });
-
-  test('차이 칩: 항목별 승자 방향(A/B)·카테고리 행은 엔진 delta', () => {
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(fixtureRows(), mount, {
-      catDelta: [{ ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 }, { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 }],
-    });
-    const chips = mount.findAll((n) => n.className && String(n.className).includes('ben-delta')).map((c) => c.textContent);
-    assert.ok(chips.includes('A +60'), '식대(240 vs 180) → A +60');
-    assert.ok(chips.includes('A +120'), '통근버스(A만) → A +120');
-    assert.ok(chips.includes('B +300'), '자기계발비(B만) → B +300');
-    assert.ok(chips.includes('A +180'), '복리후생 카테고리 행(엔진 delta -180)');
-  });
-
-  test('동일 금액 → "=" 칩', () => {
-    const rows = matchBenefitRows([benItem({ benefit_amt: 60 })], [benItem({ benefit_amt: 60 })]);
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(rows, mount, {});
-    const chips = mount.findAll((n) => n.className && String(n.className).includes('ben-delta')).map((c) => c.textContent);
-    assert.ok(chips.includes('='), '동일 금액 항목 행');
-  });
-
-  test('행내 미니바: 금액 셀에 폭% 인라인 바(최대 금액 = 100%)', () => {
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(fixtureRows(), mount, {});
-    const bars = mount.findAll((n) => n.className && String(n.className).includes('ben-bar'));
-    assert.ok(bars.length >= 3, '금액 항목마다 바');
-    const widths = bars.map((b) => b.attributes.style || '');
-    assert.ok(widths.some((w) => /width:\s*100(\.0)?%/.test(w)), '최대 금액(자기계발비 300) = 100%');
-    assert.ok(widths.every((w) => /width:\s*[\d.]+%/.test(w)), '전부 폭% 스타일');
-  });
-
-  test('단독 항목: 빈 셀 "—" + 사라짐/새로 생김 마커', () => {
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(fixtureRows(), mount, {});
-    const marks = mount.findAll((n) => n.className && String(n.className).includes('ben-mark'));
-    const markTexts = marks.map((m) => m.textContent);
-    assert.ok(markTexts.includes('사라짐'));
-    assert.ok(markTexts.includes('새로 생김'));
-    assert.ok(mount.findAll((n) => n.className && String(n.className).includes('ben-none')).length >= 2, '빈 셀 —');
-  });
-
-  test('만료 항목 → 만료 배지(기존 badgeLabel 재사용)', () => {
-    const rows = matchBenefitRows([benItem({ expires_dtm: '2000-01-01T00:00:00Z' })], []);
-    const mount = new FakeElement('div');
-    renderBenefitMatrix(rows, mount, {});
-    assert.ok(mount.allText().includes('만료'));
-  });
-
-  test('빈 rows → 무크래시·표 생략', () => {
-    const mount = new FakeElement('div');
-    assert.doesNotThrow(() => renderBenefitMatrix([], mount, {}));
-    assert.equal(mount.children.length, 0);
-  });
-});
-
-describe('benefitTotals·renderBenefitHeadline — 총액 헤드라인(결론 먼저)', () => {
-  const CAT_DELTA = [
-    { ctgr: 'perks', sumA: 360, sumB: 180, delta: -180 },
-    { ctgr: 'growth', sumA: 0, sumB: 300, delta: 300 },
-  ];
-
-  test('benefitTotals: catDelta 표시용 합산(엔진 값 그대로)', () => {
-    assert.deepEqual(benefitTotals(CAT_DELTA), { a: 360, b: 480, delta: 120 });
-    assert.deepEqual(benefitTotals([]), { a: 0, b: 0, delta: 0 });
-    assert.deepEqual(benefitTotals(null), { a: 0, b: 0, delta: 0 });
-  });
-
-  test('헤드라인: 양사 총액·판정문·분할 바 폭%·diff 요약 포함', () => {
-    const rows = matchBenefitRows(
-      [benItem({ benefit_cd: 'bus', benefit_nm: '통근버스', benefit_amt: 120 })],
-      [benItem({ benefit_cd: 'edu', benefit_nm: '자기계발비', benefit_amt: 300, benefit_ctgr_cd: 'growth' })],
-    );
-    const mount = new FakeElement('div');
-    renderBenefitHeadline(CAT_DELTA, rows, mount, { labels: { a: '삼성전자', b: '네이버' } });
-    const text = mount.allText();
-    assert.ok(text.includes('360만원') && text.includes('480만원'), '양사 총액');
-    assert.ok(text.includes('네이버') && text.includes('120만원 더'), 'B 우위 판정문');
-    assert.ok(text.includes('새로 생기는 복지 1개'), 'diff 요약 흡수');
-    const segs = mount.findAll((n) => n.className && String(n.className).includes('ben-split-'));
-    assert.equal(segs.length, 2, '분할 바 2조각');
-    assert.ok(segs.every((s) => /width:\s*[\d.]+%/.test(s.attributes.style || '')), '비중 폭%');
-  });
-
-  test('총액 동일 → "비슷" 판정문', () => {
-    const even = [{ ctgr: 'perks', sumA: 100, sumB: 100, delta: 0 }];
-    const mount = new FakeElement('div');
-    renderBenefitHeadline(even, [], mount, {});
-    assert.ok(mount.allText().includes('비슷'));
-  });
-});
-
-describe('renderReport — 복지 비교 섹션에 매트릭스 포함', () => {
-  test('ctx.benS 전달 시 rp-catdelta 블록 안에 ben-matrix 렌더', () => {
-    const state = fixtureState();
-    const report = compare(state);
-    const mount = new FakeElement('div');
-    renderReport(report, mount, { benS: state.benS, matched: state.matched });
-    const block = mount.children.find((c) => c.className && c.className.includes('rp-catdelta'));
-    assert.ok(block, 'rp-catdelta 블록 존재');
-    assert.ok(block.find((n) => n.className && String(n.className).includes('ben-headline')), '총액 헤드라인 존재');
-    assert.ok(block.find((n) => n.className && String(n.className).includes('ben-matrix')), '매트릭스 표 존재');
-    assert.equal(block.find((n) => n.className && String(n.className).includes('bfly')), null, '버터플라이 제거(세로 중복 해소)');
-  });
-
-  test('ctx 없이 호출해도 무크래시(매트릭스 생략)', () => {
-    const report = compare(fixtureState());
-    const mount = new FakeElement('div');
-    assert.doesNotThrow(() => renderReport(report, mount));
-  });
-});
-
-// ── #2: 자율성 정성 재설계 — 점수 폐기, 보유 요소 나열 ─────────────────────────
-describe('#2 워라밸 카드 자율성 요소 나열(점수 표기 폐기)', () => {
-  test('renderReport wlb 섹션: "자율성 요소" 나열, 구 "자율성 점수" 문구 부재', () => {
-    const state = fixtureState(); // wsState.a remote:hybrid·flex:flexible → ['재택근무','유연근무'], b 없음
-    const report = compare(state);
-    const mount = new FakeElement('div');
-    renderReport(report, mount, { benS: state.benS, matched: state.matched });
-    const txt = mount.allText();
-    assert.ok(txt.includes('자율성 요소'), '점수 대신 보유 요소를 나열');
-    assert.ok(txt.includes('재택근무'), 'A 슬롯 자율성 요소(재택근무) 표시');
-    assert.ok(txt.includes('해당 없음'), 'B 슬롯 보유 0개 → 해당 없음');
-    assert.equal(txt.includes('자율성 점수'), false, '구 "자율성 점수" 문구 제거');
-  });
-
-  test('시간 자율성 판정 텍스트: 보유 항목을 문장으로(perspText #2)', () => {
-    const state = fixtureState(); // p2 winner a(A ⊇ B)
-    const report = compare(state);
-    const mount = new FakeElement('div');
-    renderReport(report, mount, { benS: state.benS, matched: state.matched });
-    const persp = mount.find((n) => n.className && String(n.className).includes('vd-persp-text')
-      && n.allText().includes('시간 자율성'));
-    assert.ok(persp, '시간 자율성 판정 텍스트 존재');
-    assert.ok(persp.allText().includes('재택근무'), '판정 텍스트에 보유 항목 포함');
-  });
-});
-
-// ── #11: 정성 복지 설명(qual_desc_ctnt)이 리포트에 표시 ────────────────────────
-describe('#11 정성 복지 설명 표시', () => {
-  test('qual_desc_ctnt 보유 정성 항목의 설명이 렌더에 포함', () => {
-    const state = fixtureState({
-      benS: {
-        a: [{ benefit_cd: 'Q1', benefit_nm: '재택근무', benefit_amt: null, benefit_ctgr_cd: 'flexibility', checked: true, qual_yn: true, amt_source: 'none', badge_cd: 'est', expires_dtm: null, qual_desc_ctnt: '주 2일 이상 재택근무 지향' }],
-        b: [],
-      },
-    });
-    const report = compare(state);
-    const mount = new FakeElement('div');
-    renderReport(report, mount, { benS: state.benS, matched: state.matched });
-    const qualBlock = mount.children.find((c) => c.className && String(c.className).includes('rp-qual'));
-    assert.ok(qualBlock, '정성 복지 섹션 존재');
-    assert.ok(qualBlock.allText().includes('주 2일 이상 재택근무 지향'), '설명 텍스트가 표시됨(구현 전엔 필드명 불일치로 탈락)');
   });
 });
