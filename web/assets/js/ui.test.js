@@ -111,7 +111,7 @@ describe('UI-2 검색 상태 → 셸 메시지 반영(무결과 vs 오류, MB-4)
   });
 });
 
-describe('UI-3 입력 뷰(이직 계산기 개편 2026-09-23, SP-FE-12)', () => {
+describe('UI-3 입력 뷰(이직 계산기 개편 2026-09-23, SP-FE-14)', () => {
   beforeEach(() => loadShell());
   const input = (id, v) => { const n = document.getElementById(id); n.value = v; n.dispatchEvent(new window.Event('input', { bubbles: true })); return n; };
   const click = (sel) => document.querySelector(sel).dispatchEvent(new window.Event('click', { bubbles: true }));

@@ -257,7 +257,7 @@ export function weeklyHours(ws) {
 /**
  * 야근수당(만원/년, ≥0) — `getOTPay` 와 같은 공식, 시간만 `weeklyHours` 에서 읽는다.
  * 비포괄(`separate`)이고 주 40시간을 넘길 때만 발생한다. 임금 형태 미선택(null)은 0 — 두 경우를
- * 모두 보이는 일은 `wageScenarios`(§16)가 한다.
+ * 모두 보이는 일은 `wageScenarios`(§15.7)가 한다.
  */
 export function overtimePay(ws, salRange) {
   if (!ws || ws.wage !== 'separate') return 0;
@@ -489,7 +489,7 @@ export function sacrificeCost(sacrifice, m) {
 /**
  * 전체 리포트(FR-30). 필수값(연봉) 결측이면 ok:false + missing(부분 미산출, throw 없음).
  * 이직 계산기 개편(2026-09-23): 핵심 수치(`compareCore`) 위에 축 3벌·총보상 흐름·복지 변화 분류를
- * 얹는다(`calculatorExtras`, §16). 기존 키는 한 글자도 바뀌지 않고 새 키만 더해진다.
+ * 얹는다(`calculatorExtras`, SPEC 05 §15.7). 기존 키는 한 글자도 바뀌지 않고 새 키만 더해진다.
  */
 export function compare(state, now = Date.now()) {
   const core = compareCore(state, now);
@@ -605,7 +605,7 @@ export function restSummary(pri, sac, m, R) {
 }
 
 // ─────────────────────────────────────────────────────────────────────
-// 16. 이직 계산기 개편(2026-09-23) — 축 3벌 · 총보상 흐름 · 복지 변화 분류
+// 15.7 이직 계산기 개편(2026-09-23) — 축 3벌 · 총보상 흐름 · 복지 변화 분류 — SP-MOVE-1~10
 // ─────────────────────────────────────────────────────────────────────
 // 근거: loupit-evidence/2026-09-22-calc-redesign/FINAL-DESIGN.md §3·§4·§5·§8-2 + IMPL-BRIEF §2(사용자 결정).
 // 전부 순수 함수(now 주입)이고 **데이터만** 돌려준다 — 문장은 report.js 가 만든다(SP-FE-1.2 규칙 5).
@@ -614,7 +614,7 @@ export function restSummary(pri, sac, m, R) {
 
 /**
  * 축 판정 문턱 — **설계 상수**. 데이터로 잴 수 있는 것은 전체 회사 쌍으로 실측해 정했다
- * (SPEC 05 §16.3 · `infra/tools/calc_thresholds.mjs`). 주 근무시간·통근은 사용자 입력이라 실측 대상이 아니다.
+ * (SPEC 05 §15.7 SP-MOVE-9 · `infra/tools/calc_thresholds.mjs`). 주 근무시간·통근은 사용자 입력이라 실측 대상이 아니다.
  */
 export const AXIS_THRESHOLDS = Object.freeze({
   wlbWeekHrs: 2,         // 주 근무시간 차(h) ≥ 이면 워라밸 축 1순위가 결론을 낸다(입력)

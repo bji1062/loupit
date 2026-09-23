@@ -235,7 +235,7 @@ export function bindSearchView(state, deps) {
   if (goBtn) goBtn.addEventListener('click', () => searchGo(state, deps));
 }
 
-// ── 입력 뷰(이직 계산기 개편 2026-09-23 — SPEC 06 §SP-FE-12) ─────────────────────
+// ── 입력 뷰(이직 계산기 개편 2026-09-23 — SPEC 06 §SP-FE-14) ─────────────────────
 // 승인 목업(calc-mockup-fable v2) 그대로: 맨 위 「어떤 기준으로 볼까요?」 → A·B 칸이 **한 줄씩 맞는** 두 열
 // (현재 연봉 | 연봉 상승률 → 야근 → 야근수당 → 회사 등록 정보 → 통근 → 근속) → 고정된 「비교 결과 보기」.
 // 복지 체크박스 39개는 없앴다(사용자 결정 6) — 빼고 싶은 복지는 결과 화면 비교표에서 뺀다(같은 checked 계약).

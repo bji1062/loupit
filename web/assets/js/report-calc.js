@@ -1,4 +1,4 @@
-// web/assets/js/report-calc.js — 이직 계산기 결과 화면(SP-FE-12, 2026-09-23 개편).
+// web/assets/js/report-calc.js — 이직 계산기 결과 화면(SP-FE-14, 2026-09-23 개편).
 //
 // 승인 목업(loupit-evidence/2026-09-22-calc-redesign/calc-mockup-fable.html v2)의 구조·문구를 회사 이름과
 // 숫자만 일반화해 옮겼다. 엔진(calc.js)이 **이미 계산한** 리포트만 그린다 — calc.js 를 import 하지 않는다

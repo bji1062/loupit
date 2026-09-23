@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// infra/tools/calc_thresholds.mjs — 이직 계산기 판정 문턱 실측(SPEC 05 §16.3, 2026-09-23).
+// infra/tools/calc_thresholds.mjs — 이직 계산기 판정 문턱 실측(SPEC 05 §15.7 SP-MOVE-9, 2026-09-23).
 //
 // 쓰임: 참조 번들을 파일로 받아 두고 이 스크립트에 넘긴다(라이브 도메인을 헤드리스로 치면 봇 방어가 403).
 //   curl -s http://127.0.0.1:8000/api/v1/reference/all -o /tmp/bundle.json

@@ -18,7 +18,7 @@ import {
   effSalary, getWSHours, getOTPay, hourlyValue, autonomyPerks, commuteCompare,
   bandCoeff, pairVerdict, sumBand, buildVdCard, sacrificeCost,
   compare, calc, restSummary,
-  // 이직 계산기 개편(2026-09-23, SPEC 05 §16)
+  // 이직 계산기 개편(2026-09-23, SPEC 05 §15.7 SP-MOVE)
   compareCore, AXIS_THRESHOLDS, deltaBand, verdictTier, classifyPairs, benDiffParts,
   cappedRows, facetOf, tenureItems, tenureGate, catProfile, hourlyWithCommute, breakevenRate,
   weeklyHours, overtimePay, timeSheet, wageScenarios, sensitivity, robustness, askList,
@@ -573,7 +573,7 @@ describe('T-05.9 순수성·프로파일러 제거', () => {
 });
 
 // ═════════════════════════════════════════════════════════════════════════════
-// 이직 계산기 개편(2026-09-23) — SPEC 05 §16 · FINAL-DESIGN §8-3 ⓐ~ⓓ·ⓖ·ⓗ + IMPL-BRIEF 결정 1·4·6
+// 이직 계산기 개편(2026-09-23) — SPEC 05 §15.7(SP-MOVE) · FINAL-DESIGN §8-3 ⓐ~ⓓ·ⓖ·ⓗ + IMPL-BRIEF 결정 1·4·6
 // 문구 회귀(ⓔ·ⓕ)는 렌더가 소유하므로 report-calc.test.js 에 있다.
 // ═════════════════════════════════════════════════════════════════════════════
 const G = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-golden-naver-kakao.json'), 'utf8'));

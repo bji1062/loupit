@@ -2,7 +2,7 @@
 // 구 SP-RPT 대역 흡수. 엔진 calc.js는 import하지 않는다(값은 이미 계산됨) — dom.js·store.js만 사용.
 import { el } from './dom.js';
 import { recent } from './store.js';
-import { renderCalcReport } from './report-calc.js'; // 이직 계산기 결과 화면(SP-FE-12, 2026-09-23 개편)
+import { renderCalcReport } from './report-calc.js'; // 이직 계산기 결과 화면(SP-FE-14, 2026-09-23 개편)
 
 // 9카테고리 표시 라벨(SP-GEN CATEGORY_LABEL과 동일 어휘 사용 — 화면 간 용어 일관성).
 const CATEGORY_LABEL = {
@@ -217,7 +217,7 @@ export function renderRecentUI(mountEl, ctx = {}) {
   return mountEl;
 }
 
-// ── renderReport — 이직 계산기 결과 화면(SP-FE-12, 2026-09-23 개편) ─────────────────
+// ── renderReport — 이직 계산기 결과 화면(SP-FE-14, 2026-09-23 개편) ─────────────────
 // 판정 카드·총보상 카드·정성 칩 벽을 늘어놓던 옛 7블록을 걷고, 축(연봉·워라밸·복지)이 판정 기준과 첫 화면을
 // 정하는 결과 화면으로 바꿨다. 본문은 report-calc.js 가 그린다 — 여기는 셸 헤딩과 「최근 비교」만 잇는다.
 export function renderReport(report, mountEl, ctx = {}) {

@@ -873,7 +873,7 @@ export function runReport(hooks = {}) {
     const rerun = () => runReport({ state, compareFn, renderReportFn, mountEl: el2, recentCtx, save: false, preserve: true });
     // 뺀 복지가 있으면 「빼기 전」 결과를 함께 넘긴다 — 「결론 그대로 / 바뀜」은 이 짝과 비교한다.
     const baseline = hasExclusions(state) ? compareFn(assembleCompareState(state, { allChecked: true })) : null;
-    renderReportFn(report, el2, { // 배지·표시명·최근비교 콜백(SP-FE-9.4, C1) + 계산기 결과 화면(SP-FE-12)
+    renderReportFn(report, el2, { // 배지·표시명·최근비교 콜백(SP-FE-9.4, C1) + 계산기 결과 화면(SP-FE-14)
       benS: state.benS, matched: state.matched, recentCtx, preserve, baseline,
       axis: PRI_KEY[state.curPri] || 'salary',
       view: state.ui && state.ui.reportView,

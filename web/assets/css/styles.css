@@ -1453,7 +1453,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* /find 정적 표 — 항목 페이지가 있는 줄의 도구 입구(이름은 항목 페이지로 간다). */
 .bn-find-go { margin-left:var(--sp-2); font-size:var(--fs-xs); font-weight:var(--fw-regular); color:var(--t3); white-space:nowrap; }
 
-/* ══════════════════════════════════════ 이직 계산기 입력(SP-FE-12, 2026-09-23) ══
+/* ══════════════════════════════════════ 이직 계산기 입력(SP-FE-14, 2026-09-23) ══
    승인 목업(calc-mockup-fable v2)을 사이트 토큰으로 옮겼다 — 새 색 없음(UT-NO-LITERAL). 전부 새 클래스
    (`.calc-*`)라 옛 셸·옛 JS 가 남아 있는 머지~pull 틈에도 기존 마크업을 건드리지 않는다.
    A = 브랜드 초록 ●(원) · B = 슬롯 파랑 ■(네모) — 비교 화면(SP-CMP-4)과 같은 두 채널. */
@@ -1546,7 +1546,7 @@ main p.calc-fill-note, main p.calc-note { margin-top:var(--sp-2); }
 .calc-privacy { text-align:center; color:var(--t3); font-size:var(--fs-xs); }
 main p.calc-privacy { margin-top:var(--sp-2); }
 
-/* ══════════════════════════════════════ 이직 계산기 결과(SP-FE-12, 2026-09-23) ══
+/* ══════════════════════════════════════ 이직 계산기 결과(SP-FE-14, 2026-09-23) ══
    목업 v2 의 블록을 사이트 토큰으로 — 부호색은 텍스트용 --green/--red(목업 #047857/#c02626 과 같은 값),
    A/B 는 --brand ●/--slot-b ■. 브리지(총보상 흐름)만은 A/B 색을 쓰지 않고 양수·음수·합계 3색이다.
    `main p`·`main h3`·`#view-report button` 의 넓은 기본값이 새 블록에 새지 않게 먼저 0 으로 되돌린다. */
@@ -1952,7 +1952,7 @@ main p.calc-privacy { margin-top:var(--sp-2); }
   .bn-meter { width:120px; }
   .bn-table tbody th { white-space:nowrap; }
 
-  /* 이직 계산기 입력(SP-FE-12) — 두 열 나란히, 줄은 subgrid 로 맞춘다(열마다 7칸). 옛 #view-input 2단 격자
+  /* 이직 계산기 입력(SP-FE-14) — 두 열 나란히, 줄은 subgrid 로 맞춘다(열마다 7칸). 옛 #view-input 2단 격자
      안에서 새 컨테이너는 전폭을 쓴다. */
   #view-input > .calc-form, #view-input > .calc-cta { grid-column:1 / -1; }
   .calc-pair { grid-template-columns:repeat(2, minmax(0,1fr)); grid-template-rows:repeat(7, auto); column-gap:var(--sp-5); row-gap:0; }
@@ -1964,7 +1964,7 @@ main p.calc-privacy { margin-top:var(--sp-2); }
   .calc-seg .calc-chip { flex:auto; }
   #view-input .calc-num { width:120px; }
 
-  /* 이직 계산기 결과(SP-FE-12) — 타일 3칸 가로, 브리지 세로 기둥, 표는 원래 열로 */
+  /* 이직 계산기 결과(SP-FE-14) — 타일 3칸 가로, 브리지 세로 기둥, 표는 원래 열로 */
   .calc-axisbar .calc-seg { max-width:460px; }
   .calc-vd { padding:var(--sp-5) var(--sp-5); }
   .calc-rp { gap:var(--sp-3); }

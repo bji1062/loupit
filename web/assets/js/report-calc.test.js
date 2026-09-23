@@ -1,4 +1,4 @@
-// web/assets/js/report-calc.test.js — 이직 계산기 결과 화면(SP-FE-12, 2026-09-23 개편) jsdom 테스트.
+// web/assets/js/report-calc.test.js — 이직 계산기 결과 화면(SP-FE-14, 2026-09-23 개편) jsdom 테스트.
 // 근거: IMPL-BRIEF §3(문구 규칙 — 테스트로 박아라)·§2(결정 5·6)·§4(기존 동작) + FINAL-DESIGN §8-3 ⓔ·ⓕ·ⓒ(DOM).
 // 엔진 값은 calc.test.js 가 잰다 — 여기는 **화면이 무엇을 말하고 무엇을 말하지 않는가**다.
 globalThis.window = { addEventListener() {}, removeEventListener() {} };
