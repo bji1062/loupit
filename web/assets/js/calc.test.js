@@ -344,6 +344,15 @@ describe('T-05.7 vdCard·희생', () => {
     assert.equal(card.p2.detail.pct, 20);
   });
 
+  test('T-ENGINE-31b: buildVdCard(salary) — 시간당 % 분모는 현재 직장(A)', () => {
+    // A 가 클 때 min(A,B) 분모는 감소율을 부풀린다 — 골든 쌍(NAVER→카카오) 42,521 → 27,561 은 35% 다(54% 아님).
+    const card = buildVdCard('salary', { totalA: 9950, totalB: 7739, hourlyA: 42521, hourlyB: 27561 });
+    assert.equal(card.p2.winner, 'a');
+    assert.equal(card.p2.detail.pct, 35);
+    const down = buildVdCard('salary', { totalA: 6000, totalB: 5000, hourlyA: 30000, hourlyB: 25000 });
+    assert.equal(down.p2.detail.pct, 17, '5,000 / 30,000 = 16.7% → 17 (min 분모였다면 20)');
+  });
+
   test('T-ENGINE-32: buildVdCard(salary) — hourlyA null → p2 tie/missing', () => {
     const m = { totalA: 6000, totalB: 7000, hourlyA: null, hourlyB: 30000 };
     const card = buildVdCard('salary', m);

@@ -360,7 +360,9 @@ function vdSalary(m) {
   let p2;
   if (m.hourlyA != null && m.hourlyB != null) {
     const hd = m.hourlyB - m.hourlyA;
-    const pct = Math.round(Math.abs(hd) / Math.min(m.hourlyA, m.hourlyB) * 100);
+    // 분모는 **현재 직장(A)** 이다 — 「지금보다 몇 % 줄어드나」가 이 숫자의 뜻이다. 예전에는
+    // `Math.min(A, B)` 라 A 가 클 때 감소율이 부풀었다(NAVER→카카오 −14,960원: 54% → 35%).
+    const pct = Math.round(Math.abs(hd) / m.hourlyA * 100);
     p2 = {
       label: '시간당 가치', winner: hd > 0 ? 'b' : hd < 0 ? 'a' : 'tie',
       detail: { hourlyA: m.hourlyA, hourlyB: m.hourlyB, diff: hd, pct },
