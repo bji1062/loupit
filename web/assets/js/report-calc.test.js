@@ -541,7 +541,7 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     const { r, mount } = render(verifyState('리메드', 'CJ올리브네트웍스'), 'salary', V);
     assert.equal(r.axes.salary.tier, 'near', '사전조건');
     const sum = txt(mount, '#calc-b-robust summary');
-    assert.match(sum, /두 회사 총보상은 거의 같습니다/);
+    assert.match(sum, /등록된 금액으로는 두 회사 총보상이 거의 같습니다/);
     assert.ok(!sum.includes('말하기 어렵습니다'));
   });
 
@@ -650,6 +650,89 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     const led = txt(mount, '#calc-b-ledger');
     assert.match(led, /^근속 2년 덕분에 지금 받는 복지 1개/);
     assert.match(led, /자기돌봄 휴직 — 근속 3년 이상 · 1년 남음/);
+  });
+});
+
+describe('RC-8 재확인(2026-09-23 RECHECK-REPORT) — 새 발견 R-1~R-6', () => {
+  beforeEach(() => loadShell());
+  const V = { now: NOW_VERIFY };
+  const openAll = (mount) => { for (const d of mount.querySelectorAll('details')) d.open = true; };
+
+  test('R-1 CJ올리브네트웍스 → LS(B 미선택): L2 는 포괄 가정을 밝히고, 카드와 반대로 단정하지 않는다 · 같아지는 연봉은 두 경우', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'LS', { wsB: { wage: null } }), 'salary', V);
+    openAll(mount);
+    assert.match(txt(mount, '.calc-hl'), /총보상이 늘지 줄지는 LS가 야근수당을 따로 주는지에 달려 있습니다/, '사전조건: 카드는 두 경우');
+    for (const id of ['bridge', 'robust', 'sens']) {
+      assert.equal(txt(mount, '#calc-b-' + id + ' .calc-assume'), '아래 숫자는 입력하신 조건에 LS의 야근수당 여부가 없어 포괄(야근수당을 따로 주지 않음)이라고 보고 계산했습니다. 따로 주는 경우는 연봉 기준 화면에 나란히 적었습니다.', id);
+    }
+    assert.match(txt(mount, '#calc-b-robust summary'), /^LS가 포괄이라면, 복지 금액을 어떻게 잡아도 CJ올리브네트웍스의 총보상이 더 많습니다/);
+    assert.match(txt(mount, '.calc-arrow'), /^→ LS가 포괄이라면 어느 경우에도 LS 쪽 총보상이 더 많아지지는 않습니다/);
+    assert.match(txt(mount, '#calc-b-sens summary'), /^LS가 포괄이라면, 조건을 바꿔 봐도 결론은 그대로입니다/);
+    const nego = txt(mount, '.calc-nego');
+    assert.match(nego, /^총보상이 같아지는 LS 연봉 — LS가 포괄이면 7,352만원\(\+22\.5%\) · LS가 비포괄이면 5,123만원\(−14\.6%\)\. 입력하신 조건은 6,600만원입니다\./);
+    assert.ok(!/총보상이 같아지려면 LS 연봉이 7,352만원/.test(nego), '포괄 한 경우만 단정하지 않는다');
+    assert.match(txt(mount, '#calc-recalc'), /다시 계산한 총보상 차이 · LS가 포괄이라면/);
+    assert.match(txt(mount, '.calc-tiles'), /24,145원 \(−25%\) · LS가 포괄이라면/);
+    // 가정 없이 단정하는 요약이 남아 있지 않다
+    const all = allText(mount);
+    for (const phrase of ['복지 금액을 어떻게 잡아도', '조건을 바꿔 봐도 결론은 그대로']) {
+      const at = all.indexOf(phrase);
+      assert.ok(at > 0 && all.slice(Math.max(0, at - 12), at).includes('포괄이라면'), phrase);
+    }
+  });
+
+  test('R-1 MED-3 쌍 CJ올리브네트웍스 → LG디스플레이(range): 확실성 요약은 포괄 가정 안의 말 · 협상 줄 두 값', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'LG디스플레이', { wsB: { wage: null } }), 'salary', V);
+    openAll(mount);
+    assert.equal(txt(mount, '.calc-vd-top .calc-bd'), '연봉도 총보상도 늘어납니다');
+    assert.match(txt(mount, '#calc-b-robust summary'), /^LG디스플레이가 포괄이라면, 총보상 차이가 오차 범위를 겨우 넘는 정도라/);
+    assert.match(txt(mount, '.calc-nego'), /LG디스플레이가 포괄이면 6,082만원\(\+1\.4%\) · LG디스플레이가 비포괄이면 4,238만원\(−29\.4%\)/);
+    assert.match(txt(mount, '#calc-b-sens summary'), /^LG디스플레이가 포괄이라면, /);
+  });
+
+  test('R-1 변형 — A 만 미선택: 가정은 A, 카드에 B 의 「만약 야근수당을 따로 준다면」 줄을 섞지 않는다', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'LS', { wsA: { wage: null, hours: 52 } }), 'salary', V);
+    openAll(mount);
+    assert.match(txt(mount, '.calc-hl'), /CJ올리브네트웍스에서 야근수당을 따로 받는지에 달려 있습니다/);
+    assert.ok(!/만약 야근수당을 따로 준다면/.test(txt(mount, '.calc-vd')), '카드에는 뒤집는 조건 줄이 없다');
+    assert.match(txt(mount, '#calc-b-robust .calc-assume'), /CJ올리브네트웍스의 야근수당 여부가 없어 포괄/);
+    assert.match(txt(mount, '#calc-b-robust summary'), /^CJ올리브네트웍스가 포괄이라면, /);
+    assert.match(txt(mount, '#calc-b-sens summary'), /^CJ올리브네트웍스가 포괄이라면, /);
+    assert.match(txt(mount, '.calc-nego'), /CJ올리브네트웍스가 포괄이면 6,420만원\(\+7\.0%\) · CJ올리브네트웍스가 비포괄이면 8,658만원\(\+44\.3%\)/);
+  });
+
+  test('R-1 변형 — 양쪽 미선택: 「네 경우」 · 머리말 「둘 다 포괄」 · 협상 줄 네 값', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'LS', { wsA: { wage: null, hours: 52 }, wsB: { wage: null } }), 'salary', V);
+    openAll(mount);
+    assert.match(txt(mount, '.calc-wagecases'), /네 경우를 모두 계산했습니다/);
+    assert.match(txt(mount, '#calc-b-robust .calc-assume'), /두 회사의 야근수당 여부가 없어 둘 다 포괄/);
+    assert.match(txt(mount, '#calc-b-robust summary'), /^두 회사가 모두 포괄이라면, /);
+    assert.equal((txt(mount, '.calc-nego').match(/이면 [\d,]+만원/g) || []).length, 4);
+  });
+
+  test('R-1 재현 쌍 전부(B 미선택): 확실성·조건 바꿔 보기 요약은 늘 가정으로 시작하고 머리말이 있다 · 야근수당을 고르면 머리말이 없다', async () => {
+    const names = VP.companies.map((c) => c.comp_nm);
+    let n = 0;
+    for (const a of names) {
+      for (const b2 of names) {
+        if (a === b2) continue;
+        // jsdom 은 <details> 토글 작업을 큐에 쌓는다 — 동기 루프로 수백 번 그리면 메모리가 넘친다(스윕과 같은 이유로 양보).
+        await new Promise((res) => setTimeout(res, 0));
+        const st = verifyState(a, b2, { wsB: { wage: null } });
+        const r = compare(st, NOW_VERIFY);
+        if (!r.wage) continue;
+        const { mount } = render(st, 'salary', V);
+        for (const id of ['robust', 'sens']) {
+          const sum = txt(mount, '#calc-b-' + id + ' summary');
+          assert.ok(sum.includes('포괄이라면, '), a + ' → ' + b2 + ' ' + id + ': ' + sum);
+          assert.ok(mount.querySelector('#calc-b-' + id + ' .calc-assume'), a + ' → ' + b2 + ' ' + id + ' 머리말');
+        }
+        n += 1;
+      }
+    }
+    assert.ok(n > 100, '사전조건: 미선택 쌍이 충분하다 ' + n);
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'LS'), 'salary', V);
+    assert.equal(mount.querySelectorAll('.calc-assume').length, 0, '야근수당을 고르면 가정이 없다');
   });
 });
 

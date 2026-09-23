@@ -1573,6 +1573,8 @@ main p.calc-exnote { margin:0; }
 .calc-rp h3.calc-h3 small { font-weight:var(--fw-regular); color:var(--t3); font-size:var(--fs-xs); margin-left:var(--sp-2); }
 .calc-rp .calc-gap-top { margin-top:var(--sp-5); }
 .calc-rp h4 { font-size:var(--fs-sm); font-weight:var(--fw-bold); }
+/* 야근수당 미선택이면 L2 숫자가 포괄 가정이라는 머리말(R-1) — 블록 본문 맨 위 한 줄. */
+.calc-rp .calc-assume { margin-bottom:var(--sp-3); padding:var(--sp-2) var(--sp-3); border-left:3px solid var(--badge-est-fg); background:var(--badge-est-bg); border-radius:var(--r-sm); font-size:var(--fs-xs); color:var(--t2); }
 .calc-small { font-size:var(--fs-xs); }
 .calc-xs { font-size:var(--fs-ad); }
 .calc-pos { color:var(--green); }

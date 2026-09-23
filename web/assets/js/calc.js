@@ -934,6 +934,8 @@ function coreDiff(c, now) {
 /**
  * 임금 형태 미선택 + 야근(주 40h 초과)인 슬롯마다 포괄·비포괄 두 경우를 계산한다(사용자 결정 4).
  * 미선택 슬롯이 없으면 null. 결과는 「포괄이면 / 비포괄이면」 병치의 재료다. 경우마다 티어는 가드를 포함한다(MED-2).
+ * ⚠ 이때 core 와 그것으로 도는 튼튼함·감도·같아지는 연봉은 미선택 슬롯을 **포괄(야근수당 0)** 로 본 값이다 — 화면은 그
+ * 가정을 밝히고(SP-FE-14 R-1), 같아지는 연봉은 경우마다(`cases[].breakeven`) 함께 낸다.
  * - agree: 모든 경우의 티어가 같다.
  * - dir: 모든 경우가 같은 쪽을 가리키면 그 부호(+1 = 이직 후보가 많다), 아니면 0. 「판단하기 어려움」이 하나라도
  *   있으면 0 이다(그 경우엔 방향이 없다). **「결론이 달라진다」는 부호가 갈릴 때만**이다(MED-3) — 같은 방향이면
@@ -953,7 +955,12 @@ export function wageScenarios(state, core, now, ctx = {}) {
     const c = compareCore(st, now);
     const { diff, band, totalA } = coreDiff(c, now);
     const g = guardOf(st, pairs, now);
-    return { wage: w, diff, band, totalA, tier: verdictTier(diff, band, totalA, g), unsureBy: unsureCause(diff, band, g), otA: c.a.otPay, otB: c.b.otPay };
+    // 같아지는 B 연봉도 경우마다(R-1) — 협상 줄이 포괄 가정 하나만 말하지 않게. 한쪽만 등록 제외 눈금은 없다(null).
+    const be = breakevenRate(c, null, st.wsState.b);
+    return {
+      wage: w, diff, band, totalA, tier: verdictTier(diff, band, totalA, g), unsureBy: unsureCause(diff, band, g), otA: c.a.otPay, otB: c.b.otPay,
+      breakeven: be ? { full: be.full, noBenefit: be.noBenefit, k: be.k } : null,
+    };
   });
   const tiers = new Set(cases.map((c) => c.tier));
   const dirs = cases.map((c) => (c.tier === 'unsure' ? 0 : Math.sign(c.diff)));

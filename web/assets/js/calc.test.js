@@ -1121,7 +1121,7 @@ describe('CALC-ONE 티어 원천은 하나(MED-2 · LOW-12)', () => {
     assert.equal(w.decides, true);
     assert.equal(r.axes.salary.flip.key, 'b_wage_flip');
   });
-  test('재현 쌍 12곳 × 11곳 전부: robust.full.tier === salary.baseTier === sens.baseTier', () => {
+  test('재현 쌍 전부(16곳 × 15곳): robust.full.tier === salary.baseTier === sens.baseTier', () => {
     const names = VP.companies.map((c) => c.comp_nm);
     let n = 0;
     for (const a of names) {
@@ -1134,7 +1134,8 @@ describe('CALC-ONE 티어 원천은 하나(MED-2 · LOW-12)', () => {
         n += 1;
       }
     }
-    assert.equal(n, 132);
+    assert.equal(n, names.length * (names.length - 1));
+    assert.equal(names.length, 16);
   });
   test('NAVER → NAVER(같은 회사): 기준이 오차 범위 안(unsure)이면 비포괄 가정은 「결론 바뀜」이 아니라 「말할 수 있게 됨」', () => {
     const r = compare(verifyState('NAVER', 'NAVER'), NOW_VERIFY);
@@ -1238,5 +1239,27 @@ describe('CALC-EXCL 뺀 금액 ≠ 미등록(MED-5) · 「N건」 = 누른 행 �
     const st = verifyState('KT', '네패스');
     assert.ok(st.benS.a.some((b) => b.legal_yn) || st.benS.b.some((b) => b.legal_yn), '사전조건: 법정 행');
     assert.equal(compare(st, NOW_VERIFY).exclusions.rows, 0);
+  });
+});
+
+describe('CALC-WBE 야근수당 미선택 — 같아지는 연봉도 경우마다(재확인 R-1)', () => {
+  test('CJ올리브네트웍스 → LS(B 54h 미선택): 포괄 7,352만원(+22.5%) · 비포괄 5,123만원 — core 의 값은 포괄 경우와 같다', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', 'LS', { wsB: { wage: null } }), NOW_VERIFY);
+    assert.equal(r.axes.salary.tier, 'depends');
+    const [inc, sep] = r.wage.cases;
+    assert.deepEqual([inc.wage.b, inc.diff, sep.wage.b, sep.diff], ['inclusive', -752, 'separate', 2119]);
+    assert.equal(inc.breakeven.full.sal, 7352);
+    assert.equal(inc.breakeven.full.sal, r.breakeven.full.sal, 'core(미선택) = 포괄 가정');
+    assert.equal(sep.breakeven.full.sal, 5123);
+    assert.ok(sep.breakeven.k > 0, '비포괄이면 연봉과 함께 야근수당도 오른다');
+    assert.equal(inc.breakeven.k, 0);
+  });
+  test('A 만 미선택 · 양쪽 미선택(4조합)도 경우마다 같아지는 연봉이 있다', () => {
+    const a = compare(verifyState('CJ올리브네트웍스', 'LS', { wsA: { wage: null, hours: 52 } }), NOW_VERIFY);
+    assert.deepEqual(a.wage.slots, ['a']);
+    assert.deepEqual(a.wage.cases.map((c) => c.breakeven.full.sal), [6420, 8658]);
+    const both = compare(verifyState('CJ올리브네트웍스', 'LS', { wsA: { wage: null, hours: 52 }, wsB: { wage: null } }), NOW_VERIFY);
+    assert.equal(both.wage.cases.length, 4);
+    assert.ok(both.wage.cases.every((c) => c.breakeven && Number.isFinite(c.breakeven.full.sal)));
   });
 });
