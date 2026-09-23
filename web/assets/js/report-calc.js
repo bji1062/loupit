@@ -1479,7 +1479,7 @@ function contrastBlock(X) {
   const tier = report.axes.salary.baseTier;
   const base = X.ctx.baseline;
   const baseTier = base && base.axes ? base.axes.salary.baseTier : tier;
-  const recalc = el('div', { class: 'calc-recalc', id: 'calc-recalc' });
+  const recalc = el('div', { class: 'calc-recalc', id: 'calc-recalc', tabindex: '-1' }); // 「모두 되돌리기」 뒤 포커스 자리(LOW-5)
   recalc.append(el('span', { class: 'calc-muted calc-small', text: '다시 계산한 총보상 차이' }),
     el('span', { class: 'calc-small', text: ex.rows ? ex.rows + '건 뺌 · ' + nm.a + ' ' + m(ex.a.amt) + ' · ' + nm.b + ' ' + m(ex.b.amt) + ' 제외' : '뺀 항목 없음' }));
   // 판단하기 어려움이면 차액도 범위도 두지 않는다 — 범위 두 끝이면 차액이 나온다(LOW-1: 결론 카드·첫 타일·보조 행·이 칸).
@@ -1678,11 +1678,16 @@ export function renderCalcReport(report, mountEl, ctx = {}) {
   root.append(l1, l2, l3);
   mountEl.append(root);
   // 다시 그린 뒤 — 같은 요소로 포커스·화면 자리를 되돌린다(토글한 행이 눈앞에서 사라지지 않게).
+  // 「모두 되돌리기」는 누른 뒤 사라지거나(상단 알림) 잠긴다(고정 칸) — 그대로 두면 포커스가 문서 몸통으로 떨어진다(LOW-5).
+  // 고정 칸의 버튼이면 그 칸으로(자리 유지), 상단 알림의 버튼이면 비교표 제목으로(화면이 그리로 옮겨 간다).
   if (anchorId && doc) {
-    const back = doc.getElementById(anchorId);
+    let back = doc.getElementById(anchorId);
+    let jump = false;
+    if (anchorId === 'calc-ct-reset') back = doc.getElementById('calc-recalc');
+    else if (anchorId === 'calc-excl-reset') { back = doc.querySelector('#calc-b-contrast > summary'); jump = true; }
     if (back && typeof back.focus === 'function') {
-      back.focus({ preventScroll: true });
-      if (anchorTop != null && typeof back.getBoundingClientRect === 'function' && typeof window !== 'undefined' && typeof window.scrollBy === 'function') {
+      back.focus({ preventScroll: !jump });
+      if (!jump && anchorTop != null && typeof back.getBoundingClientRect === 'function' && typeof window !== 'undefined' && typeof window.scrollBy === 'function') {
         window.scrollBy(0, back.getBoundingClientRect().top - anchorTop);
       }
     }

@@ -1545,6 +1545,10 @@ main p.calc-fill-note, main p.calc-note { margin-top:var(--sp-2); }
 .calc-cta #btn-compare { width:100%; min-height:52px; font-size:var(--fs-base); font-weight:var(--fw-bold); }
 .calc-privacy { text-align:center; color:var(--t3); font-size:var(--fs-xs); }
 main p.calc-privacy { margin-top:var(--sp-2); }
+/* 결과 화면에서 뺀 복지 안내 한 줄(LOW-7) — 입력 화면에는 체크박스가 없어 이것이 유일한 표시다. */
+.calc-exnote { display:flex; flex-wrap:wrap; align-items:center; gap:0 var(--sp-1); padding:var(--sp-1) var(--sp-3); background:var(--bg-2); border-radius:var(--r-sm); font-size:var(--fs-sm); color:var(--t2); }
+main p.calc-exnote { margin:0; }
+.calc-exnote[hidden] { display:none; }
 
 /* ══════════════════════════════════════ 이직 계산기 결과(SP-FE-14, 2026-09-23) ══
    목업 v2 의 블록을 사이트 토큰으로 — 부호색은 텍스트용 --green/--red(목업 #047857/#c02626 과 같은 값),

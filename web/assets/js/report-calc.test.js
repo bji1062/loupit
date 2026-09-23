@@ -18,6 +18,7 @@ import { renderReport } from './report.js';
 import { BLOCK_ORDER, headlineText } from './report-calc.js';
 import { normalizeCompany, fillBenefits, blankWs } from './inputs.js';
 import { createInitialState, runReport } from './app.js';
+import { renderInputView, syncExclusionNote } from './ui.js';
 import { isLegalRow } from './legal.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -395,6 +396,52 @@ describe('RC-5 상호작용 — 축 전환 · 행별 「빼고 다시 계산」(
     document.getElementById('calc-iso-btn').click();
     assert.match(document.querySelector('.calc-excl').textContent, /^5건을 빼고 다시 계산한 결과입니다/);
     assert.equal(document.getElementById(id).getAttribute('aria-pressed'), 'true');
+  });
+
+  test('LOW-5 「모두 되돌리기」 뒤 포커스가 문서 몸통으로 떨어지지 않는다 — 상단 알림 → 비교표 제목 · 고정 칸 → 고정 칸', () => {
+    const s = appState();
+    run(s);
+    const press = (id) => { const b = document.getElementById(id); b.focus(); b.click(); };
+    press('calc-sw-a-stock_grant');
+    assert.equal(document.activeElement.id, 'calc-sw-a-stock_grant', '사전조건: 토글한 스위치로 포커스 복귀');
+    press('calc-excl-reset');
+    assert.notEqual(document.activeElement, document.body);
+    assert.equal(document.activeElement, document.querySelector('#calc-b-contrast > summary'));
+    press('calc-sw-a-stock_grant');
+    press('calc-ct-reset');
+    assert.equal(document.activeElement.id, 'calc-recalc');
+    assert.equal(document.getElementById('calc-recalc').getAttribute('tabindex'), '-1');
+  });
+
+  test('LOW-6 새 비교(preserve:false)는 접어 둔 칸을 잊는다 — 같은 비교를 다시 그릴 때(빼고 다시 계산)만 기억한다', () => {
+    const s = appState();
+    run(s);
+    document.getElementById('calc-b-bridge').open = false; // 사용자가 총보상 흐름(L1)을 접었다
+    const sw = document.getElementById('calc-sw-a-stock_grant');
+    sw.focus(); sw.click(); // preserve 재렌더
+    assert.equal(document.getElementById('calc-b-bridge').open, false, '같은 비교 안에서는 접은 채');
+    s.ui.reportView.ctFilter = 'all';
+    run(s); // 조건을 고쳐 새로 「비교 결과 보기」
+    assert.equal(document.getElementById('calc-b-bridge').open, true, '새 비교는 축의 기본 펼침');
+    assert.equal(s.ui.reportView.ctFilter, 'all', '비교표 보기 취향은 유지');
+  });
+
+  test('LOW-7 입력 화면 — 결과에서 뺀 복지가 있으면 「결과에서 뺀 복지 N개 · 다시 넣기」, 누르면 되살리고 옛 결과를 비운다', () => {
+    const s = appState();
+    run(s);
+    document.querySelector('.calc-ct tr[data-sec="1"] .calc-sw').click(); // 두 회사 금액 짝 1행 = 1개
+    document.getElementById('calc-iso-btn').click(); // + 한쪽만 금액 등록 4개
+    renderInputView(s, {});
+    const note = document.getElementById('calc-exnote');
+    assert.equal(note.hidden, false);
+    assert.equal(note.textContent, '결과에서 뺀 복지 5개 · 다시 넣기');
+    document.getElementById('calc-exnote-reset').click();
+    assert.equal(s.benS.a.every((b) => b.checked) && s.benS.b.every((b) => b.checked), true);
+    assert.equal(note.hidden, true);
+    assert.equal(document.getElementById('report-body').children.length, 0, '뺀 채로 계산한 옛 결과가 되살아나지 않게');
+    s.benS.a[0].checked = false;
+    syncExclusionNote(s); // go('input') 이 부르는 길
+    assert.equal(document.getElementById('calc-exnote').textContent, '결과에서 뺀 복지 1개 · 다시 넣기');
   });
 
   test('비교표 필터 — 달라지는 것만(기본)은 같은 금액·둘 다 금액 미등록 행을 숨긴다', () => {

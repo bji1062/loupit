@@ -6,7 +6,7 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint } from './ui.js';
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, syncExclusionNote, clearExclusions } from './ui.js';
 import { isLegalRow } from './legal.js'; // 법정 행 — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5)
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
@@ -103,6 +103,10 @@ export function go(screenId, { push = true, replace = false } = {}) {
   // 푸시 **전에** 현재 항목을 고쳐 두면 새 항목의 상대 주소(`#input`)가 새 쿼리를 물려받는다.
   if (screenId === 'input' || screenId === 'report') {
     try { syncPairUrl(App.state); } catch { /* 주소 동기화 실패는 화면 전환에 무해 */ }
+  }
+  // 결과 화면에서 뺀 복지가 있으면 입력 화면이 한 줄로 알린다(LOW-7) — 「조건 고치기」·뒤로가기 어느 길로 와도.
+  if (screenId === 'input') {
+    try { syncExclusionNote(App.state); } catch { /* 안내 실패는 화면 전환에 무해 */ }
   }
   if (typeof history !== 'undefined') {
     // 항목에 **흐름**도 적는다 — 새로고침·뒤로가기에서 흐름을 되살린다(2026-09-13: `#search` 새로고침이
@@ -482,9 +486,10 @@ export function snapshotInput(state = App.state) {
     if (m && Number.isInteger(m.comp_id)) entry.comp_id = m.comp_id;
     const tp = state.chosenType && state.chosenType[slot];
     if (typeof tp === 'string' && tp) entry.comp_tp_cd = tp;
-    // 체크 해제는 사용자의 명시적 선택이다(기본은 전부 체크) — 되살리지 않으면 조용히 뒤집힌다.
+    // 결과 화면에서 뺀 복지(행별 「빼고 다시 계산」)만 담는다 — 새로고침·재진입에도 남고, 입력 화면이 한 줄로
+    // 알린다(ui.syncExclusionNote). 옛 초안의 `checked`(체크박스 시절의 선택)는 싣지도 되살리지도 않는다(LOW-7).
     const items = (state.benS && state.benS[slot]) || [];
-    entry.checked = items.filter((b) => b.checked).map((b) => b.benefit_cd).filter(Boolean);
+    entry.excluded = items.filter((b) => b && b.checked === false).map((b) => b.benefit_cd).filter(Boolean);
     slots[slot] = entry;
   }
   const ws = state.wsState || {};
@@ -559,11 +564,13 @@ export function restoreInputDraft(state = App.state, hooks = {}) {
       fillBenefits(state, slot);
       touched = true;
     }
-    // 체크 상태는 목록을 다시 채운 **뒤에** 덮는다(cd 기준 — 항목이 늘거나 줄어도 안전).
+    // 뺀 복지는 목록을 다시 채운 **뒤에** 덮는다(cd 기준 — 항목이 늘거나 줄어도 안전). 옛 형식 초안의 `checked`
+    // (체크박스 39개 시절)는 되살리지 않는다 — 계산기 개편 뒤에는 입력의 명시적 선택이 아니고, 입력 화면에
+    // 그것을 보여 줄 칸도 없다(LOW-7). 새 형식(`excluded`)은 결과 화면에서 사용자가 뺀 것이다.
     const items = state.benS[slot] || [];
-    if (Array.isArray(s.checked) && items.length) {
-      const on = new Set(s.checked);
-      for (const b of items) b.checked = on.has(b.benefit_cd);
+    if (Array.isArray(s.excluded) && items.length) {
+      const off = new Set(s.excluded);
+      for (const b of items) b.checked = !off.has(b.benefit_cd);
     }
   }
 
@@ -853,15 +860,16 @@ export function setExclusions(state, items, exclude) {
     for (const b of state.benS[slot] || []) if (b && (b.benefit_cd || b.benefit_nm) === cd) b.checked = !exclude;
   }
 }
-export function resetExclusions(state) {
-  for (const slot of ['a', 'b']) for (const b of state.benS[slot] || []) if (b) b.checked = true;
-}
+export function resetExclusions(state) { clearExclusions(state); }
 
 // ── 리포트 진입·재계산(FR-42): 조립 → 계산 → 렌더 ───────────────────────────
 export function runReport(hooks = {}) {
   const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl, recentCtx, save = true, preserve = false } = hooks;
   const report = compareFn(assembleCompareState(state)); // SP-ENGINE-2.2 Report
   if (report && report.ok === false) return report; // 필수값 결측 → 렌더·이동 차단(호출부가 안내, #3)
+  // 새 비교면 「열어 둔/접어 둔 칸」을 비운다 — 블록 id 가 쌍마다 같아 이전 쌍에서 접은 칸이 새 쌍에서도 접혀 떴다(LOW-6).
+  // 비교표 필터·「전체」 보기는 사용자의 보기 취향이라 둔다.
+  if (!preserve && state.ui && state.ui.reportView) state.ui.reportView.open = {};
   // 성공 비교 자동 저장(C1) — 저장 불가 시 store가 조용히 무시.
   // save:false는 이미 저장된 레코드의 재실행(부팅 자동 복원·「빼고 다시 계산」)용 — 재저장하면 id·savedAt이 새로
   // 발급되어 새로고침만으로 "최근 비교" 목록의 순서와 식별자가 요동친다.

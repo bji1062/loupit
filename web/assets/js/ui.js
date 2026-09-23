@@ -11,7 +11,7 @@
 import { el } from './dom.js';
 import { pairTarget } from './benefits.js'; // 두 슬롯이 찼을 때의 목적지(SP-CMP-2) — 집은 하나다
 import { onSearchInput, selectCompany, clearSlot } from './search.js';
-import { tenureItems } from './calc.js'; // 근속 조건 항목 수(입력 보조문) — 순수 함수, 결과 화면과 같은 판정
+import { tenureItems, exclusionSummary } from './calc.js'; // 근속 조건 항목 수(입력 보조문)·뺀 행 수 — 순수 함수, 결과 화면과 같은 판정
 
 
 function byId(id) {
@@ -657,7 +657,35 @@ export function renderInputView(state, deps = {}) {
     wageCell(state, 'b'), prefillCell(state, 'b'), commuteCell(state, 'b'), tenureNoteCell());
   const pair = el('div', { class: 'calc-pair' });
   pair.append(colA, colB);
-  form.append(axisCard(state), pair);
+  const note = el('p', { class: 'calc-exnote', id: 'calc-exnote', role: 'status' });
+  form.append(axisCard(state), pair, note);
+  syncExclusionNote(state, note);
+}
+
+/** 결과 화면에서 뺀 복지를 모두 되살린다(「모두 되돌리기」·입력 화면 「다시 넣기」 공용). */
+export function clearExclusions(state) {
+  for (const slot of ['a', 'b']) for (const b of state.benS[slot] || []) if (b) b.checked = true;
+}
+
+// 결과 화면에서 뺀 복지는 초안에 실려 새로고침·재진입에도 남는다 — 입력 화면에는 체크박스가 없으니 한 줄로 알리고
+// 되살릴 길을 둔다(적대 검증 LOW-7). 「N개」는 결과 화면의 「N건」과 같은 셈(두 회사 금액 짝 = 1).
+export function syncExclusionNote(state, note = byId('calc-exnote')) {
+  if (!note || typeof note.replaceChildren !== 'function') return;
+  const n = exclusionSummary((state.benS && state.benS.a) || [], (state.benS && state.benS.b) || []).rows;
+  note.replaceChildren();
+  note.hidden = !n;
+  if (!n) return;
+  const btn = el('button', { type: 'button', class: 'calc-link', id: 'calc-exnote-reset', text: '다시 넣기' });
+  btn.addEventListener('click', () => {
+    clearExclusions(state);
+    // 뺀 채로 계산한 옛 결과가 뒤로·앞으로 가기로 되살아나지 않게 비운다(유령 리포트 방지 — 상태와 화면을 같이).
+    const body = byId('report-body');
+    if (body && typeof body.replaceChildren === 'function') body.replaceChildren();
+    syncExclusionNote(state, note);
+    const cta = byId('btn-compare');
+    if (cta && typeof cta.focus === 'function') cta.focus(); // 안내가 사라진 자리 대신 다음 할 일로
+  });
+  note.append('결과에서 뺀 복지 ' + n + '개 · ', btn);
 }
 
 // ── 결측 안내(#3): 비었을 때 무엇을 넣어야 하는지 한 줄(role="alert") ────────────────
