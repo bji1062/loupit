@@ -555,5 +555,30 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     assert.match(txt(mount, '.calc-excl'), /^16건을 빼고 다시 계산한 결과입니다/, '두 회사 금액 짝 4개는 1건씩(LOW-4)');
     assert.match(txt(mount, '.calc-tile'), /금액이 있는 복지를 모두 뺐습니다/);
   });
+
+  test('LOW-1 판단하기 어려움이면 비교표 위 고정 칸에 차액도 범위도 없다 · 방향이 있으면 부호 붙은 차이', () => {
+    const { r, mount } = render(scenarios().unsure, 'salary');
+    assert.equal(r.axes.salary.baseTier, 'unsure', '사전조건');
+    const rc = txt(mount, '#calc-recalc');
+    assert.match(rc, /판단 불가/);
+    assert.ok(!rc.includes('범위'), '범위 두 끝이면 차액이 나온다');
+    const { mount: m2 } = render(verifyState('CJ올리브네트웍스', 'LG디스플레이'), 'salary', V);
+    assert.match(txt(m2, '#calc-recalc'), /\+518만원/, '양수에도 부호(fmtSigned)');
+  });
+
+  test('LOW-11 목업의 작은 것들 — 복지 카드 두 숫자·법정 안내, 흐름 표 끝 막대 범위, 4분해 눈금, 비교표 제목 「법정 복지 제외」', () => {
+    const { mount } = render(verifyState('KT', '네패스'), 'benefits', V);
+    const how = txt(mount, '.calc-vd .calc-how');
+    assert.match(how, /그대로 계산한 값\(\+342\)과 네패스에만 금액이 등록된 1건을 뺀 값\(\+142\)이 서로 다른 회사를 가리키면/);
+    assert.match(how, /법으로 모든 회사에 정해진 제도만 적힌 항목\(3개\)은 복지로 세지 않았습니다/);
+    assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 복지 제외\) — KT 10개 · 네패스 16개/);
+    assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\) · 법정 연차촉진제도\(네패스\) · 법정 생일 연차 휴식\(네패스\)/);
+    const { mount: g } = render(goldenEngineState(), 'benefits');
+    const rows = [...g.querySelectorAll('#calc-b-bridge .sr-only tr')].map((tr) => tr.textContent);
+    assert.ok(rows.includes('카카오 실효 총보상7,739±145 (7,594 ~ 7,884)'), rows.join(' | '));
+    assert.ok(rows.includes('복지 차이 (금액이 등록된 것만, 그중 856은 카카오 금액 미등록)−2,179±452'), rows.join(' | '));
+    assert.match(txt(g, '#calc-b-parts h3'), /어디서 왔나 막대 눈금 −2,179 ~ \+434만원/);
+    assert.match(txt(g, '#calc-b-contrast > summary'), /^복지 전체 비교표 — NAVER 23개/, '법정 행이 없으면 제목 그대로');
+  });
 });
 
