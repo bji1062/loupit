@@ -22,7 +22,7 @@ import {
   compareCore, AXIS_THRESHOLDS, deltaBand, verdictTier, classifyPairs, benDiffParts,
   cappedRows, facetOf, tenureItems, tenureGate, catProfile, hourlyWithCommute, breakevenRate,
   weeklyHours, overtimePay, timeSheet, wageScenarios, sensitivity, robustness, askList,
-  buildAllVdCards, calculatorExtras, unsureCause,
+  buildAllVdCards, calculatorExtras, unsureCause, BREAKEVEN_BOUNDS,
 } from './calc.js';
 import { isLegalRow } from './legal.js';
 
@@ -1170,5 +1170,29 @@ describe('CALC-NEAR 「결론이 얼마나 확실한가」 재료 — near 쌍(L
     assert.equal(r.axes.salary.tier, 'near');
     assert.equal(r.axes.salary.nearKind, 'small');
     assert.equal(r.robust.full.tier, 'near');
+  });
+});
+
+describe('CALC-BEB 같아지는 연봉의 범위 표식(MED-4)', () => {
+  test('BREAKEVEN_BOUNDS 는 동결된 설계 상수 — 현재 연봉의 절반 미만 · 두 배 초과', () => {
+    assert.equal(Object.isFrozen(BREAKEVEN_BOUNDS), true);
+    assert.deepEqual({ ...BREAKEVEN_BOUNDS }, { low: 0.5, high: 2 });
+  });
+  test('리메드 → NAVER(현재 연봉 2,500): 등록 그대로 −10만원 → low · 한쪽만 등록 제외 422 → low · 복지 0 은 2,888 → 범위 안', () => {
+    const be = compare(verifyState('리메드', 'NAVER', { sal: 2500 }), NOW_VERIFY).breakeven;
+    assert.deepEqual([be.full.sal, be.full.bound], [-10, 'low']);
+    assert.deepEqual([be.exMixed.sal, be.exMixed.bound], [422, 'low']);
+    assert.deepEqual([be.noBenefit.sal, be.noBenefit.bound], [2888, null]);
+  });
+  test('카카오 → NAVER(2,500): 709만원(−71.6%)도 절반 미만 → low', () => {
+    assert.equal(compare(verifyState('카카오', 'NAVER', { sal: 2500 }), NOW_VERIFY).breakeven.full.bound, 'low');
+  });
+  test('반대 방향 상한 — NAVER → 리메드(2,500): 5,786만원(+131%) → high', () => {
+    const be = compare(verifyState('NAVER', '리메드', { sal: 2500 }), NOW_VERIFY).breakeven;
+    assert.deepEqual([be.full.sal, be.full.bound], [5786, 'high']);
+  });
+  test('골든(6,000)은 세 눈금 모두 범위 안', () => {
+    const be = compare(goldenState(), NOW_CALC).breakeven;
+    assert.deepEqual([be.full.bound, be.exMixed.bound, be.noBenefit.bound], [null, null, null]);
   });
 });

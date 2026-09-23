@@ -843,8 +843,16 @@ function otSlope(ws) {
 }
 
 /**
+ * 같아지는 연봉이 현재 연봉의 이 배수 밖이면 화면은 %·만원을 내지 않는다 — 「−10만원(−100.4%)만 돼도」는 협상
+ * 조언으로 읽히지 않는다(적대 검증 MED-4). 실측(2026-09-23, 순서쌍 1/5 표본 · +10% · 45h/54h): 현재 연봉 2,500 에서
+ * 절반 미만 2.3%(0 이하 0.2%) · 두 배 초과 1.0%, 6,000·15,000 에서는 0.
+ */
+export const BREAKEVEN_BOUNDS = Object.freeze({ low: 0.5, high: 2 });
+
+/**
  * 총보상이 같아지는 B 연봉 — B 가 비포괄·야근이면 연봉이 오를수록 야근수당도 오르므로 선형 역산이 아니라
  * `(totalA − netB) / (1 + k)` 다(k = otSlope). 눈금 세 개(등록 그대로 · 한쪽만 등록 제외 · 복지 0)를 함께 낸다.
+ * 눈금마다 bound: 'low'(현재 연봉의 절반 미만 — 0 이하 포함) · 'high'(두 배 초과) · null.
  */
 export function breakevenRate(core, exMixedCore, wsB) {
   const salA = core && core.a && core.a.salRange ? core.a.salRange.mid : 0;
@@ -852,7 +860,8 @@ export function breakevenRate(core, exMixedCore, wsB) {
   const k = otSlope(wsB);
   const at = (totalA, netB) => {
     const sal = (totalA - netB) / (1 + k);
-    return { sal: Math.round(sal), rate: sal / salA - 1 };
+    const bound = sal < salA * BREAKEVEN_BOUNDS.low ? 'low' : sal > salA * BREAKEVEN_BOUNDS.high ? 'high' : null;
+    return { sal: Math.round(sal), rate: sal / salA - 1, bound };
   };
   return {
     full: at(core.a.total, core.b.net),

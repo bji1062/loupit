@@ -827,6 +827,15 @@ function bridgeBlock(X) {
 }
 
 // ── 튼튼함 + 협상 ──────────────────────────────────────────────────────────
+// slot 쪽으로 기우는 차이(연봉 밖) — 「복지와 야근수당 차이」 · 「복지 차이」 · 「야근수당 차이」.
+function edgeOf(X, slot) {
+  const p = X.report.axes.salary.parts;
+  const favors = (v) => (slot === 'b' ? v > 0 : v < 0);
+  const bits = [];
+  if (favors(p.ben)) bits.push('복지');
+  if (favors(p.ot)) bits.push('야근수당');
+  return (bits.length ? bits.join('와 ') : '복지') + ' 차이';
+}
 function robustBlock(X) {
   const { report, nm } = X;
   const rb = report.robust;
@@ -871,15 +880,33 @@ function robustBlock(X) {
     const salB = report.b.salRange.mid;
     const rateTxt = (r) => fmtPct(r);
     const nego = el('p', { class: 'calc-nego' });
-    if (salB < be.full.sal) {
-      nego.append(b('총보상이 같아지려면 ' + nm.b + ' 연봉이 ' + m(be.full.sal) + '(' + rateTxt(be.full.rate) + ')은 되어야 합니다'), ' — 등록된 복지 금액 그대로 계산했을 때입니다.');
+    const f = be.full;
+    // 같아지는 연봉이 현재 연봉의 절반 미만(0 이하 포함)·두 배 초과면 %·만원을 내지 않는다 — 협상 조언이 아니다(MED-4).
+    if (f.bound === 'low' && salB >= f.sal) {
+      nego.append(b(withJosa(nm.b, '은/는') + ' ' + edgeOf(X, 'b') + '만으로 이미 총보상이 더 많습니다'), ' — 연봉 협상과 상관없이 ' + nm.b + ' 쪽이 큽니다.');
+    } else if (f.bound === 'high' && salB < f.sal) {
+      nego.append(b(withJosa(nm.a, '은/는') + ' ' + edgeOf(X, 'a') + '만으로 총보상이 훨씬 많아, ' + nm.b + ' 연봉이 현재 연봉의 두 배가 되어도 따라잡지 못합니다'), ' — 등록된 복지 금액 그대로 계산했을 때입니다.');
+    } else if (salB < f.sal) {
+      nego.append(b('총보상이 같아지려면 ' + nm.b + ' 연봉이 ' + m(f.sal) + '(' + rateTxt(f.rate) + ')은 되어야 합니다'), ' — 등록된 복지 금액 그대로 계산했을 때입니다.');
     } else {
-      nego.append(b(nm.b + ' 연봉이 ' + m(be.full.sal) + '(' + rateTxt(be.full.rate) + ')만 돼도 총보상이 같아집니다'), ' — 입력하신 조건(' + m(salB) + ')은 그보다 ' + m(salB - be.full.sal) + ' 높습니다.');
+      nego.append(b(nm.b + ' 연봉이 ' + m(f.sal) + '(' + rateTxt(f.rate) + ')만 돼도 총보상이 같아집니다'), ' — 입력하신 조건(' + m(salB) + ')은 그보다 ' + m(salB - f.sal) + ' 높습니다.');
     }
-    const more = [];
-    if (be.exMixed) more.push(onlyRegistered(X) + ' ' + report.axes.benefits.mixed.count + '건을 빼면 ' + m(be.exMixed.sal) + '(' + rateTxt(be.exMixed.rate) + ')');
-    if (be.noBenefit) more.push('복지를 아예 빼면 ' + m(be.noBenefit.sal) + '(' + rateTxt(be.noBenefit.rate) + ')');
-    nego.append(el('br'), el('span', { class: 'calc-muted', text: more.join(', ') + '입니다. 연봉 협상 때 참고하세요.' }));
+    // 나머지 눈금 — 숫자가 뜻을 가지는 것은 이어 쓰고, 범위 밖은 숫자 없이 한 문장.
+    const items = [];
+    if (be.exMixed) items.push([onlyRegistered(X) + ' ' + report.axes.benefits.mixed.count + '건을 빼', be.exMixed]);
+    if (be.noBenefit) items.push(['복지를 아예 빼', be.noBenefit]);
+    const sentences = [];
+    let run = [];
+    const flush = () => { if (run.length) sentences.push(run.join(', ') + '입니다.'); run = []; };
+    let numeric = false;
+    for (const [label, x] of items) {
+      if (x.bound === 'low' && salB >= x.sal) { flush(); sentences.push(label + '도 연봉 협상과 상관없이 ' + nm.b + ' 쪽이 큽니다.'); }
+      else if (x.bound === 'high' && salB < x.sal) { flush(); sentences.push(label + '면 ' + nm.b + ' 연봉이 현재 연봉의 두 배가 되어도 모자랍니다.'); }
+      else { run.push(label + '면 ' + m(x.sal) + '(' + rateTxt(x.rate) + ')'); numeric = true; }
+    }
+    flush();
+    if (numeric) sentences.push('연봉 협상 때 참고하세요.');
+    if (sentences.length) nego.append(el('br'), el('span', { class: 'calc-muted', text: sentences.join(' ') }));
     if (be.k > 0) nego.append(el('br'), el('span', { class: 'calc-muted calc-small', text: '입력하신 대로 ' + withJosa(nm.b, '이/가') + ' 야근수당을 따로 준다면 연봉이 오를수록 야근수당도 함께 오르는 것까지 넣어 계산했습니다.' }));
     kids.push(nego);
   }
@@ -1289,7 +1316,7 @@ function sensText(X, s) {
     if (s.to === 'separate') {
       const main = el('span', {}, withJosa(nm.b, '이/가') + ' ', b('야근수당을 따로 준다면'), '(주 40시간을 넘는 ' + fmt(s.extraHrs) + '시간분 → 연 ' + m(s.otB) + ')');
       const sub = el('div', { class: 'calc-sens-sub', text: '계산: 시급 ' + fmt(s.hourlyBase) + '원(' + m(report.b.salRange.mid) + ' ÷ 12개월 ÷ 209시간) × ' + fmt(s.extraHrs) + '시간 × 1.5배 × 4.33주 × 12개월 = ' + m(s.otB) + '.'
-        + (s.breakeven ? ' 이 경우 ' + nm.b + ' 연봉이 ' + m(s.breakeven.sal) + '(' + fmtPct(s.breakeven.rate) + ')' + (report.b.salRange.mid >= s.breakeven.sal ? '만 돼도' : '은 되어야') + ' 총보상이 같아집니다.' : '') });
+        + beSensText(X, s.breakeven) });
       return [main, sub];
     }
     return [el('span', {}, withJosa(nm.b, '이/가') + ' ', b('포괄임금제라면'), '(입력하신 야근수당 연 ' + m(report.b.otPay) + '을 빼고 계산)')];
@@ -1299,6 +1326,15 @@ function sensText(X, s) {
   if (s.key === 'drop_capped') return ['‘최대’·‘한도’ 금액으로 적힌 ' + s.count + '건(' + items + ' = ' + m(s.amount) + ')을 빼면'];
   if (s.key === 'drop_both') return ['위 두 경우(한쪽에만 금액 등록 · 최대·한도)를 모두 빼면(' + s.count + '건, ' + m(s.amount) + ')'];
   return ['복지를 아예 빼면'];
+}
+// 비포괄 가정의 같아지는 연봉 — 범위 밖이면 숫자 없이(MED-4).
+function beSensText(X, be) {
+  if (!be) return '';
+  const { nm, report } = X;
+  const salB = report.b.salRange.mid;
+  if (be.bound === 'low' && salB >= be.sal) return ' 이 경우 ' + withJosa(nm.b, '은/는') + ' 연봉 협상과 상관없이 총보상이 더 많습니다.';
+  if (be.bound === 'high' && salB < be.sal) return ' 이 경우에도 ' + nm.b + ' 연봉이 현재 연봉의 두 배가 되어도 총보상이 같아지지 않습니다.';
+  return ' 이 경우 ' + nm.b + ' 연봉이 ' + m(be.sal) + '(' + fmtPct(be.rate) + ')' + (salB >= be.sal ? '만 돼도' : '은 되어야') + ' 총보상이 같아집니다.';
 }
 function sensFlipSentence(X, s) {
   const win = s.totalDiff > 0 ? X.nm.b : X.nm.a;

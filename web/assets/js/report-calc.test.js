@@ -487,4 +487,28 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     assert.ok(!allText(mount).includes('결론이 바뀌어'));
     assert.match(allText(mount), /어느 쪽이 많은지 말할 수 있게 됩니다/);
   });
+
+  test('MED-4 리메드 → NAVER(현재 연봉 2,500): 같아지는 연봉이 0 이하·절반 미만이면 %·만원 없이 한 줄', () => {
+    const { mount } = render(verifyState('리메드', 'NAVER', { sal: 2500 }), 'salary', V);
+    const nego = txt(mount, '.calc-nego');
+    assert.match(nego, /^NAVER는 복지 차이만으로 이미 총보상이 더 많습니다 — 연봉 협상과 상관없이 NAVER 쪽이 큽니다\./);
+    assert.match(nego, /NAVER에만 금액이 등록된 1건을 빼도 연봉 협상과 상관없이 NAVER 쪽이 큽니다\. 복지를 아예 빼면 2,888만원\(\+15\.5%\)입니다\. 연봉 협상 때 참고하세요\./);
+    const all = allText(mount);
+    assert.ok(!/−10만원|−100\.4%|422만원|−83\.1%|−7만원/.test(all), '뜻을 잃은 숫자가 남아 있다');
+    assert.match(all, /이 경우 NAVER는 연봉 협상과 상관없이 총보상이 더 많습니다\./, '비포괄 가정 줄도 같은 규칙');
+  });
+
+  test('MED-4 카카오 → NAVER(2,500): 709만원(−71.6%)도 숫자로 내지 않는다', () => {
+    const { mount } = render(verifyState('카카오', 'NAVER', { sal: 2500 }), 'salary', V);
+    assert.ok(!allText(mount).includes('709만원'));
+    assert.match(txt(mount, '.calc-nego'), /연봉 협상과 상관없이 NAVER 쪽이 큽니다/);
+  });
+
+  test('MED-4 반대 방향 상한 — NAVER → 리메드(2,500): 5,786만원(+131%) 대신 「두 배가 되어도 따라잡지 못합니다」', () => {
+    const { mount } = render(verifyState('NAVER', '리메드', { sal: 2500 }), 'salary', V);
+    const nego = txt(mount, '.calc-nego');
+    assert.match(nego, /^NAVER는 복지와 야근수당 차이만으로 총보상이 훨씬 많아, 리메드 연봉이 현재 연봉의 두 배가 되어도 따라잡지 못합니다/);
+    assert.ok(!allText(mount).includes('5,786만원'));
+  });
 });
+
