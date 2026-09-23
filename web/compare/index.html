@@ -108,16 +108,19 @@
       <div id="benefits-body"></div>
     </section>
 
+    <!-- 이직 계산기 입력(2026-09-23 개편, SPEC 06 SP-FE-12). ui.js 가 #calc-form 을 채운다 — 맨 위 「어떤 기준으로
+         볼까요?」 → A·B 두 열(줄 맞춤) → 고정 버튼 띠. 복지 체크박스는 없다(빼기는 결과 화면 비교표에서). -->
     <section id="view-input" class="view" data-screen="input" hidden>
-      <h2>비교 입력</h2>
-      <div id="input-slot-a" class="input-slot" data-slot="a"></div>
-      <div id="input-slot-b" class="input-slot" data-slot="b"></div>
-      <div id="priority-picker"></div>
-      <button id="btn-compare" type="button">비교하기</button>
+      <h2>비교 입력 <small class="calc-h2-note">★ 표시한 두 칸만 채우면 됩니다</small></h2>
+      <div id="calc-form" class="calc-form"></div>
+      <div class="calc-cta">
+        <button id="btn-compare" type="button">비교 결과 보기</button>
+        <p class="calc-privacy">계산은 브라우저 안에서만 이뤄지고, 입력값은 어디로도 전송되지 않습니다.</p>
+      </div>
     </section>
 
     <section id="view-report" class="view" data-screen="report" hidden>
-      <h2>비교 리포트</h2>
+      <h2>비교 결과 <small class="calc-h2-note">실효 총보상 = 연봉 + 복지 환산 가치 + 야근수당</small></h2>
       <div id="report-body"></div>
       <!-- SP-ADS-9.2: report 뷰 하단 절제 광고 슬롯 정확히 1개(판정 상단·중간 삽입 금지) -->
       <div data-ad-position="report_bottom"></div>

@@ -427,6 +427,8 @@ export function buildRecentRecord(state, report, ctx = {}) {
       salS: state.salS, selectedRate: state.selectedRate, cmtS: state.cmtS,
       wsState: state.wsState, curPri: state.curPri, curSacrifice: state.curSacrifice,
       chosenType: state.chosenType, inputMode: state.inputMode,
+      // 계산기 개편(2026-09-23) — 옛 레코드에는 없다(복원 쪽이 기본값으로 채운다)
+      rateMode: state.rateMode || 'rate', offerSal: state.offerSal ?? null, tenureYears: state.tenureYears ?? null,
     },
     result: {
       priAxis: (report && report.vdCard && report.vdCard.axis) || null,

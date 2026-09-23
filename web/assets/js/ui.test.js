@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
 
 import {
-  mountUI, renderInputView, renderInputSlot, renderPriorityPicker,
+  mountUI, renderInputView, ensureInputScaffold, parseNum, currentSalary, effectiveRate, remoteHint,
   bindSearchView, bindInputView, bindReportNav, reflectSearchUI, reflectSlotLabel, maybeAdvance,
   missingMessage, notePrefill, clearSearchGoHint,
 } from './ui.js';
@@ -111,47 +111,187 @@ describe('UI-2 검색 상태 → 셸 메시지 반영(무결과 vs 오류, MB-4)
   });
 });
 
-describe('UI-3 입력 뷰 컨트롤 렌더·상태 배선(MB-5·15)', () => {
+describe('UI-3 입력 뷰(이직 계산기 개편 2026-09-23, SP-FE-12)', () => {
   beforeEach(() => loadShell());
+  const input = (id, v) => { const n = document.getElementById(id); n.value = v; n.dispatchEvent(new window.Event('input', { bubbles: true })); return n; };
+  const click = (sel) => document.querySelector(sel).dispatchEvent(new window.Event('click', { bubbles: true }));
 
-  test('renderInputView: 슬롯 a 연봉·복지 체크박스, 슬롯 b 상승률, 우선순위 라디오 렌더', () => {
+  test('구성: 기준 세그먼트(맨 위) → A·B 두 열(7칸씩) · 복지 체크박스 없음 · 연봉 1칸', () => {
     const state = stateWithMatches();
     renderInputView(state, {});
-    assert.ok(document.getElementById('sal-low'), '슬롯 a 연봉 최소 입력 렌더');
-    assert.ok(document.getElementById('sal-high'), '슬롯 a 연봉 최대 입력 렌더');
-    assert.ok(document.getElementById('offer-rate'), '슬롯 b 상승률 입력 렌더');
-    const benA = document.querySelectorAll('#input-slot-a .in-ben-row input[type="checkbox"]');
-    assert.equal(benA.length, 2, '슬롯 a 복지 체크박스 2개');
-    const pri = document.querySelectorAll('#priority-picker input[type="radio"]');
-    assert.equal(pri.length, 3, '우선순위 라디오 3개(브랜드 축 제거 2026-07-20)');
-    const checkedPri = document.querySelector('#priority-picker input[type="radio"]:checked');
-    assert.equal(checkedPri.value, '워라밸', '기본 우선순위 워라밸 체크');
+    const form = document.getElementById('calc-form');
+    assert.equal(form.firstElementChild.id, 'calc-axis', '「어떤 기준으로 볼까요?」가 맨 위');
+    assert.equal(document.querySelectorAll('#calc-axis-seg [role="radio"]').length, 3);
+    assert.equal(document.querySelector('#calc-axis-seg [aria-checked="true"]').textContent, '연봉', '기본 연봉(결정 5)');
+    assert.equal(document.getElementById('input-slot-a').children.length, 7);
+    assert.equal(document.getElementById('input-slot-b').children.length, 7, 'A·B 칸 수가 같아야 줄이 맞는다(결정 8)');
+    assert.equal(document.querySelectorAll('#calc-form input[type="checkbox"][id^="ben-"]').length, 0, '복지 체크박스 삭제(결정 6)');
+    assert.equal(document.getElementById('sal-low'), null, '최소~최대 2칸 폐기');
+    assert.ok(document.getElementById('calc-sal'));
+    assert.equal(document.getElementById('btn-compare').textContent, '비교 결과 보기');
+    assert.match(form.textContent, /어떤 기준으로 볼까요\?/);
   });
 
-  test('연봉 입력 변경 → state.salS.a 반영', () => {
+  test('기본값 없음: 상승률 칩·야근 칩·야근수당 칩 모두 미선택, 근속 빈칸', () => {
     const state = stateWithMatches();
     renderInputView(state, {});
-    const low = document.getElementById('sal-low');
-    const high = document.getElementById('sal-high');
-    low.value = '5000'; low.dispatchEvent(new window.Event('input', { bubbles: true }));
-    high.value = '7000'; high.dispatchEvent(new window.Event('input', { bubbles: true }));
-    assert.deepEqual(state.salS.a, { low: 5000, high: 7000 });
+    for (const g of ['calc-raise', 'calc-ot-a', 'calc-ot-b', 'calc-wage-a', 'calc-wage-b']) {
+      assert.equal(document.querySelectorAll('#' + g + ' [aria-checked="true"]').length, 0, g);
+    }
+    assert.equal(document.getElementById('calc-tenure').value, '');
+    assert.equal(document.querySelectorAll('#calc-wage-a [role="radio"]').length, 2, '「모르겠어요」 없음(결정 4)');
   });
 
-  test('복지 체크박스 해제 → state.benS.a[i].checked=false', () => {
+  test('현재 연봉 1칸 → salS.a = {low:n, high:n} · 스텝 버튼 · 쉼표 허용', () => {
     const state = stateWithMatches();
     renderInputView(state, {});
-    const cb = document.querySelector('#input-slot-a .in-ben-row input[type="checkbox"]');
-    cb.checked = false; cb.dispatchEvent(new window.Event('change', { bubbles: true }));
-    assert.equal(state.benS.a[0].checked, false);
+    input('calc-sal', '6,000');
+    assert.deepEqual(state.salS.a, { low: 6000, high: 6000 });
+    click('.calc-step[aria-label="500만원 늘리기"]');
+    assert.deepEqual(state.salS.a, { low: 6500, high: 6500 });
+    input('calc-sal', '');
+    assert.deepEqual(state.salS.a, { low: null, high: null });
   });
 
-  test('우선순위 라디오 변경 → state.curPri', () => {
+  test('상승률 칩 → selectedRate · 실시간 「= 6,900만원」 · 다시 누르면 풀림 · 직접 입력은 칩을 끈다', () => {
     const state = stateWithMatches();
     renderInputView(state, {});
-    const rb = document.getElementById('pri-복지');
-    rb.checked = true; rb.dispatchEvent(new window.Event('change', { bubbles: true }));
+    input('calc-sal', '6000');
+    click('#calc-raise [data-v="15"]');
+    assert.equal(state.selectedRate, 15);
+    assert.equal(document.getElementById('calc-eq').textContent, '= 6,900만원');
+    click('#calc-raise [data-v="15"]');
+    assert.equal(state.selectedRate, null, '다시 누르면 미선택(기본값 없음)');
+    input('calc-rate', '12');
+    assert.equal(state.selectedRate, 12);
+    assert.equal(document.querySelectorAll('#calc-raise [aria-checked="true"]').length, 0);
+    input('calc-rate', '13');
+    assert.equal(document.querySelector('#calc-raise [aria-checked="true"]').getAttribute('data-v'), '13', '칩과 같은 값이면 칩도 켜진다');
+  });
+
+  test('「연봉으로 직접 넣기」 → 이직 후보 연봉에서 상승률을 되짚는다', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    input('calc-sal', '6000');
+    click('#calc-raise [data-v="15"]');
+    click('#calc-rate-mode');
+    assert.equal(state.rateMode, 'salary');
+    assert.equal(state.offerSal, 6900, '고른 상승률을 연봉으로 옮겨 적는다');
+    assert.equal(document.getElementById('calc-rate').value, '6900');
+    input('calc-rate', '7200');
+    assert.equal(state.offerSal, 7200);
+    assert.equal(Math.round(effectiveRate(state) * 10) / 10, 20);
+    assert.equal(document.getElementById('calc-eq').textContent, '= 지금보다 +20.0%');
+    click('#calc-rate-mode');
+    assert.equal(state.rateMode, 'rate');
+    assert.equal(state.selectedRate, 20);
+  });
+
+  test('야근: 칩 ↔ 주 근무시간 숫자 양방향 동기(결정 4)', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    click('#calc-ot-a [data-v="45"]');
+    assert.equal(state.wsState.a.hours, 45);
+    assert.equal(state.wsState.a.ot, 'mid');
+    assert.equal(document.getElementById('calc-hours-a').value, '45');
+    input('calc-hours-a', '44');
+    assert.equal(state.wsState.a.hours, 44);
+    assert.equal(state.wsState.a.ot, null);
+    assert.equal(document.querySelectorAll('#calc-ot-a [aria-checked="true"]').length, 0, '칩에 없는 값이면 칩은 꺼진다');
+    input('calc-hours-a', '54');
+    assert.equal(document.querySelector('#calc-ot-a [aria-checked="true"]').getAttribute('data-v'), '54');
+    assert.equal(state.wsState.a.ot, 'high');
+  });
+
+  test('야근수당 칩 2개 · 방향키로 이동하며 고른다(radiogroup)', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    const sep = document.querySelector('#calc-wage-b [data-v="separate"]');
+    const inc = document.querySelector('#calc-wage-b [data-v="inclusive"]');
+    assert.equal(sep.getAttribute('tabindex'), '0', '미선택이면 첫 칩이 탭 멈춤');
+    sep.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    assert.equal(state.wsState.b.wage, 'inclusive', '방향키 = 옮겨 고르기');
+    assert.equal(document.activeElement, inc);
+    assert.equal(inc.getAttribute('tabindex'), '0');
+    inc.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    assert.equal(state.wsState.b.wage, 'separate', '끝에서 처음으로 돈다');
+    sep.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }));
+    assert.equal(state.wsState.b.wage, 'inclusive', '방향키는 선택을 풀지 않는다');
+  });
+
+  test('기준 세그먼트 → curPri, 다시 눌러도 풀리지 않는다', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    click('#calc-axis-seg [data-v="복지"]');
     assert.equal(state.curPri, '복지');
+    click('#calc-axis-seg [data-v="복지"]');
+    assert.equal(state.curPri, '연봉');
+    assert.equal(document.querySelectorAll('#calc-axis-seg [aria-checked="true"]').length, 1);
+  });
+
+  test('통근·근속은 선택 — 빈칸은 null(0 아님)', () => {
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    input('calc-commute-a', '40');
+    assert.equal(state.cmtS.a, 40);
+    input('calc-commute-a', '');
+    assert.equal(state.cmtS.a, null);
+    input('calc-tenure', '3');
+    assert.equal(state.tenureYears, 3);
+    assert.match(document.getElementById('input-slot-b').textContent, /이직하면 근속 연수는 처음부터 다시 셉니다/);
+  });
+
+  test('회사 등록 정보: 요약 줄이 값을 말하고, 고치면 요약도 바뀐다', () => {
+    const state = stateWithMatches();
+    state.wsState.a = { ot: null, wage: null, remote: true, flex: false };
+    renderInputView(state, {});
+    const sum = document.querySelector('#calc-fill-a summary');
+    assert.match(sum.textContent, /회사에 등록된 정보로 미리 채웠습니다 — 유연근무 없음 · 재택 있음/);
+    const cb = document.getElementById('ws-flex-a');
+    cb.checked = true; cb.dispatchEvent(new window.Event('change', { bubbles: true }));
+    assert.equal(state.wsState.a.flex, true);
+    assert.match(sum.textContent, /유연근무 있음/);
+  });
+
+  test('재택 플래그가 꺼져 있는데 원문에 원격이 있으면 원문을 보여 준다(판단은 사용자)', () => {
+    const state = stateWithMatches();
+    state.benS.a.push({ benefit_cd: 'flex_work', benefit_nm: '자율 근무(Type_O/R)', qual_yn: true, qual_desc_ctnt: 'Type_O(주3일 출근) 또는 Type_R(원격) 개인 선택', checked: true });
+    state.wsState.a = { remote: false, flex: true };
+    assert.equal(remoteHint(state, 'a').name, '자율 근무(Type_O/R)');
+    renderInputView(state, {});
+    assert.match(document.getElementById('calc-fill-a').textContent, /원격 근무를 고를 수 있다고 되어 있습니다/);
+    assert.equal(document.querySelector('#calc-fill-b .calc-fill-note'), null, '조건 미충족이면 줄을 만들지 않는다');
+  });
+
+  test('근속 조건 복지가 있으면 보조문에 개수(회사 이름으로)', () => {
+    const state = stateWithMatches();
+    state.benS.a.push({ benefit_cd: 'long_service_leave', benefit_nm: '리프레시 휴가', qual_yn: true, qual_desc_ctnt: '2년 근속 시 15일 추가 유급휴가', checked: true });
+    renderInputView(state, {});
+    assert.match(document.getElementById('input-slot-a').textContent, /A사에는 근속 연수에 따라 받는 복지가 1개 있습니다/);
+  });
+
+  test('parseNum · currentSalary(옛 초안 범위는 가운데 값)', () => {
+    assert.equal(parseNum('6,000'), 6000);
+    assert.equal(parseNum(''), null);
+    assert.equal(parseNum('abc'), null);
+    assert.equal(parseNum('-5', { decimal: true, signed: true }), -5);
+    assert.equal(parseNum('-5'), null, '연봉·통근은 음수 불가');
+    assert.equal(currentSalary({ salS: { a: { low: 4000, high: 6000 } } }), 5000);
+    assert.equal(currentSalary({ salS: { a: { low: null, high: null } } }), null);
+  });
+
+  test('옛 셸(#input-slot-a/b · #priority-picker · 맨몸 #btn-compare)에서도 죽지 않는다(배포 간극)', () => {
+    const view = document.getElementById('view-input');
+    view.innerHTML = '<h2>비교 입력</h2><div id="input-slot-a" class="input-slot"></div><div id="input-slot-b" class="input-slot"></div><div id="priority-picker"></div><button id="btn-compare" type="button">비교하기</button>';
+    const state = stateWithMatches();
+    assert.doesNotThrow(() => renderInputView(state, {}));
+    assert.ok(document.getElementById('calc-form'), '새 폼 컨테이너를 만든다');
+    assert.equal(document.querySelectorAll('#input-slot-a').length, 1, '옛 빈 칸은 걷어 아이디가 겹치지 않는다');
+    assert.equal(document.getElementById('priority-picker'), null);
+    assert.ok(document.getElementById('btn-compare').closest('.calc-cta'), '버튼을 고정 띠로 감싼다');
+    assert.equal(document.getElementById('btn-compare').textContent, '비교 결과 보기');
+    assert.equal(ensureInputScaffold(), document.getElementById('calc-form'), '두 번 불러도 같은 폼(멱등)');
+    assert.equal(document.querySelectorAll('.calc-privacy').length, 1);
   });
 });
 
@@ -166,7 +306,7 @@ describe('UI-4 선택 → 입력뷰 전진 + 비교하기 배선(MB-8·15)', () 
     const calls = [];
     maybeAdvance(state, { go: (v) => calls.push(v) });
     assert.deepEqual(calls, ['benefits']);
-    assert.ok(document.getElementById('sal-low'), '입력뷰 컨트롤은 그래도 렌더된다');
+    assert.ok(document.getElementById('calc-sal'), '입력뷰 컨트롤은 그래도 렌더된다');
   });
 
   test('한쪽만 matched → 전진 안 함(검색뷰 유지)', () => {
@@ -257,17 +397,16 @@ describe('UI-5 리포트 내비 배선', () => {
     renderInputView(state, {});
     document.getElementById('report-body').append(document.createElement('div'));
     assert.ok(document.getElementById('report-body').children.length > 0, '사전조건: 리포트 렌더됨');
-    assert.ok(document.getElementById('input-slot-a').children.length > 0, '사전조건: 입력 컨트롤 렌더됨');
+    assert.ok(document.getElementById('calc-form').children.length > 0, '사전조건: 입력 컨트롤 렌더됨');
 
     bindReportNav(state, { go: () => {} });
     document.getElementById('btn-new-search').dispatchEvent(new window.Event('click', { bubbles: true }));
 
     assert.equal(document.getElementById('report-body').children.length, 0, '리포트 본문 비움');
-    assert.equal(document.getElementById('input-slot-a').children.length, 0, 'A 입력 컨트롤 비움');
-    assert.equal(document.getElementById('input-slot-b').children.length, 0, 'B 입력 컨트롤 비움');
-    assert.equal(document.getElementById('priority-picker').children.length, 0, '우선순위 피커 비움');
+    assert.equal(document.getElementById('calc-form').children.length, 0, '입력 컨트롤(A·B 열·기준 세그먼트) 비움');
     // 눈에 안 보이는 잔존 입력도 함께 초기화되어야 "새 비교"라는 이름에 부합한다.
     assert.deepEqual(state.cmtS, { a: null, b: null }, '통근시간 초기화');
+    assert.equal(state.tenureYears, null, '근속도 초기화');
   });
 });
 
@@ -415,7 +554,7 @@ describe('UI-9 해시 딥링크 강등·부팅 자동 복원(B-1)', () => {
     // 상태만 채우면 컨트롤이 비어 B-1과 동일한 백지가 한 클릭 거리에 남는다.
     assert.ok(document.getElementById('input-slot-a').children.length > 0, 'A 슬롯 컨트롤 렌더');
     assert.ok(document.getElementById('input-slot-b').children.length > 0, 'B 슬롯 컨트롤 렌더');
-    assert.ok(document.getElementById('priority-picker').children.length > 0, '우선순위 피커 렌더');
+    assert.ok(document.getElementById('calc-axis'), '기준 세그먼트 렌더');
   });
 
   // 부팅 자동 복원은 이동을 boot 에 넘기려고 go 를 no-op 으로 주입한다(B-6). 그 no-op 이
@@ -595,7 +734,7 @@ describe('UI-11 슬롯 머리의 회사 선택·변경 버튼(막다른 골목 �
     const btn = document.querySelector('#input-slot-a button.in-slot-pick');
     assert.ok(btn, '이미 고른 회사도 바꿀 수 있어야 한다');
     assert.equal(btn.textContent, '회사 변경', '미선택 슬롯의 "회사 선택"과 구분된다');
-    assert.match(document.querySelector('#input-slot-a .in-slot-title').textContent, /A사/);
+    assert.match(document.querySelector('#input-slot-a .calc-pt').textContent, /A사/);
     btn.dispatchEvent(new window.Event('click', { bubbles: true }));
     assert.deepEqual(went, ['search']);
     assert.equal(document.activeElement, document.getElementById('search-input-a'));
@@ -614,7 +753,7 @@ describe('UI-11 슬롯 머리의 회사 선택·변경 버튼(막다른 골목 �
     state.matched.b = null;
     state.benS.b = [];
     renderInputView(state, {});
-    const title = document.querySelector('#input-slot-b .in-slot-title');
+    const title = document.querySelector('#input-slot-b .calc-pt');
     assert.doesNotMatch(title.textContent, /직접 입력/);
   });
 });
@@ -807,7 +946,7 @@ describe('UI-11 검색 뷰 「비교하기」 — 두 칸이 찬 채로 선 검�
     bindSearchView(state, { go: (v) => calls.push(v), onPairReady: () => logged.push(1) });
     document.getElementById('btn-search-go').click();
     assert.deepEqual(calls, ['benefits']);
-    assert.ok(document.getElementById('sal-low'), '입력 뷰도 미리 그린다(덱의 「이직 계산기 →」)');
+    assert.ok(document.getElementById('calc-sal'), '입력 뷰도 미리 그린다(덱의 「이직 계산기 →」)');
     assert.equal(logged.length, 1);
   });
 
@@ -974,7 +1113,7 @@ describe('UI-12 이직 계산기 흐름 — 두 회사를 고르면 복지 비�
     pick('b', 2, 'B사');
     document.getElementById('btn-search-go').click();
     assert.deepEqual(visible(), ['input'], '계산기로 들어온 사람에게 복지 비교를 먼저 보여 주지 않는다');
-    assert.ok(document.getElementById('sal-low'), '연봉 입력칸이 바로 보인다');
+    assert.ok(document.getElementById('calc-sal'), '연봉 입력칸이 바로 보인다');
   });
 
   test('UI-12d: 계산기에서 「회사 변경」으로 검색에 다녀와도 입력 뷰로 돌아온다', async () => {

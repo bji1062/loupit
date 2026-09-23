@@ -6,7 +6,8 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill } from './ui.js';
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate } from './ui.js';
+import { isLegalRow } from './legal.js'; // 법정 행 — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5)
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
@@ -23,9 +24,12 @@ export function createInitialState() {
     benS: { a: [], b: [] }, // 복지 항목[] (FR-D8.1: +checked +value_source)
     wsState: { a: blankWs(), b: blankWs() }, // {ot,wage,remote,flex} 각 null
     salS: { a: { low: null, high: null } }, // 만원 — 슬롯 a만
-    selectedRate: null, // b 상승률(%) 또는 null
-    cmtS: { a: null, b: null }, // 통근시간(분) 또는 null
-    curPri: '워라밸', // ∈ {연봉,워라밸,복지} 기본 워라밸
+    selectedRate: null, // b 상승률(%) 또는 null. 연봉 직접 입력(rateMode 'salary')이면 offerSal 에서 되짚은 값
+    rateMode: 'rate', // 'rate'(상승률 칩·직접 %) | 'salary'(이직 후보 연봉을 직접 넣음) — 2026-09-23
+    offerSal: null, // rateMode 'salary' 일 때 이직 후보 연봉(만원)
+    cmtS: { a: null, b: null }, // 통근시간(분) 또는 null — null 은 「반영 안 함」(0분 아님)
+    tenureYears: null, // 현재 직장 근속(년) 또는 null — 기본값을 넣지 않는다(근속 판정을 지어내지 않는다)
+    curPri: '연봉', // ∈ {연봉,워라밸,복지} — 결과의 기본 축(2026-09-23 결정 5: 기본 「연봉」)
     curSacrifice: null, // ≠ curPri 또는 null
     chosenType: { a: null, b: null }, // 직접 입력 모드 선택 유형(comp_tp_cd) 또는 null (FR-17)
     inputMode: { a: 'company', b: 'company' }, // 'company' | 'direct'
@@ -41,6 +45,8 @@ export function createInitialState() {
       searchTimers: { a: null, b: null },
       searchAborts: { a: null, b: null },
       searchState: { a: 'idle', b: 'idle' },
+      // 계산기 결과 화면의 보기 상태(열린 칸·비교표 필터) — 「빼고 다시 계산」 재렌더를 넘어 유지한다.
+      reportView: { open: {}, ctFilter: 'diff', diffAll: false },
     },
   };
 }
@@ -482,8 +488,11 @@ export function snapshotInput(state = App.state) {
     inputMode: { ...(state.inputMode || {}) },
     salS: { a: { ...((state.salS && state.salS.a) || {}) } },
     selectedRate: state.selectedRate ?? null,
+    rateMode: state.rateMode === 'salary' ? 'salary' : 'rate',
+    offerSal: state.offerSal ?? null,
     cmtS: { ...(state.cmtS || {}) },
-    wsState: { a: { ...(ws.a || {}) }, b: { ...(ws.b || {}) } },
+    tenureYears: state.tenureYears ?? null,
+    wsState: { a: { ...(ws.a || {}) }, b: { ...(ws.b || {}) } }, // hours(직접 입력)도 여기 실려 간다
     curPri: state.curPri,
     curSacrifice: state.curSacrifice ?? null,
   };
@@ -556,6 +565,10 @@ export function restoreInputDraft(state = App.state, hooks = {}) {
   // 스칼라 입력. wsState 는 initWsState(회사 기반 제안) **뒤에** 덮어야 사용자의 답이 이긴다.
   if (draft.salS && draft.salS.a) state.salS.a = { low: null, high: null, ...draft.salS.a };
   if (draft.selectedRate != null) state.selectedRate = draft.selectedRate;
+  // 2026-09-23 계산기 개편 필드 — 옛 초안에는 없다(없으면 기본값 그대로).
+  if (draft.rateMode === 'salary' || draft.rateMode === 'rate') state.rateMode = draft.rateMode;
+  if (draft.offerSal != null && Number.isFinite(Number(draft.offerSal))) state.offerSal = Number(draft.offerSal);
+  if (draft.tenureYears != null && Number.isFinite(Number(draft.tenureYears))) state.tenureYears = Number(draft.tenureYears);
   if (draft.cmtS) state.cmtS = { a: null, b: null, ...draft.cmtS };
   if (draft.wsState) {
     for (const slot of ['a', 'b']) {
@@ -785,33 +798,93 @@ export function salToStr(s) { // {low,high} → "lo-hi" | null
   return s.low + '-' + s.high;
 }
 
-export function assembleCompareState(state) { // App.state → CompareState(SP-ENGINE-2) — 유일 변환점(A-1)
+// 법정 행 표시(SP-LEGAL-5) — 계산기 입력 복사본에만 `legal_yn` 을 달고 합산에서 뺀다(checked:false).
+// App.state.benS 는 건드리지 않는다: 모드 A(복지 비교)와 초안이 같은 배열을 쓴다.
+function markLegal(list, comp) {
+  const eng = comp && comp.comp_eng_nm;
+  if (!eng || !Array.isArray(list)) return list || [];
+  let hit = false;
+  const out = list.map((b) => {
+    if (!b || !isLegalRow(eng, b.benefit_cd, b.benefit_nm)) return b;
+    hit = true;
+    return { ...b, legal_yn: true, checked: false };
+  });
+  return hit ? out : list; // 법정 행이 없으면 원본 그대로(pass-through 계약 유지)
+}
+
+export function assembleCompareState(state, { allChecked = false } = {}) { // App.state → CompareState(SP-ENGINE-2) — 유일 변환점(A-1)
+  // allChecked: 「빼고 다시 계산」 이전의 기준 결과(결론이 그대로인지 비교할 짝)를 만들 때만 쓴다.
+  const benOf = (slot) => {
+    const list = markLegal(state.benS[slot], state.matched && state.matched[slot]);
+    return allChecked ? list.map((b) => (b && !b.legal_yn && !b.checked ? { ...b, checked: true } : b)) : list;
+  };
   return {
     salStr: salToStr(state.salS.a), // 슬롯 a만; 슬롯 b는 rate 파생(A-2)
-    selectedRate: state.selectedRate,
-    benS: state.benS, // 구조 동일(pass-through)
+    selectedRate: effectiveRate(state), // 연봉 직접 입력이면 거기서 되짚은 상승률(엔진 계약은 상승률 하나)
+    benS: { a: benOf('a'), b: benOf('b') },
     wsState: state.wsState,
-    com: { a: state.cmtS.a ?? 0, b: state.cmtS.b ?? 0 }, // null→0(A-4)
-    curPri: PRI_KEY[state.curPri] || 'wlb', // 라벨→PriKey(방어 폴백 wlb, A-3)
+    com: { a: state.cmtS.a ?? 0, b: state.cmtS.b ?? 0 }, // null→0(A-4) — 옛 산출(commuteCompare)용
+    commuteIn: { a: state.cmtS.a ?? null, b: state.cmtS.b ?? null }, // 원입력 — 미입력은 0분이 아니다(계산기)
+    tenureYears: state.tenureYears ?? null,
+    curPri: PRI_KEY[state.curPri] || 'salary', // 라벨→PriKey(방어 폴백 salary — 결정 5, A-3)
     curSacrifice: state.curSacrifice ? (PRI_KEY[state.curSacrifice] || null) : null,
     matched: state.matched,
   };
 }
 
+// 사용자가 결과 화면에서 뺀 복지가 있는가(법정 행의 checked:false 는 사용자의 뺌이 아니다).
+export function hasExclusions(state) {
+  return ['a', 'b'].some((slot) => (state.benS[slot] || []).some((b) => b && b.checked === false
+    && !isLegalRow(state.matched[slot] && state.matched[slot].comp_eng_nm, b.benefit_cd, b.benefit_nm)));
+}
+
+/**
+ * 결과 화면의 「빼고 다시 계산」(결정 6) — 비교표 행 토글·혼합 칸 버튼·「모두 되돌리기」가 부른다.
+ * 엔진의 `checked` 계약에 되써서 compare() 를 다시 돌리고 리포트 **전체**를 다시 그린다.
+ * items: [{ slot:'a'|'b', cd }] — exclude:true 면 뺀다, false 면 되살린다. 반환 = 새 리포트.
+ */
+export function setExclusions(state, items, exclude) {
+  for (const { slot, cd } of items || []) {
+    for (const b of state.benS[slot] || []) if (b && (b.benefit_cd || b.benefit_nm) === cd) b.checked = !exclude;
+  }
+}
+export function resetExclusions(state) {
+  for (const slot of ['a', 'b']) for (const b of state.benS[slot] || []) if (b) b.checked = true;
+}
+
 // ── 리포트 진입·재계산(FR-42): 조립 → 계산 → 렌더 ───────────────────────────
 export function runReport(hooks = {}) {
-  const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl, recentCtx, save = true } = hooks;
+  const { state = App.state, compareFn = compare, renderReportFn = renderReport, mountEl, recentCtx, save = true, preserve = false } = hooks;
   const report = compareFn(assembleCompareState(state)); // SP-ENGINE-2.2 Report
   if (report && report.ok === false) return report; // 필수값 결측 → 렌더·이동 차단(호출부가 안내, #3)
   // 성공 비교 자동 저장(C1) — 저장 불가 시 store가 조용히 무시.
-  // save:false는 이미 저장된 레코드의 재실행(부팅 자동 복원)용 — 재저장하면 id·savedAt이 새로
+  // save:false는 이미 저장된 레코드의 재실행(부팅 자동 복원·「빼고 다시 계산」)용 — 재저장하면 id·savedAt이 새로
   // 발급되어 새로고침만으로 "최근 비교" 목록의 순서와 식별자가 요동친다.
   if (save) saveRecentComparison(state, report);
   // 마운트 지점: #report-body(리포트 콘텐츠 전용) — #view-report 자체는 광고 슬롯·버튼·헤딩을
   // 포함하므로 replaceChildren 대상에서 제외한다(compare/index.html 셸 계약).
   const el2 = mountEl || (typeof document !== 'undefined' && document.getElementById ? document.getElementById('report-body') : null);
   if (el2) {
-    renderReportFn(report, el2, { benS: state.benS, matched: state.matched, recentCtx }); // 배지·표시명·최근비교 콜백(SP-FE-9.4, C1)
+    const rerun = () => runReport({ state, compareFn, renderReportFn, mountEl: el2, recentCtx, save: false, preserve: true });
+    // 뺀 복지가 있으면 「빼기 전」 결과를 함께 넘긴다 — 「결론 그대로 / 바뀜」은 이 짝과 비교한다.
+    const baseline = hasExclusions(state) ? compareFn(assembleCompareState(state, { allChecked: true })) : null;
+    renderReportFn(report, el2, { // 배지·표시명·최근비교 콜백(SP-FE-9.4, C1) + 계산기 결과 화면(SP-FE-12)
+      benS: state.benS, matched: state.matched, recentCtx, preserve, baseline,
+      axis: PRI_KEY[state.curPri] || 'salary',
+      view: state.ui && state.ui.reportView,
+      input: {
+        salA: report.a && report.a.salRange ? report.a.salRange.mid : null, rate: effectiveRate(state),
+        ws: state.wsState, commute: state.cmtS, tenureYears: state.tenureYears ?? null,
+      },
+      onAxis: (axis) => {
+        const label = Object.keys(PRI_KEY).find((k) => PRI_KEY[k] === axis);
+        if (label) state.curPri = label;
+        try { syncAxisSegment(state); } catch { /* 입력 뷰가 없어도 무해 */ }
+      },
+      onToggle: (items, exclude) => { setExclusions(state, items, exclude); return rerun(); },
+      onReset: () => { resetExclusions(state); return rerun(); },
+      onEdit: () => go('input'),
+    });
   }
   return report;
 }
@@ -831,11 +904,14 @@ export function restoreComparison(record, deps = {}, state = App.state) {
   const inp = record.input;
   state.salS = inp.salS || { a: { low: null, high: null } };
   state.selectedRate = inp.selectedRate ?? null;
+  state.rateMode = inp.rateMode === 'salary' ? 'salary' : 'rate';
+  state.offerSal = inp.offerSal ?? null;
+  state.tenureYears = inp.tenureYears ?? null;
   state.cmtS = inp.cmtS || { a: null, b: null };
   state.wsState = inp.wsState || { a: blankWs(), b: blankWs() };
   // 폐기된 축('브랜드')이 담긴 옛 레코드는 기본값으로 정규화한다 — 그대로 두면 우선순위
   // 라디오 어느 항목과도 일치하지 않아 선택이 비어 보인다(브랜드 축 제거, 2026-07-20).
-  state.curPri = PRI_KEY[inp.curPri] ? inp.curPri : '워라밸';
+  state.curPri = PRI_KEY[inp.curPri] ? inp.curPri : '연봉';
   if (inp.curSacrifice && !PRI_KEY[inp.curSacrifice]) inp.curSacrifice = null;
   state.curSacrifice = inp.curSacrifice || null;
   state.chosenType = inp.chosenType || { a: null, b: null };

@@ -1453,6 +1453,99 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* /find 정적 표 — 항목 페이지가 있는 줄의 도구 입구(이름은 항목 페이지로 간다). */
 .bn-find-go { margin-left:var(--sp-2); font-size:var(--fs-xs); font-weight:var(--fw-regular); color:var(--t3); white-space:nowrap; }
 
+/* ══════════════════════════════════════ 이직 계산기 입력(SP-FE-12, 2026-09-23) ══
+   승인 목업(calc-mockup-fable v2)을 사이트 토큰으로 옮겼다 — 새 색 없음(UT-NO-LITERAL). 전부 새 클래스
+   (`.calc-*`)라 옛 셸·옛 JS 가 남아 있는 머지~pull 틈에도 기존 마크업을 건드리지 않는다.
+   A = 브랜드 초록 ●(원) · B = 슬롯 파랑 ■(네모) — 비교 화면(SP-CMP-4)과 같은 두 채널. */
+.calc-form, .calc-cta, .calc-rp { word-break:keep-all; overflow-wrap:break-word; }
+.calc-h2-note { font-family:var(--font-sans); font-size:var(--fs-xs); color:var(--t3); letter-spacing:0; margin-left:var(--sp-2); }
+.calc-form { display:grid; gap:var(--sp-4); }
+.calc-card { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); }
+.calc-axis { padding:var(--sp-4); }
+.calc-lbl { font-weight:var(--fw-bold); margin-bottom:var(--sp-2); }
+.calc-help { color:var(--t3); font-size:var(--fs-xs); margin-top:var(--sp-2); }
+main p.calc-help { margin-top:var(--sp-2); }
+.calc-muted { color:var(--t3); }
+.calc-sym { display:inline-block; width:.72em; height:.72em; margin-right:.35em; vertical-align:-.02em; }
+.calc-sym-a { border-radius:50%; background:var(--brand); }
+.calc-sym-b { border-radius:1px; background:var(--slot-b); }
+
+/* 세그먼트·칩 — role=radio 버튼. 고른 칩은 글자(✓)로도 말한다(색만으로 구분하지 않는다). */
+.calc-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); }
+.calc-chip {
+  display:inline-flex; align-items:center; justify-content:center; gap:var(--sp-1);
+  min-height:var(--tap-min); padding:0 var(--sp-2);
+  background:var(--bg-1); color:var(--t1); border:var(--bw) solid var(--border-strong); border-radius:var(--r-pill);
+  font-size:var(--fs-xs); font-weight:var(--fw-medium); cursor:pointer; font-variant-numeric:tabular-nums;
+  /* 폰에서는 칩 3개가 한 줄에 같은 폭으로 선다(칩당 ~104px) — 넘치는 글자는 칩 안에서 두 줄로 접는다. */
+  flex:1 1 0; min-width:0; white-space:normal; line-height:1.25; text-align:center;
+}
+.calc-chip[aria-checked="true"] { background:var(--brand-tint); border-color:var(--brand); color:var(--brand-active); font-weight:var(--fw-bold); }
+.calc-chip[aria-checked="true"]::before { content:"✓"; font-size:12px; }
+.calc-seg { display:grid; grid-template-columns:repeat(3, 1fr); gap:0; border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm); overflow:hidden; }
+.calc-seg .calc-chip { border:0; border-right:var(--bw) solid var(--border); border-radius:0; font-size:var(--fs-sm); }
+.calc-seg .calc-chip:last-child { border-right:0; }
+.calc-seg .calc-chip[aria-checked="true"] { background:var(--brand); color:var(--on-brand); }
+.calc-seg .calc-chip[aria-checked="true"]::before { content:none; }
+
+/* A·B 두 열 — 한 열이 한 덩어리 DOM(읽기 순서 = A 전부 → B 전부). 넓은 화면에서는 subgrid 로 줄을 맞춘다. */
+.calc-pair { display:grid; grid-template-columns:minmax(0,1fr); gap:var(--sp-4); }
+.calc-col { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); min-width:0; }
+.calc-pc { padding:var(--sp-3) var(--sp-4); min-width:0; }
+.calc-pc.calc-top { padding:0; }
+.calc-pc.calc-bot { padding-bottom:var(--sp-4); }
+.calc-rule { height:1px; background:var(--bg-2); margin:0 0 var(--sp-3); }
+.calc-ph { display:flex; align-items:center; gap:var(--sp-3); padding:var(--sp-3) var(--sp-4); border-bottom:var(--bw) solid var(--border); border-radius:var(--r-lg) var(--r-lg) 0 0; }
+.calc-col-a .calc-ph { background:var(--brand-tint); }
+.calc-col-b .calc-ph { background:var(--slot-b-fill); }
+.calc-logo { width:34px; height:34px; border-radius:var(--r-sm); display:grid; place-items:center; flex:none; color:var(--on-brand); font-weight:var(--fw-bold); }
+.calc-col-a .calc-logo { background:var(--brand); }
+.calc-col-b .calc-logo { background:var(--slot-b); }
+main h3.calc-pt { flex:1; min-width:0; margin:0; font-family:var(--font-sans); font-size:var(--fs-base); font-weight:var(--fw-bold); letter-spacing:0; line-height:var(--lh-snug); }
+.calc-pt small { display:block; font-size:var(--fs-xs); font-weight:var(--fw-regular); color:var(--t3); }
+.calc-btn-sm {
+  display:inline-flex; align-items:center; min-height:var(--tap-min); padding:0 var(--sp-3);
+  background:var(--bg-1); color:var(--t1); border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm);
+  font-size:var(--fs-xs); font-weight:var(--fw-medium); cursor:pointer; white-space:nowrap;
+}
+.calc-btn-sm:hover { background:var(--surface-soft); }
+.calc-fl { display:flex; align-items:baseline; flex-wrap:wrap; gap:var(--sp-1); margin-bottom:var(--sp-2); font-size:var(--fs-sm); font-weight:var(--fw-bold); }
+.calc-req { color:var(--red); font-size:var(--fs-xs); }
+.calc-opt { color:var(--t3); font-size:var(--fs-xs); font-weight:var(--fw-regular); }
+.calc-numrow { display:flex; align-items:center; flex-wrap:wrap; gap:var(--sp-2); }
+.calc-gap { margin-top:var(--sp-2); }
+#view-input .calc-num {
+  width:104px; max-width:100%; min-height:var(--tap-min); padding:0 var(--sp-3);
+  background:var(--bg-1); color:var(--t1); border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm);
+  font-size:var(--fs-base); text-align:right; font-variant-numeric:tabular-nums;
+}
+#view-input .calc-num.calc-num-short { width:84px; }
+.calc-unit { color:var(--t3); font-size:var(--fs-xs); }
+.calc-step {
+  min-width:var(--tap-min); min-height:var(--tap-min); padding:0 var(--sp-2);
+  background:var(--bg-1); color:var(--t1); border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm);
+  font-size:var(--fs-xs); font-weight:var(--fw-medium); cursor:pointer; font-variant-numeric:tabular-nums;
+}
+.calc-eq { font-weight:var(--fw-bold); white-space:nowrap; font-variant-numeric:tabular-nums; }
+.calc-link { background:none; border:0; padding:var(--sp-2) 0; min-height:var(--tap-min); color:var(--link); font-size:var(--fs-xs); text-decoration:underline; text-underline-offset:.2em; cursor:pointer; }
+.calc-fill > summary { display:flex; align-items:flex-start; gap:var(--sp-2); min-height:var(--tap-min); padding:var(--sp-2) 0; font-size:var(--fs-sm); cursor:pointer; list-style:none; }
+.calc-fill > summary > span:first-child { flex:1 1 0; min-width:0; }
+.calc-fill > summary::-webkit-details-marker { display:none; }
+.calc-fill > summary::before { content:"▸"; color:var(--t3); flex:none; }
+.calc-fill[open] > summary::before { content:"▾"; }
+.calc-fix { flex:none; display:inline-flex; align-items:center; padding:2px var(--sp-2); border:var(--bw) solid var(--border-strong); border-radius:var(--r-sm); font-size:var(--fs-xs); color:var(--t1); background:var(--bg-1); }
+.calc-fill-body { margin-top:var(--sp-2); padding:var(--sp-3); background:var(--bg-2); border-radius:var(--r-sm); font-size:var(--fs-sm); }
+.calc-check { display:inline-flex; align-items:center; gap:var(--sp-1); min-height:var(--tap-min); margin-right:var(--sp-4); }
+.calc-fill-note { color:var(--t2); }
+main p.calc-fill-note, main p.calc-note { margin-top:var(--sp-2); }
+.calc-fill-note q { color:var(--t2); }
+.calc-note { font-size:var(--fs-sm); }
+/* 고정 버튼 띠 — 스크롤 중에도 결과로 갈 수 있다. 결측 안내(role=alert)는 이 띠 안, 버튼 위에 붙는다. */
+.calc-cta { position:sticky; bottom:0; z-index:5; padding:var(--sp-3) 0 calc(var(--sp-3) + env(safe-area-inset-bottom, 0px)); background:linear-gradient(to top, var(--bg-0) 70%, transparent); }
+.calc-cta #btn-compare { width:100%; min-height:52px; font-size:var(--fs-base); font-weight:var(--fw-bold); }
+.calc-privacy { text-align:center; color:var(--t3); font-size:var(--fs-xs); }
+main p.calc-privacy { margin-top:var(--sp-2); }
+
 @media (min-width: 768px) {
   /* GNB 원복 — 여기부터는 워드마크와 넉넉한 gap 이 다 들어간다(768px 실측: 필요 폭 435px).
      `flex-wrap:nowrap` 을 되돌려 두는 건 안전판을 끄는 게 아니라, 이 폭에서 줄이 바뀌면
@@ -1558,4 +1651,16 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
   .bn-track { grid-column:auto; order:0; }
   .bn-meter { width:120px; }
   .bn-table tbody th { white-space:nowrap; }
+
+  /* 이직 계산기 입력(SP-FE-12) — 두 열 나란히, 줄은 subgrid 로 맞춘다(열마다 7칸). 옛 #view-input 2단 격자
+     안에서 새 컨테이너는 전폭을 쓴다. */
+  #view-input > .calc-form, #view-input > .calc-cta { grid-column:1 / -1; }
+  .calc-pair { grid-template-columns:repeat(2, minmax(0,1fr)); grid-template-rows:repeat(7, auto); column-gap:var(--sp-5); row-gap:0; }
+  .calc-col { grid-row:1 / span 7; display:grid; grid-template-rows:subgrid; }
+  .calc-pc { padding:var(--sp-3) var(--sp-5); }
+  .calc-pc.calc-top { padding:0; }
+  .calc-axis { padding:var(--sp-4) var(--sp-5); }
+  .calc-chip { flex:0 0 auto; white-space:nowrap; padding:0 var(--sp-3); }
+  .calc-seg .calc-chip { flex:auto; }
+  #view-input .calc-num { width:120px; }
 }

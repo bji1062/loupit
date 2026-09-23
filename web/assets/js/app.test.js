@@ -70,14 +70,19 @@ beforeEach(() => {
 
 // ── T-06.4.1: App.state 초기 shape·프로파일러 키 부재 (UT-STATE-1) ─────────
 describe('T-06.4.1 App.state 초기 shape (UT-STATE-1)', () => {
-  test('UT-STATE-1: 프로파일러 키 부재, curPri==="워라밸"', () => {
+  // ⚠ 2026-09-23 의도된 계약 변경(이직 계산기 개편 결정 5): 결과의 기본 축 = 입력 맨 위에서 고른 축, 기본 「연봉」.
+  test('UT-STATE-1: 프로파일러 키 부재, curPri==="연봉"', () => {
     const state = createInitialState();
     const keys = Object.keys(state);
     for (const forbidden of ['pfShuffled', 'pfCur', 'pfAnswers', 'pfResult', 'pfJob']) {
       assert.ok(!keys.includes(forbidden), forbidden + ' 키가 존재하면 안 됨(INV-2·SP-FE-4.3)');
     }
-    assert.equal(state.curPri, '워라밸');
+    assert.equal(state.curPri, '연봉');
     assert.equal(state.curSacrifice, null);
+    // 계산기 입력 새 칸 — 전부 기본값 없음(우리 값도 사용자 값도 아닌 숫자가 결과를 만들지 않는다)
+    assert.equal(state.tenureYears, null);
+    assert.equal(state.offerSal, null);
+    assert.equal(state.rateMode, 'rate');
   });
 
   test('salS는 슬롯 a만 보유(슬롯 b는 selectedRate로 파생, 중복 없음)', () => {
@@ -91,7 +96,7 @@ describe('T-06.4.1 App.state 초기 shape (UT-STATE-1)', () => {
   });
 
   test('App.state는 위와 동일 shape로 초기화되어 있다', () => {
-    assert.equal(App.state.curPri, '워라밸');
+    assert.equal(App.state.curPri, '연봉');
     assert.deepEqual(App.state.matched, { a: null, b: null });
   });
 });
