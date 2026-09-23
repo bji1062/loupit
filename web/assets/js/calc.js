@@ -673,6 +673,20 @@ export function verdictTier(d, band, base, guardD = null, T = AXIS_THRESHOLDS) {
 }
 
 /**
+ * unsure 의 **원인** — 화면이 원인에 맞는 문장만 쓰게 한다(적대 검증 MED-1: 부호 갈림으로 unsure 가 된 쌍에
+ * 「오차 범위가 겹칩니다」라고 말했다). `'band'`(차이가 오차 범위 안) · `'guard'`(차이는 범위 밖인데 한쪽만 금액이
+ * 등록된 항목을 빼면 부호가 갈림) · null(unsure 아님). 둘 다 맞으면 `'band'` — 그것만으로 충분한 이유다.
+ * `verdictTier(...) === 'unsure'` ⇔ `unsureCause(...) != null`(같은 입력).
+ */
+export function unsureCause(d, band, guardD = null) {
+  const diff = Number(d) || 0;
+  const bd = Math.max(0, Number(band) || 0);
+  if (bd > 0 && Math.abs(diff) <= bd) return 'band';
+  if (guardD != null && Math.sign(guardD) !== Math.sign(diff)) return 'guard';
+  return null;
+}
+
+/**
  * benefit_cd 1:1 짝짓기 — 통 5개는 **배타**다(한 항목은 정확히 한 통). 법정 행(`legal_yn`)은 `legal` 로 빠진다.
  * 분류는 **등록** 기준(금액 유무)이라 행별 「빼고 다시 계산」으로 checked 가 바뀌어도 목록은 흔들리지 않는다.
  * 같은 회사에 같은 코드가 둘 이상이면 뒤의 것은 `cd#2` 로 따로 센다(현 데이터 0건, 방어).
@@ -813,6 +827,14 @@ function withWage(state, slot, wage) {
 }
 const inSet = (set) => (it) => set.has(it);
 
+// 가드 값 — 한쪽만 금액이 등록된 항목을 뺀 총보상 차이(그런 항목이 없으면 null). 티어는 **언제나** 이것과 함께 낸다:
+// 판정 카드·「결론이 얼마나 확실한가」·감도·야근수당 병치가 같은 티어를 써야 한 리포트가 서로 반대로 말하지 않는다(MED-2).
+function guardOf(state, pairs, now) {
+  if (!pairs.mixed.length) return null;
+  const set = new Set(pairs.mixed.map((r) => (r.side === 'a' ? r.a : r.b)));
+  return coreDiff(compareCore(withExcluded(state, inSet(set)), now), now).diff;
+}
+
 // B 연봉 1만원이 B 야근수당을 얼마나 움직이나 — 비포괄·야근이면 otPay = 연장h × 연봉 × 1.5 × 4.33 / 209.
 function otSlope(ws) {
   if (!ws || ws.wage !== 'separate') return 0;
@@ -866,9 +888,11 @@ export function timeSheet(core, commuteIn) {
   return { hours, hoursIn: { a: hA, b: hB }, commute, commuteIn: { a: cA, b: cB }, hourly, hourlyCommute };
 }
 
-// 감도 한 줄의 결과 — 'same'(결론 그대로) · 'flip'(뒤집힘) · 'near'(거의 같음) · 'unsure'(말할 수 없음).
+// 감도 한 줄의 결과 — 'same'(결론 그대로) · 'flip'(결론이 반대로) · 'decide'(기준이 「거의 같음·판단하기 어려움」이라
+// 뒤집을 결론이 없었는데 한쪽이 앞서게 됨 — LOW-12: 이때 「결론이 바뀌어」라고 하지 않는다) · 'near' · 'unsure'.
 function scenarioResult(tier, baseTier) {
   if (tier === 'unsure' || tier === 'near') return tier;
+  if (baseTier !== 'a' && baseTier !== 'b') return 'decide';
   return tier === baseTier ? 'same' : 'flip';
 }
 function coreDiff(c, now) {
@@ -877,24 +901,37 @@ function coreDiff(c, now) {
 
 /**
  * 임금 형태 미선택 + 야근(주 40h 초과)인 슬롯마다 포괄·비포괄 두 경우를 계산한다(사용자 결정 4).
- * 미선택 슬롯이 없으면 null. 결과는 「포괄이면 / 비포괄이면」 병치의 재료다.
+ * 미선택 슬롯이 없으면 null. 결과는 「포괄이면 / 비포괄이면」 병치의 재료다. 경우마다 티어는 가드를 포함한다(MED-2).
+ * - agree: 모든 경우의 티어가 같다.
+ * - dir: 모든 경우가 같은 쪽을 가리키면 그 부호(+1 = 이직 후보가 많다), 아니면 0. 「판단하기 어려움」이 하나라도
+ *   있으면 0 이다(그 경우엔 방향이 없다). **「결론이 달라진다」는 부호가 갈릴 때만**이다(MED-3) — 같은 방향이면
+ *   「얼마나」만 달라지므로 span(작은 차이 → 큰 차이)을 함께 낸다.
  */
-export function wageScenarios(state, core, now) {
+export function wageScenarios(state, core, now, ctx = {}) {
   const need = ['a', 'b'].filter((s) => {
     const ws = state.wsState[s] || {};
     return ws.wage == null && weeklyHours(ws) > LEGAL_WEEK_HRS;
   });
   if (!need.length) return null;
+  const pairs = ctx.pairs || classifyPairs(state.benS.a, state.benS.b);
   const combos = need.reduce((acc, s) => acc.flatMap((c) => [{ ...c, [s]: 'inclusive' }, { ...c, [s]: 'separate' }]), [{}]);
   const cases = combos.map((w) => {
     let st = state;
     for (const s of need) st = withWage(st, s, w[s]);
     const c = compareCore(st, now);
     const { diff, band, totalA } = coreDiff(c, now);
-    return { wage: w, diff, band, totalA, tier: verdictTier(diff, band, totalA), otA: c.a.otPay, otB: c.b.otPay };
+    const g = guardOf(st, pairs, now);
+    return { wage: w, diff, band, totalA, tier: verdictTier(diff, band, totalA, g), unsureBy: unsureCause(diff, band, g), otA: c.a.otPay, otB: c.b.otPay };
   });
   const tiers = new Set(cases.map((c) => c.tier));
-  return { slots: need, cases, agree: tiers.size === 1 };
+  const dirs = cases.map((c) => (c.tier === 'unsure' ? 0 : Math.sign(c.diff)));
+  const dir = dirs.every((x) => x !== 0 && x === dirs[0]) ? dirs[0] : 0;
+  const byMag = [...cases].sort((x, y) => Math.abs(x.diff) - Math.abs(y.diff));
+  return {
+    slots: need, cases, agree: tiers.size === 1, dir,
+    anyDirectional: cases.some((c) => c.tier === 'a' || c.tier === 'b'),
+    span: [byMag[0].diff, byMag[byMag.length - 1].diff],
+  };
 }
 
 /**
@@ -905,14 +942,21 @@ export function wageScenarios(state, core, now) {
 export function sensitivity(state, core, now, ctx = {}) {
   const pairs = ctx.pairs || classifyPairs(state.benS.a, state.benS.b);
   const base = coreDiff(core, now);
-  const baseTier = verdictTier(base.diff, base.band, base.totalA);
+  // 기준 티어 = 판정 카드와 **같은** 티어(가드 포함, MED-2). calculatorExtras 는 튼튼함에서 이미 구한 가드를 넘긴다.
+  const guardD = ctx.guardD !== undefined ? ctx.guardD : guardOf(state, pairs, now);
+  const baseTier = verdictTier(base.diff, base.band, base.totalA, guardD);
   const out = [];
-  const push = (key, st, extra = {}) => {
+  // guarded: 한쪽만 금액 등록 항목이 남아 있는 줄(①·③)은 그 줄의 티어도 가드를 포함한다.
+  const push = (key, st, extra = {}, guarded = false) => {
     const c = compareCore(st, now);
     const r = coreDiff(c, now);
-    const tier = verdictTier(r.diff, r.band, r.totalA);
+    const g = guarded ? guardOf(st, pairs, now) : null;
+    const tier = verdictTier(r.diff, r.band, r.totalA, g);
     const result = scenarioResult(tier, baseTier);
-    out.push({ key, totalDiff: r.diff, band: r.band, tier, result, flips: result === 'flip', ...extra, core: { otB: c.b.otPay, totalB: c.b.total } });
+    out.push({
+      key, totalDiff: r.diff, band: r.band, tier, unsureBy: unsureCause(r.diff, r.band, g), result,
+      flips: result === 'flip', decides: result === 'decide', ...extra, core: { otB: c.b.otPay, totalB: c.b.total },
+    });
   };
   const wsB = state.wsState.b || {};
   if ((wsB.wage === 'inclusive' || wsB.wage === 'separate') && weeklyHours(wsB) > LEGAL_WEEK_HRS) {
@@ -924,7 +968,7 @@ export function sensitivity(state, core, now, ctx = {}) {
       to, extraHrs: weeklyHours(wsB) - LEGAL_WEEK_HRS,
       hourlyBase: Math.round((core.b.salRange.mid * WON_PER_MANWON) / 12 / MONTHLY_STD_HRS),
       otB: flipped.b.otPay, breakeven: be ? be.full : null,
-    });
+    }, true);
   }
   const mixedA = new Set(pairs.mixed.filter((r) => r.side === 'a').map((r) => r.a).filter((it) => it.checked));
   const mixedB = new Set(pairs.mixed.filter((r) => r.side === 'b').map((r) => r.b).filter((it) => it.checked));
@@ -939,7 +983,7 @@ export function sensitivity(state, core, now, ctx = {}) {
   }
   if (capA.size + capB.size) {
     const items = listed(capA, capB);
-    push('drop_capped', withExcluded(state, inSet(capA), inSet(capB)), { count: items.length, amount: amountOf(items), items });
+    push('drop_capped', withExcluded(state, inSet(capA), inSet(capB)), { count: items.length, amount: amountOf(items), items }, true);
   }
   const uA = new Set([...mixedA, ...capA]), uB = new Set([...mixedB, ...capB]);
   const union = uA.size + uB.size;
@@ -964,8 +1008,11 @@ export function robustness(state, core, now, ctx = {}) {
   const noCore = compareCore(withExcluded(state, () => true), now);
   const noBenefit = coreDiff(noCore, now);
   const tierOf = (x) => (x ? verdictTier(x.diff, x.band, x.totalA) : null);
+  // ① 의 티어는 판정 카드와 같은 가드 포함 티어다(MED-2) — ②·③ 은 한쪽만 등록된 항목이 이미 빠져 가드가 없다.
+  const g = exMixed ? exMixed.diff : null;
   return {
-    full: { ...full, tier: tierOf(full) }, exMixed: exMixed && { ...exMixed, tier: tierOf(exMixed) },
+    full: { ...full, tier: verdictTier(full.diff, full.band, full.totalA, g), unsureBy: unsureCause(full.diff, full.band, g) },
+    exMixed: exMixed && { ...exMixed, tier: tierOf(exMixed) },
     noBenefit: { ...noBenefit, tier: tierOf(noBenefit) }, exMixedCore,
   };
 }
@@ -978,9 +1025,9 @@ export function robustness(state, core, now, ctx = {}) {
 export function askList(core, ctx) {
   const out = [];
   const { sens, wage, pairs } = ctx;
-  const flip = sens && sens.rows.find((r) => r.key === 'b_wage_flip' && r.flips);
+  const flip = sens && sens.rows.find((r) => r.key === 'b_wage_flip' && (r.flips || r.decides));
   if (flip) out.push({ kind: 'wage', amount: Math.abs(flip.otB - core.b.otPay) });
-  else if (wage && wage.slots.includes('b') && !wage.agree) {
+  else if (wage && wage.slots.includes('b') && (!wage.agree || wage.dir !== 0)) {
     const sep = wage.cases.find((c) => c.wage.b === 'separate');
     const inc = wage.cases.find((c) => c.wage.b === 'inclusive');
     if (sep && inc) out.push({ kind: 'wage', amount: Math.abs(sep.otB - inc.otB) });
@@ -1010,12 +1057,18 @@ export function buildAllVdCards(ctx) {
   const guard = robust.exMixed ? robust.exMixed.diff : null;
   const salTier = verdictTier(d, band, core.a.total, guard);
   const salMid = core.deltas.salMid;
-  const flip = sens.rows.find((r) => r.flips) || null;
+  const flip = sens.rows.find((r) => r.flips || r.decides) || null;
   // near 의 두 갈래 — 'small'(기준값의 3% 안: 정말 작다) · 'weak'(오차 범위를 겨우 넘었을 뿐 금액은 작지 않을 수 있다).
   const nearKind = (tier, diff, base) => (tier !== 'near' ? null : Math.abs(diff) <= Math.abs(base) * T.nearTotalPct ? 'small' : 'weak');
+  // 야근수당 미선택(결정 4): 경우들이 같은 쪽을 가리키면 'range'(얼마나만 다르다) · 부호가 갈리거나 방향이 없는 경우가
+  // 섞이면 'depends'(결론이 달라진다) · 모든 경우가 같은 비방향 티어면 그 티어 그대로(MED-3).
+  let salAxisTier = salTier;
+  if (wage && (!wage.agree || wage.anyDirectional)) salAxisTier = wage.dir !== 0 && wage.anyDirectional ? 'range' : 'depends';
+  const dirSign = salAxisTier === 'range' ? wage.dir : Math.sign(d);
   const salary = {
-    axis: 'salary', tier: wage && !wage.agree ? 'depends' : salTier, baseTier: salTier, nearKind: nearKind(salTier, d, core.a.total),
-    shape: salMid === 0 ? 'flat' : Math.sign(salMid) === Math.sign(d) ? 'same' : 'reverse',
+    axis: 'salary', tier: salAxisTier, baseTier: salTier, unsureBy: unsureCause(d, band, guard), nearKind: nearKind(salTier, d, core.a.total),
+    shape: salMid === 0 ? 'flat' : Math.sign(salMid) === dirSign ? 'same' : 'reverse',
+    span: salAxisTier === 'range' ? wage.span : null,
     d, band, range: [d - band, d + band], guard: robust.exMixed,
     salA: core.a.salRange.mid, salB: core.b.salRange.mid, salMid,
     effRate: core.deltas.effRate,
@@ -1049,15 +1102,19 @@ export function buildAllVdCards(ctx) {
     const it = r.side === 'a' ? r.a : r.b;
     return effAmt(it) * bandCoeff(it, ctx.now);
   });
-  const exMixedBen = pairs.mixed.length ? { diff: bd - parts.mixed, band: Math.max(0, band - mixedBand) } : null;
   // 기준값 = 복지 금액 합(큰 쪽) — 총보상을 쓰면 연봉 렌즈가 섞여 고연봉자에게 복지 250만원 차이도 「거의 같음」이 된다(실측).
+  const benBase = Math.max(core.a.net, core.b.net);
+  const exMixedBen = pairs.mixed.length ? { diff: bd - parts.mixed, band: Math.max(0, band - mixedBand) } : null;
+  if (exMixedBen) exMixedBen.tier = verdictTier(exMixedBen.diff, exMixedBen.band, benBase);
   // 두 회사 모두 금액이 등록된 복지가 없으면(합 0 · 0) 「거의 같음」이 아니라 금액으로는 말할 수 없다.
   const noAmounts = !core.a.net && !core.b.net;
-  const benTier = noAmounts ? 'unsure' : verdictTier(bd, band, Math.max(core.a.net, core.b.net), exMixedBen ? exMixedBen.diff : null);
+  const benGuard = exMixedBen ? exMixedBen.diff : null;
+  const benTier = noAmounts ? 'unsure' : verdictTier(bd, band, benBase, benGuard);
   const liveA = live(core._benA), liveB = live(core._benB);
   const mixedSides = new Set(pairs.mixed.map((r) => r.side));
   const benefits = {
-    axis: 'benefits', tier: benTier, noAmounts, nearKind: nearKind(benTier, bd, Math.max(core.a.net, core.b.net)), d: bd, band, exMixed: exMixedBen,
+    axis: 'benefits', tier: benTier, unsureBy: noAmounts ? 'none' : unsureCause(bd, band, benGuard), noAmounts,
+    nearKind: nearKind(benTier, bd, benBase), d: bd, band, exMixed: exMixedBen,
     netA: core.a.net, netB: core.b.net,
     counts: { a: liveA.length, b: liveB.length, onlyA: pairs.onlyA.length, onlyB: pairs.onlyB.length,
       both: pairs.bothAmt.length + pairs.mixed.length + pairs.bothQual.length },
@@ -1106,8 +1163,8 @@ export function calculatorExtras(state, core, now = Date.now()) {
   const band = deltaBand(core.a, core.b);
   const time = timeSheet(core, state.commuteIn);
   const robust = robustness(state, core, now, { pairs });
-  const sens = sensitivity(state, core, now, { pairs });
-  const wage = wageScenarios(state, core, now);
+  const sens = sensitivity(state, core, now, { pairs, guardD: robust.exMixed ? robust.exMixed.diff : null });
+  const wage = wageScenarios(state, core, now, { pairs });
   const tenure = tenureGate(benA, benB, state.tenureYears);
   const breakeven = breakevenRate(core, robust.exMixedCore, state.wsState.b);
   const axes = buildAllVdCards({ core: { ...core, _benA: benA, _benB: benB }, band, parts, pairs, time, robust, sens, wage, tenure, now });

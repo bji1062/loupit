@@ -18,11 +18,28 @@ import { renderReport } from './report.js';
 import { BLOCK_ORDER, headlineText } from './report-calc.js';
 import { normalizeCompany, fillBenefits, blankWs } from './inputs.js';
 import { createInitialState, runReport } from './app.js';
+import { isLegalRow } from './legal.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const G = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-golden-naver-kakao.json'), 'utf8'));
 const SHELL = readFileSync(join(HERE, '../../compare/index.html'), 'utf8');
 const NOW = new Date('2026-09-22T00:00:00+09:00').getTime();
+// 적대 검증(2026-09-23 VERIFY-REPORT) 재현 쌍 — 보고서의 실제 쌍·입력 그대로(calc.test.js 의 verifyState 와 같은 조립).
+const VP = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-verify-pairs.json'), 'utf8'));
+const NOW_VERIFY = Date.parse('2026-09-23T00:00:00+09:00');
+function verifyState(an, bn, o = {}) {
+  const pick = (nm) => VP.companies.find((c) => c.comp_nm === nm);
+  const side = (c) => c.benefits.map((b) => (isLegalRow(c.comp_eng_nm, b.benefit_cd, b.benefit_nm) ? { ...b, legal_yn: true, checked: false } : { ...b, checked: true }));
+  const A = pick(an), B = pick(bn);
+  const sal = o.sal ?? 6000;
+  const ws = (c) => ({ remote: !!(c.work_style_val && c.work_style_val.remote), flex: !!(c.work_style_val && c.work_style_val.flex) });
+  return {
+    salStr: sal + '-' + sal, selectedRate: o.rate ?? 10, benS: { a: side(A), b: side(B) },
+    wsState: { a: { ot: 'mid', hours: 45, wage: 'separate', ...ws(A), ...(o.wsA || {}) }, b: { ot: 'high', hours: 54, wage: 'inclusive', ...ws(B), ...(o.wsB || {}) } },
+    com: { a: 40, b: 60 }, commuteIn: { a: 40, b: 60 }, tenureYears: o.tenure === undefined ? 3 : o.tenure, curPri: 'salary', curSacrifice: null,
+    matched: { a: A, b: B },
+  };
+}
 
 function loadShell() {
   const dom = new JSDOM(SHELL, { url: 'https://loupit.example/compare/', pretendToBeVisual: true });
@@ -47,10 +64,10 @@ function goldenEngineState(over = {}) {
   };
 }
 function render(st, axis = 'salary', extra = {}) {
-  const r = compare(st, NOW);
+  const r = compare(st, extra.now || NOW);
   const mount = document.getElementById('report-body');
   renderReport(r, mount, {
-    benS: st.benS, matched: st.matched, now: NOW, axis, recent: false,
+    benS: st.benS, matched: st.matched, now: extra.now || NOW, axis, recent: false,
     input: { salA: r.a.salRange.mid, rate: st.selectedRate, ws: st.wsState, commute: st.commuteIn, tenureYears: st.tenureYears },
     ...extra,
   });
@@ -398,5 +415,76 @@ describe('RC-6 배포 간극 — 옛 셸 헤딩', () => {
     h2.textContent = '비교 리포트';
     render(goldenEngineState());
     assert.match(h2.textContent, /^비교 결과 실효 총보상 = 연봉 \+ 복지 환산 가치 \+ 야근수당$/);
+  });
+});
+
+describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 말하는가', () => {
+  beforeEach(() => loadShell());
+  const V = { now: NOW_VERIFY };
+  const cardText = (mount) => txt(mount, '.calc-vd');
+
+  test('MED-1 CJ올리브네트웍스 → 더블유게임즈(부호 갈림): 이유는 가드 한 문장 — 「오차 범위가 겹칩니다」는 어디에도 없다', () => {
+    const st = verifyState('CJ올리브네트웍스', '더블유게임즈');
+    const { r, mount } = render(st, 'salary', V);
+    assert.equal(r.axes.salary.unsureBy, 'guard', '사전조건');
+    assert.equal(txt(mount, '.calc-hl'), '등록된 금액 그대로 계산하면 더블유게임즈의 총보상이 많지만, 한쪽 회사에만 금액이 등록된 2건을 빼면 방향이 바뀝니다(바뀐 차이는 오차 범위 안입니다). 그래서 어느 쪽이 낫다고 말하기 어렵습니다.');
+    assert.ok(!cardText(mount).includes('오차 범위가 겹'), '판정 카드');
+    const t1 = txt(mount, '.calc-tile');
+    assert.ok(!t1.includes('오차 범위가 겹'), '첫 타일');
+    assert.match(t1, /2건을 빼면 방향이 바뀝니다/);
+    assert.ok(!/7,532|8,402/.test(t1), '첫 타일에 두 총보상을 나란히 두지 않는다(뺄셈 한 번이면 차액)');
+    const { mount: w } = render(st, 'wlb', V);
+    assert.ok(!txt(w, '.calc-aux').includes('오차 범위가 겹'), '보조 행');
+    assert.match(txt(w, '.calc-aux'), /총보상은 판단하기 어렵습니다\(한쪽에만 금액이 등록된 2건을 빼면 방향이 바뀜\)/);
+    const money = [...w.querySelectorAll('.calc-vd .calc-line')].map((n) => n.textContent).find((t) => /총보상/.test(t)) || '';
+    if (money) assert.ok(!money.includes('오차 범위가 겹'), '워라밸 돈 줄');
+  });
+
+  test('MED-1 복지 축 CJ올리브네트웍스 → 롯데케미칼(부호 갈림): 카드·첫 타일 모두 가드 문장', () => {
+    const { r, mount } = render(verifyState('CJ올리브네트웍스', '롯데케미칼'), 'benefits', V);
+    assert.equal(r.axes.benefits.unsureBy, 'guard', '사전조건');
+    assert.equal(txt(mount, '.calc-hl'), '등록된 금액 그대로 계산하면 CJ올리브네트웍스의 복지 금액이 많지만, CJ올리브네트웍스에만 금액이 등록된 2건을 빼면 방향이 바뀝니다(바뀐 차이는 오차 범위 안입니다). 그래서 어느 쪽이 낫다고 말하기 어렵습니다.');
+    assert.ok(!txt(mount, '.calc-tile').includes('오차 범위가 겹'));
+  });
+
+  test('MED-2 CJ올리브네트웍스 → CJ ENM 커머스부문: 카드·확실성 요약·뒤집는 조건 줄이 서로 어긋나지 않는다', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'CJ ENM 커머스부문'), 'salary', V);
+    const all = allText(mount);
+    assert.match(txt(mount, '.calc-hl'), /5건을 빼면 방향이 바뀝니다\(바뀐 차이는 크지 않습니다\)/, '빼고 계산한 값이 방향 티어가 아니면 「많아집니다」라고 하지 않는다');
+    assert.ok(!/5건을 빼면 CJ ENM 커머스부문이 많아/.test(all));
+    assert.ok(!all.includes('더 많아지지는 않습니다'), '확실성 요약이 카드와 반대로 말하지 않는다');
+    assert.match(txt(mount, '#calc-b-robust summary'), /한쪽에만 금액이 등록된 5건을 빼면 앞서는 회사가 바뀌어, 어느 쪽 총보상이 많은지 말하기 어렵습니다/);
+    assert.ok(!all.includes('결론이 바뀌어'), '결론이 없는데 「결론이 바뀌어」');
+    assert.match(all, /만약 야근수당을 따로 준다면 CJ ENM 커머스부문이 연 2,539만원 더 많아져, 어느 쪽이 많은지 말할 수 있게 됩니다/);
+    assert.match(txt(mount, '#calc-b-sens summary'), /^어느 쪽이 많은지 말할 수 있게 되는 경우 — /);
+  });
+
+  test('MED-3 CJ올리브네트웍스 → LG디스플레이(B 야근수당 미선택): 두 경우 모두 늘어나면 「늘지 줄지」가 아니라 「얼마나 늘지」 + 범위 + 방향 배지', () => {
+    const { mount } = render(verifyState('CJ올리브네트웍스', 'LG디스플레이', { wsB: { wage: null } }), 'salary', V);
+    assert.equal(txt(mount, '.calc-vd-top .calc-bd'), '연봉도 총보상도 늘어납니다');
+    assert.equal(txt(mount, '.calc-hl'), '입력하신 조건으로 계산하면, 연봉은 10% 올라 6,600만원이 되고, 총보상도 늘어납니다. 얼마나 늘지는 LG디스플레이가 야근수당을 따로 주는지에 달려 있습니다 — 연 +518 ~ +3,389만원.');
+    assert.ok(!allText(mount).includes('늘지 줄지'));
+    assert.match(txt(mount, '.calc-wagecases'), /어느 쪽이든 총보상은 늘어나고, 얼마나 늘지만 달라집니다\..*포괄이면 → 거의 같습니다\(연 518만원 차이\).*비포괄이면 → 총보상 연 3,389만원 증가/);
+    assert.match(txt(mount, '.calc-tile'), /\+518 ~ \+3,389만원/);
+  });
+
+  test('MED-3 부호가 갈리면(골든 NAVER → 카카오 B 미선택) 종전처럼 「늘지 줄지는 …에 달려 있습니다」', () => {
+    const { mount } = render(scenarios().wageUnknown, 'salary');
+    assert.equal(txt(mount, '.calc-vd-top .calc-bd'), '야근수당에 따라 결론이 달라집니다');
+    assert.match(txt(mount, '.calc-hl'), /총보상이 늘지 줄지는 카카오가 야근수당을 따로 주는지에 달려 있습니다\./);
+  });
+
+  test('LOW-10 near 쌍(리메드 → CJ올리브네트웍스)의 확실성 요약은 「거의 같습니다」 — 「말하기 어렵습니다」가 아니다', () => {
+    const { r, mount } = render(verifyState('리메드', 'CJ올리브네트웍스'), 'salary', V);
+    assert.equal(r.axes.salary.tier, 'near', '사전조건');
+    const sum = txt(mount, '#calc-b-robust summary');
+    assert.match(sum, /두 회사 총보상은 거의 같습니다/);
+    assert.ok(!sum.includes('말하기 어렵습니다'));
+  });
+
+  test('LOW-12 NAVER → NAVER(기준 unsure): 「결론이 바뀌어」로 시작하지 않는다', () => {
+    const { mount } = render(verifyState('NAVER', 'NAVER'), 'salary', V);
+    assert.ok(!allText(mount).includes('결론이 바뀌어'));
+    assert.match(allText(mount), /어느 쪽이 많은지 말할 수 있게 됩니다/);
   });
 });

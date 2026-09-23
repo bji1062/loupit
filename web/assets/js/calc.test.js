@@ -22,8 +22,9 @@ import {
   compareCore, AXIS_THRESHOLDS, deltaBand, verdictTier, classifyPairs, benDiffParts,
   cappedRows, facetOf, tenureItems, tenureGate, catProfile, hourlyWithCommute, breakevenRate,
   weeklyHours, overtimePay, timeSheet, wageScenarios, sensitivity, robustness, askList,
-  buildAllVdCards, calculatorExtras,
+  buildAllVdCards, calculatorExtras, unsureCause,
 } from './calc.js';
+import { isLegalRow } from './legal.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CALC_SRC = readFileSync(join(HERE, 'calc.js'), 'utf8');
@@ -1049,3 +1050,125 @@ describe('CALC-SURF 산출 묶음 구성(calculatorExtras = compare 의 덧붙�
   });
 });
 
+// ── 적대 검증(2026-09-23 VERIFY-REPORT) 재현 쌍 — 보고서의 실제 쌍·입력 그대로 ─────────────────────
+// 공통 입력: 현재 연봉 6,000 · +10% · A 주 45h 비포괄 · B 주 54h 포괄 · 통근 40/60분 · 근속 3년 · now 2026-09-23.
+const VP = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-verify-pairs.json'), 'utf8'));
+const NOW_VERIFY = Date.parse('2026-09-23T00:00:00+09:00');
+const vpc = (nm) => VP.companies.find((c) => c.comp_nm === nm);
+// 앱의 조립(assembleCompareState)과 같다: 전부 체크 · 법정 행은 legal_yn + checked:false(SP-LEGAL-5).
+function verifyState(an, bn, o = {}) {
+  const side = (c) => c.benefits.map((b) => (isLegalRow(c.comp_eng_nm, b.benefit_cd, b.benefit_nm) ? { ...b, legal_yn: true, checked: false } : { ...b, checked: true }));
+  const A = vpc(an), B = vpc(bn);
+  const sal = o.sal ?? 6000;
+  const ws = (c) => ({ remote: !!(c.work_style_val && c.work_style_val.remote), flex: !!(c.work_style_val && c.work_style_val.flex) });
+  return {
+    salStr: sal + '-' + sal, selectedRate: o.rate ?? 10, benS: { a: side(A), b: side(B) },
+    wsState: { a: { ot: 'mid', hours: 45, wage: 'separate', ...ws(A), ...(o.wsA || {}) }, b: { ot: 'high', hours: 54, wage: 'inclusive', ...ws(B), ...(o.wsB || {}) } },
+    com: { a: 40, b: 60 }, commuteIn: { a: 40, b: 60 }, tenureYears: o.tenure ?? 3, curPri: 'salary', curSacrifice: null,
+    matched: { a: A, b: B },
+  };
+}
+
+describe('CALC-UNSURE 「판단하기 어렵다」의 원인(MED-1)', () => {
+  test('unsureCause: 오차 범위 안이면 band · 범위 밖인데 부호가 갈리면 guard · 둘 다면 band · 아니면 null', () => {
+    assert.equal(unsureCause(870, 319.9, -80), 'guard');
+    assert.equal(unsureCause(-300, 452, 100), 'band', '둘 다 맞으면 오차 범위가 충분한 이유다');
+    assert.equal(unsureCause(-300, 452), 'band');
+    assert.equal(unsureCause(-2000, 100, -300), null);
+    assert.equal(unsureCause(0, 0), null, '폭 0 · 차이 0 은 near 다');
+  });
+  test('verdictTier 가 unsure ⇔ unsureCause 가 원인을 낸다(격자 전수)', () => {
+    for (const d of [-900, -452, -300, 0, 120, 452, 453, 900]) {
+      for (const band of [0, 100, 452]) {
+        for (const g of [null, -500, 0, 500]) {
+          assert.equal(verdictTier(d, band, 9000, g) === 'unsure', unsureCause(d, band, g) != null, `d=${d} band=${band} g=${g}`);
+        }
+      }
+    }
+  });
+  test('CJ올리브네트웍스 → 더블유게임즈: d +870 · 폭 ±320 · 가드 −80 → 연봉 축 unsure 의 원인은 guard(오차 범위는 겹치지 않는다)', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', '더블유게임즈'), NOW_VERIFY);
+    assert.equal(r.axes.salary.d, 870);
+    assert.equal(Math.round(r.axes.salary.band), 320);
+    assert.equal(r.robust.exMixed.diff, -80);
+    assert.equal(r.axes.salary.tier, 'unsure');
+    assert.equal(r.axes.salary.unsureBy, 'guard');
+    assert.equal(r.robust.full.unsureBy, 'guard');
+  });
+  test('CJ올리브네트웍스 → 롯데케미칼: 복지 축 d −240 · 폭 ±173 · 가드 +10 → unsure(guard)', () => {
+    const v = compare(verifyState('CJ올리브네트웍스', '롯데케미칼'), NOW_VERIFY).axes.benefits;
+    assert.equal(v.d, -240);
+    assert.equal(Math.round(v.band), 173);
+    assert.equal(v.exMixed.diff, 10);
+    assert.equal(v.tier, 'unsure');
+    assert.equal(v.unsureBy, 'guard');
+    assert.equal(v.exMixed.tier, 'unsure', '빼고 계산한 값 +10 도 오차 범위 안');
+  });
+});
+
+describe('CALC-ONE 티어 원천은 하나(MED-2 · LOW-12)', () => {
+  test('CJ올리브네트웍스 → CJ ENM 커머스부문: 카드·튼튼함·감도가 모두 가드 포함 unsure — 감도 줄은 「뒤집힘」이 아니라 「말할 수 있게 됨」', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', 'CJ ENM 커머스부문'), NOW_VERIFY);
+    assert.equal(r.axes.salary.d, -332);
+    assert.equal(r.robust.exMixed.diff, 168);
+    assert.equal(r.axes.salary.baseTier, 'unsure');
+    assert.equal(r.robust.full.tier, 'unsure');
+    assert.equal(r.sens.baseTier, 'unsure');
+    assert.equal(r.robust.exMixed.tier, 'near', '빼면 방향은 바뀌지만 차이가 작다');
+    const w = r.sens.rows.find((x) => x.key === 'b_wage_flip');
+    assert.equal(w.result, 'decide');
+    assert.equal(w.flips, false);
+    assert.equal(w.decides, true);
+    assert.equal(r.axes.salary.flip.key, 'b_wage_flip');
+  });
+  test('재현 쌍 12곳 × 11곳 전부: robust.full.tier === salary.baseTier === sens.baseTier', () => {
+    const names = VP.companies.map((c) => c.comp_nm);
+    let n = 0;
+    for (const a of names) {
+      for (const b of names) {
+        if (a === b) continue;
+        const r = compare(verifyState(a, b), NOW_VERIFY);
+        assert.equal(r.robust.full.tier, r.axes.salary.baseTier, a + ' → ' + b);
+        assert.equal(r.sens.baseTier, r.axes.salary.baseTier, a + ' → ' + b);
+        for (const row of r.sens.rows) assert.ok(!(row.flips && !['a', 'b'].includes(r.sens.baseTier)), '방향 없는 기준에서 「뒤집힘」은 없다');
+        n += 1;
+      }
+    }
+    assert.equal(n, 132);
+  });
+  test('NAVER → NAVER(같은 회사): 기준이 오차 범위 안(unsure)이면 비포괄 가정은 「결론 바뀜」이 아니라 「말할 수 있게 됨」', () => {
+    const r = compare(verifyState('NAVER', 'NAVER'), NOW_VERIFY);
+    assert.equal(r.sens.baseTier, 'unsure');
+    assert.equal(r.sens.rows.find((x) => x.key === 'b_wage_flip').result, 'decide');
+  });
+  test('기준이 방향이면 반대 방향 줄은 여전히 flip(골든 NAVER → 카카오)', () => {
+    const r = compare(goldenState(), NOW_CALC);
+    assert.equal(r.sens.rows.find((x) => x.key === 'b_wage_flip').result, 'flip');
+  });
+});
+
+describe('CALC-WAGE 야근수당 미선택 — 「달라진다」는 부호가 갈릴 때만(MED-3)', () => {
+  test('CJ올리브네트웍스 → LG디스플레이(B 54h 미선택): 포괄 near +518 · 비포괄 b +3,389 → 같은 방향이라 range', () => {
+    const r = compare(verifyState('CJ올리브네트웍스', 'LG디스플레이', { wsB: { wage: null } }), NOW_VERIFY);
+    assert.deepEqual(r.wage.cases.map((c) => [c.wage.b, c.tier, c.diff]), [['inclusive', 'near', 518], ['separate', 'b', 3389]]);
+    assert.equal(r.wage.dir, 1);
+    assert.deepEqual(r.wage.span, [518, 3389]);
+    assert.equal(r.axes.salary.tier, 'range');
+    assert.equal(r.axes.salary.shape, 'same');
+  });
+  test('골든 NAVER → 카카오(B 미선택): 포괄 −2,211 · 비포괄 +791 → 부호가 갈려 depends', () => {
+    const st = goldenState({ wsState: { ...goldenState().wsState, b: { ot: 'high', hours: 54, wage: null } } });
+    const r = compare(st, NOW_CALC);
+    assert.equal(r.wage.dir, 0);
+    assert.equal(r.axes.salary.tier, 'depends');
+  });
+});
+
+describe('CALC-NEAR 「결론이 얼마나 확실한가」 재료 — near 쌍(LOW-10)', () => {
+  test('리메드 → CJ올리브네트웍스: +148(±144) 은 near(small) — 튼튼함 ① 도 같은 near', () => {
+    const r = compare(verifyState('리메드', 'CJ올리브네트웍스'), NOW_VERIFY);
+    assert.equal(r.axes.salary.tier, 'near');
+    assert.equal(r.axes.salary.nearKind, 'small');
+    assert.equal(r.robust.full.tier, 'near');
+  });
+});
