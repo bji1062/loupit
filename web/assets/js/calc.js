@@ -619,8 +619,12 @@ export function restSummary(pri, sac, m, R) {
 export const AXIS_THRESHOLDS = Object.freeze({
   wlbWeekHrs: 2,         // 주 근무시간 차(h) ≥ 이면 워라밸 축 1순위가 결론을 낸다(입력)
   wlbCommuteAnnHrs: 40,  // 연 통근시간 차(h) ≥ 이면 2순위(입력)
-  wlbQualCount: 2,       // 휴가·근무제도 등록 항목 수 차 ≥ 이면 4순위(등록 데이터 — 실측)
-  nearBandMult: 1.5,     // 「거의 같음」 상한 = max(오차 폭 × 1.5, 현재 총보상 × 3%) (실측)
+  // 휴가·근무제도 등록 항목 수 차 ≥ 이면 4순위(등록 데이터). 실측 2026-09-23: 회사별 중앙값 2(0~6)라 차이 2 는
+  // 수집 깊이 안의 흔들림이다(전 순서쌍의 49%) — 3 이면 상위 25% 쌍만, 시간·통근 미입력 사용자의 7% 만 등록 수로 결론.
+  wlbQualCount: 3,
+  // 「거의 같음」 상한 = max(오차 폭 × 1.5, 기준값 × 3%). 기준값은 연봉 축 = 현재 총보상, 복지 축 = 복지 금액 합(큰 쪽).
+  // 실측: 연봉 축 거의 같음 6~7%(연봉 동결 이동 17% · 야근수당이 인상분을 상쇄하는 고연봉 23%), 복지 축 13%.
+  nearBandMult: 1.5,
   nearTotalPct: 0.03,
 });
 
@@ -1044,7 +1048,8 @@ export function buildAllVdCards(ctx) {
     return effAmt(it) * bandCoeff(it, ctx.now);
   });
   const exMixedBen = pairs.mixed.length ? { diff: bd - parts.mixed, band: Math.max(0, band - mixedBand) } : null;
-  const benTier = verdictTier(bd, band, core.a.total, exMixedBen ? exMixedBen.diff : null);
+  // 기준값 = 복지 금액 합(큰 쪽) — 총보상을 쓰면 연봉 렌즈가 섞여 고연봉자에게 복지 250만원 차이도 「거의 같음」이 된다(실측).
+  const benTier = verdictTier(bd, band, Math.max(core.a.net, core.b.net), exMixedBen ? exMixedBen.diff : null);
   const liveA = live(core._benA), liveB = live(core._benB);
   const mixedSides = new Set(pairs.mixed.map((r) => r.side));
   const benefits = {

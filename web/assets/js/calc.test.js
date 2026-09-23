@@ -978,6 +978,34 @@ describe('CALC-FACET 표식(표시 전용)', () => {
   });
 });
 
+describe('CALC-WLB 워라밸 축 순서(시간 → 통근 → 자율성 → 등록 수)', () => {
+  const qual = (cd, ctgr) => ({ benefit_cd: cd, benefit_nm: cd, qual_yn: true, benefit_amt: null, amt_source: 'none', benefit_ctgr_cd: ctgr, checked: true });
+  const st = (a, b, over = {}) => ({
+    salStr: '5000-5000', selectedRate: 5, benS: { a, b },
+    wsState: { a: { remote: true, flex: true }, b: { remote: true, flex: true } },
+    com: { a: 0, b: 0 }, commuteIn: { a: null, b: null }, tenureYears: null, curPri: 'wlb', matched: { a: null, b: null }, ...over,
+  });
+  const leave = (n, p) => Array.from({ length: n }, (_, i) => qual(p + i, 'time_off'));
+  test(`등록 수 차이가 문턱(${AXIS_THRESHOLDS.wlbQualCount}) 미만이면 말할 수 없음, 이상이면 많은 쪽`, () => {
+    const k = AXIS_THRESHOLDS.wlbQualCount;
+    const below = compare(st(leave(k - 1, 'x'), []), NOW_CALC);
+    assert.equal(below.axes.wlb.tier, 'unsure');
+    const at = compare(st(leave(k, 'x'), []), NOW_CALC);
+    assert.equal(at.axes.wlb.tier, 'a');
+    assert.equal(at.axes.wlb.decidedBy, 'count');
+  });
+  test('주 근무시간 차(2h 이상)가 있으면 등록 수보다 먼저 결론', () => {
+    const r = compare(st([], leave(5, 'y'), { wsState: { a: { hours: 52, remote: true, flex: true }, b: { hours: 45, remote: true, flex: true } } }), NOW_CALC);
+    assert.equal(r.axes.wlb.decidedBy, 'hours');
+    assert.equal(r.axes.wlb.tier, 'b');
+  });
+  test('통근 연 40시간 이상 차이 — 시간이 같을 때 2순위', () => {
+    const r = compare(st([], [], { commuteIn: { a: 60, b: 50 } }), NOW_CALC);
+    assert.equal(r.axes.wlb.decidedBy, 'commute');
+    assert.equal(r.axes.wlb.tier, 'b');
+  });
+});
+
 describe('CALC-HWC hourlyWithCommute', () => {
   test('통근은 분모에만(시간당 가치가 줄어든다) · 미입력이면 null', () => {
     assert.equal(hourlyWithCommute(9018, 932, 45, 40), 37406);
