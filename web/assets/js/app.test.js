@@ -206,6 +206,26 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     assert.deepEqual(focused, ['b'], '남은 슬롯으로 커서를 옮겨야 다음 할 일이 보인다');
   });
 
+  // 2026-09-23: 계산기 화면 새로고침(`?a=&b=#input`)은 초안 → 프리필 순서라, 프리필이 같은 회사를 다시 채우며
+  // 방금 넣은 주 근무시간·야근수당·뺀 복지를 지웠다. 초안이 되살린 회사와 같으면 그 슬롯의 입력은 둔다.
+  test('초안이 되살린 회사와 URL 이 같으면 그 슬롯의 입력(주 근무시간·뺀 복지)은 지우지 않는다', () => {
+    const state = refState();
+    state.REF = { company_types: [], benefit_presets: {}, companies: [
+      { comp_id: 1, comp_nm: '삼성전자', benefits: [{ benefit_cd: 'meal', benefit_nm: '식대', benefit_amt: 100, qual_yn: false }] },
+      { comp_id: 2, comp_nm: 'SK하이닉스', benefits: [] },
+    ] };
+    restoreInputDraft(state, { draft: { slots: { a: { comp_id: 1, checked: [] }, b: { comp_id: 2 } }, wsState: { a: { hours: 44, wage: 'separate' } } }, reflect: () => {} });
+    assert.equal(state.wsState.a.hours, 44, '사전조건');
+    globalThis.location.search = '?a=1&b=2';
+    restoreFromPrefill(state, { goFn: () => {}, focusSlot: () => {} });
+    assert.equal(state.wsState.a.hours, 44);
+    assert.equal(state.wsState.a.wage, 'separate');
+    assert.equal(state.benS.a[0].checked, false, '결과 화면에서 뺀 복지도 그대로');
+    globalThis.location.search = '?a=2&b=1';
+    restoreFromPrefill(state, { goFn: () => {}, focusSlot: () => {} });
+    assert.equal(state.wsState.a.hours ?? null, null, '다른 회사로 바뀌면 그 슬롯은 새로 시작한다');
+  });
+
   test('무효 지시자 → 미선택 유지, go 미호출', () => {
     const state = refState();
     state.REF = { company_types: [], benefit_presets: {}, companies: [] };

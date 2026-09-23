@@ -1095,6 +1095,9 @@ function basisOf(listA, listB, now) {
 export function calculatorExtras(state, core, now = Date.now()) {
   const benA = state.benS.a || [], benB = state.benS.b || [];
   const pairs = classifyPairs(benA, benB);
+  // 양쪽 다 금액인 짝은 항목 단위 판정(pairVerdict — 폭이 겹치면 「비슷함」)과 두 폭을 함께 싣는다(표시용).
+  const range = (it) => { const v = amtOf(it), c = bandCoeff(it, now); return [v * (1 - c), v * (1 + c)]; };
+  pairs.bothAmt = pairs.bothAmt.map((r) => ({ ...r, verdict: pairVerdict(r.a, r.b, now), rangeA: range(r.a), rangeB: range(r.b) }));
   const parts = benDiffParts(benA, benB, pairs);
   const band = deltaBand(core.a, core.b);
   const time = timeSheet(core, state.commuteIn);

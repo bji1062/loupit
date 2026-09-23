@@ -36,4 +36,6 @@ test('JOSA-3: 숫자 — 유니코드 빼기·천 단위', () => {
   assert.equal(fmtPct(0.15), '+15.0%');
   assert.equal(fmtPct(-0.2222), '−22.2%');
   assert.equal(fmtPct(null), '');
+  assert.equal(fmtPct(9111 / 6000 - 1), '+51.9%', '부동소수 51.8499… 도 사람 셈으로 올린다');
+  assert.equal(fmtPct(0), '0.0%');
 });

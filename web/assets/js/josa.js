@@ -63,6 +63,9 @@ export function fmtSigned(n) {
 /** 비율 → 부호 붙인 퍼센트(소수 digits 자리). 0.152 → '+15.2%'. */
 export function fmtPct(ratio, digits = 1) {
   if (ratio == null || !Number.isFinite(ratio)) return '';
-  const v = Number((ratio * 100).toFixed(digits));
-  return (v > 0 ? '+' : v < 0 ? MINUS : '') + Math.abs(v).toFixed(digits) + '%';
+  // 0.5185 는 부동소수로 0.51849999… 라 toFixed 가 51.8 로 내린다 — 반올림은 사람의 셈(51.9)을 따른다.
+  const k = 10 ** digits;
+  const v = Math.round(Math.abs(ratio) * 100 * k + 1e-6) / k;
+  const sign = v === 0 ? '' : ratio > 0 ? '+' : MINUS;
+  return sign + v.toFixed(digits) + '%';
 }

@@ -6,7 +6,7 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate } from './ui.js';
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint } from './ui.js';
 import { isLegalRow } from './legal.js'; // 법정 행 — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5)
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
@@ -431,9 +431,14 @@ export function restoreFromPrefill(state = App.state, hooks = {}) {
     if (!token) continue;
     const comp = resolveCompanyToken(token, state); // REF 우선 해석(P-1)
     if (comp) {
+      // 초안이 **같은 회사**를 이미 되살렸으면 그 슬롯의 입력(야근·야근수당·재택 고침·뺀 복지)을 덮지 않는다
+      // (2026-09-23): 계산기 화면 새로고침(`?a=&b=#input`)이 방금 넣은 주 근무시간을 지우던 것을 막는다.
+      const same = state.matched[slot] && state.matched[slot].comp_id === comp.comp_id;
       state.matched[slot] = normalizeCompany(comp); // FR-14와 동일 정규화(P-2)
-      fillBenefits(state, slot);
-      initWsState(state, slot);
+      if (!same) {
+        fillBenefits(state, slot);
+        initWsState(state, slot);
+      }
       if (typeof reflectSlotLabel === 'function') reflectSlotLabel(slot, comp.comp_nm);
       filled = true;
       if (state.ui && Array.isArray(state.ui.prefilledSlots) && !state.ui.prefilledSlots.includes(slot)) {
@@ -876,6 +881,8 @@ export function runReport(hooks = {}) {
         salA: report.a && report.a.salRange ? report.a.salRange.mid : null, rate: effectiveRate(state),
         ws: state.wsState, commute: state.cmtS, tenureYears: state.tenureYears ?? null,
       },
+      // 재택 플래그가 원문과 어긋날 때 원문을 보여 주는 재료(입력 화면과 같은 판정 — ui.js remoteHint)
+      remoteHints: { a: remoteHint(state, 'a'), b: remoteHint(state, 'b') },
       onAxis: (axis) => {
         const label = Object.keys(PRI_KEY).find((k) => PRI_KEY[k] === axis);
         if (label) state.curPri = label;

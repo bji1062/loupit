@@ -700,6 +700,18 @@ function clearMissingAlert() {
   if (box) { box.textContent = ''; box.hidden = true; }
 }
 
+// 결과의 첫 화면은 결론이다 — 대문 히어로(제목·소개 ~280px)를 지나 「비교 결과」 머리로 내려간다(폰 390×844 에서
+// 결론 + 타일이 첫 화면에 들어오게, FINAL-DESIGN §3-0). 고정 헤더 높이는 실측한다(360px 에서 두 줄이 된다).
+export function scrollToReport() {
+  if (typeof window === 'undefined' || typeof window.scrollTo !== 'function') return;
+  const view = byId('view-report');
+  if (!view || typeof view.getBoundingClientRect !== 'function') return;
+  const header = qs('header');
+  const headH = header && typeof header.getBoundingClientRect === 'function' ? header.getBoundingClientRect().height : 0;
+  const top = view.getBoundingClientRect().top + (window.scrollY || 0) - headH;
+  if (top > 0) window.scrollTo(0, top);
+}
+
 // ── 입력 뷰 배선(비교하기) ───────────────────────────────────────────────────
 export function bindInputView(state, deps) {
   const btn = byId('btn-compare');
@@ -709,6 +721,7 @@ export function bindInputView(state, deps) {
       if (report && report.ok === false) { showMissingAlert(report.missing, state); return; } // 결측 → 리포트 이동 차단·안내(#3)
       clearMissingAlert();
       if (typeof deps.go === 'function') deps.go('report');
+      scrollToReport();
       if (typeof deps.mountAds === 'function') { try { deps.mountAds('result'); } catch { /* 광고 실패 무손상(MON6) */ } }
     });
   }
