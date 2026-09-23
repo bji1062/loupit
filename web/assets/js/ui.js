@@ -785,8 +785,7 @@ export function missingMessage(missing, state = null, invalid = []) {
   return parts.join(' ');
 }
 
-function showMissingAlert(missing, state) {
-  if (typeof document === 'undefined') return;
+function alertBox() {
   let box = byId('input-missing-alert');
   if (!box) { // 셸에 없으면 비교하기 버튼 앞에 동적 생성(index/compare 공통 — JS 소유)
     box = el('p', { id: 'input-missing-alert', role: 'alert', class: 'input-missing-alert' });
@@ -794,6 +793,30 @@ function showMissingAlert(missing, state) {
     if (btn && btn.parentNode && typeof btn.parentNode.insertBefore === 'function') btn.parentNode.insertBefore(box, btn);
     else { const view = byId('view-input'); if (view && view.append) view.append(box); }
   }
+  return box;
+}
+
+// 선택 칸(주 근무시간·통근·근속)이 「읽지 못했다」(aria-invalid)인 채로 계산하면 그 값은 조용히 빠져 결과가 「미입력」이
+// 된다(재확인 R-6) — 필수 칸처럼 막고 무엇을 고칠지 말한다. 필수 칸(연봉·상승률)은 결측 안내가 따로 말한다.
+const OPTIONAL_FIELDS = [
+  ['calc-hours-a', '현재 직장 주 근무시간'], ['calc-hours-b', '이직 후보 주 근무시간'],
+  ['calc-commute-a', '현재 직장 통근시간'], ['calc-commute-b', '이직 후보 통근시간'], ['calc-tenure', '근속'],
+];
+export function invalidOptionalFields() {
+  return OPTIONAL_FIELDS.map(([id, name]) => ({ el: byId(id), name }))
+    .filter((x) => x.el && typeof x.el.getAttribute === 'function' && x.el.getAttribute('aria-invalid') === 'true');
+}
+function showInvalidAlert(bad) {
+  if (typeof document === 'undefined' || !bad.length) return;
+  const box = alertBox();
+  box.textContent = bad.map((x) => x.name).join('·') + '을 읽지 못했습니다 — 칸 아래 안내대로 고치거나 비워 주세요.';
+  box.hidden = false;
+  if (typeof bad[0].el.focus === 'function') bad[0].el.focus();
+}
+
+function showMissingAlert(missing, state) {
+  if (typeof document === 'undefined') return;
+  const box = alertBox();
   const bad = (k) => { const inp = byId(k === 'salary' ? 'calc-sal' : k === 'raise' ? 'calc-rate' : ''); return !!(inp && inp.getAttribute('aria-invalid') === 'true'); };
   const invalid = (missing || []).filter(bad);
   box.textContent = missingMessage(missing, state, invalid);
@@ -828,6 +851,8 @@ export function bindInputView(state, deps) {
   const btn = byId('btn-compare');
   if (btn) {
     btn.addEventListener('click', () => {
+      const bad = invalidOptionalFields();
+      if (bad.length) { showInvalidAlert(bad); return; }
       const report = (typeof deps.runReport === 'function') ? deps.runReport({ state, mountEl: byId('report-body') }) : null;
       if (report && report.ok === false) { showMissingAlert(report.missing, state); return; } // 결측 → 리포트 이동 차단·안내(#3)
       clearMissingAlert();

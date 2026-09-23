@@ -497,6 +497,32 @@ describe('UI-7 결측 안내(#3) — 필수값 비면 리포트 이동 차단', 
     assert.ok(box.textContent.includes('상승률'), 'B 상승률도 안내');
   });
 
+  test('R-6 선택 칸(주 근무시간·통근)을 읽지 못했으면 계산하지 않는다 — 조용히 「미입력」이 되지 않게', () => {
+    const input = (id, v) => { const n = document.getElementById(id); n.value = v; n.dispatchEvent(new window.Event('input', { bubbles: true })); return n; };
+    const click = (sel) => document.querySelector(sel).dispatchEvent(new window.Event('click', { bubbles: true }));
+    const state = stateWithMatches();
+    renderInputView(state, {});
+    let runs = 0, went = null;
+    bindInputView(state, { runReport: () => { runs += 1; return { ok: true }; }, go: (v) => { went = v; }, mountAds: () => {} });
+    input('calc-sal', '6000');
+    click('#calc-raise [data-v="10"]');
+    input('calc-hours-b', '200');
+    input('calc-commute-a', '30.5');
+    document.getElementById('btn-compare').dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(runs, 0, '계산하지 않는다');
+    assert.equal(went, null);
+    const box = document.getElementById('input-missing-alert');
+    assert.equal(box.hidden, false);
+    assert.equal(box.textContent, '이직 후보 주 근무시간·현재 직장 통근시간을 읽지 못했습니다 — 칸 아래 안내대로 고치거나 비워 주세요.');
+    assert.equal(document.activeElement.id, 'calc-hours-b', '첫 칸으로 커서');
+    input('calc-hours-b', '');
+    input('calc-commute-a', '30');
+    document.getElementById('btn-compare').dispatchEvent(new window.Event('click', { bubbles: true }));
+    assert.equal(runs, 1, '고치거나 비우면 계산한다');
+    assert.equal(went, 'report');
+    assert.equal(document.getElementById('input-missing-alert').hidden, true);
+  });
+
   test('결측 해소 후 재클릭 → 이동 허용 + 안내 숨김', () => {
     const state = stateWithMatches();
     renderInputView(state, {});
