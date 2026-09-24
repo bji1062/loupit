@@ -2,7 +2,7 @@
 
 사고 상태를 **실제 경로로 재현**한 뒤 마이그레이션을 건다:
   ① 편집 서비스(`services.benefit_edit`)로 재직자 편집을 만든다 — 운영의 EDIT_LOG #1·#2 와 같은 값 +
-     두 번 고친 행 · 충돌 등록 행 · 되돌아가지 않은 재직자 행.
+     두 번 고친 행 · 금액 행을 정성으로 바꾼 행(JSON null·true) · 충돌 등록 행 · 되돌아가지 않은 재직자 행.
   ② 그 회사들의 시드 SQL 을 다시 돌리고 백필한다 — 2026-09-20 웨이브 4 적재가 한 일과 같다(시드 SQL 의
      `ON DUPLICATE KEY UPDATE` 는 여전히 행을 가리지 않는다 — 막는 것은 load.py 이고, 여기선 일부러 우회한다).
   ③ 마이그레이션 2회: 1회차는 되돌아간 행만 AFTER_VAL 로 되살리고, 2회차는 아무것도 바꾸지 않는다.
@@ -114,6 +114,9 @@ async def _edits(ids: dict, kim: int, lee: int) -> None:
                      qual_yn=False, note_ctnt="첫 수정")
         await update(ids["krafton"], ids["fitness"], kim, benefit_nm="운동비 지원(연 150)", benefit_amt=150,
                      qual_yn=False, note_ctnt="두 번째 수정")
+        # 금액 행을 정성으로 — AFTER_VAL 에 qual_yn true · benefit_amt null · note_ctnt null(JSON null 변환 시험)
+        await update(ids["krafton"], ids["commute"], kim, benefit_nm="야근 택시비 + 출근 버스",
+                     benefit_amt=None, qual_yn=True, note_ctnt=None)
         # 충돌 등록 — 시드에서 지운 코드를 재직자가 다른 카테고리로 등록(등록 이력은 카테고리까지 되살린다)
         r = await svc.create_benefit(ids["cj_enm_com"], lee, BenefitCreateIn(
             benefit_cd="leisure_ticket", benefit_nm="OTT 이용권", benefit_ctgr_cd="perks",
@@ -139,6 +142,7 @@ def reverted(seeded_db):
         lee = cur.lastrowid
     ids = {eng: _comp(conn, eng) for eng in ("krafton", "cj_enm_com", "samsung_elec")}
     ids.update(resort=_id(conn, "krafton", "resort"), fitness=_id(conn, "krafton", "fitness"),
+               commute=_id(conn, "krafton", "commute_subsidy"),
                club=_id(conn, "krafton", "club"), telecom=_id(conn, "cj_enm_com", "telecom"),
                discount=_id(conn, "cj_enm_com", "discount"),
                samsung_fitness=_id(conn, "samsung_elec", "fitness"))
@@ -148,6 +152,11 @@ def reverted(seeded_db):
         asyncio.run(_edits(ids, kim, lee))
         with _utc_conn() as uc:
             post_edit = _all_rows(uc)
+        # 되돌아가지 않은 재직자 행을 편집 뒤에 누군가(운영자) 손봤다 — 여전히 verified 라 되살리기 대상이
+        # 아니다. 가드가 없으면 마지막 AFTER_VAL 로 되감겨 이 수정이 사라진다.
+        with conn.cursor() as cur:
+            cur.execute("UPDATE TCOMPANY_BENEFIT SET NOTE_CTNT='운영자가 고친 비고' WHERE BENEFIT_ID=%s",
+                        (ids["samsung_fitness"],))
         # 대상이 다른 행을 가리키는 이력(= --fresh 재배정 뒤 남은 이력 모양) — 되살리면 엉뚱한 행이 바뀐다
         with conn.cursor() as cur:
             cur.execute(
@@ -179,7 +188,7 @@ def reverted(seeded_db):
 
 def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행은_0행(reverted):
     ids, kim, lee = reverted["ids"], reverted["kim"], reverted["lee"]
-    restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["ticket"]}
+    restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"]}
     with _utc_conn() as uc:
         before = _all_rows(uc)
         # 재현 전제 — 운영 사고와 같은 모양: 시드 값·official·시드 출처인데 MOD_ID 는 재직자
@@ -194,7 +203,7 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
                         "         WHERE BENEFIT_ID IS NOT NULL GROUP BY BENEFIT_ID) t ON t.LAST_ID = l.EDIT_LOG_ID")
             last = {x["BENEFIT_ID"]: x for x in cur.fetchall()}
 
-    assert _apply_migration() == 4, "1회차는 되돌아간 재직자 행 4개만 바꿔야 한다"
+    assert _apply_migration() == 5, "1회차는 되돌아간 재직자 행 5개만 바꿔야 한다"
 
     with _utc_conn() as uc:
         after = _all_rows(uc)
@@ -222,6 +231,9 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
 
     # 마지막 이력이 이긴다 — 두 번 고친 행은 두 번째 값
     assert (after[ids["fitness"]]["BENEFIT_AMT"], after[ids["fitness"]]["NOTE_CTNT"]) == (150, "두 번째 수정")
+    # JSON null·불리언 — 문자열 'null' 이나 0 이 아니라 SQL NULL 과 1
+    c = after[ids["commute"]]
+    assert (c["QUAL_YN"], c["BENEFIT_AMT"], c["NOTE_CTNT"], c["AMT_SOURCE_CD"]) == (1, None, None, "none")
     assert after[ids["ticket"]]["BENEFIT_CTGR_CD"] == "perks"
     # 사고 2행은 편집 직후 상태로 돌아왔다(시각은 서비스 UPDATE 와 이력 INSERT 사이 1초 안팎 허용)
     post = reverted["post_edit"]

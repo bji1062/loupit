@@ -226,27 +226,36 @@ def test_SK2_백필은_재직자_행을_건드리지_않는다(seeded_db):
 
 def test_SK3_재직자_행은_앵커_판정에_끼지_않고_앵커_규칙은_산다(seeded_db):
     """같은 (코드·금액)이 ≥3개사면 stated→estimated(M-4). 셋째 회사가 **재직자 행**이면 앵커가 아니다 —
-    재직자 값이 다른 회사의 공식 값을 강등시키면 안 된다. 셋 다 공식이면 여전히 강등(규칙 생존 대조군)."""
+    재직자 값이 다른 회사의 공식 값을 강등시키면 안 된다. 셋 다 공식이면 여전히 강등(규칙 생존 대조군)이고,
+    그 앵커 묶음에 재직자 행이 끼어 있어도 재직자 행은 강등하지 않는다.
+
+    재직자 행은 `stated` 로 둔다 — 예전 백필이 재직자 행의 amt_source 를 다시 계산해 추정 표기 없는
+    note 를 `stated` 로 올려 두었을 수 있다(운영에 남아 있을 수 있는 모양). 그래야 판정(GROUP BY)과
+    강등(UPDATE)의 재직자 행 제외가 **각각** 시험된다."""
     conn = seed_load.connect()
     try:
         with conn.cursor() as cur:
-            a, b, c = (_comp_id(conn, e) for e in ("krafton", "cj_enm_com", "samsung_elec"))
+            a, b, c, d = (_comp_id(conn, e) for e in ("krafton", "cj_enm_com", "samsung_elec", "kt"))
             rows = [
-                # (회사, 코드, 배지, note) — note 에 추정 표기가 없어 규칙상 stated 후보
-                (a, "sk_anchor_member", "official", "회사 명시 연 777만원"),
-                (b, "sk_anchor_member", "official", "회사 명시 연 777만원"),
-                (c, "sk_anchor_member", "verified", "재직자 확인 연 777만원"),
-                (a, "sk_anchor_seed", "official", "회사 명시 연 777만원"),
-                (b, "sk_anchor_seed", "official", "회사 명시 연 777만원"),
-                (c, "sk_anchor_seed", "official", "회사 명시 연 777만원"),
+                # (회사, 코드, 배지, 금액출처) — note 에 추정 표기가 없어 규칙상 stated 후보
+                (a, "sk_anchor_member", "official", "estimated"),
+                (b, "sk_anchor_member", "official", "estimated"),
+                (c, "sk_anchor_member", "verified", "stated"),  # 셋째 회사가 재직자 행 → 앵커 아님
+                (a, "sk_anchor_seed", "official", "estimated"),
+                (b, "sk_anchor_seed", "official", "estimated"),
+                (c, "sk_anchor_seed", "official", "estimated"),  # 공식 3사 → 앵커(강등)
+                (d, "sk_anchor_seed", "verified", "stated"),  # 앵커 묶음 안의 재직자 행 → 강등 금지
             ]
-            for comp, code, badge, note in rows:
+            for comp, code, badge, amt_src in rows:
                 cur.execute(
                     "INSERT INTO TCOMPANY_BENEFIT (COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD, "
                     " BADGE_CD, AMT_SOURCE_CD, BADGE_SRC_CD, NOTE_CTNT, QUAL_YN, VERIFIED_DTM, EXPIRES_DTM) "
-                    "VALUES (%s, %s, '앵커 탐침', 777, 'perks', %s, 'estimated', %s, %s, FALSE, "
+                    "VALUES (%s, %s, '앵커 탐침', 777, 'perks', %s, %s, %s, '명시 연 777만원', FALSE, "
                     "        '2026-09-18 00:00:00', '2028-03-18 00:00:00')",
-                    (comp, code, badge, "user_report" if badge == "verified" else "ai_parse", note))
+                    (comp, code, badge, amt_src, "user_report" if badge == "verified" else "ai_parse"))
+            member_c = _benefit_id(conn, c, "sk_anchor_member")
+            member_d = _benefit_id(conn, d, "sk_anchor_seed")
+            before = {bid: _row(conn, bid) for bid in (member_c, member_d)}
 
             backfill_dec2.backfill(cur)
 
@@ -255,9 +264,10 @@ def test_SK3_재직자_행은_앵커_판정에_끼지_않고_앵커_규칙은_�
                                (comp, code))
 
             assert src(a, "sk_anchor_member") == "stated" and src(b, "sk_anchor_member") == "stated", (
-                "재직자 행이 앵커 판정에 끼어 두 회사의 공식 명시 금액을 강등시켰다")
-            assert src(c, "sk_anchor_member") == "estimated", "재직자 행의 금액출처(estimated)를 백필이 바꿨다"
+                "재직자 행이 앵커 판정(GROUP BY)에 끼어 두 회사의 공식 명시 금액을 강등시켰다")
             assert {src(x, "sk_anchor_seed") for x in (a, b, c)} == {"estimated"}, "앵커 강등 규칙(M-4)이 죽었다"
+            for bid in (member_c, member_d):
+                assert _row(conn, bid) == before[bid], f"재직자 행 {bid} 를 백필이 바꿨다(앵커 강등 UPDATE 포함)"
     finally:
         conn.rollback()
         conn.close()
