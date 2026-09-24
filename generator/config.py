@@ -11,8 +11,10 @@ SP-GEN(07 정적 생성기, M5) 소유 파일. M4 시점에는 SP-POL(09 정책 
 """
 from __future__ import annotations
 
+import json
 import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 # pydantic-settings 가 bool 필드에 쓰는 truthy 문자열 집합(대소문자 무시).
 # 서버 `Settings` 와 생성기 `GenConfig` 가 같은 환경변수를 **같은 규칙**으로 읽어야
@@ -98,15 +100,46 @@ class GenConfig:
     # sitemap에 포함되는 비-생성 정적 URL(랜딩 등). /compare(툴 셸)는 색인 대상 제외.
     # 생성기가 만들지 않는 URL 만 싣는다. 대문 `/` 는 2026-09-13(대문 2단계)부터 **생성 페이지**(`pages/home.py`)라
     # 여기서 뺐다 — 남기면 sitemap 에 `/` 가 두 번 실리고, lastmod 지문이 서빙되지 않는 수기 셸 파일을 본다.
-    extra_sitemap_paths: tuple = ("/community/",)  # 커뮤니티 허브(정적 h1·lede, SC15 2026-08-27)
+    # 2026-09-24: 커뮤니티 허브(`/community/`)를 뺐다 — 애드센스 2차 거절(스팸 정책: 방문객이 작성한
+    # 품질 낮은 게시물)에 글 2개·댓글 0개인 게시판이 사이트맵·상단 탭으로 떠밀려 있었다. 셸에는
+    # noindex 를 붙였고(`web/community/index.html`) 기능·API·직접 URL 은 그대로다. 글이 쌓이면
+    # 탭(`content/nav.py`)·noindex 와 **함께** 되살린다(SPEC 14 SP-COMM-9.1). 빈 튜플이어도
+    # `build.py` 의 비-생성 URL 배선(지문 lastmod)은 그대로 둔다 — 다음에 쓸 자리다.
+    extra_sitemap_paths: tuple = ()
     # 정책 페이지 4종 (문안 소유 = SP-POL, 렌더·SEO = 본 생성기)
     policy_pages: tuple = field(
         default=(
             ("privacy", "개인정보처리방침"),
             ("terms", "이용약관"),
             ("disclaimer", "데이터 정확성 면책"),
-            ("ads", "광고·제휴 고지"),
+            ("ads", "광고 고지"),  # 2026-09-24 「광고·제휴 고지」→ 제휴 링크 0개(SP-POL-6)
         )
+    )
+    # 제휴 문안 스위치(SP-POL-6·SP-ADS-6, 2026-09-24). `web/assets/data/affiliate.json` 에 `active: true`
+    # 항목이 **하나라도** 있을 때만 광고 고지가 제휴를 말한다(A-3 수수료 관계 + A-1·A-2·A-5 의 「제휴」).
+    # 파일이 정본이라 env 가 아니라 파일을 읽는다 — ads.js 가 카드를 그리는 바로 그 데이터다.
+    # 테스트는 `GenConfig(affiliate_active=True)` 로 override 한다(m9_enabled 와 같은 방식).
+    affiliate_active: bool = field(default_factory=lambda: affiliate_active_in())
+
+
+# 제휴 데이터 정본(SP-ADS-6). 프론트는 같은 파일을 `/assets/v2/data/affiliate.json` 으로 읽는다.
+AFFILIATE_JSON = Path(__file__).resolve().parents[1] / "web" / "assets" / "data" / "affiliate.json"
+
+
+def affiliate_active_in(path: Path | str = AFFILIATE_JSON) -> bool:
+    """`affiliate.json` 에 `"active": true` 항목이 하나라도 있는가.
+
+    판정은 ads.js `filterAffiliate` 의 첫 조건(`it.active !== true` → 제외)과 같은 축이다. 나머지
+    조건(page_types·url·id)은 보지 않는다 — 카드가 실제로 그려지는지보다 **넓게** 잡아, 고지가 모자라는
+    방향(숨긴 수수료 관계)으로는 절대 틀리지 않게 한다. 파일이 없거나 깨졌으면 False — ads.js 도
+    그때 빈 목록으로 폴백해 카드를 하나도 그리지 않는다(AF-7), 그러니 고지할 제휴도 없다."""
+    try:
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return False
+    items = data.get("items") if isinstance(data, dict) else None
+    return isinstance(items, list) and any(
+        isinstance(it, dict) and it.get("active") is True for it in items
     )
 
 

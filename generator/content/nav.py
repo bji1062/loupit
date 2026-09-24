@@ -12,11 +12,16 @@
 (`test_authnav.py`·`test_footer_links.py` 와 같은 방식). 여기 항목을 바꾸면 셸 7개도 함께 고쳐라 —
 안 고치면 그 테스트가 빨개진다(드리프트를 조용히 두지 않는다).
 
-탭 순서는 홈 다음에 **찾는 도구**(복지검색·회사정보·히트맵), 마지막이 커뮤니티다.
+탭 순서는 홈 다음에 **찾는 도구**(복지검색·회사정보·히트맵)다.
 2026-09-06 에 「복지검색」을 홈 옆에 넣으면서 커뮤니티를 끝으로 옮겼다 — 새 탭이 이 사이트의
 핵심 동선(복지 → 회사 → 비교)의 입구이고, 커뮤니티는 그 동선 밖의 별도 구획이기 때문이다.
 그전 순서는 prober.kr 벤치마크(홈 바로 옆에 주요 구획)를 따랐다 — `docs/PLAN-커뮤니티-회사정보탭-2026-08-27.md` §3-1.
 `커뮤니티` 탭은 커뮤니티가 실제로 열리는 PR(lane/comm-launch, 2026-08-27)에서 추가했다 — 죽은 탭 금지 규약 그대로.
+
+**2026-09-24 커뮤니티 탭을 뺐다.** 애드센스 2차 거절(스팸 정책: 방문객이 작성한 품질 낮은 게시물)
+당시 게시판은 글 2개·댓글 0개였는데 모든 페이지 상단이 그리로 보냈다. 기능·API·`/community/` 직접
+주소는 그대로 동작하고, 셸은 noindex·sitemap 제외다(SPEC 14 SP-COMM-9.1). 글이 쌓이면 아래 튜플 끝에
+`("커뮤니티", "/community/")` 를 되돌리고 셸 7개 탭·sitemap·noindex 를 **함께** 되돌린다.
 """
 from __future__ import annotations
 
@@ -30,7 +35,7 @@ GNB_TABS: tuple[tuple[str, str], ...] = (
     ("복지검색", "/find"),  # SP-FIND(2026-09-06) — 생성 페이지 find.html, nginx = /find
     ("회사정보", "/companies"),
     ("히트맵", "/heatmap"),  # SP-HEAT(2026-08-27) — 생성 페이지 heatmap.html, nginx = /heatmap
-    ("커뮤니티", "/community/"),  # SC15(2026-08-27) — 셸 web/community/index.html, nginx ^~ /community/
+    # ("커뮤니티", "/community/") — 2026-09-24 숨김(위 머리말). 셸 web/community/index.html 은 그대로 서빙된다.
 )
 
 GNB_TAB_HREFS: frozenset[str] = frozenset(h for _, h in GNB_TABS)

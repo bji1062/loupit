@@ -201,7 +201,7 @@ def test_build_stamps_only_changed_pages_and_persists_the_index(tmp_path, fake_b
     urls = json.loads((out / ".manifest.json").read_text(encoding="utf-8"))["urls"]
     assert urls and all(v["lastmod"] == "2026-08-01" for v in urls.values())
 
-    # 같은 번들로 다시 — 생성 페이지는 전부 그대로, 대문·커뮤니티(원본 파일 없음)만 오늘이다.
+    # 같은 번들로 다시 — 생성 페이지는 전부 그대로, 비-생성 URL(원본 파일 없음)이 있다면 그것만 오늘이다.
     assert build_module.run(str(out), fake_bundle, lastmod="2026-08-29") == 0
     xml2 = (out / "sitemap.xml").read_text(encoding="utf-8")
     dates = dict(re.findall(r"<loc>([^<]+)</loc>\s*<lastmod>([^<]+)</lastmod>", xml2))
@@ -239,10 +239,14 @@ def test_build_notifies_changed_urls_when_targeting_the_serving_dist(tmp_path, f
     assert f"{CFG.site_origin}/indexnow-key.txt" not in body["urlList"], "키 파일 자체는 통보 대상이 아니다"
     assert "IndexNow" in capsys.readouterr().err
 
-    # 두 번째 빌드: 생성 페이지는 안 바뀌었으니 대문·커뮤니티(원본 파일 없음 = 매번 오늘)만 간다.
+    # 두 번째 빌드: 생성 페이지는 안 바뀌었으니 안 바뀐 URL 은 보내지 않는다. 비-생성 URL(원본 파일 없음 =
+    # 매번 오늘)이 있으면 그것만 가고, 없으면(2026-09-24 커뮤니티 허브를 sitemap 에서 뺀 뒤) 통보 자체를 생략한다.
     seen.clear()
     assert build_module.run(str(out), fake_bundle, lastmod="2026-08-29", indexnow_opener=_opener(202, seen=seen)) == 0
-    assert all("/company/" not in u and "/vs/" not in u for u in seen[0][2]["urlList"])
+    sent = [u for call in seen for u in call[2]["urlList"]]
+    assert all("/company/" not in u and "/vs/" not in u for u in sent)
+    if not build_module.CFG.extra_sitemap_paths:
+        assert seen == [], "바뀐 URL 이 0개인데 IndexNow 를 두드렸다"
 
 
 def test_build_honours_no_indexnow_and_a_missing_key(tmp_path, fake_bundle, fake_combinations_path, monkeypatch):

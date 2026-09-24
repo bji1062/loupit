@@ -96,8 +96,15 @@ REQUIRED_ITEMS = {
     "privacy": {"P1", "P2", "P3", "P4", "P5", "P6"},
     "terms": {"T1", "T2", "T3", "T4"},
     "disclaimer": {"D-1", "D-2", "D-3", "D-4", "D-5", "D-6", "D-7"},
-    "ads": {"A-1", "A-2", "A-3", "A-4", "A-5"},
+    # A-3(제휴 수수료 관계)은 상시분이 아니다 — 아래 AFFILIATE_REQUIRED_ITEMS(2026-09-24).
+    "ads": {"A-1", "A-2", "A-4", "A-5"},
 }
+
+# 제휴(affiliate.json 에 active 항목)가 실재할 때만 필수인 항목(SP-POL-6, 2026-09-24).
+# 제휴 링크가 0개인데 "제휴사로부터 수수료를 받을 수 있습니다"를 싣는 것은 없는 수익 관계의
+# 자기 선언이고(애드센스 2차 거절 시점의 상태), 제휴를 켰는데 안 싣는 것은 수수료 관계를 숨기는
+# 표시·광고 위반이다. 그래서 M9 항목과 같이 스위치(`cfg.affiliate_active`)를 따라 양방향으로 움직인다.
+AFFILIATE_REQUIRED_ITEMS = {"ads": {"A-3"}}
 
 # M9(SC14 참여) 활성 배포에서만 추가로 필수인 항목 — 회원 제도가 실재할 때만 고지 의무가 생긴다.
 # P7 = 회원 정보 처리 사실 / P8 = 메일 발송 위탁·국외이전(§26·§28-8) / P9 = 보유기간·정보주체
@@ -114,9 +121,14 @@ def required_items(cfg) -> dict[str, set[str]]:
     상수가 아니라 함수인 이유: 로그인 미배포 상태에서 P7·T5 를 필수로 두면 '존재하지 않는 회원
     제도'를 고지하게 되고, 로그인 배포 후 필수로 두지 않으면 실제 수집하는 PII 를 고지 없이
     처리하게 된다 — 어느 쪽도 처리방침으로 성립하지 않는다."""
-    if not getattr(cfg, "m9_enabled", False):
-        return {k: set(v) for k, v in REQUIRED_ITEMS.items()}
-    return {k: set(v) | M9_REQUIRED_ITEMS.get(k, set()) for k, v in REQUIRED_ITEMS.items()}
+    out = {k: set(v) for k, v in REQUIRED_ITEMS.items()}
+    if getattr(cfg, "m9_enabled", False):
+        for k, v in M9_REQUIRED_ITEMS.items():
+            out[k] |= v
+    if getattr(cfg, "affiliate_active", False):  # 제휴 고지도 같은 원리(2026-09-24, SP-POL-6)
+        for k, v in AFFILIATE_REQUIRED_ITEMS.items():
+            out[k] |= v
+    return out
 
 POLICY_KEYS = ("privacy", "terms", "disclaimer", "ads")  # 순서·집합 정본(검증 PC-1)
 
@@ -134,7 +146,7 @@ POLICY_FOOTER_LINKS = (
     ("개인정보처리방침", "/privacy"),
     ("이용약관", "/terms"),
     ("데이터 정확성 면책조항", "/disclaimer"),
-    ("광고·제휴 고지", "/ads"),
+    ("광고 고지", "/ads"),  # 2026-09-24 「광고·제휴 고지」→ 제휴 링크 0개라 라벨이 없는 관계를 선언했다
 )
 
 
@@ -309,7 +321,7 @@ def _privacy(cfg) -> PolicyDoc:
             if m9
             else ()
         ),
-        related=(("이용약관", "/terms"), ("광고·제휴 고지", "/ads")),
+        related=(("이용약관", "/terms"), ("광고 고지", "/ads")),
         draft=not cfg.legal_reviewed,
     )
 
@@ -501,32 +513,20 @@ def _disclaimer(cfg) -> PolicyDoc:
 
 
 def _ads(cfg) -> PolicyDoc:
-    """광고·제휴 고지 문안 (A-1~A-5, SP-POL-6, FR-84)."""
-    return PolicyDoc(
-        key="ads",
-        route="/ads",
-        filename="ads.html",
-        title="광고·제휴 고지",
-        meta_description=(
-            "jobcho.wiki(잡초) 광고·제휴 고지 — Google AdSense 광고와 제휴 링크로 운영되며, "
-            "모든 광고·제휴 영역에 '광고' 라벨을 표기하고 제3자 쿠키·개인화 동의를 "
-            "안내합니다."
-        ),
-        sections=(
-            _S(
-                "A-1", "a1", "수익 모델", "수익 모델",
-                (
-                    "jobcho.wiki(잡초)는 Google AdSense 광고와 제휴(affiliate) 링크로 운영 "
-                    "비용을 충당합니다. 유료 구독이나 결제 기능은 없습니다.",
-                ),
-            ),
-            _S(
-                "A-2", "a2", "'광고' 표기", "'광고' 표기",
-                (
-                    "모든 광고 및 제휴 영역에는 '광고'(또는 '유료 광고') 라벨을 "
-                    "이용자가 인지할 수 있게 표기하며, 이를 숨기지 않습니다.",
-                ),
-            ),
+    """광고 고지 문안 (A-1·A-2·A-4·A-5, 제휴 활성 시 +A-3, SP-POL-6, FR-84).
+
+    제휴 문안 — A-3(수수료 관계)과 A-1·A-2·A-5·meta 의 「제휴」 — 은 `cfg.affiliate_active`
+    (= `web/assets/data/affiliate.json` 에 active 항목이 있는가)를 따른다. 2026-09-24 애드센스 2차
+    거절(스팸 정책 「빈약한 제휴 페이지」) 시점에 제휴 링크는 0개였는데 이 페이지는 "광고와 제휴
+    링크로 운영되며 … 제휴사로부터 수수료를"을 선언하고 있었다. 반대로 제휴를 켜고 문안을 안 켜면
+    수수료 관계를 숨기게 된다 — M9 스위치와 같은 양방향 계약(test_policy_affiliate).
+
+    제목은 제휴 유무와 상관없이 「광고 고지」 하나다: 푸터 라벨이 수기 셸에 하드코딩돼 있어
+    빌드 시점 분기를 따라갈 수 없고, 제휴 카드도 '광고' 라벨이 붙는 광고라 제목이 틀리지 않는다.
+    A-3 이 빠져도 A-4·A-5 앵커(`#a4`·`#a5`)는 그대로 둔다 — 밖에서 건 링크가 깨지지 않게."""
+    aff = getattr(cfg, "affiliate_active", False)
+    affiliate_sections = (
+        (
             _S(
                 "A-3", "a3", "제휴 수수료 관계", "제휴 수수료 관계",
                 (
@@ -534,6 +534,54 @@ def _ads(cfg) -> PolicyDoc:
                     "받을 수 있습니다.",
                 ),
             ),
+        )
+        if aff
+        else ()
+    )
+    return PolicyDoc(
+        key="ads",
+        route="/ads",
+        filename="ads.html",
+        title="광고 고지",
+        meta_description=(
+            (
+                "jobcho.wiki(잡초) 광고 고지 — Google AdSense 광고와 제휴 링크로 운영되며, "
+                "모든 광고·제휴 영역에 '광고' 라벨을 표기하고 제3자 쿠키·개인화 동의를 "
+                "안내합니다."
+            )
+            if aff
+            else (
+                "jobcho.wiki(잡초) 광고 고지 — Google AdSense 광고로 운영되며, 모든 광고 "
+                "영역에 '광고' 라벨을 표기하고 제3자 쿠키·개인화 동의를 안내합니다."
+            )
+        ),
+        sections=(
+            _S(
+                "A-1", "a1", "수익 모델", "수익 모델",
+                (
+                    (
+                        "jobcho.wiki(잡초)는 Google AdSense 광고와 제휴(affiliate) 링크로 운영 "
+                        "비용을 충당합니다. 유료 구독이나 결제 기능은 없습니다."
+                    )
+                    if aff
+                    else (
+                        "jobcho.wiki(잡초)는 Google AdSense 광고로 운영 비용을 충당합니다. "
+                        "유료 구독이나 결제 기능은 없습니다."
+                    ),
+                ),
+            ),
+            _S(
+                "A-2", "a2", "'광고' 표기", "'광고' 표기",
+                (
+                    "모든 광고 "
+                    + ("및 제휴 영역에는" if aff else "영역에는")
+                    + " '광고'(또는 '유료 광고') 라벨을 이용자가 인지할 수 있게 표기하며, "
+                    "이를 숨기지 않습니다.",
+                ),
+            ),
+        )
+        + affiliate_sections
+        + (
             _S(
                 "A-4", "a4", "제3자 광고 쿠키", "제3자 광고 쿠키·비개인화 광고",
                 (
@@ -550,7 +598,8 @@ def _ads(cfg) -> PolicyDoc:
             _S(
                 "A-5", "a5", "공정위 표시·광고 규정", "공정위 표시·광고 규정 정합",
                 (
-                    "광고·제휴 표기는 공정거래위원회의 표시·광고 관련 규정(추천·"
+                    ("광고·제휴 표기는" if aff else "광고 표기는")
+                    + " 공정거래위원회의 표시·광고 관련 규정(추천·"
                     "보증 등에 관한 표시·광고 심사지침의 취지)에 따릅니다.",
                 ),
             ),

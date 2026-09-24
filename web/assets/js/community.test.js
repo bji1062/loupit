@@ -339,11 +339,14 @@ describe('initCommunity — 부팅 스모크', () => {
     assert.equal(d.body.getAttribute('data-page-type'), null, 'data-page-type 미선언 = 광고 0');
     assert.equal(d.querySelector('main#community h1').textContent, '커뮤니티');
     assert.ok(d.querySelector('[data-authnav][hidden]'));
-    assert.ok(d.querySelector('header nav a[aria-current="page"][href="/community/"]'));
+    // 2026-09-24: 상단 탭에서 뺐다(애드센스 2차 거절 — SPEC 14 SP-COMM-9.1). 이 셸에는 자기 탭도 현재 탭 표시도 없다.
+    assert.equal(d.querySelector('header nav a[href="/community/"]'), null, '커뮤니티 탭은 숨김');
+    assert.equal(d.querySelector('header nav a[aria-current="page"]'), null);
     assert.ok(d.querySelector('script[type="module"][src="/assets/v2/js/community.js"]'));
     assert.ok(d.querySelector('script[type="module"][src="/assets/v2/js/authnav.js"]'));
     assert.ok(d.querySelector('link[rel="stylesheet"][href="/assets/v2/css/community.css"]'));
-    assert.equal(d.querySelector('meta[name="robots"]'), null, 'noindex 를 붙이지 않는다');
+    assert.equal(d.querySelector('meta[name="robots"]').getAttribute('content'), 'noindex, follow',
+      '2026-09-24 부터 색인 제외(탭·sitemap 과 함께 — test_gnb_tabs (4))');
     assert.ok(d.querySelector('noscript'));
   });
 
