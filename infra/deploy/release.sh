@@ -23,15 +23,25 @@
 #   전후로 그대로이므로 [2] 이후는 재시드 없이 검증만 한다.
 #
 #   ⚠ 그래서 이 스크립트는 게이트를 호출할 때 **DB_NAME 을 넘기지 않는다**(아래 [1] 참조).
-#   위 33행의 `set -a; source server/.env` 가 DB_NAME=LOUPIT 을 이 프로세스에 export 하는데,
+#   아래 `set -a; source server/.env` 가 DB_NAME=LOUPIT 을 이 프로세스에 export 하는데,
 #   run_tests.sh 의 `export DB_NAME="${DB_NAME:-loupit_test}"` 는 **이미 설정된 값을 존중**하므로
 #   그대로 물려주면 격리 기본값이 적용되지 않고 게이트가 서빙을 향한다. 2026-08-27 릴리스가
 #   정확히 이 경로로 C-1 안전장치에 막혔다(막힌 것이 정상 동작 — 서빙은 무사했다).
 #
 #   ⚠ 시드 변경은 이제 릴리스로 서빙에 반영되지 않는다. 구 판본은 게이트가 서빙을 재시드하는
 #   **부작용**으로 시드 변경이 딸려 들어갔지만, 무접촉 게이트에는 그 경로가 없다. 회사·복지·
-#   도메인 시드를 바꿨다면 릴리스와 별개로 명시적으로 적재하라:
-#       LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh   # 서빙 대상, 의도적 실행
+#   도메인 시드를 바꿨다면 릴리스 **전에** 서빙에 명시적으로 적재하고(정적 페이지는 [4]가 DB 에서
+#   다시 만든다), 그다음 릴리스한다:
+#       python3 db/seed/load.py            # 서빙 대상 멱등 재적용 — --fresh 아님
+#
+#   ⚠ --fresh 를 쓰지 마라(2026-09-24, SP-SEED-12). TCOMPANY_BENEFIT 을 DROP 하면 재직자가
+#   등록·수정한 행이 사라지고, AUTO_INCREMENT 로 다시 매겨진 BENEFIT_ID 때문에 남은 편집 이력
+#   (TBENEFIT_EDIT_LOG)이 엉뚱한 행을 가리켜 그 행에 「재직자 등록」·「공식·재직자 수정」 배지가
+#   붙는다. 그래서 load.py 는 재직자 데이터(편집 이력·재직자 행)가 있으면 --fresh 를 거부한다 —
+#   편집 이력은 지워지지 않으므로 서빙에서는 사실상 늘 거부된다. 멱등 재적용은 재직자 행
+#   (BADGE_CD='verified')을 건드리지 않는다(시드 업서트가 덮은 재직자 행은 전 컬럼을 되돌리고,
+#   백필은 재직자 행을 건너뛴다). 2026-09-20 웨이브 4 적재가 재직자 수정 2행을 시드 값으로 되돌린
+#   사고의 재발 방지다(복구: db/migrations/20260924_restore_member_edits.sql).
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -58,8 +68,9 @@ _on_err() {
     echo "  ── 복구 안내 ──"
     echo "  1) 서빙 DB 적재 확인:"
     echo "       mysql -h ${DB_HOST:-127.0.0.1} -P ${DB_PORT:-3306} -u ${DB_USER:-<user>} -p ${DB_NAME:-loupit} -e 'SELECT COUNT(*) FROM TCOMPANY'"
-    echo "     90 미만(빈/불완전)이면 재시드(가드 계약 — env로 의도 명시):"
-    echo "       LOUPIT_ALLOW_FRESH=1 ${PY} db/seed/load.py --fresh"
+    echo "     90 미만(빈/불완전)이면 멱등 재적재(빈 테이블도 채운다 · 재직자 행은 그대로 둔다):"
+    echo "       ${PY} db/seed/load.py"
+    echo "     --fresh 는 쓰지 마라 — 재직자 데이터(편집 이력·재직자 행)가 있으면 거부된다(SP-SEED-12)."
     echo "  2) 정적 산출물: 원자 스왑은 성공 시에만 web/dist 를 교체한다."
     echo "       - [4] 이전 실패 → 이전 dist 그대로 라이브(조치 불필요)."
     echo "       - [4] 이후 실패 → 새 dist 가 이미 라이브. 되돌리려면 web/dist.prev 존재 확인 후 수동 스왑."
