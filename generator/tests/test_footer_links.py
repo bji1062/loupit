@@ -29,6 +29,7 @@ from generator.render import make_env
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 COMPARE_SHELL = REPO_ROOT / "web" / "compare" / "index.html"
+COMMUNITY_SHELL = REPO_ROOT / "web" / "community" / "index.html"  # 같은 푸터를 하드코딩한다(2026-09-24 편입)
 
 _FOOTER_BLOCK_RE = re.compile(r"<footer[^>]*>(.*?)</footer>", re.S | re.I)
 # 정책 링크 nav만 추출한다 — PC-5의 계약은 "정책 4종 라벨·라우트 정합"이지
@@ -118,6 +119,13 @@ def test_pc5_compare_shell_footer_matches_policy_footer_links():
         "(SP-FE M6 핸드오프: 라우트를 /privacy·/terms·/disclaimer·/ads로, "
         "라벨을 POLICY_FOOTER_LINKS와 동일하게 하드코딩 정정 필요)"
     )
+
+
+def test_pc5_community_shell_footer_matches_policy_footer_links():
+    """커뮤니티 셸도 정책 4링크를 하드코딩한다. 2026-09-24 「광고·제휴 고지」→「광고 고지」 때 이 셸이
+    검사 밖이라 라벨이 혼자 남을 수 있었다 — 수기 푸터는 전부 여기서 정본과 맞춘다."""
+    links = _extract_footer_links(COMMUNITY_SHELL.read_text(encoding="utf-8"))
+    assert links == list(POLICY_FOOTER_LINKS)
 
 
 # ── GC-27b: 회사 인덱스 진입문이 전 페이지 푸터에 있는가 (2026-07-19) ────────

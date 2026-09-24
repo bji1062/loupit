@@ -4,10 +4,11 @@
 생성기 partial) 탭을 한쪽에만 넣으면 페이지를 오갈 때 탭이 나타났다 사라진다. 수기 셸은
 상수를 import 할 수 없으므로 **문자열로** 동기화를 검증한다(`test_authnav.py` 와 같은 방식).
 
-계약 셋:
+계약 넷:
   (1) 모든 헤더의 주 메뉴에서 **탭 href 로 걸러낸 링크 열**이 `GNB_TABS` 와 라벨·순서까지 같다.
   (2) 탭이 가리키는 곳은 실재해야 한다 — 생성 페이지이거나 문서 루트 셸(죽은 탭 금지).
   (3) `aria-current="page"` 는 헤더당 최대 1개이고, 붙는다면 그 페이지가 속한 탭에만 붙는다.
+  (4) 커뮤니티의 탭·sitemap·noindex 는 함께 움직인다(2026-09-24 숨김).
 """
 from __future__ import annotations
 
@@ -144,7 +145,34 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
 
 
 def test_hand_written_shells_mark_only_their_own_tab():
-    """홈 탭 표시는 생성 대문이 진다(`test_aria_current_marks_only_the_owning_tab` — 2026-09-15 수기 셸 삭제)."""
-    assert _current_hrefs(SHELLS["community/index.html"].read_text(encoding="utf-8")) == ["/community/"]
-    for name in ("compare/index.html", "login.html", "mypage.html", "verify.html", "edit.html", "edits.html"):
+    """홈 탭 표시는 생성 대문이 진다(`test_aria_current_marks_only_the_owning_tab` — 2026-09-15 수기 셸 삭제).
+    커뮤니티 셸도 2026-09-24 부터 속한 탭이 없다(탭을 숨겼다 — 아래 (4))."""
+    for name in SHELLS:
         assert _current_hrefs(SHELLS[name].read_text(encoding="utf-8")) == [], f"{name}: 잘못된 현재 탭"
+
+
+# ── (4) 커뮤니티 노출 세 스위치는 함께 움직인다 (2026-09-24) ──────────────────
+#
+# 애드센스 2차 거절(스팸 정책: 방문객이 작성한 품질 낮은 게시물) 때 글 2개·댓글 0개 게시판을
+# 상단 탭·sitemap 에서 빼고 셸에 noindex 를 붙였다(SPEC 14 SP-COMM-9.1). 나중에 되살릴 때 하나만
+# 되돌리면 신호가 서로를 뒤집는다 — 탭·sitemap 은 "보라"고, noindex 는 "색인하지 마라"고 말하게 된다.
+# 그래서 셋이 **같은 값**인지만 고정한다(숨김/노출 어느 쪽이든 셋이 일치하면 통과).
+
+_ROBOTS_NOINDEX_RE = re.compile(r'<meta name="robots" content="[^"]*noindex[^"]*">', re.I)
+
+
+def test_community_tab_sitemap_and_noindex_move_together():
+    shell = SHELLS["community/index.html"].read_text(encoding="utf-8")
+    in_tabs = "/community/" in GNB_TAB_HREFS
+    in_sitemap = "/community/" in CFG.extra_sitemap_paths
+    indexable = not _ROBOTS_NOINDEX_RE.search(shell)
+    assert in_tabs == in_sitemap == indexable, (
+        f"커뮤니티 노출 스위치가 갈라졌다 — 탭={in_tabs} sitemap={in_sitemap} 색인 허용={indexable}"
+    )
+
+
+def test_community_is_hidden_but_its_shell_still_exists():
+    """현재 상태(2026-09-24): 숨김. 기능은 지우지 않았다 — 셸이 남아 직접 주소로 열린다."""
+    assert "/community/" not in GNB_TAB_HREFS
+    assert all("커뮤니티" not in label for label, _ in GNB_TABS)
+    assert SHELLS["community/index.html"].is_file()

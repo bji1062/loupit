@@ -3,7 +3,11 @@
      (T-14.7.3, nginx `location ^~ /community/ { try_files $uri /community/index.html; }` 와 함께).
      셸은 **하나**다: community.js 가 location.pathname 으로 목록·상세·작성·수정 4화면을 가른다
      (web/compare/index.html + app.js 와 같은 SPA 셸 패턴). h1·lede 는 정적이라 JS 없이도 읽힌다.
-     본문은 JS 렌더라 1차는 색인을 기대하지 않는다 — robots 는 허용하되 noindex 도 붙이지 않는다(PLAN §3-2).
+     본문은 JS 렌더라 1차는 색인을 기대하지 않는다(PLAN §3-2).
+     2026-09-24: 상단 탭·sitemap 에서 빼고 noindex 를 붙였다 — 애드센스 2차 거절(스팸 정책: 방문객이 작성한
+     품질 낮은 게시물) 당시 글 2개·댓글 0개였다. 기능·API·이 주소는 그대로 동작한다. 글이 쌓이면 탭
+     (generator/content/nav.py GNB_TABS + 셸 7개)·sitemap(generator/config.py extra_sitemap_paths)·이 noindex 를
+     **함께** 되돌린다(SPEC 14 SP-COMM-9.1). robots.txt Disallow 는 걸지 않는다 — 막으면 noindex 를 못 읽는다.
      `data-page-type` 미선언 = 광고 0(SP-ADS: 유형이 없으면 ads.js 가 슬롯을 마운트하지 않는다). -->
 <html lang="ko">
 <head>
@@ -12,6 +16,7 @@
   <title>커뮤니티 — jobcho.wiki 잡초</title>
   <meta name="description" content="이직 고민, 회사 이야기, 건의사항 — 로그인 없이 읽고, 로그인하면 글과 댓글을 남길 수 있어요.">
   <link rel="canonical" href="https://jobcho.wiki/community/">
+  <meta name="robots" content="noindex, follow"> <!-- 2026-09-24 색인 제외(위 머리말) — /compare 셸과 같은 형식 -->
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="jobcho.wiki">
   <meta property="og:title" content="커뮤니티 — jobcho.wiki 잡초">
@@ -31,13 +36,12 @@
   <a class="skip-link" href="#main-heading">본문 바로가기</a>
   <nav aria-label="주요 링크">
     <a href="/" class="brand"><img class="brand-logo" src="/assets/v2/img/logo.svg" alt="" width="34" height="22">jobcho<span class="brand-dot">.</span>wiki</a>
-    <!-- 상단 탭: 공개 시 generator/content/nav.py::GNB_TABS 와 test_gnb_tabs 로 동기화(커뮤니티 탭은 그 PR 에서 정본에 추가).
-         순서·라벨을 임의로 바꾸지 마라. '비교 조합'은 랜딩의 레일 앵커라 여기서는 절대 경로(/#trending)로 건다 -->
+    <!-- 상단 탭: generator/content/nav.py::GNB_TABS 와 test_gnb_tabs 로 동기화. 순서·라벨을 임의로 바꾸지 마라.
+         커뮤니티 탭은 2026-09-24 에 뺐다(위 머리말) — 이 셸에는 현재 탭(aria-current)이 없다. -->
     <a href="/" class="gnb-link">홈</a>
     <a href="/find" class="gnb-link">복지검색</a>
     <a href="/companies" class="gnb-link">회사정보</a>
     <a href="/heatmap" class="gnb-link">히트맵</a>
-    <a href="/community/" class="gnb-link" aria-current="page">커뮤니티</a>
     <!-- 헤더 검색 폼은 두지 않는다(2026-08-27 결정): 랜딩의 `.gnb-search` 는 ui.js bindHeaderSearch 가
          REF(전체 회사 참조)를 가진 SPA 안에서만 동작하고, 홈은 `?q=` 를 읽지 않는다(app.js 는 `?a=`·`?b=` 만).
          입력을 받고 버리는 폼은 죽은 UI 다 — 로그인 계열 셸·생성 헤더와 같이 탭 + 로그인 진입점만 둔다. -->
@@ -70,7 +74,7 @@
     <a href="/privacy">개인정보처리방침</a>
     <a href="/terms">이용약관</a>
     <a href="/disclaimer">데이터 정확성 면책조항</a>
-    <a href="/ads">광고·제휴 고지</a>
+    <a href="/ads">광고 고지</a>
   </nav>
   <p class="disclaimer">본 서비스의 복지·연봉 정보는 참고용이며 실제와 다를 수 있습니다. 추정 금액은 별도 표기합니다.</p>
 </footer>

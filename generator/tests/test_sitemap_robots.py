@@ -36,11 +36,13 @@ def test_gc18_sitemap_includes_all_company_combo_policy_and_landing(
 
     expected = {p.url for p in all_pages if p.in_sitemap}
     # 비-생성 정적 URL 은 CFG.extra_sitemap_paths 가 정본(리터럴 금지 — 함정 0079).
-    # 2026-08-27 부터 랜딩 + 커뮤니티 허브(/community/, SC15) 두 개다.
+    # 커뮤니티 허브(/community/, SC15)는 2026-08-27 에 들어왔다가 2026-09-24 에 빠졌다 — 애드센스 2차
+    # 거절 뒤 noindex 로 돌렸다(탭·noindex 와 같이 움직이는 계약은 test_gnb_tabs (4)).
     for path in CFG.extra_sitemap_paths:
         expected.add(f"{CFG.site_origin}{path}")
     # 대문 `/` 는 생성 페이지라 extra 에 **없어야** 한다 — 있으면 sitemap 에 두 번 실린다(2026-09-13).
-    assert "/" not in CFG.extra_sitemap_paths and "/community/" in CFG.extra_sitemap_paths
+    assert "/" not in CFG.extra_sitemap_paths and "/community/" not in CFG.extra_sitemap_paths
+    assert not any("/community" in loc for loc in locs), "noindex 셸을 sitemap 이 다시 권유한다"
     assert CFG.site_origin + "/" in locs
     assert locs == expected
 
