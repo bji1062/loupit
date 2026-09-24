@@ -12,6 +12,13 @@ M-4(2026-07-12 검증): 위 규칙 적용 후, 무관 회사 간 동일 (복지�
 (≥ ANCHOR_MIN_COMPANIES 개사)은 stated→estimated로 강등한다. 같은 코드·금액이 여러
 회사에 반복되면 회사가 개별 명시한 값이 아니라 표준 앵커/환산일 가능성이 높으므로,
 근거없는 ±5% 정밀도를 피하고 ±20% estimated 밴드로 정직하게 표기한다(DEC-2).
+
+🚨 SP-SEED-12(2026-09-24): **백필은 재직자 행(`BADGE_CD='verified'`)을 읽지도 쓰지도 않는다.**
+재직자 행 = 편집 서비스(`server/services/benefit_edit.py`)가 등록·수정한 행이고, 그 금액출처·출처·
+신선도는 서비스가 정한 값이 정본이다(금액 행은 늘 'estimated' — INV-5 밴드). 예전 판본은 2·2b·3
+단계를 전 행에 돌려, 재직자가 적은 「1인당 월 5만원」을 'stated' 로 올리고 출처·신선도를 시드 파일
+헤더 것으로 덮었으며, 재직자 값이 다른 회사 공식 행의 앵커 판정에까지 끼어들었다. 1단계(승격)는
+원래 'est' 만 보므로 무관하다. 로더 쪽 보존 장치(스냅숏·복원·대조)는 load.py 머리말 참조.
 """
 
 from __future__ import annotations
@@ -28,6 +35,9 @@ from company_meta import BENEFIT_SQL_DIR, parse_header_insert  # noqa: E402
 
 TTL_MONTHS_UNIFORM = 18  # DG-1 확정: 카테고리 무관 균일 18개월
 ANCHOR_MIN_COMPANIES = 3  # M-4: 동일 (복지코드·금액)이 N개사 이상 반복 → 앵커로 보고 stated→estimated 강등
+# SP-SEED-12: 재직자 행 표지. 편집 서비스(server/services/benefit_edit.py)만 이 값을 쓴다 —
+# 시드는 'est', 백필은 'official' 만 쓴다. 두 값이 갈라지면 보존이 조용히 꺼진다(SK-8 이 대조한다).
+MEMBER_BADGE_CD = "verified"
 
 _DATE_RE = re.compile(r"^-- 출처: AI 파싱 \((\d{4}-\d{2}-\d{2})\)", re.MULTILINE)
 _URL_RE = re.compile(r"^-- URL: (http\S+)", re.MULTILINE)
@@ -57,42 +67,51 @@ def _parse_provenance(dst_dir: Path) -> dict:
 
 
 def backfill(cur) -> dict:
-    """단계5 — 로드된 복지행에 DEC-2 백필 적용. 처리 카운트 반환(로그/테스트용)."""
+    """단계5 — 로드된 복지행에 DEC-2 백필 적용. 처리 카운트 반환(로그/테스트용).
+
+    재직자 행(`BADGE_CD=MEMBER_BADGE_CD`)은 2·2b·3 단계 모두에서 뺀다(모듈 머리말 SP-SEED-12).
+    그래서 `amt_source` 합계는 "재직자 행을 뺀 전 행" 이다.
+    """
     stats: dict = {}
 
-    # 1) 출처 신뢰도 official 승격
+    # 1) 출처 신뢰도 official 승격 — 'est'(시드가 막 넣은 행)만 본다. 재직자 행은 원래 대상이 아니다.
     cur.execute("UPDATE TCOMPANY_BENEFIT SET BADGE_CD='official' WHERE BADGE_CD='est'")
     stats["promoted"] = cur.rowcount
 
-    # 2) 금액 신뢰도 amt_source 도출
-    cur.execute("SELECT BENEFIT_ID, BENEFIT_AMT, QUAL_YN, NOTE_CTNT FROM TCOMPANY_BENEFIT")
+    # 2) 금액 신뢰도 amt_source 도출 — 재직자 행 제외(서비스가 금액 유무로 정한 값이 정본).
+    cur.execute(
+        "SELECT BENEFIT_ID, BENEFIT_AMT, QUAL_YN, NOTE_CTNT FROM TCOMPANY_BENEFIT WHERE BADGE_CD <> %s",
+        (MEMBER_BADGE_CD,),
+    )
     rows = cur.fetchall()
     amt_source_counts = {"stated": 0, "estimated": 0, "none": 0}
     for benefit_id, amt, qual_yn, note in rows:
         src = derive_amt_source(amt, bool(qual_yn), note)
         amt_source_counts[src] += 1
         cur.execute(
-            "UPDATE TCOMPANY_BENEFIT SET AMT_SOURCE_CD=%s WHERE BENEFIT_ID=%s",
-            (src, benefit_id),
+            "UPDATE TCOMPANY_BENEFIT SET AMT_SOURCE_CD=%s WHERE BENEFIT_ID=%s AND BADGE_CD <> %s",
+            (src, benefit_id, MEMBER_BADGE_CD),
         )
 
     # 2b) M-4: 무관 회사 간 동일 (복지코드·금액) 앵커값 → stated에서 estimated로 강등.
+    #     판정(GROUP BY)과 강등(UPDATE) **둘 다** 재직자 행을 뺀다 — 재직자 값이 셋째 회사로 세어져
+    #     두 회사의 공식 명시 금액을 강등시키면 안 되고, 재직자 행 자체도 강등 대상이 아니다.
     cur.execute(
         """
         SELECT BENEFIT_CD, BENEFIT_AMT
           FROM TCOMPANY_BENEFIT
-         WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL
+         WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL AND BADGE_CD <> %s
          GROUP BY BENEFIT_CD, BENEFIT_AMT
         HAVING COUNT(DISTINCT COMP_ID) >= %s
         """,
-        (ANCHOR_MIN_COMPANIES,),
+        (MEMBER_BADGE_CD, ANCHOR_MIN_COMPANIES),
     )
     demoted = 0
     for bcd, bamt in cur.fetchall():
         cur.execute(
             "UPDATE TCOMPANY_BENEFIT SET AMT_SOURCE_CD='estimated' "
-            "WHERE AMT_SOURCE_CD='stated' AND BENEFIT_CD=%s AND BENEFIT_AMT=%s",
-            (bcd, bamt),
+            "WHERE AMT_SOURCE_CD='stated' AND BENEFIT_CD=%s AND BENEFIT_AMT=%s AND BADGE_CD <> %s",
+            (bcd, bamt, MEMBER_BADGE_CD),
         )
         demoted += cur.rowcount
     amt_source_counts["stated"] -= demoted
@@ -101,7 +120,8 @@ def backfill(cur) -> dict:
 
     stats["amt_source"] = amt_source_counts
 
-    # 3) 출처유형·URL + 4) 신선도·만료(균일 18개월, DG-1) — 회사 단위 프로버넌스 전파
+    # 3) 출처유형·URL + 4) 신선도·만료(균일 18개월, DG-1) — 회사 단위 프로버넌스 전파.
+    #    재직자 행 제외 — 출처는 'user_report', 신선도는 편집 시각(+18개월)이 정본이다.
     prov = _parse_provenance(BENEFIT_SQL_DIR)
     cur.execute("SELECT COMP_ID, COMP_ENG_NM FROM TCOMPANY")
     verified_n = 0
@@ -119,9 +139,10 @@ def backfill(cur) -> dict:
             UPDATE TCOMPANY_BENEFIT
                SET BADGE_SRC_CD=%s, BADGE_SRC_URL_CTNT=%s,
                    VERIFIED_DTM=%s, EXPIRES_DTM=DATE_ADD(%s, INTERVAL %s MONTH)
-             WHERE COMP_ID=%s
+             WHERE COMP_ID=%s AND BADGE_CD <> %s
             """,
-            (badge_src_cd, badge_src_url, verified_dtm, verified_dtm, TTL_MONTHS_UNIFORM, comp_id),
+            (badge_src_cd, badge_src_url, verified_dtm, verified_dtm, TTL_MONTHS_UNIFORM, comp_id,
+             MEMBER_BADGE_CD),
         )
         verified_n += cur.rowcount
 

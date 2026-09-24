@@ -8,6 +8,9 @@ est↔official 순환 불변식: 파이프라인 단위(단계3+5)로만 멱등 
 별개로 **자체 fresh 재시드를 반복 실행**해 재실행 안정성을 검증하므로
 함수 스코프에서 직접 `load.main`을 호출한다(다른 테스트의 session 픽스처
 상태를 건드리지 않도록 마지막에 다시 fresh=True로 복원한다).
+
+fresh 재시드는 `_reseed()` 로만 한다 — --fresh 는 재직자 데이터가 있으면 거부하므로(SP-SEED-12)
+일회용 격리 스키마인 여기서는 폐기를 명시적으로 허용한다(conftest.seeded_db 와 같은 규약).
 """
 
 from __future__ import annotations
@@ -29,6 +32,11 @@ def _scalar(conn, sql, params=()):
         return cur.fetchone()[0]
 
 
+def _reseed() -> dict:
+    """격리 스키마 fresh 재시드 — 재직자 데이터 폐기를 명시적으로 허용한다(테스트 데이터는 일회용)."""
+    return seed_load.main(fresh=True, discard_member_edits=True)
+
+
 def _snapshot(conn) -> dict:
     return {
         "TCOMPANY": _scalar(conn, "SELECT COUNT(*) FROM TCOMPANY"),
@@ -46,7 +54,7 @@ def _snapshot(conn) -> dict:
 # ── SM-1: 재실행 안정 — load.main() 2회 연속 실행 후 카운트·분포 동일 ──
 def test_SM1_repeated_full_run_is_stable(seeded_db):
     snap1 = _snapshot(seeded_db)
-    seed_load.main(fresh=True)
+    _reseed()
     snap2 = _snapshot(seeded_db)
     assert snap1 == snap2, f"재실행 전후 분포 불일치: {snap1} != {snap2}"
     assert snap2["TCOMPANY"] == 150  # 138 + 확장 웨이브 4 12개사(2026-09-20)
@@ -55,7 +63,7 @@ def test_SM1_repeated_full_run_is_stable(seeded_db):
 
 # ── SM-2: 프리셋 무중복 — 2회 실행 후 28, 중복 증식 없음 ──
 def test_SM2_preset_full_refresh_no_duplication(seeded_db):
-    seed_load.main(fresh=True)
+    _reseed()
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TBENEFIT_PRESET")
     assert count == 28
 
@@ -89,7 +97,7 @@ def test_SM3_official_survives_reapply_cycle(seeded_db):
     assert est_after == 0, "단계5 재실행 후에도 est 잔존 — official 보존 실패"
 
     # 다음 테스트를 위해 session 픽스처 상태를 정본 fresh 시드로 복원
-    seed_load.main(fresh=True)
+    _reseed()
 
 
 # ── SM-4: 부분실행 감지 — 단계5(백필) 미실행 시 est 잔존은 최종상태 아님 ──
@@ -112,4 +120,4 @@ def test_SM4_partial_run_without_backfill_is_not_final_state(seeded_db):
     assert est_count > 0, "백필 미실행인데 est=0 — 부분실행 감지 전제 실패"
 
     # 세션 픽스처 상태 복원(다른 테스트에 영향 없도록)
-    seed_load.main(fresh=True)
+    _reseed()

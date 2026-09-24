@@ -365,13 +365,18 @@ def seeded_db(schema_db):
     스키마 재생성부터 DEC-2 백필까지 전체 파이프라인(프로버넌스 정밀
     판본, backfill_dec2.py)을 실행한다. `schema_db` 의존은 픽스처 순서
     보장용이며, 실제 적재는 load.main이 자체 커넥션으로 수행한다.
+
+    `discard_member_edits=True`: --fresh 는 재직자 데이터(편집 이력·재직자 행)가 있으면 거부한다
+    (SP-SEED-12). 여기는 격리 스키마라 테스트 데이터가 일회용이므로 폐기를 **명시적으로** 허용한다 —
+    앞선 테스트가 남긴 이력이 있어도 정본 시드가 서게. 이 허용은 테스트 코드에만 둔다(운영 경로 금지,
+    test_seed_member_rows SK-7).
     """
     conn = schema_db  # 픽스처 순서 보장용 — 조회는 이 커넥션으로, 적재는 load.main 자체 커넥션
     if str(SEED_DIR) not in sys.path:
         sys.path.insert(0, str(SEED_DIR))
     import load as seed_load  # type: ignore  # db/seed/load.py (경로 기반 sibling import)
 
-    seed_load.main(fresh=True)
+    seed_load.main(fresh=True, discard_member_edits=True)
     yield conn
 
 
