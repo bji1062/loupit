@@ -39,8 +39,9 @@ CLI: `python3 db/seed/load.py [--fresh]`
   TCOMPANY_BENEFIT 을 DROP 하면 재직자 행이 사라지고, AUTO_INCREMENT 로 다시 매겨진 BENEFIT_ID
   때문에 남은 편집 이력이 **엉뚱한 행**을 가리켜 그 행에 재직자 배지가 붙는다. 편집 이력은
   append-only 라 지워지지 않으므로 운영에서는 이 거부가 사실상 상시다 — 시드 변경은 멱등 재적용으로.
-  폐기 허용(`main(discard_member_edits=True)`, CLI 는 `LOUPIT_DISCARD_MEMBER_EDITS=1`)은
-  **일회용 격리 DB(테스트) 전용**이다. 허용하면 편집 이력도 함께 비운다(엉뚱한 행을 가리키지 않게).
+  폐기 허용(`main(discard_member_edits=True)`, CLI 는 명령줄 환경의 `LOUPIT_DISCARD_MEMBER_EDITS=1` —
+  server/.env 에 적어도 무시한다)은 **일회용 격리 DB(테스트) 전용**이다. 허용하면 편집 이력도 함께
+  비운다(엉뚱한 행을 가리키지 않게).
   운영 문서·스크립트에는 이 신호를 쓰지 않는다(server/tests/test_seed_member_rows.py SK-7 이 강제).
 
 접속 정보는 server/.env(dotenv)에서만 읽는다 — 비밀번호를 화면/로그/코드에
@@ -439,6 +440,10 @@ def _target_desc() -> str:
 if __name__ == "__main__":
     _argv = sys.argv[1:]
     fresh_flag = "--fresh" in _argv
+    # SP-SEED-12: 재직자 데이터 폐기 허용 — 일회용 격리 DB 전용 신호(모듈 머리말). 운영에 쓰지 않는다.
+    # dotenv 를 읽기 **전에** 잡는다: 아래 _target_desc()·connect() 가 server/.env 를 os.environ 에
+    # 싣는데, 누가 그 파일에 이 신호를 적어 두어도 --fresh 거부가 조용히 풀리지 않게 명령줄 환경만 본다.
+    discard_member_edits_flag = os.environ.get("LOUPIT_DISCARD_MEMBER_EDITS") == "1"
     if fresh_flag:
         # #14: --fresh 는 서빙 참조 5테이블 DROP + TCOMPARE_LOG TRUNCATE 로 데이터를 파괴한다.
         # 환경변수 LOUPIT_ALLOW_FRESH=1 또는 CLI --yes 없이는 거부한다(셸 히스토리 재실행·오타 방어).
@@ -461,11 +466,7 @@ if __name__ == "__main__":
             file=sys.stderr,
         )
     try:
-        # SP-SEED-12: 재직자 데이터 폐기 허용 — 일회용 격리 DB 전용 신호(모듈 머리말). 운영에 쓰지 않는다.
-        result_stats = main(
-            fresh=fresh_flag,
-            discard_member_edits=os.environ.get("LOUPIT_DISCARD_MEMBER_EDITS") == "1",
-        )
+        result_stats = main(fresh=fresh_flag, discard_member_edits=discard_member_edits_flag)
     except FreshRefusedError as exc:  # DROP 전에 멈췄다 — 위 LOUPIT_ALLOW_FRESH 거부와 같은 종료 코드
         print(f"거부: {exc}", file=sys.stderr)
         sys.exit(2)

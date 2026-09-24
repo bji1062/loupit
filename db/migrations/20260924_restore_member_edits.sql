@@ -34,8 +34,8 @@
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB loupit_beta 에는 적용하지 않는다, 사용자 결정):
 --   MYSQL_PWD 로 넘겨 비밀번호를 프로세스 인자에 남기지 않는다.
---   1) 백업
---      cd /home/ubuntu/loupit && set -a && . server/.env && set +a && MYSQL_PWD=$DB_PASSWORD /data/mysql/bin/mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER --single-transaction $DB_NAME TCOMPANY_BENEFIT TBENEFIT_EDIT_LOG > /root/loupit-pre-restore-member-edits-$(date +%Y%m%d%H%M%S).sql
+--   1) 백업 (--no-tablespaces 필수 — 이 계정엔 전역 PROCESS 권한이 없다, infra/deploy/backup.sh 와 같은 옵션)
+--      cd /home/ubuntu/loupit && set -a && . server/.env && set +a && MYSQL_PWD=$DB_PASSWORD /data/mysql/bin/mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER --no-tablespaces --single-transaction --default-character-set=utf8mb4 $DB_NAME TCOMPANY_BENEFIT TBENEFIT_EDIT_LOG > /root/loupit-pre-restore-member-edits-$(date +%Y%m%d%H%M%S).sql
 --   2) 적용
 --      cd /home/ubuntu/loupit && set -a && . server/.env && set +a && MYSQL_PWD=$DB_PASSWORD /data/mysql/bin/mysql -vv -h $DB_HOST -P $DB_PORT -u $DB_USER $DB_NAME < db/migrations/20260924_restore_member_edits.sql
 --   -vv 를 붙여야 Rows matched 가 찍힌다. 붙이지 않으면 0행이어도 조용히 성공한다.

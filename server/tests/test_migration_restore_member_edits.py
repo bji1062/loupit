@@ -187,7 +187,7 @@ def reverted(seeded_db):
 # ── RM-1: 되돌아간 행만 AFTER_VAL 로 되살리고, 두 번째 실행은 아무것도 바꾸지 않는다 ─────────
 
 def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행은_0행(reverted):
-    ids, kim, lee = reverted["ids"], reverted["kim"], reverted["lee"]
+    ids, kim = reverted["ids"], reverted["kim"]
     restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"]}
     with _utc_conn() as uc:
         before = _all_rows(uc)
@@ -263,6 +263,7 @@ def test_RM2_주석은_분할기에_안전하고_머리말에_적용_명령과_�
             assert s == "--" or s.startswith("-- "), f"{i}행 — mysql CLI 주석은 「-- 」(공백)으로 시작해야 한다"
     kinds = [_first_keyword(s) for s in _split_sql_statements(text)]
     assert kinds == ["SET", "SET", "UPDATE"], f"문장 구성이 다르다(주석 조각이 문장으로 샜을 수 있다): {kinds}"
-    for need in ("/data/mysql/bin/mysql", "-vv", "MYSQL_PWD", "mysqldump", "loupit_beta", "971", "1400"):
+    for need in ("/data/mysql/bin/mysql", "-vv", "MYSQL_PWD", "mysqldump", "loupit_beta", "971", "1400",
+                 "--no-tablespaces"):  # 이 계정엔 전역 PROCESS 권한이 없어 이 옵션 없이는 백업이 실패한다
         assert need in text, f"머리말에 {need!r} 가 없다"
     assert "BADGE_CD <> 'verified'" in text, "멱등 가드(되살린 행은 다시 안 건드린다)가 없다"
