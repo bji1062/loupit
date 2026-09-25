@@ -71,11 +71,17 @@ env -u DB_NAME bash "${SCRIPT_DIR}/run_tests.sh"
 → 회사·복지·도메인 시드를 바꿨다면 릴리스와 **별개로** 명시적으로 적재해야 한다:
 
 ```bash
-LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh
+python3 db/seed/load.py        # 멱등 재적용 — --fresh 아님
 ```
 
 부작용에 기대던 일이 명시적 단계가 됐다. 이쪽이 옳지만, 모르면 "릴리스했는데 데이터가
 안 바뀐다"로 나타난다.
+
+> **2026-09-24 갱신**: 이 자리에 원래 `LOUPIT_ALLOW_FRESH=1 python3 db/seed/load.py --fresh` 를
+> 적어 두었다. `--fresh` 는 `TCOMPANY_BENEFIT` 을 DROP 해 재직자가 등록·수정한 행을 지우고, 다시
+> 매겨진 `BENEFIT_ID` 에 편집 이력이 엉뚱하게 붙는다 — 그래서 이제 로더가 재직자 데이터가 있으면
+> 거부한다(SP-SEED-12). 멱등 재적용은 재직자 행을 건드리지 않는다(2026-09-20 웨이브 4 적재가
+> 재직자 수정 2행을 되돌린 사고 뒤 고쳤다).
 
 ## 교훈
 

@@ -30,8 +30,10 @@ GRANT SELECT ON LOUPIT.* TO 'loupit'@'127.0.0.1';
 GRANT INSERT, DELETE ON LOUPIT.TCOMPARE_LOG TO 'loupit'@'127.0.0.1';
 
 -- 시드/DDL(빌드타임 전용, .env와 분리 보관): DDL+DML — release.sh 1~2단계·backup.sh가 사용.
+-- CREATE TEMPORARY TABLES: db/seed/load.py 가 재직자 행 스냅숏을 세션 임시 테이블에 뜬다(SP-SEED-12).
+--   이 권한이 없으면 모든 적재가 스냅숏 단계에서 실패한다(실패는 롤백이라 데이터는 안전하다).
 CREATE USER IF NOT EXISTS 'loupit_seed'@'127.0.0.1' IDENTIFIED BY '<SEED_PW>';
-GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES, CREATE TEMPORARY TABLES
   ON LOUPIT.* TO 'loupit_seed'@'127.0.0.1';
 
 FLUSH PRIVILEGES;

@@ -1,13 +1,52 @@
 """SP-SEED-9 — 시드 오케스트레이터 (단일 엔트리포인트).
 
 실행 순서(SP-SEED-3, 멱등): schema → company_types+benefit_presets →
-95개 복지 SQL(회사 자기등록 포함) → company_meta 적용(별칭·근무형태) → DEC-2 백필 →
+복지 SQL 전부(db/seed/benefit/sql/*.sql, 회사 자기등록 포함) → company_meta 적용(별칭·근무형태) → DEC-2 백필 →
 DART 법인 매핑(load_corp, SP-FIN-2 — **마지막**이어야 한다: --fresh 가 TCOMPANY 를 재생성해
 COMP_ID 를 다시 배정한 뒤에 이름으로 다시 잇는다).
 
 CLI: `python3 db/seed/load.py [--fresh]`
-  --fresh : DROP(FK 역순)+CREATE 후 전체 재시드(테스트/클린 재빌드)
-  (기본)  : 멱등 재적용(운영 재시드) — schema.sql은 idempotent(CREATE TABLE IF NOT EXISTS)
+  (기본)  : 멱등 재적용(운영 재시드 — **시드 변경은 이것으로 반영한다**). schema.sql 은
+            idempotent(CREATE TABLE IF NOT EXISTS)이고 재직자 행은 건드리지 않는다(아래).
+  --fresh : DROP(FK 역순)+CREATE 후 전체 재시드(테스트/클린 재빌드). 재직자 데이터가 있으면 거부.
+
+🚨 SP-SEED-12 재직자 행 보존(2026-09-24) — **시드·백필은 재직자 행(`BADGE_CD='verified'`)을 쓰지 않는다.**
+  재직자 행 = 편집 서비스(`server/services/benefit_edit.py`)가 등록·수정한 행. `verified` 는 그
+  서비스만 쓰는 값이다(시드는 'est', 백필은 'official'). 데이터 정정 마이그레이션도 `BADGE_CD='official'`
+  가드로 재직자 행을 비켜 가는 것이 규약이다(선례 db/migrations/20260918_meal_anchor_to_qual.sql).
+
+  사고(2026-09-20 06:17:36 UTC, 웨이브 4 멱등 적재): 복지 SQL 의 `ON DUPLICATE KEY UPDATE` 가 행을
+  가리지 않고 덮어 운영의 재직자 수정 2행(BENEFIT_ID 971·1400)이 시드 값·'est' 로 돌아갔고, 백필이
+  'official' 로 올리며 출처·신선도까지 시드 것으로 바꿨다. `MOD_ID` 는 재직자로 남아 편집 이력에서
+  파생하는 「공식·재직자 수정」 배지가 시드 값 위에 달렸다(허위 표시). 되살리기는
+  db/migrations/20260924_restore_member_edits.sql.
+
+  150개 시드 파일을 고치지 않고 로더가 막는다(한 트랜잭션 안에서):
+    ① 기준점 — 커밋된 편집 이력의 (행 수, 최대 ID)와 적재 전 최대 BENEFIT_ID 를 잰다.
+    ② 잠금·스냅숏 — 복지 SQL 직전, 재직자 행과 편집 이력이 가리키는 행을 커밋 때까지 잠그고(FOR UPDATE)
+       재직자 행 **전 컬럼**을 세션 임시 테이블에 뜬다. 잠금 덕에 그 행을 쓰려는 다른 쓰기(편집 서비스의
+       수정 · 복구 마이그레이션 · 수기 정정)는 적재 커밋 뒤에 돈다 — 이력을 남기지 않는 쓰기도 덮이지 않는다.
+    ③ 복원 — 복지 SQL 직후 전 컬럼을 그대로 되돌린다(MOD_DTM 까지 명시 대입 — ON UPDATE 자동
+       갱신이 끼지 않는다). 컬럼 목록은 information_schema 에서 읽어 새 컬럼도 저절로 덮는다.
+       백필 **앞**에서 되돌리는 이유: 백필이 그 행을 재직자 행으로 보고 건너뛰어야 앵커 판정에서도
+       빠진다 — 백필 뒤에 되돌리면 백필 동안 그 행은 시드 값·official 이라 판정에 끼어든다.
+    ④ 백필은 재직자 행을 읽지도 쓰지도 않는다(backfill_dec2.py).
+    ⑤ 대조 — 커밋 직전 스냅숏과 전 컬럼을 이진 비교하고, 사라졌거나 다르면 예외 → 롤백.
+    ⑥ 경합 — ①의 이력 기준점이 커밋 직전에 달라졌으면(적재 도중 다른 커넥션에서 **처음** 재직자 행이 된
+       편집이 커밋됐으면 — 그 행은 ②의 잠금·스냅숏에 없어 시드가 덮었을 수 있다) 예외 → 롤백. 다시
+       실행하면 된다. 적재 밖 새 커넥션으로 읽어 잠금 없이 격리 수준과 무관하게 최신 커밋을 본다.
+    ⑦ 번호 재사용 — 이번 적재가 새로 만든 행이 편집 이력에 있는 BENEFIT_ID 를 받았으면(표가 적재 밖에서
+       DROP·재생성돼 AUTO_INCREMENT 가 되감긴 것) 예외 → 롤백. 커밋하면 이력이 엉뚱한 행을 가리킨다.
+
+  `--fresh` 는 재직자 데이터(편집 이력 1건 이상 또는 재직자 행)가 있으면 **거부**한다(종료 코드 2).
+  TCOMPANY_BENEFIT 을 DROP 하면 재직자 행이 사라지고, AUTO_INCREMENT 로 다시 매겨진 BENEFIT_ID
+  때문에 남은 편집 이력이 **엉뚱한 행**을 가리켜 그 행에 재직자 배지가 붙는다. 편집 이력은
+  append-only 라 지워지지 않으므로 운영에서는 이 거부가 사실상 상시다 — 시드 변경은 멱등 재적용으로.
+  폐기 허용(`main(discard_member_edits=True)`, CLI 는 명령줄 환경의 `LOUPIT_DISCARD_MEMBER_EDITS=1` —
+  server/.env 에 적어도 무시한다)은 **일회용 격리 DB(테스트) 전용**이다. 허용하면 편집 이력도 함께
+  비운다(엉뚱한 행을 가리키지 않게). 이 신호(환경변수 이름·`discard_member_edits=True`)는 이 파일과
+  server/tests 밖 어디에도 두지 않는다 — 운영 문서·스크립트 포함(test_seed_member_rows.py SK-7 이
+  추적 파일 전체를 검사한다).
 
 접속 정보는 server/.env(dotenv)에서만 읽는다 — 비밀번호를 화면/로그/코드에
 하드코딩하지 않는다(os.environ 경유).
@@ -36,6 +75,24 @@ TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
 if str(SEED_DIR) not in sys.path:
     sys.path.insert(0, str(SEED_DIR))
+
+from backfill_dec2 import MEMBER_BADGE_CD  # noqa: E402  # SP-SEED-12 재직자 행 표지('verified')
+
+# 서빙(운영·베타) 스키마명 — `server/tests/schema_guard.SERVING_SCHEMAS` 와 같은 값이어야 한다(SK-13 이 대조).
+# 재직자 데이터 폐기 허용은 일회용 격리 DB 전용이라, 이 이름이면 호출자가 무엇을 넘겼든 받지 않는다(심층 방어).
+SERVING_SCHEMAS = frozenset({"LOUPIT", "loupit"})
+
+# SP-SEED-12: 적재 트랜잭션 수명의 세션 임시 테이블(재직자 행 스냅숏). 임시 테이블 CREATE/DROP 은
+# 암묵 커밋을 일으키지 않아 복지 SQL·백필과 한 트랜잭션에 묶인다.
+_MEMBER_SNAPSHOT = "TMP_MEMBER_BENEFIT"
+
+
+class FreshRefusedError(RuntimeError):
+    """`--fresh` 거부 — 재직자 데이터가 있고 폐기 허용이 없다(아무것도 지우기 전에 멈춘다)."""
+
+
+class MemberRowGuardError(RuntimeError):
+    """재직자 행 보존 실패 또는 적재 중 재직자 편집 커밋 — 적재를 되돌렸다(커밋 안 함)."""
 
 
 def _split_sql_statements(sql_text: str) -> list[str]:
@@ -107,6 +164,199 @@ def _truncate_compare_log(cur) -> None:
     cur.execute("TRUNCATE TABLE TCOMPARE_LOG")
 
 
+# ── SP-SEED-12 재직자 행 보존 (모듈 머리말 ①~⑥) ────────────────────────────────────
+
+def _member_data_counts(cur) -> tuple[int, int]:
+    """(편집 이력 행 수, 재직자 행 수). DROP 전에 부르므로 표 존재부터 본다 — 최초 적재면 (0, 0)."""
+    cur.execute(
+        "SELECT TABLE_NAME FROM information_schema.TABLES "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('TBENEFIT_EDIT_LOG', 'TCOMPANY_BENEFIT')"
+    )
+    present = {r[0] for r in cur.fetchall()}
+    n_log = n_member = 0
+    if "TBENEFIT_EDIT_LOG" in present:
+        cur.execute("SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG")
+        n_log = cur.fetchone()[0]
+    if "TCOMPANY_BENEFIT" in present:
+        cur.execute("SELECT COUNT(*) FROM TCOMPANY_BENEFIT WHERE BADGE_CD = %s", (MEMBER_BADGE_CD,))
+        n_member = cur.fetchone()[0]
+    return int(n_log), int(n_member)
+
+
+def _refuse_fresh_over_member_data(cur, discard_member_edits: bool) -> None:
+    """--fresh 가드 — 재직자 데이터가 있고 폐기 허용이 없으면 **DROP 전에** 멈춘다(아무것도 안 지운다).
+
+    편집 이력만 있어도 거부한다: 2026-09-24 운영이 바로 그 상태다(재직자 행은 웨이브 4 적재로 되돌아갔고
+    이력 2건만 남았다). 그 상태로 --fresh 가 돌면 다시 매겨진 BENEFIT_ID 에 이력이 붙어 엉뚱한 행이
+    「공식·재직자 수정」으로 뜬다."""
+    if discard_member_edits:
+        # 폐기 허용의 방벽이 호출자(conftest C-1) 한 겹뿐이면, 서빙을 겨눈 테스트 실행 한 번에 편집 이력까지
+        # 지워진다. 접속한 스키마 이름으로 한 겹 더 막는다 — 재직자 데이터 유무와 무관하게 먼저 본다.
+        cur.execute("SELECT DATABASE()")
+        current_db = (cur.fetchone() or (None,))[0] or ""
+        if current_db in SERVING_SCHEMAS:
+            raise FreshRefusedError(
+                f"재직자 데이터 폐기 허용은 일회용 격리 DB(테스트) 전용이다 — 서빙 스키마 [{current_db}] 에서는 "
+                "받지 않는다.\n"
+                "      서빙에 시드 변경을 반영하려면 --fresh 없이 `python3 db/seed/load.py` 를 쓰라(SP-SEED-12)."
+            )
+    n_log, n_member = _member_data_counts(cur)
+    if (n_log or n_member) and not discard_member_edits:
+        raise FreshRefusedError(
+            f"--fresh 는 대상 [{_target_desc()}] 의 재직자 데이터(편집 이력 {n_log}건 · 재직자 행 "
+            f"{n_member}건)를 파괴한다.\n"
+            "      TCOMPANY_BENEFIT 을 DROP 하면 재직자가 등록·수정한 행이 사라지고, AUTO_INCREMENT 로 다시\n"
+            "      매겨진 BENEFIT_ID 때문에 남은 편집 이력이 엉뚱한 행을 가리켜 그 행에 재직자 배지가 붙는다.\n"
+            "      시드 변경은 --fresh 없이 `python3 db/seed/load.py` 로 반영하라"
+            "(멱등 재적용 — 재직자 행은 그대로 둔다, SP-SEED-12)."
+        )
+
+
+def _clear_edit_log(cur) -> None:
+    """--fresh 전용 — 폐기를 허용한 편집 이력을 비운다. DROP 뒤 BENEFIT_ID·COMP_ID 가 다시 매겨지므로
+    남은 이력은 엉뚱한 행에 재직자 배지를 붙이고 공개 편집 이력을 다른 회사 밑에 보인다(#15 TCOMPARE_LOG
+    와 같은 뿌리). 폐기 허용이 없으면 _refuse_fresh_over_member_data 가 이미 멈췄으므로 여기 올 때 이력은
+    비어 있거나 폐기가 허용된 것이다. TRUNCATE 가 아니라 DELETE — 이 표를 가리키는 FK 가 생겨도 깨지지 않게."""
+    cur.execute("DELETE FROM TBENEFIT_EDIT_LOG")
+
+
+def _benefit_columns(cur) -> list[str]:
+    """TCOMPANY_BENEFIT 의 되돌릴 컬럼 — 조인 키(BENEFIT_ID)와 생성 컬럼을 뺀 **전부**.
+
+    information_schema 에서 읽는다: 컬럼이 늘면 보존 대상도 저절로 는다. 하드코딩 목록은 새 컬럼을
+    조용히 흘린다(Pydantic·화이트리스트 정규화가 필드를 떨군 것과 같은 모양)."""
+    cur.execute(
+        "SELECT COLUMN_NAME FROM information_schema.COLUMNS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'TCOMPANY_BENEFIT' "
+        "  AND COLUMN_NAME <> 'BENEFIT_ID' "
+        "  AND (GENERATION_EXPRESSION IS NULL OR GENERATION_EXPRESSION = '') "
+        "ORDER BY ORDINAL_POSITION"
+    )
+    cols = [r[0] for r in cur.fetchall()]
+    if "BADGE_CD" not in cols or "MOD_DTM" not in cols:
+        raise MemberRowGuardError(f"TCOMPANY_BENEFIT 컬럼 목록을 읽지 못했다: {cols}")
+    return cols
+
+
+def _committed_edit_log_mark() -> tuple[int, int]:
+    """①·⑥ 커밋된 편집 이력의 (행 수, 최대 EDIT_LOG_ID) — 적재 트랜잭션 **밖** 새 커넥션으로 읽는다.
+
+    이력은 append-only 라 새 편집이 커밋되면 행 수가 는다(AUTO_INCREMENT 는 커밋 순서가 아니라 할당
+    순서라 최대 ID 만 보면 늦게 커밋된 작은 ID 를 놓친다). 새 커넥션의 첫 읽기는 격리 수준과 무관하게
+    최신 커밋을 보고(적재 트랜잭션 안에서 읽으면 REPEATABLE READ 스냅숏에 갇힌다), 잠금을 잡지 않는다
+    (FOR SHARE 로 읽으면 이력에 쓰는 다른 트랜잭션과 서로 기다릴 수 있다)."""
+    conn = connect()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT COUNT(*), COALESCE(MAX(EDIT_LOG_ID), 0) FROM TBENEFIT_EDIT_LOG")
+            n, top = cur.fetchone()
+        return int(n), int(top)
+    finally:
+        conn.close()
+
+
+def _benefit_id_high_water(cur) -> int:
+    """⑦ 기준 — 적재 전 최대 BENEFIT_ID. 이번 적재가 새로 만드는 행은 이보다 큰 번호를 받는다."""
+    cur.execute("SELECT COALESCE(MAX(BENEFIT_ID), 0) FROM TCOMPANY_BENEFIT")
+    return int(cur.fetchone()[0])
+
+
+def _lock_member_rows(cur) -> int:
+    """② 앞 — 재직자 행과 편집 이력이 가리키는 행을 커밋 때까지 잠근다(`FOR UPDATE OF b`).
+
+    같은 행을 쓰려는 다른 쓰기(편집 서비스의 수정 · 복구 마이그레이션 · 수기 정정)는 적재가 커밋한 **뒤에**
+    돈다. 잠그지 않으면 — 운영은 READ COMMITTED 라 스냅숏 읽기가 아무것도 잠그지 않는다 — 스냅숏 뒤에
+    커밋된 되살리기(예: 20260924_restore_member_edits.sql)를 시드 업서트가 다시 덮어도 ⑤(스냅숏에 없던
+    행)·⑥(이력을 남기지 않는 쓰기) 둘 다 모른다. 이력이 가리키는 행까지 잠그는 이유가 그것이다 — 되돌아간
+    재직자 행은 verified 가 아니지만 이력이 가리킨다. 반환: 잠근 행 수."""
+    cur.execute(
+        "SELECT b.BENEFIT_ID FROM TCOMPANY_BENEFIT b "
+        "WHERE b.BADGE_CD = %s "
+        "   OR b.BENEFIT_ID IN (SELECT l.BENEFIT_ID FROM TBENEFIT_EDIT_LOG l WHERE l.BENEFIT_ID IS NOT NULL) "
+        "FOR UPDATE OF b",
+        (MEMBER_BADGE_CD,),
+    )
+    return len(cur.fetchall())
+
+
+def _snapshot_member_rows(cur, cols: list[str]) -> int:
+    """② 재직자 행 전 컬럼을 세션 임시 테이블에 뜬다(_lock_member_rows 가 먼저 잠근다). 반환: 재직자 행 수."""
+    col_sql = ", ".join(f"`{c}`" for c in ["BENEFIT_ID", *cols])
+    cur.execute(f"DROP TEMPORARY TABLE IF EXISTS {_MEMBER_SNAPSHOT}")
+    cur.execute(f"CREATE TEMPORARY TABLE {_MEMBER_SNAPSHOT} LIKE TCOMPANY_BENEFIT")
+    cur.execute(
+        f"INSERT INTO {_MEMBER_SNAPSHOT} ({col_sql}) "
+        f"SELECT {col_sql} FROM TCOMPANY_BENEFIT WHERE BADGE_CD = %s",
+        (MEMBER_BADGE_CD,),
+    )
+    return cur.rowcount
+
+
+def _restore_member_rows(cur, cols: list[str]) -> int:
+    """③ 복지 SQL 이 덮은 재직자 행을 스냅숏 값으로 되돌린다. 반환: 실제로 되돌린(= 시드가 덮었던) 행 수.
+
+    MOD_DTM 도 명시 대입한다 — `ON UPDATE CURRENT_TIMESTAMP` 는 명시 대입된 컬럼에는 끼지 않는다."""
+    sets = ", ".join(f"b.`{c}` = m.`{c}`" for c in cols)
+    cur.execute(
+        f"UPDATE TCOMPANY_BENEFIT b JOIN {_MEMBER_SNAPSHOT} m ON m.BENEFIT_ID = b.BENEFIT_ID SET {sets}"
+    )
+    return cur.rowcount
+
+
+def _assert_member_rows_intact(cur, cols: list[str]) -> None:
+    """⑤ 커밋 직전 대조 — 스냅숏의 재직자 행이 전 컬럼 그대로 남아 있어야 한다.
+
+    NULL-안전(`<=>`)이면서 **이진** 비교다: 컬럼 콜레이션(utf8mb4_0900_ai_ci)으로 비교하면 'Fitness' 와
+    'fitness', 'é' 와 'e' 가 같다고 나와 대소문자·악센트만 바꾼 쓰기가 이 대조를 통과한다."""
+    same = " AND ".join(f"CAST(b.`{c}` AS BINARY) <=> CAST(m.`{c}` AS BINARY)" for c in cols)
+    cur.execute(
+        f"SELECT m.BENEFIT_ID FROM {_MEMBER_SNAPSHOT} m "
+        f"LEFT JOIN TCOMPANY_BENEFIT b ON b.BENEFIT_ID = m.BENEFIT_ID "
+        f"WHERE b.BENEFIT_ID IS NULL OR NOT ({same}) ORDER BY m.BENEFIT_ID"
+    )
+    broken = [r[0] for r in cur.fetchall()]
+    if broken:
+        raise MemberRowGuardError(
+            f"재직자 행 보존 실패 — BENEFIT_ID {broken} 가 적재 전과 다르다(사라졌거나 값이 바뀌었다). "
+            "적재를 되돌렸다(커밋 안 함). 어느 단계가 재직자 행을 썼는지 찾아 고쳐라(SP-SEED-12)."
+        )
+
+
+def _assert_no_member_edit_during_load(mark: tuple[int, int]) -> None:
+    """⑥ 적재 도중 다른 커넥션에서 재직자 편집이 커밋됐으면 되돌린다 — 스냅숏 뒤에 처음 재직자 행이 된 행은
+    보존 대상에 없어 시드가 덮었을 수 있다. 드문 경합이라 다시 실행하면 된다.
+
+    이 확인 뒤에 커밋되는 편집은 안전하다: 적재가 쓴 행은 커밋 때까지 잠겨 있어 그런 편집은 적재 커밋
+    뒤에야 돌고, 적재가 쓰지 않은 행은 적재가 덮지 않는다."""
+    now = _committed_edit_log_mark()
+    if now != mark:
+        raise MemberRowGuardError(
+            f"적재 도중 재직자 편집이 커밋됐다(편집 이력 {mark[0]}건 → {now[0]}건). 그 편집을 시드가 덮었을 수 "
+            "있어 적재를 되돌렸다(커밋 안 함) — 다시 실행하라."
+        )
+
+
+def _assert_no_logged_id_reused(cur, id_high_water: int) -> None:
+    """⑦ 이번 적재가 새로 만든 행(BENEFIT_ID > 적재 전 최대)이 편집 이력에 이미 있는 번호를 받았으면 되돌린다.
+
+    정상이라면 이력의 BENEFIT_ID 는 살아 있는 행이거나 NULL(행 삭제 시 SET NULL)이라 새 번호와 겹칠 수
+    없다. 겹친다 = TCOMPANY_BENEFIT 이 적재 밖에서 DROP·재생성돼 AUTO_INCREMENT 가 되감긴 것이다. 그대로
+    커밋하면 남은 이력이 엉뚱한 복지를 가리켜 그 행에 재직자 배지가 붙는다(--fresh 거부와 같은 뿌리).
+    재직자 데이터가 들어 있는 백업 복원이 먼저다."""
+    cur.execute(
+        "SELECT l.EDIT_LOG_ID FROM TBENEFIT_EDIT_LOG l JOIN TCOMPANY_BENEFIT b ON b.BENEFIT_ID = l.BENEFIT_ID "
+        "WHERE b.BENEFIT_ID > %s ORDER BY l.EDIT_LOG_ID",
+        (id_high_water,),
+    )
+    hits = [r[0] for r in cur.fetchall()]
+    if hits:
+        raise MemberRowGuardError(
+            f"편집 이력 {hits} 가 이번 적재가 새로 만든 복지 번호를 가리킨다 — TCOMPANY_BENEFIT 이 적재 밖에서 "
+            "다시 만들어져 번호가 되감긴 것이다. 그대로면 엉뚱한 행에 재직자 배지가 붙어 적재를 되돌렸다"
+            "(커밋 안 함). 백업 복원(infra/deploy/restore.sh)이 먼저다."
+        )
+
+
 def _gather_counts(cur) -> dict:
     """시드 적재 결과 실카운트(하한 스모크 검증용) — 백필까지 끝난 커밋 직전 동일 트랜잭션에서 조회.
 
@@ -176,7 +426,8 @@ def verify_counts(stats: dict, counts: dict | None = None, fresh: bool = True) -
 
     amt = stats.get("amt_source") or {}
     assert {"stated", "estimated", "none"} <= set(amt), f"amt_source 키 누락: {sorted(amt)}"
-    # amt_source 는 전량 재계산이라 모드와 무관하게 총량이 나온다.
+    # amt_source 는 재직자 행을 뺀 전량 재계산이라(SP-SEED-12) 모드와 무관하게 총량이 나온다.
+    # 재직자 행은 한 줌이라 하한(1200)은 그대로 둔다 — 느슨하게 할 이유가 없다.
     assert sum(amt.values()) >= _MIN_BENEFITS, \
         f"amt_source 합계 부족: {sum(amt.values())} < {_MIN_BENEFITS}"
 
@@ -192,8 +443,12 @@ def verify_counts(stats: dict, counts: dict | None = None, fresh: bool = True) -
             f"기업유형 수 부족: {counts.get('types')} < {_MIN_TYPES}"
 
 
-def main(fresh: bool = False) -> dict:
-    """fresh=True: DROP+CREATE 후 전체 재시드. fresh=False: 멱등 재적용(기본)."""
+def main(fresh: bool = False, discard_member_edits: bool = False) -> dict:
+    """fresh=True: DROP+CREATE 후 전체 재시드. fresh=False: 멱등 재적용(기본 — 운영 재시드).
+
+    discard_member_edits: fresh 에서 재직자 데이터(편집 이력·재직자 행) 폐기를 허용한다 — **일회용 격리 DB
+    (테스트) 전용**. 거짓(기본)이면 재직자 데이터 앞에서 FreshRefusedError 로 멈춘다(SP-SEED-12).
+    멱등 재적용에는 영향이 없다 — 그 경로는 재직자 행을 원래 건드리지 않는다."""
     from backfill_dec2 import backfill
     from companies import apply_company_meta
     from company_meta import build_company_meta
@@ -204,25 +459,40 @@ def main(fresh: bool = False) -> dict:
         with conn.cursor() as cur:
             cur.execute("SET NAMES utf8mb4")
             if fresh:
+                _refuse_fresh_over_member_data(cur, discard_member_edits)  # SP-SEED-12: DROP 전에 거부
                 _drop_all_tables(cur)
             run_sql_file(cur, SCHEMA_SQL)  # 1: schema (idempotent CREATE TABLE IF NOT EXISTS)
             if fresh:
                 _truncate_compare_log(cur)  # #15: 스키마 보장 후 비움 — 옛 COMP_ID 오귀속 차단
+                _clear_edit_log(cur)  # SP-SEED-12: 다시 매겨질 BENEFIT_ID 를 가리킬 이력을 남기지 않는다
             run_sql_file(cur, COMPANY_TYPES_SQL)  # 2a: 기업유형 6종
             run_sql_file(cur, BENEFIT_PRESETS_SQL)  # 2b: 프리셋 28행(full-refresh)
-            for f in sorted(BENEFIT_SQL_DIR.glob("*.sql")):  # 3: 95개 복지 SQL(회사 자기등록 포함)
+            # ── SP-SEED-12: 여기부터 커밋까지 한 트랜잭션(DDL 없음 — 임시 테이블은 암묵 커밋 없음) ──
+            benefit_cols = _benefit_columns(cur)
+            edit_mark = _committed_edit_log_mark()  # ① 기준점 — 잠금·스냅숏보다 먼저 잰다
+            id_high_water = _benefit_id_high_water(cur)  # ⑦ 기준
+            _lock_member_rows(cur)  # ② 재직자 행·이력이 가리키는 행 잠금(커밋까지)
+            member_rows = _snapshot_member_rows(cur, benefit_cols)  # ② 재직자 행 전 컬럼 스냅숏
+            for f in sorted(BENEFIT_SQL_DIR.glob("*.sql")):  # 3: 복지 SQL(회사 자기등록 포함)
                 run_sql_file(cur, f)
+            member_restored = _restore_member_rows(cur, benefit_cols)  # ③ 업서트가 덮은 재직자 행 복원
             meta = build_company_meta()
             apply_company_meta(cur, meta)  # 4: 별칭·근무형태 보강
             run_sql_file(cur, COMPANY_EMAIL_DOMAIN_SQL)  # 4b: 회사↔이메일 도메인 화이트리스트(재직 인증, DG-5)
-            stats = backfill(cur)  # 5: DEC-2 백필(official 승격·amt_source·출처·만료)
+            stats = backfill(cur)  # 5: DEC-2 백필(official 승격·amt_source·출처·만료) — ④ 재직자 행 제외
             # 6: DART 법인 매핑(SP-FIN-2). 참조 5테이블 재생성 뒤 COMP_ID 가 바뀌므로 **여기(마지막)**서
             #    이름으로 다시 잇는다 — 안 하면 재시드 한 번에 실적 섹션이 에러 없이 사라진다(함정 (57)).
             #    TCORP·TCOMPANY_CORP 는 --fresh 의 DROP 대상이 아니라 upsert + CSV 밖 잔존 행 제거로 맞춘다.
             corp_stats = apply_corp_map(cur, read_corp_map())
             stats["corp_mapped"] = corp_stats["mapped"]
             stats["corp_unmatched"] = corp_stats["unmatched"]
+            _assert_member_rows_intact(cur, benefit_cols)  # ⑤ 전 컬럼 이진 대조 — 어긋나면 예외 → 롤백
+            _assert_no_member_edit_during_load(edit_mark)  # ⑥ 적재 중 재직자 편집 커밋 → 롤백
+            _assert_no_logged_id_reused(cur, id_high_water)  # ⑦ 새 행이 이력의 번호를 받았으면 → 롤백
+            stats["member_rows"] = member_rows  # 보존한 재직자 행 수
+            stats["member_restored"] = member_restored  # 그중 시드 업서트가 덮어 되돌린 행 수
             counts = _gather_counts(cur)  # 하한 스모크용 실카운트(커밋 직전, 동일 트랜잭션)
+            cur.execute(f"DROP TEMPORARY TABLE IF EXISTS {_MEMBER_SNAPSHOT}")
         conn.commit()
     except Exception:
         conn.rollback()
@@ -248,27 +518,37 @@ def _target_desc() -> str:
 if __name__ == "__main__":
     _argv = sys.argv[1:]
     fresh_flag = "--fresh" in _argv
+    # 파괴 허용 신호 두 개는 dotenv 를 읽기 **전에** 잡는다: 아래 _target_desc()·connect() 가 server/.env 를
+    # os.environ 에 싣는데, 누가 그 파일에 신호를 적어 두어도 가드가 조용히 풀리지 않게 명령줄 환경만 본다.
+    # SP-SEED-12: 재직자 데이터 폐기 허용 — 일회용 격리 DB 전용 신호(모듈 머리말). 운영에 쓰지 않는다.
+    discard_member_edits_flag = os.environ.get("LOUPIT_DISCARD_MEMBER_EDITS") == "1"
+    allow_fresh_flag = os.environ.get("LOUPIT_ALLOW_FRESH") == "1"
     if fresh_flag:
         # #14: --fresh 는 서빙 참조 5테이블 DROP + TCOMPARE_LOG TRUNCATE 로 데이터를 파괴한다.
         # 환경변수 LOUPIT_ALLOW_FRESH=1 또는 CLI --yes 없이는 거부한다(셸 히스토리 재실행·오타 방어).
         # run_tests.sh 등 복원 책임을 지는 래퍼는 LOUPIT_ALLOW_FRESH=1 을 전달해 통과한다.
         _target = _target_desc()
-        if os.environ.get("LOUPIT_ALLOW_FRESH") != "1" and "--yes" not in _argv:
+        if not allow_fresh_flag and "--yes" not in _argv:
             print(
                 f"거부: --fresh 는 대상 [{_target}] 의 참조 5테이블(TCOMPANY_TYPE·TCOMPANY·"
                 "TCOMPANY_ALIAS·TCOMPANY_BENEFIT·TBENEFIT_PRESET)을 DROP 하고 TCOMPARE_LOG 를 "
                 "TRUNCATE 한다.\n"
+                "      시드 변경 반영이라면 --fresh 가 아니라 `python3 db/seed/load.py`(멱등 재적용)다.\n"
                 "      의도한 실행이면 LOUPIT_ALLOW_FRESH=1 환경변수 또는 --yes 플래그를 붙여라.",
                 file=sys.stderr,
             )
             sys.exit(2)
         # (b) 파괴 작업 직전 대상 명시 — 어느 host/db 를 비우는지 로그에 남긴다.
         print(
-            f"[load --fresh] 대상 [{_target}] — 참조 5테이블 DROP/재시드 + TCOMPARE_LOG TRUNCATE 진행",
+            f"[load --fresh] 대상 [{_target}] — 재직자 데이터 확인 후 참조 5테이블 DROP/재시드 + "
+            "TCOMPARE_LOG TRUNCATE",
             file=sys.stderr,
         )
     try:
-        result_stats = main(fresh=fresh_flag)
+        result_stats = main(fresh=fresh_flag, discard_member_edits=discard_member_edits_flag)
+    except FreshRefusedError as exc:  # DROP 전에 멈췄다 — 위 LOUPIT_ALLOW_FRESH 거부와 같은 종료 코드
+        print(f"거부: {exc}", file=sys.stderr)
+        sys.exit(2)
     except Exception as exc:  # noqa: BLE001 — CLI 최종 경계, 비0 종료로 전파
         print(f"seed failed: {exc}", file=sys.stderr)
         sys.exit(1)
