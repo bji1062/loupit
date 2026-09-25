@@ -133,6 +133,12 @@ async def _edits(ids: dict, kim: int, lee: int) -> None:
         ids["edu"] = r["benefit"]["benefit_id"]
         await update(ids["cj_enm_com"], ids["edu"], lee, benefit_nm="자기계발비", benefit_amt=50,
                      qual_yn=False, note_ctnt="연 50만원(재직자 확인)")
+        # 정성 행을 금액 행으로 바꾼 뒤 금액만 다시 고친 행 — 마지막 이력은 금액→금액이지만 이력에 전환이
+        # 있으므로 시드의 정성 설명·공식 출처 URL 을 비워야 한다(전환 판정은 이력 전체, 사용자 결정 2026-09-25)
+        await update(ids["cj_enm_com"], ids["lang"], lee, benefit_nm="어학시험 응시료", benefit_amt=20,
+                     qual_yn=False, note_ctnt="연 2회 · 1회 10만원")
+        await update(ids["cj_enm_com"], ids["lang"], lee, benefit_nm="어학시험 응시료", benefit_amt=24,
+                     qual_yn=False, note_ctnt="연 2회 · 1회 12만원")
         # 되돌아가지 않은 재직자 행 — 시드 재실행 대상이 아닌 회사
         await update(ids["samsung_elec"], ids["samsung_fitness"], kim, benefit_nm="피트니스센터",
                      benefit_amt=36, qual_yn=False, note_ctnt="월 3만원 상당")
@@ -154,6 +160,7 @@ def reverted(seeded_db):
     ids.update(resort=_id(conn, "krafton", "resort"), fitness=_id(conn, "krafton", "fitness"),
                commute=_id(conn, "krafton", "commute_subsidy"),
                club=_id(conn, "krafton", "club"), telecom=_id(conn, "cj_enm_com", "telecom"),
+               lang=_id(conn, "cj_enm_com", "lang"),
                discount=_id(conn, "cj_enm_com", "discount"),
                samsung_fitness=_id(conn, "samsung_elec", "fitness"))
     with conn.cursor() as cur:  # 재직자 등록 자리 — 다음 웨이브 시드가 같은 코드를 들고 오는 상황
@@ -199,7 +206,9 @@ def reverted(seeded_db):
 
 def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행은_0행(reverted):
     ids, kim = reverted["ids"], reverted["kim"]
-    restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"], ids["edu"]}
+    restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"], ids["edu"], ids["lang"]}
+    # 정성 → 금액으로 바꾼 수정이 이력에 있고 마지막 상태가 금액 행 — 시드 설명·공식 출처 URL 을 비운다
+    qual_to_amt = {ids["telecom"], ids["lang"]}
     with _utc_conn() as uc:
         before = _all_rows(uc)
         # 재현 전제 — 운영 사고와 같은 모양: 시드 값·official·시드 출처인데 MOD_ID 는 재직자
@@ -207,6 +216,8 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
         assert (r["BADGE_CD"], r["BENEFIT_AMT"], r["NOTE_CTNT"], r["MOD_ID"]) == ("official", 50, "(추정)", kim)
         assert before[ids["samsung_fitness"]]["BADGE_CD"] == "verified", "전제: 되돌아가지 않은 재직자 행"
         assert before[ids["edu"]]["BADGE_SRC_URL_CTNT"], "전제: 시드 충돌이 공식 출처 URL 을 채웠다"
+        for bid in qual_to_amt:  # 전제: 시드에서 정성 행이고 설명·공식 출처 URL 이 있다(1400 운영 모양)
+            assert before[bid]["QUAL_YN"] == 1 and before[bid]["QUAL_DESC_CTNT"] and before[bid]["BADGE_SRC_URL_CTNT"], bid
         with uc.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute("SELECT l.BENEFIT_ID, l.EDIT_TYPE_CD, l.ACTOR_MBR_ID, l.AFTER_VAL, l.INS_DTM, "
                         "       l.INS_DTM + INTERVAL 18 MONTH AS EXP_DTM, t.HAS_CREATE "
@@ -217,7 +228,7 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
             last = {x["BENEFIT_ID"]: x for x in cur.fetchall()}
     assert last[ids["edu"]]["EDIT_TYPE_CD"] == "update" and last[ids["edu"]]["HAS_CREATE"] == 1, "전제"
 
-    assert _apply_migration() == 6, "1회차는 되돌아간 재직자 행 6개만 바꿔야 한다"
+    assert _apply_migration() == 7, "1회차는 되돌아간 재직자 행 7개만 바꿔야 한다"
 
     with _utc_conn() as uc:
         after = _all_rows(uc)
@@ -241,6 +252,11 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
             # 재직자가 만든 행 — 등록이 쓴 그대로: 카테고리 = AFTER_VAL, 설명·출처 URL 없음, 정렬 0
             assert (a["BENEFIT_CTGR_CD"], a["QUAL_DESC_CTNT"], a["BADGE_SRC_URL_CTNT"], a["SORT_ORDER_NO"]) == (
                 want["benefit_ctgr_cd"], None, None, 0), bid
+        elif bid in qual_to_amt:
+            # 정성 → 금액 전환 — 시드의 정성 설명(「금액 미기재」 류)과 공식 출처 URL 은 비우고 나머지는 그대로
+            assert (a["QUAL_DESC_CTNT"], a["BADGE_SRC_URL_CTNT"]) == (None, None), bid
+            for col in ("BENEFIT_CTGR_CD", "SORT_ORDER_NO"):
+                assert a[col] == b[col], f"{bid}.{col} 가 바뀌었다"
         else:
             # 시드에서 온 행 — 수정이 쓰지 않는 컬럼은 그대로
             for col in ("BENEFIT_CTGR_CD", "QUAL_DESC_CTNT", "BADGE_SRC_URL_CTNT", "SORT_ORDER_NO"):
@@ -255,10 +271,13 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
     assert (c["QUAL_YN"], c["BENEFIT_AMT"], c["NOTE_CTNT"], c["AMT_SOURCE_CD"]) == (1, None, None, "none")
     assert after[ids["ticket"]]["BENEFIT_CTGR_CD"] == "perks"
     assert after[ids["edu"]]["BENEFIT_CTGR_CD"] == "compensation"  # 등록 뒤 고쳐도 등록의 카테고리
-    # 되살린 모든 행이 편집 직후 상태 그대로 — 전 컬럼(시각은 서비스 UPDATE 와 이력 INSERT 사이 1초 안팎 허용)
+    # 되살린 모든 행이 편집 직후 상태 그대로 — 전 컬럼(시각은 서비스 UPDATE 와 이력 INSERT 사이 1초 안팎 허용).
+    # 정성 → 금액 전환 행의 설명·출처 URL 은 일부러 비웠으므로 이 비교에서 뺀다(위에서 NULL 을 확인했다).
     post = reverted["post_edit"]
     for bid in restored:
         for col, v in post[bid].items():
+            if bid in qual_to_amt and col in ("QUAL_DESC_CTNT", "BADGE_SRC_URL_CTNT"):
+                continue
             got = after[bid][col]
             if col in ("VERIFIED_DTM", "EXPIRES_DTM", "MOD_DTM") and v is not None and got is not None:
                 assert abs(got - v) <= timedelta(seconds=2), (bid, col)
