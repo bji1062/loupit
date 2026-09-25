@@ -2,7 +2,8 @@
 
 사고 상태를 **실제 경로로 재현**한 뒤 마이그레이션을 건다:
   ① 편집 서비스(`services.benefit_edit`)로 재직자 편집을 만든다 — 운영의 EDIT_LOG #1·#2 와 같은 값 +
-     두 번 고친 행 · 금액 행을 정성으로 바꾼 행(JSON null·true) · 충돌 등록 행 · 되돌아가지 않은 재직자 행.
+     두 번 고친 행 · 금액 행을 정성으로 바꾼 행(JSON null·true) · 충돌 등록 행 · 등록한 뒤 고친 충돌 행 ·
+     되돌아가지 않은 재직자 행.
   ② 그 회사들의 시드 SQL 을 다시 돌리고 백필한다 — 2026-09-20 웨이브 4 적재가 한 일과 같다(시드 SQL 의
      `ON DUPLICATE KEY UPDATE` 는 여전히 행을 가리지 않는다 — 막는 것은 load.py 이고, 여기선 일부러 우회한다).
   ③ 마이그레이션 2회: 1회차는 되돌아간 행만 AFTER_VAL 로 되살리고, 2회차는 아무것도 바꾸지 않는다.
@@ -123,6 +124,15 @@ async def _edits(ids: dict, kim: int, lee: int) -> None:
             benefit_amt=24, qual_yn=False, note_ctnt="연 24만원 상당"))
         assert r["result"] == "ok", r
         ids["ticket"] = r["benefit"]["benefit_id"]
+        # 등록한 뒤 고친 행 — 마지막 이력은 수정이지만 재직자가 만든 행이라 카테고리·설명·출처 URL·정렬은
+        # 등록이 쓴 그대로여야 한다(마지막 이력의 종류가 아니라 등록 이력의 유무로 갈린다)
+        r = await svc.create_benefit(ids["cj_enm_com"], lee, BenefitCreateIn(
+            benefit_cd="edu_support", benefit_nm="자기계발비", benefit_ctgr_cd="compensation",
+            benefit_amt=50, qual_yn=False, note_ctnt="연 50만원"))
+        assert r["result"] == "ok", r
+        ids["edu"] = r["benefit"]["benefit_id"]
+        await update(ids["cj_enm_com"], ids["edu"], lee, benefit_nm="자기계발비", benefit_amt=50,
+                     qual_yn=False, note_ctnt="연 50만원(재직자 확인)")
         # 되돌아가지 않은 재직자 행 — 시드 재실행 대상이 아닌 회사
         await update(ids["samsung_elec"], ids["samsung_fitness"], kim, benefit_nm="피트니스센터",
                      benefit_amt=36, qual_yn=False, note_ctnt="월 3만원 상당")
@@ -146,8 +156,9 @@ def reverted(seeded_db):
                club=_id(conn, "krafton", "club"), telecom=_id(conn, "cj_enm_com", "telecom"),
                discount=_id(conn, "cj_enm_com", "discount"),
                samsung_fitness=_id(conn, "samsung_elec", "fitness"))
-    with conn.cursor() as cur:
-        cur.execute("DELETE FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s", (_id(conn, "cj_enm_com", "leisure_ticket"),))
+    with conn.cursor() as cur:  # 재직자 등록 자리 — 다음 웨이브 시드가 같은 코드를 들고 오는 상황
+        cur.execute("DELETE FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID IN (%s, %s)",
+                    (_id(conn, "cj_enm_com", "leisure_ticket"), _id(conn, "cj_enm_com", "edu_support")))
     try:
         asyncio.run(_edits(ids, kim, lee))
         with _utc_conn() as uc:
@@ -188,22 +199,25 @@ def reverted(seeded_db):
 
 def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행은_0행(reverted):
     ids, kim = reverted["ids"], reverted["kim"]
-    restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"]}
+    restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"], ids["edu"]}
     with _utc_conn() as uc:
         before = _all_rows(uc)
         # 재현 전제 — 운영 사고와 같은 모양: 시드 값·official·시드 출처인데 MOD_ID 는 재직자
         r = before[ids["resort"]]
         assert (r["BADGE_CD"], r["BENEFIT_AMT"], r["NOTE_CTNT"], r["MOD_ID"]) == ("official", 50, "(추정)", kim)
         assert before[ids["samsung_fitness"]]["BADGE_CD"] == "verified", "전제: 되돌아가지 않은 재직자 행"
+        assert before[ids["edu"]]["BADGE_SRC_URL_CTNT"], "전제: 시드 충돌이 공식 출처 URL 을 채웠다"
         with uc.cursor(pymysql.cursors.DictCursor) as cur:
             cur.execute("SELECT l.BENEFIT_ID, l.EDIT_TYPE_CD, l.ACTOR_MBR_ID, l.AFTER_VAL, l.INS_DTM, "
-                        "       l.INS_DTM + INTERVAL 18 MONTH AS EXP_DTM "
+                        "       l.INS_DTM + INTERVAL 18 MONTH AS EXP_DTM, t.HAS_CREATE "
                         "  FROM TBENEFIT_EDIT_LOG l "
-                        "  JOIN (SELECT BENEFIT_ID, MAX(EDIT_LOG_ID) AS LAST_ID FROM TBENEFIT_EDIT_LOG "
+                        "  JOIN (SELECT BENEFIT_ID, MAX(EDIT_LOG_ID) AS LAST_ID, "
+                        "               MAX(EDIT_TYPE_CD = 'create') AS HAS_CREATE FROM TBENEFIT_EDIT_LOG "
                         "         WHERE BENEFIT_ID IS NOT NULL GROUP BY BENEFIT_ID) t ON t.LAST_ID = l.EDIT_LOG_ID")
             last = {x["BENEFIT_ID"]: x for x in cur.fetchall()}
+    assert last[ids["edu"]]["EDIT_TYPE_CD"] == "update" and last[ids["edu"]]["HAS_CREATE"] == 1, "전제"
 
-    assert _apply_migration() == 5, "1회차는 되돌아간 재직자 행 5개만 바꿔야 한다"
+    assert _apply_migration() == 6, "1회차는 되돌아간 재직자 행 6개만 바꿔야 한다"
 
     with _utc_conn() as uc:
         after = _all_rows(uc)
@@ -220,13 +234,18 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
         assert a["AMT_SOURCE_CD"] == want["amt_source"]
         assert (a["BADGE_CD"], a["BADGE_SRC_CD"]) == ("verified", "user_report")
         assert a["VERIFIED_DTM"] == log["INS_DTM"] and a["EXPIRES_DTM"] == log["EXP_DTM"]
-        assert a["MOD_ID"] == log["ACTOR_MBR_ID"] and a["MOD_DTM"] == log["INS_DTM"]
-        # 등록 이력이 있는 행만 카테고리를 되살린다(수정은 카테고리를 쓰지 않는다)
-        want_ctgr = want["benefit_ctgr_cd"] if log["EDIT_TYPE_CD"] == "create" else b["BENEFIT_CTGR_CD"]
-        assert a["BENEFIT_CTGR_CD"] == want_ctgr
-        # 편집이 쓰지 않는 컬럼은 그대로
-        for col in ("COMP_ID", "BENEFIT_CD", "QUAL_DESC_CTNT", "SORT_ORDER_NO", "BADGE_SRC_URL_CTNT",
-                    "INS_ID", "INS_DTM"):
+        # MOD — 마지막 이력이 등록이면 비운다(등록은 MOD 를 쓰지 않는다), 아니면 그 이력의 편집자·시각
+        latest_create = log["EDIT_TYPE_CD"] == "create"
+        assert (a["MOD_ID"], a["MOD_DTM"]) == ((None, None) if latest_create else (log["ACTOR_MBR_ID"], log["INS_DTM"]))
+        if log["HAS_CREATE"]:
+            # 재직자가 만든 행 — 등록이 쓴 그대로: 카테고리 = AFTER_VAL, 설명·출처 URL 없음, 정렬 0
+            assert (a["BENEFIT_CTGR_CD"], a["QUAL_DESC_CTNT"], a["BADGE_SRC_URL_CTNT"], a["SORT_ORDER_NO"]) == (
+                want["benefit_ctgr_cd"], None, None, 0), bid
+        else:
+            # 시드에서 온 행 — 수정이 쓰지 않는 컬럼은 그대로
+            for col in ("BENEFIT_CTGR_CD", "QUAL_DESC_CTNT", "BADGE_SRC_URL_CTNT", "SORT_ORDER_NO"):
+                assert a[col] == b[col], f"{bid}.{col} 가 바뀌었다"
+        for col in ("COMP_ID", "BENEFIT_CD", "INS_ID", "INS_DTM"):
             assert a[col] == b[col], f"{bid}.{col} 가 바뀌었다"
 
     # 마지막 이력이 이긴다 — 두 번 고친 행은 두 번째 값
@@ -235,14 +254,16 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
     c = after[ids["commute"]]
     assert (c["QUAL_YN"], c["BENEFIT_AMT"], c["NOTE_CTNT"], c["AMT_SOURCE_CD"]) == (1, None, None, "none")
     assert after[ids["ticket"]]["BENEFIT_CTGR_CD"] == "perks"
-    # 사고 2행은 편집 직후 상태로 돌아왔다(시각은 서비스 UPDATE 와 이력 INSERT 사이 1초 안팎 허용)
+    assert after[ids["edu"]]["BENEFIT_CTGR_CD"] == "compensation"  # 등록 뒤 고쳐도 등록의 카테고리
+    # 되살린 모든 행이 편집 직후 상태 그대로 — 전 컬럼(시각은 서비스 UPDATE 와 이력 INSERT 사이 1초 안팎 허용)
     post = reverted["post_edit"]
-    for bid in (ids["resort"], ids["telecom"]):
-        for col in ("BENEFIT_NM", "BENEFIT_AMT", "QUAL_YN", "NOTE_CTNT", "AMT_SOURCE_CD", "BADGE_CD",
-                    "BADGE_SRC_CD", "BADGE_SRC_URL_CTNT", "QUAL_DESC_CTNT", "MOD_ID"):
-            assert after[bid][col] == post[bid][col], f"{bid}.{col}: {after[bid][col]!r} != 편집 직후 {post[bid][col]!r}"
-        for col in ("VERIFIED_DTM", "EXPIRES_DTM", "MOD_DTM"):
-            assert abs(after[bid][col] - post[bid][col]) <= timedelta(seconds=2), col
+    for bid in restored:
+        for col, v in post[bid].items():
+            got = after[bid][col]
+            if col in ("VERIFIED_DTM", "EXPIRES_DTM", "MOD_DTM") and v is not None and got is not None:
+                assert abs(got - v) <= timedelta(seconds=2), (bid, col)
+            else:
+                assert got == v, f"{bid}.{col}: {got!r} != 편집 직후 {v!r}"
 
     # 2회차 — 멱등: 0행, 어떤 행도 바뀌지 않는다
     assert _apply_migration() == 0, "2회차가 행을 바꿨다(멱등 아님)"

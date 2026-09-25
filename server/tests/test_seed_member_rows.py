@@ -1,4 +1,4 @@
-"""SP-SEED-12 재직자 행 보존 — 시드·백필은 재직자 행(`BADGE_CD='verified'`)을 쓰지 않는다 (SK-1~SK-9).
+"""SP-SEED-12 재직자 행 보존 — 시드·백필은 재직자 행(`BADGE_CD='verified'`)을 쓰지 않는다 (SK-1~SK-12).
 
 사고(2026-09-20 06:17:36 UTC, 웨이브 4 적재): 멱등 `python3 db/seed/load.py` 한 번에 운영의 재직자 수정
 2행(크래프톤 「휴양시설 지원」 BENEFIT_ID 971 · CJ ENM 커머스부문 「통신비 지원」 1400)이 시드 값으로
@@ -14,8 +14,11 @@
   - SK-3 재직자 행은 다른 회사 행의 앵커 강등 판정에 끼어들지 않는다 — 앵커 규칙 자체는 산다.
   - SK-4 적재 도중 다른 커넥션에서 재직자 편집이 커밋되면 적재 전체를 되돌린다.
   - SK-5·SK-6 `--fresh` 는 재직자 데이터가 있으면 거부한다(함수·CLI). 명시적 폐기 허용만 통과한다.
-  - SK-7 폐기 허용 신호는 운영 스크립트·CI·마이그레이션에 없다.
+  - SK-7 폐기 허용 신호는 load.py 와 테스트 코드 밖 어디에도 없다(추적 파일 전체).
   - SK-8·SK-9 재직자 표지는 편집 서비스와 같은 값이고, 보존 컬럼 목록은 스키마에서 읽는다(새 컬럼 자동 포함).
+  - SK-10 복구 마이그레이션이 적재와 겹쳐도 되살린 값이 남는다(② 잠금 — 이력을 남기지 않는 쓰기도 지킨다).
+  - SK-11 대조(⑤)는 이진 비교라 대소문자만 바꾼 쓰기도 잡는다.
+  - SK-12 표가 적재 밖에서 다시 만들어졌으면(번호 되감김) 멱등 재적재도 거부한다(⑦).
 
 ⚠ 재직자 데이터를 만드는 테스트는 끝나면 `main(fresh=True, discard_member_edits=True)` 로 정본 시드를
   다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2451 등)가 그 상태를 전제한다.
@@ -25,12 +28,16 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 import pymysql
 import pytest
+
+from server.tests.conftest import MIGRATIONS_DIR, _split_sql_statements
 
 ROOT = Path(__file__).resolve().parents[2]
 SEED_DIR = ROOT / "db" / "seed"
@@ -42,6 +49,7 @@ import load as seed_load  # noqa: E402  # db/seed/load.py
 
 CANON_BENEFITS = 2451  # SD-4 정본 복지 행 수(test_seed_counts)
 TAMPERED_NM = "SK 변조 대조군"
+RESTORE_MIGRATION = MIGRATIONS_DIR / "20260924_restore_member_edits.sql"
 
 
 # ── 헬퍼 ────────────────────────────────────────────────────────────────────
@@ -155,6 +163,51 @@ async def _service_edits(krafton, cj_com, resort, telecom, collide_cd, kim, lee)
     finally:
         await database.close_pool()
     return {"collide_id": collide_id, "only_id": only_id}
+
+
+async def _member_update(comp_id: int, benefit_id: int, mbr_id: int, **fields) -> None:
+    """편집 서비스로 재직자 수정 1건(풀은 이 코루틴 안에서 열고 닫는다)."""
+    from server import database
+    from server.models.benefit_edit import BenefitUpdateIn
+    from server.services import benefit_edit as svc
+
+    await database.init_pool()
+    try:
+        token = {b["benefit_id"]: b["base_dtm"] for b in await svc.fetch_company_benefits(comp_id)}[benefit_id]
+        r = await svc.update_benefit(comp_id, benefit_id, mbr_id, BenefitUpdateIn(base_dtm=token, **fields))
+        assert r["result"] == "ok", r
+    finally:
+        await database.close_pool()
+
+
+def _replay_wave(*engs: str) -> None:
+    """2026-09-20 웨이브 4 적재가 한 일을 그대로 — 그 회사들의 시드 SQL + 백필을 로더의 보존 장치 없이
+    돌린다(시드 SQL 의 업서트는 여전히 재직자 행을 가리지 않는다). 재직자 행이 시드 값·official 로 되돌아간다."""
+    files = [p for p in sorted(seed_load.BENEFIT_SQL_DIR.glob("*.sql"))
+             if any(f"VALUES ('{e}'," in p.read_text(encoding="utf-8") for e in engs)]
+    assert len(files) == len(engs), files
+    conn = seed_load.connect()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SET NAMES utf8mb4")
+            for f in files:
+                seed_load.run_sql_file(cur, f)
+            backfill_dec2.backfill(cur)
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _apply_restore_migration() -> None:
+    """복구 마이그레이션을 자체 커넥션으로 운영과 같은 순서로 실행한다."""
+    conn = seed_load.connect()
+    try:
+        with conn.cursor() as cur:
+            for stmt in _split_sql_statements(RESTORE_MIGRATION.read_text(encoding="utf-8")):
+                cur.execute(stmt)
+        conn.commit()
+    finally:
+        conn.close()
 
 
 # ── SK-1: 멱등 재적용은 재직자 행을 지키고, 시드는 그대로 적용한다 ─────────────────────
@@ -276,17 +329,30 @@ def test_SK3_재직자_행은_앵커_판정에_끼지_않고_앵커_규칙은_�
 # ── SK-4: 적재 도중 재직자 편집이 커밋되면 적재 전체를 되돌린다 ───────────────────────────
 
 def test_SK4_적재_도중_재직자_편집이_커밋되면_적재를_되돌린다(seeded_db, members, monkeypatch):
-    """스냅숏 뒤에 들어온 편집은 보존 대상에 없다 — 시드가 덮었을 수 있다. 그런 적재는 커밋하지 않는다."""
+    """스냅숏 뒤에 들어온 편집은 보존 대상에 없다 — 시드가 덮었을 수 있다. 그런 적재는 커밋하지 않는다.
+
+    적재 커넥션을 REPEATABLE READ 로 연다(CI 의 mysql:8.0 기본값). 운영 서버는 READ COMMITTED 라
+    적재 트랜잭션 안에서 읽어도 새 커밋이 보이지만, REPEATABLE READ 에서는 스냅숏에 갇혀 못 본다 —
+    ⑥ 이 적재 트랜잭션 밖에서 읽는다는 사실을 이 서버에서도 시험하려는 것이다."""
     kim = members["sk-kim"]
     krafton = _comp_id(seeded_db, "krafton")
     control = _benefit_id(seeded_db, krafton, "club")
     _tamper(seeded_db, control)
 
+    plain_connect = seed_load.connect
+
+    def rr_connect():
+        conn = plain_connect()
+        with conn.cursor() as cur:
+            cur.execute("SET SESSION TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+        return conn
+
+    monkeypatch.setattr(seed_load, "connect", rr_connect)
     original = backfill_dec2.backfill
 
     def racing_backfill(cur):
         stats = original(cur)
-        other = seed_load.connect()  # 적재 트랜잭션 밖 — 편집 서비스가 그 사이 커밋한 것과 같다
+        other = plain_connect()  # 적재 트랜잭션 밖 — 편집 서비스가 그 사이 커밋한 것과 같다
         try:
             _insert_edit_log(other, None, krafton, kim, after={"benefit_cd": "resort"})
             other.commit()
@@ -362,15 +428,30 @@ def test_SK6_CLI_fresh_거부는_종료코드_2이고_폐기_신호가_있어야
 
 # ── SK-7: 폐기 허용 신호는 운영 스크립트에 없다 ───────────────────────────────────────
 
-def test_SK7_폐기_허용_신호는_운영_스크립트_CI_마이그레이션에_없다():
-    """🚨 신호를 스크립트에 새기는 순간 `--fresh` 거부가 무력해진다 — 호출자가 계약을 지운다(함정 0075 와 같은 모양).
-    폐기 허용은 격리 테스트 코드가 `main(discard_member_edits=True)` 로만 쓴다."""
-    hits = []
-    for base in ("infra", ".github", "db/migrations"):
-        for p in sorted((ROOT / base).rglob("*")):
-            if p.is_file() and "LOUPIT_DISCARD_MEMBER_EDITS" in p.read_text(encoding="utf-8", errors="ignore"):
-                hits.append(str(p.relative_to(ROOT)))
-    assert not hits, f"재직자 데이터 폐기 신호가 운영 경로에 있다: {hits}"
+def test_SK7_폐기_허용_신호는_load_py_와_테스트_코드에만_있다():
+    """🚨 신호를 스크립트·문서에 새기는 순간 `--fresh` 거부가 무력해진다 — 호출자가 계약을 지운다(함정 0075 와
+    같은 모양). 폐기 허용은 격리 테스트 코드가 `main(discard_member_edits=True)` 로만 쓴다.
+
+    추적 파일 **전체**를 본다(운영 스크립트·CI·마이그레이션·문서·서버 코드). 신호의 정의가 있는
+    db/seed/load.py 와 server/tests 만 예외다. 미추적 인계 문서(docs/handoff)는 커밋하지 않으므로 보지 않는다."""
+    try:
+        listed = subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError) as exc:
+        pytest.skip(f"git ls-files 불가: {exc}")
+    env_hits, arg_hits = [], []
+    for rel in filter(None, listed.decode("utf-8").split("\0")):
+        if rel == "db/seed/load.py" or rel.startswith("server/tests/"):
+            continue
+        path = ROOT / rel
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8", errors="ignore")
+        if "LOUPIT_DISCARD_MEMBER_EDITS" in text:
+            env_hits.append(rel)
+        if rel.endswith(".py") and re.search(r"discard_member_edits\s*=\s*True", text):
+            arg_hits.append(rel)
+    assert not env_hits, f"재직자 데이터 폐기 신호(환경변수)가 load.py·테스트 밖에 있다: {env_hits}"
+    assert not arg_hits, f"재직자 데이터 폐기 허용(discard_member_edits=True)이 테스트 밖 코드에 있다: {arg_hits}"
 
 
 # ── SK-8·SK-9: 표지·컬럼 목록 ─────────────────────────────────────────────────────
@@ -397,3 +478,95 @@ def test_SK9_보존_컬럼_목록은_스키마에서_읽어_새_컬럼도_덮는
     assert "SK_PROBE_VAL" in cols, "새 컬럼이 보존 목록에 없다 — 컬럼 목록을 하드코딩했다"
     assert "BENEFIT_ID" not in cols, "조인 키(PK)는 되돌릴 대상이 아니다"
     assert {"BADGE_CD", "AMT_SOURCE_CD", "VERIFIED_DTM", "EXPIRES_DTM", "MOD_ID", "MOD_DTM", "INS_DTM"} <= set(cols)
+
+
+# ── SK-10: 복구 마이그레이션이 적재와 겹쳐도 되살린 값이 남는다(② 잠금) ─────────────────────
+
+def test_SK10_복구_마이그레이션이_적재와_겹쳐도_되살린_값이_남는다(seeded_db, members, monkeypatch):
+    """스냅숏(②) 뒤·업서트 전에 복구 마이그레이션이 커밋되면, 되살린 행은 스냅숏에 없어 시드가 다시 덮는다 —
+    ⑤(스냅숏에 없던 행)·⑥(마이그레이션은 이력을 남기지 않는다) 둘 다 모른다. 적재가 ②에서 이력이 가리키는
+    행을 잠가, 마이그레이션이 적재 커밋 **뒤에** 돌게 해야 한다."""
+    kim = members["sk-kim"]
+    krafton = _comp_id(seeded_db, "krafton")
+    resort = _benefit_id(seeded_db, krafton, "resort")
+    asyncio.run(_member_update(krafton, resort, kim, benefit_nm="휴양시설 지원", benefit_amt=None,
+                               qual_yn=False, note_ctnt="2회"))
+    _replay_wave("krafton")  # 사고 재현 — 시드 값·official 로 돌아가고 이력만 남았다
+    assert _row(seeded_db, resort)["BADGE_CD"] == "official", "전제: 사고 상태"
+
+    race: dict = {}
+    original_run = seed_load.run_sql_file
+
+    def run_and_race(cur, path):
+        # 첫 복지 SQL 직전 = ② 뒤·크래프톤 업서트 전. 여기서 다른 커넥션이 복구 마이그레이션을 건다.
+        if "thread" not in race and Path(path).parent == seed_load.BENEFIT_SQL_DIR:
+            errors: list = []
+
+            def migrate():
+                try:
+                    _apply_restore_migration()
+                except Exception as exc:  # noqa: BLE001 — 스레드 예외를 본 테스트로 올린다
+                    errors.append(exc)
+
+            thread = threading.Thread(target=migrate, daemon=True)
+            thread.start()
+            thread.join(timeout=3.0)  # 적재가 그 행을 잠갔다면 3초 안에 끝날 수 없다
+            race.update(thread=thread, errors=errors, finished_during_load=not thread.is_alive())
+        return original_run(cur, path)
+
+    monkeypatch.setattr(seed_load, "run_sql_file", run_and_race)
+    seed_load.main(fresh=False)
+    race["thread"].join(timeout=120)
+    assert not race["errors"], race["errors"]
+    assert not race["finished_during_load"], "복구 마이그레이션이 적재 도중 커밋됐다 — ② 잠금이 없다"
+    row = _row(seeded_db, resort)
+    assert (row["BADGE_CD"], row["BENEFIT_AMT"], row["NOTE_CTNT"]) == ("verified", None, "2회"), (
+        "되살린 값을 적재가 다시 덮었다")
+
+
+# ── SK-11: 대조(⑤)는 이진 비교 ─────────────────────────────────────────────────────
+
+def test_SK11_대조는_이진_비교라_대소문자만_바꾼_쓰기도_잡는다(seeded_db, members, monkeypatch):
+    """컬럼 콜레이션(utf8mb4_0900_ai_ci)으로 비교하면 'resort pass' 와 'RESORT PASS' 가 같다 — 앞으로 생길
+    어떤 단계가 재직자 행을 대소문자만 바꿔 써도 ⑤ 가 통과시킨다."""
+    kim = members["sk-kim"]
+    krafton = _comp_id(seeded_db, "krafton")
+    resort = _benefit_id(seeded_db, krafton, "resort")
+    asyncio.run(_member_update(krafton, resort, kim, benefit_nm="휴양시설 지원", benefit_amt=None,
+                               qual_yn=False, note_ctnt="resort pass 2x"))
+    original = backfill_dec2.backfill
+
+    def sneaky_backfill(cur):
+        stats = original(cur)
+        # MOD_DTM 을 명시 대입해 ON UPDATE 자동 갱신을 막는다 — 대소문자 변화만 남긴다.
+        cur.execute("UPDATE TCOMPANY_BENEFIT SET NOTE_CTNT = UPPER(NOTE_CTNT), MOD_DTM = MOD_DTM "
+                    "WHERE BENEFIT_ID=%s", (resort,))
+        return stats
+
+    monkeypatch.setattr(backfill_dec2, "backfill", sneaky_backfill)
+    with pytest.raises(seed_load.MemberRowGuardError, match="보존 실패"):
+        seed_load.main(fresh=False)
+    assert _row(seeded_db, resort)["NOTE_CTNT"] == "resort pass 2x", "되돌렸어야 할 적재가 커밋됐다"
+
+
+# ── SK-12: 표가 적재 밖에서 다시 만들어졌으면 거부(⑦) ─────────────────────────────────────
+
+def test_SK12_표가_적재_밖에서_다시_만들어졌으면_멱등_재적재도_거부한다(seeded_db, members):
+    """TCOMPANY_BENEFIT 이 적재 밖에서 DROP·재생성되면 AUTO_INCREMENT 가 되감긴다. 그 위에 멱등 재적재를
+    커밋하면 편집 이력에 남은 번호가 **다른 복지**에 붙어 그 행에 재직자 배지가 뜬다. 적재는 거부하고
+    (롤백 — 표는 비어 있는 채로 남는다) 백업 복원을 안내해야 한다."""
+    kim = members["sk-kim"]
+    krafton = _comp_id(seeded_db, "krafton")
+    resort = _benefit_id(seeded_db, krafton, "resort")
+    _insert_edit_log(seeded_db, resort, krafton, kim, after={"benefit_cd": "resort", "note_ctnt": "2회"})
+    with seeded_db.cursor() as cur:
+        cur.execute("SET FOREIGN_KEY_CHECKS=0")
+        try:
+            cur.execute("DROP TABLE TCOMPANY_BENEFIT")
+        finally:
+            cur.execute("SET FOREIGN_KEY_CHECKS=1")
+
+    with pytest.raises(seed_load.MemberRowGuardError, match="백업"):
+        seed_load.main(fresh=False)
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT") == 0, "거부했는데 재적재가 커밋됐다"
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG") == 1

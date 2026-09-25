@@ -19,18 +19,29 @@
 --     BENEFIT_NM · BENEFIT_AMT · QUAL_YN · NOTE_CTNT · AMT_SOURCE_CD = AFTER_VAL
 --       JSON null 은 SQL NULL 로, JSON true 와 false 는 1 과 0 으로 바꾼다
 --       (JSON_UNQUOTE 만 쓰면 JSON null 이 문자열 null 이 된다).
---     BENEFIT_CTGR_CD = AFTER_VAL — 등록(create) 이력이 있는 행만. 수정(update)은 카테고리를 쓰지 않는다.
 --     BADGE_CD = verified · BADGE_SRC_CD = user_report
 --     VERIFIED_DTM = 그 이력의 INS_DTM · EXPIRES_DTM = INS_DTM + 18개월 (편집 서비스와 같은 규칙)
---     MOD_ID = 그 이력의 ACTOR_MBR_ID · MOD_DTM = 그 이력의 INS_DTM (편집 직후 상태 그대로)
---   편집 서비스가 쓰지 않는 컬럼(QUAL_DESC_CTNT · SORT_ORDER_NO · BADGE_SRC_URL_CTNT)은 건드리지 않는다.
---   등록 이력도 MOD_ID · MOD_DTM 을 같은 방식으로 채운다 — 되살린 값을 마지막으로 쓴 사람과 시각이다.
+--     MOD_ID = 그 이력의 ACTOR_MBR_ID · MOD_DTM = 그 이력의 INS_DTM
+--   목표는 편집 직후 상태 그대로다. 그래서 행이 어떻게 생겼는지에 따라 나머지가 갈린다.
+--     수정(update) 이력만 있는 행(시드에서 온 행): 편집 서비스의 수정이 쓰지 않는 컬럼
+--       (BENEFIT_CTGR_CD · QUAL_DESC_CTNT · SORT_ORDER_NO · BADGE_SRC_URL_CTNT)은 건드리지 않는다.
+--     등록(create) 이력이 있는 행(재직자가 만든 행): 등록이 쓴 그대로 — BENEFIT_CTGR_CD = AFTER_VAL,
+--       QUAL_DESC_CTNT 와 BADGE_SRC_URL_CTNT 는 NULL, SORT_ORDER_NO 는 0. 시드 충돌이 채운 시드 설명과
+--       공식 출처 URL 을 재직자가 등록한 행에 남기지 않는다(회사 페이지가 그 URL 을 출처 링크로 보인다).
+--       마지막 이력이 등록이면 MOD_ID · MOD_DTM 도 NULL 이다(등록은 MOD 를 쓰지 않는다).
+--   운영에는 수정 이력 2건뿐이라 등록 갈래는 쓰이지 않는다(테스트가 두 갈래를 다 본다).
 --
 -- 가드:
 --   이력의 COMP_ID 와 AFTER_VAL 의 benefit_cd 가 지금 행과 같아야 한다 — 다시 매겨진 BENEFIT_ID 를
 --     가리키는 이력(--fresh 뒤의 모양)이 엉뚱한 행을 덮지 않게.
 --   BADGE_CD 가 verified 가 아닌 행만 — 되살린 행과 멀쩡한 재직자 행은 건드리지 않는다(멱등).
 --   세션 시간대 UTC — 편집 서비스는 VERIFIED_DTM 을 UTC_TIMESTAMP 로 쓴다.
+--   시드 적재(load.py)와 겹쳐도 된다 — 적재가 이력이 가리키는 행을 커밋 때까지 잠가 이 UPDATE 는
+--     적재 커밋 뒤에 돈다(SP-SEED-12 ②). 적재가 먼저 돌던 판본은 되살린 행을 다시 덮을 수 있었다.
+--   조인은 STRAIGHT_JOIN 으로 이력부터 읽는다 — TCOMPANY_BENEFIT 은 이력이 가리키는 행만 기본키로 연다.
+--     복지 표를 먼저 훑으면 지나간 행마다 잠금을 쥔 채 적재가 쥔 행을 기다려, 적재가 그 행들을 업서트할 때
+--     교착이 난다(실측 — 이 마이그레이션이 희생돼 롤백됐다). 이력이 가리키는 행은 적재가 이미 전부 잠갔으므로
+--     이 UPDATE 는 첫 행에서 기다릴 뿐 적재가 필요한 잠금을 쥐지 않는다.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB loupit_beta 에는 적용하지 않는다, 사용자 결정):
 --   MYSQL_PWD 로 넘겨 비밀번호를 프로세스 인자에 남기지 않는다.
@@ -58,14 +69,14 @@
 SET NAMES utf8mb4;
 SET time_zone = '+00:00';
 
-UPDATE TCOMPANY_BENEFIT b
-  JOIN (SELECT BENEFIT_ID,
+UPDATE (SELECT BENEFIT_ID,
                MAX(EDIT_LOG_ID)             AS LAST_LOG_ID,
                MAX(EDIT_TYPE_CD = 'create') AS HAS_CREATE
           FROM TBENEFIT_EDIT_LOG
          WHERE BENEFIT_ID IS NOT NULL
-         GROUP BY BENEFIT_ID) h ON h.BENEFIT_ID = b.BENEFIT_ID
-  JOIN TBENEFIT_EDIT_LOG l ON l.EDIT_LOG_ID = h.LAST_LOG_ID
+         GROUP BY BENEFIT_ID) h
+  STRAIGHT_JOIN TBENEFIT_EDIT_LOG l ON l.EDIT_LOG_ID = h.LAST_LOG_ID
+  STRAIGHT_JOIN TCOMPANY_BENEFIT b ON b.BENEFIT_ID = h.BENEFIT_ID
    SET b.BENEFIT_NM      = JSON_UNQUOTE(JSON_EXTRACT(l.AFTER_VAL, '$.benefit_nm')),
        b.BENEFIT_AMT     = CASE WHEN JSON_TYPE(JSON_EXTRACT(l.AFTER_VAL, '$.benefit_amt')) = 'NULL' THEN NULL
                                 ELSE CAST(JSON_EXTRACT(l.AFTER_VAL, '$.benefit_amt') AS SIGNED) END,
@@ -77,12 +88,15 @@ UPDATE TCOMPANY_BENEFIT b
        b.BENEFIT_CTGR_CD = IF(h.HAS_CREATE = 1,
                               JSON_UNQUOTE(JSON_EXTRACT(l.AFTER_VAL, '$.benefit_ctgr_cd')),
                               b.BENEFIT_CTGR_CD),
+       b.QUAL_DESC_CTNT  = IF(h.HAS_CREATE = 1, NULL, b.QUAL_DESC_CTNT),
+       b.SORT_ORDER_NO   = IF(h.HAS_CREATE = 1, 0, b.SORT_ORDER_NO),
+       b.BADGE_SRC_URL_CTNT = IF(h.HAS_CREATE = 1, NULL, b.BADGE_SRC_URL_CTNT),
        b.BADGE_CD        = 'verified',
        b.BADGE_SRC_CD    = 'user_report',
        b.VERIFIED_DTM    = l.INS_DTM,
        b.EXPIRES_DTM     = l.INS_DTM + INTERVAL 18 MONTH,
-       b.MOD_ID          = l.ACTOR_MBR_ID,
-       b.MOD_DTM         = l.INS_DTM
+       b.MOD_ID          = IF(l.EDIT_TYPE_CD = 'create', NULL, l.ACTOR_MBR_ID),
+       b.MOD_DTM         = IF(l.EDIT_TYPE_CD = 'create', NULL, l.INS_DTM)
  WHERE l.EDIT_TYPE_CD IN ('update', 'create')
    AND b.BADGE_CD <> 'verified'
    AND b.COMP_ID = l.COMP_ID
