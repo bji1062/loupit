@@ -39,7 +39,7 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속 3년마다 주는 휴가(카카오뱅크 같은 모양 선례): db/migrations/20260922_recode_benefit_rows.sql
   (@comp_id, 'long_service_leave', '안식 휴가(3년마다)', 67, 'time_off',
-   'est', '만 3년 근무마다 1개월 유급휴가와 휴가비 200만원 — 휴가비 연 환산', FALSE, NULL, 30),
+   'est', '만 3년 근무마다 1개월 유급휴가와 휴가비 200만원 — 휴가비를 연 67만원으로 환산한 값', FALSE, NULL, 30),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',

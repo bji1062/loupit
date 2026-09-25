@@ -7,7 +7,7 @@
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50·31 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 80·85 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
--- ⚠ 공식 출처 대조 금액 정정(2026-09-25): SORT 1 stock_grant 삭제(2019~2021 한정 종료 제도) · 85 holiday_gift 40→80 · 82 discount 금액 제거 · 80 work_tools 금액 제거(입사 시 1회 예산). db/migrations/20260925_official_amount_corrections.sql 동봉.
+-- ⚠ 공식 출처 대조 금액 정정(2026-09-25): SORT 1 stock_grant 금액 제거(2025 이사회 결의로 Stock Grant 는 있으나 대상·금액 미공개) · 85 holiday_gift 40→80 · 82 discount 금액 제거 · 80 work_tools 금액 제거(입사 시 1회 예산). db/migrations/20260925_official_amount_corrections.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('naver', 'NAVER',
@@ -26,6 +26,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ──
+  (@comp_id, 'stock_grant', '주식 지급(Stock Grant)', NULL, 'compensation',
+   'est', NULL, TRUE, '자사주로 주식을 지급하는 Stock Grant — 2025년 이사회 결의', 1),
   (@comp_id, 'profit_sharing', '주식 매입 리워드', 200, 'compensation',
    'est', '네이버 주식 매입 후 6개월 보유 시 매입금액 10%(연 200만원 한도) 지원', FALSE, NULL, 2),
   -- 2026-09-22 재코딩 long_service_leave(time_off, 32) → long_service_bonus(compensation, 86) — 휴가 없이 근속 선물만: db/migrations/20260922_recode_benefit_rows.sql
@@ -80,7 +82,7 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   -- 카테고리 통일(2026-09-21): perks → work_env
   (@comp_id, 'work_tools', '업무 장비 예산', NULL, 'work_env',
-   'est', NULL, TRUE, '입사 시 최대 360만원 장비 예산, 이후 매월 추가 예산 지원(직군별로 다름)', 80),
+   'est', NULL, TRUE, '입사 시 최대 360만원 장비 예산, 이후 매월 추가 예산 지원(직군별로 다름) · 허먼밀러 에어론 의자 기본 제공, 희망 시 스탠딩 데스크', 80),
   (@comp_id, 'discount', '네이버 서비스 이용권', NULL, 'perks',
    'est', NULL, TRUE, '네이버페이·플러스멤버십·웹툰·VIBE·MYBOX 등 네이버 서비스 이용권 패키지 지원', 82),
   (@comp_id, 'meal', '사내식당 점심/저녁 무료', 432, 'perks',
