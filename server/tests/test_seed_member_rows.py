@@ -19,6 +19,7 @@
   - SK-10 복구 마이그레이션이 적재와 겹쳐도 되살린 값이 남는다(② 잠금 — 이력을 남기지 않는 쓰기도 지킨다).
   - SK-11 대조(⑤)는 이진 비교라 대소문자만 바꾼 쓰기도 잡는다.
   - SK-12 표가 적재 밖에서 다시 만들어졌으면(번호 되감김) 멱등 재적재도 거부한다(⑦).
+  - SK-13 폐기 허용은 서빙 스키마 이름이면 무조건 거부한다(DROP 전에) — 서빙 이름 목록은 C-1 가드와 같다.
 
 ⚠ 재직자 데이터를 만드는 테스트는 끝나면 `main(fresh=True, discard_member_edits=True)` 로 정본 시드를
   다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2451 등)가 그 상태를 전제한다.
@@ -570,3 +571,29 @@ def test_SK12_표가_적재_밖에서_다시_만들어졌으면_멱등_재적재
         seed_load.main(fresh=False)
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT") == 0, "거부했는데 재적재가 커밋됐다"
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG") == 1
+
+
+# ── SK-13: 폐기 허용은 서빙 스키마에서 무조건 거부(심층 방어) ─────────────────────────────
+
+def test_SK13_폐기_허용은_서빙_스키마_이름이면_DROP_전에_거부한다(seeded_db, monkeypatch):
+    """폐기 허용의 방벽이 conftest C-1 한 겹뿐이면, 금지된 `LOUPIT_ALLOW_SERVING_SCHEMA=1 DB_NAME=LOUPIT pytest`
+    한 번에 서빙의 편집 이력까지 지워진다. 접속한 스키마 이름이 서빙이면 load.py 가 스스로 멈춰야 한다.
+    이 격리 DB 를 「서빙 이름」으로 취급하게 해 두고, 재직자 데이터가 없어도 DROP 전에 거부하는지 본다."""
+    from server.tests.schema_guard import SERVING_SCHEMAS as GUARD_SERVING_SCHEMAS
+
+    assert seed_load.SERVING_SCHEMAS == GUARD_SERVING_SCHEMAS, "load.py 와 C-1 가드의 서빙 스키마 목록이 갈라졌다"
+
+    krafton = _comp_id(seeded_db, "krafton")
+    control = _benefit_id(seeded_db, krafton, "club")
+    control_nm = _row(seeded_db, control)["BENEFIT_NM"]
+    _tamper(seeded_db, control)  # 거부됐다면 DROP·재적재가 없었으니 변조가 그대로 남는다
+    current_db = _scalar(seeded_db, "SELECT DATABASE()")
+    monkeypatch.setattr(seed_load, "SERVING_SCHEMAS", frozenset({current_db}))
+
+    with pytest.raises(seed_load.FreshRefusedError, match="서빙 스키마"):
+        seed_load.main(fresh=True, discard_member_edits=True)
+    assert _row(seeded_db, control)["BENEFIT_NM"] == TAMPERED_NM, "거부했는데 DROP·재적재가 일어났다"
+
+    monkeypatch.undo()  # 격리 DB 이름으로 되돌린 뒤 정본 시드를 다시 세운다(다른 파일의 정확 카운트가 전제)
+    seed_load.main(fresh=True, discard_member_edits=True)
+    assert _row_by_code(seeded_db, "krafton", "club")["BENEFIT_NM"] == control_nm

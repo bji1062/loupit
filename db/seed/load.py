@@ -1,7 +1,7 @@
 """SP-SEED-9 — 시드 오케스트레이터 (단일 엔트리포인트).
 
 실행 순서(SP-SEED-3, 멱등): schema → company_types+benefit_presets →
-95개 복지 SQL(회사 자기등록 포함) → company_meta 적용(별칭·근무형태) → DEC-2 백필 →
+복지 SQL 전부(db/seed/benefit/sql/*.sql, 회사 자기등록 포함) → company_meta 적용(별칭·근무형태) → DEC-2 백필 →
 DART 법인 매핑(load_corp, SP-FIN-2 — **마지막**이어야 한다: --fresh 가 TCOMPANY 를 재생성해
 COMP_ID 를 다시 배정한 뒤에 이름으로 다시 잇는다).
 
@@ -77,6 +77,10 @@ if str(SEED_DIR) not in sys.path:
     sys.path.insert(0, str(SEED_DIR))
 
 from backfill_dec2 import MEMBER_BADGE_CD  # noqa: E402  # SP-SEED-12 재직자 행 표지('verified')
+
+# 서빙(운영·베타) 스키마명 — `server/tests/schema_guard.SERVING_SCHEMAS` 와 같은 값이어야 한다(SK-13 이 대조).
+# 재직자 데이터 폐기 허용은 일회용 격리 DB 전용이라, 이 이름이면 호출자가 무엇을 넘겼든 받지 않는다(심층 방어).
+SERVING_SCHEMAS = frozenset({"LOUPIT", "loupit"})
 
 # SP-SEED-12: 적재 트랜잭션 수명의 세션 임시 테이블(재직자 행 스냅숏). 임시 테이블 CREATE/DROP 은
 # 암묵 커밋을 일으키지 않아 복지 SQL·백필과 한 트랜잭션에 묶인다.
@@ -185,6 +189,17 @@ def _refuse_fresh_over_member_data(cur, discard_member_edits: bool) -> None:
     편집 이력만 있어도 거부한다: 2026-09-24 운영이 바로 그 상태다(재직자 행은 웨이브 4 적재로 되돌아갔고
     이력 2건만 남았다). 그 상태로 --fresh 가 돌면 다시 매겨진 BENEFIT_ID 에 이력이 붙어 엉뚱한 행이
     「공식·재직자 수정」으로 뜬다."""
+    if discard_member_edits:
+        # 폐기 허용의 방벽이 호출자(conftest C-1) 한 겹뿐이면, 서빙을 겨눈 테스트 실행 한 번에 편집 이력까지
+        # 지워진다. 접속한 스키마 이름으로 한 겹 더 막는다 — 재직자 데이터 유무와 무관하게 먼저 본다.
+        cur.execute("SELECT DATABASE()")
+        current_db = (cur.fetchone() or (None,))[0] or ""
+        if current_db in SERVING_SCHEMAS:
+            raise FreshRefusedError(
+                f"재직자 데이터 폐기 허용은 일회용 격리 DB(테스트) 전용이다 — 서빙 스키마 [{current_db}] 에서는 "
+                "받지 않는다.\n"
+                "      서빙에 시드 변경을 반영하려면 --fresh 없이 `python3 db/seed/load.py` 를 쓰라(SP-SEED-12)."
+            )
     n_log, n_member = _member_data_counts(cur)
     if (n_log or n_member) and not discard_member_edits:
         raise FreshRefusedError(
