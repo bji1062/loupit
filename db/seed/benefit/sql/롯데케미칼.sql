@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 53 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- ⚠ 공식 출처 대조 금액 정정(2026-09-25): SORT 80 welfare_point 금액 제거(공식 금액 없음) · 이름 복지포인트. db/migrations/20260925_official_amount_corrections.sql 동봉.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -70,8 +71,8 @@ VALUES
    'est', NULL, TRUE, '사내동호회 활동 지원, 임직원 가족 문화체험활동', 71),
 
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'welfare_point', '복지포인트(엘포인트)', 130, 'perks',
-   'est', '엘포인트 130만원 지급, 롯데그룹 제휴카드(W카드)', FALSE, NULL, 80),
+  (@comp_id, 'welfare_point', '복지포인트', NULL, 'perks',
+   'est', NULL, TRUE, '복지포인트 지원, 임직원 롯데그룹 제휴카드(W카드)', 80),
   (@comp_id, 'housing_loan', '주택자금 융자', NULL, 'perks',
    'est', NULL, TRUE, '주택자금 융자 지원', 81)
 ON DUPLICATE KEY UPDATE

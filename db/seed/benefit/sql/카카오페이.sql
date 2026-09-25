@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 71·86·87 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 공식 출처 대조 금액 정정(2026-09-25): SORT 30 long_service_leave 200→67(3년 1회 휴가비의 연 환산). db/migrations/20260925_official_amount_corrections.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao_pay', '카카오페이',
@@ -37,8 +38,8 @@ VALUES
 
   -- ── 시간·휴가 (time_off) ──
   -- 2026-09-22 재코딩 refresh_leave → long_service_leave — 근속 3년마다 주는 휴가(카카오뱅크 같은 모양 선례): db/migrations/20260922_recode_benefit_rows.sql
-  (@comp_id, 'long_service_leave', '안식 휴가(3년마다)', 200, 'time_off',
-   'est', '근속 3년마다 30일 유급 휴가 + 휴가비 200만원', FALSE, NULL, 30),
+  (@comp_id, 'long_service_leave', '안식 휴가(3년마다)', 67, 'time_off',
+   'est', '만 3년 근무마다 1개월 유급휴가와 휴가비 200만원 — 휴가비를 연 67만원으로 환산한 값', FALSE, NULL, 30),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',
