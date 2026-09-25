@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- ⚠ 공식 출처 대조 금액 정정(2026-09-25): SORT 71 club 금액 제거(공식 근거 없음) · 82 telecom 금액 제거(공식 금액 없음). db/migrations/20260925_official_amount_corrections.sql 동봉.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -78,16 +79,16 @@ VALUES
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양시설', 50, 'leisure',
    'est', '쏠비치 양양, 소노펠리체 비발디파크 등 230개 시설 임직원 할인 (추정)', FALSE, NULL, 70),
-  (@comp_id, 'club', '소모임 지원', 24, 'leisure',
-   'est', '매달 1인 2만원 지원', FALSE, NULL, 71),
+  (@comp_id, 'club', '소모임 지원', NULL, 'leisure',
+   'est', NULL, TRUE, NULL, 71),
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '선택적 복리후생비', 400, 'perks',
    'est', '매년 400만 포인트(가족검진40만+귀성비20만 등), 학원/여행/공연 등 사용', FALSE, NULL, 80),
   -- meal 432 앵커 규칙(3식 이상 명시) 미충족 → 정성 강등 (2026-09-18, db/migrations/20260918_meal_anchor_to_qual.sql)
   (@comp_id, 'meal', '구내식당', NULL, 'perks',  'est', NULL, TRUE, 'The Table 한식/아시안/양식/샐러드', 81),
-  (@comp_id, 'telecom', '통신비 지원', 290, 'perks',
-   'est', '매달 24만2천원까지 지원 (연 290만)', FALSE, NULL, 82),
+  (@comp_id, 'telecom', '통신비 지원', NULL, 'perks',
+   'est', NULL, TRUE, '매달 구성원 명의 1회선의 통신 서비스 이용료와 단말기 할부금 지원', 82),
   (@comp_id, 'housing_loan', '사내 대출/주거지원', NULL, 'perks',
    'est', NULL, TRUE, '사내 대출 1억 한도, 주거 안정 자금 지원', 83),
   (@comp_id, 'snack_bar', '사내 카페/베이커리', 50, 'perks',

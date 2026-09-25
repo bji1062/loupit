@@ -7,6 +7,7 @@
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50·31 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 80·85 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 공식 출처 대조 금액 정정(2026-09-25): SORT 1 stock_grant 삭제(2019~2021 한정 종료 제도) · 85 holiday_gift 40→80 · 82 discount 금액 제거 · 80 work_tools 금액 제거(입사 시 1회 예산). db/migrations/20260925_official_amount_corrections.sql 동봉.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('naver', 'NAVER',
@@ -25,8 +26,6 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ──
-  (@comp_id, 'stock_grant', '전 직원 주식 부여', 1000, 'compensation',
-   'est', '전 직원 대상 연간 1,000만원 상당 주식 부여', FALSE, NULL, 1),
   (@comp_id, 'profit_sharing', '주식 매입 리워드', 200, 'compensation',
    'est', '네이버 주식 매입 후 6개월 보유 시 매입금액 10%(연 200만원 한도) 지원', FALSE, NULL, 2),
   -- 2026-09-22 재코딩 long_service_leave(time_off, 32) → long_service_bonus(compensation, 86) — 휴가 없이 근속 선물만: db/migrations/20260922_recode_benefit_rows.sql
@@ -80,17 +79,17 @@ VALUES
 
   -- ── 경제적 부가혜택 (perks) ──
   -- 카테고리 통일(2026-09-21): perks → work_env
-  (@comp_id, 'work_tools', '업무 장비 예산', 360, 'work_env',
-   'est', '2년에 최대 720만원(연 360만원 환산) 노트북/모니터/태블릿 자유 선택, 허먼밀러 에어론/스탠딩데스크', FALSE, NULL, 80),
-  (@comp_id, 'discount', '네이버 서비스 이용권', 100, 'perks',
-   'est', '연간 100만원 상당(네이버페이/플러스멤버십/웹툰/VIBE/클라우드 등)', FALSE, NULL, 82),
+  (@comp_id, 'work_tools', '업무 장비 예산', NULL, 'work_env',
+   'est', NULL, TRUE, '입사 시 최대 360만원 장비 예산, 이후 매월 추가 예산 지원(직군별로 다름)', 80),
+  (@comp_id, 'discount', '네이버 서비스 이용권', NULL, 'perks',
+   'est', NULL, TRUE, '네이버페이·플러스멤버십·웹툰·VIBE·MYBOX 등 네이버 서비스 이용권 패키지 지원', 82),
   (@comp_id, 'meal', '사내식당 점심/저녁 무료', 432, 'perks',
    'est', '점심/저녁 무료, 각 층 캔틴(조식/커피/간식 무료) (추정)', FALSE, NULL, 83),
   (@comp_id, 'housing_loan', '대출이자 지원', NULL, 'perks',
    'est', NULL, TRUE, '대출금액 1.5%를 10년간 지원(최대 2억원)', 84),
   -- 카테고리 통일(2026-09-21): perks → compensation
-  (@comp_id, 'holiday_gift', '명절 네이버페이', 40, 'compensation',
-   'est', '설/추석 총 40만원 네이버페이 포인트(또는 상품권)', FALSE, NULL, 85)
+  (@comp_id, 'holiday_gift', '명절 네이버페이', 80, 'compensation',
+   'est', '설·추석 총 80만원 상당 네이버페이 포인트', FALSE, NULL, 85)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
 
 
-# ── SD-4: 복지 총행 2451(2452 − 데이터 정리 2차 1행, 2026-09-21), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2450(2452 − 데이터 정리 2차 1행 − 금액 정정 1행, 2026-09-25), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -73,9 +73,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
           아니고(상담실 선례), welcome_kit 은 나머지 10사가 전부 입사 선물 물품에 쓰는 코드라
           뜻도 어긋났다(사용자 결정). 카테고리 통일 30행·문안 60행은 행 수 불변
           — db/migrations/20260921_data_cleanup_2.sql
+          − 공식 출처 대조 금액 정정 삭제 1행(2026-09-25) = 2450
+          NAVER stock_grant 「전 직원 주식 부여」 1,000만원 — 2025 통합보고서상 2019~2021 한정 스톡옵션으로
+          끝난 제도다(금액만 걷으면 지금 있는 복지로 계속 집계된다). 수정 7행은 행 수 불변
+          — db/migrations/20260925_official_amount_corrections.sql
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2451, f"복지 총행 불일치: {count} (기대 2451 = 2452 − 정리 2차 1)"
+    assert count == 2450, f"복지 총행 불일치: {count} (기대 2450 = 2452 − 정리 2차 1 − 금액 정정 1)"
     assert count >= 1200
 
 
