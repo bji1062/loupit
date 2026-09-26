@@ -19,7 +19,7 @@
 --     (c) 학위 파견형 1행은 웹 /recruit/talent 인재육성 Expert 항목이 원문이다.
 --   웹에만 있는 것: 출퇴근 버스·사내식당·하계휴양비·휴양시설·자녀 학자금 등.
 --   보고서에만 있는 것: 유연근무 3종·단체보험 4종·본인/배우자 종합건강검진·통신비·
---     복지기금 대출·입학축하금·퇴직자 재취업(만 50세 이상)·임신 축하 선물·수유실,
+--     복지기금 대출·입학축하금·임신 축하 선물·수유실(퇴직자 재취업 지원은 법정이라 2026-09-26 걷음),
 --     그리고 유일한 수치인 사택 1,109세대·동아리 약 50개.
 --
 --   ⚠ 금액 명시 0건 — 24행 전부 BENEFIT_AMT NULL 이다. 보고서에서 원 단위 금액이 나오는
@@ -50,6 +50,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 13·14·60·61·70·71·80·81·91 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 법정 재취업지원 문구 정리(2026-09-26): SORT 91 항목명·문안 교체(고령자고용법 제21조의3 — 1,000인 이상 의무). db/migrations/20260926_statutory_reemployment_support.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('poongsan', '풍산',
@@ -134,8 +135,8 @@ VALUES
   -- ── 성장·교육 (growth) ──
   (@comp_id, 'mba', 'MBA·석박사 과정 지원', NULL, 'growth',
    'est', NULL, TRUE, '미래 경영후보군 양성을 위한 국내·외 MBA 연수 지원과 핵심 기술분야 전문 인력 양성을 위한 석·박사 과정 지원 (공식 채용정보 인재육성 페이지 Expert 항목). 2025 지속가능경영보고서 67쪽에도 MBA 및 석·박사 학위 과정 지원 기재 — 선발 인원·지원 범위 미기재', 90),
-  (@comp_id, 'retirement_support', '퇴직자 재취업 지원', NULL, 'growth',
-   'est', NULL, TRUE, '퇴직 예정인 만 50세 이상 근로자 재취업 지원 서비스와 정년 앞둔 장기근속자 공로여행(유급휴가·여행 경비 지원) (2025 지속가능경영보고서 66쪽 복리후생 제도 표, 2025년 기준 · 공식 채용정보 복지제도 페이지 회사생활 항목 — 서비스 내용·기간·휴가 일수·여행 경비 한도 미기재)', 91)
+  (@comp_id, 'retirement_support', '정년 앞둔 장기근속자 공로여행', NULL, 'growth',
+   'est', NULL, TRUE, '정년 앞둔 장기근속자 공로여행(유급휴가·여행 경비 지원) (2025 지속가능경영보고서 66쪽 복리후생 제도 표, 2025년 기준 · 공식 채용정보 복지제도 페이지 회사생활 항목 — 휴가 일수·여행 경비 한도 미기재)', 91)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

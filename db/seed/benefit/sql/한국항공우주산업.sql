@@ -33,6 +33,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 51·60 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 법정 재취업지원 문구 정리(2026-09-26): SORT 70 문안 교체(창업·재취업·재무·귀농 걷음, 고령자고용법 제21조의3). db/migrations/20260926_statutory_reemployment_support.sql 동봉.
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kai', '한국항공우주산업',
@@ -122,7 +123,7 @@ VALUES
 
   -- ── 성장·커리어 (growth) — 원문 동기부여 + 인사제도 복리후생 ──
   (@comp_id, 'retirement_support', '정년퇴직자·퇴직예정자 지원', NULL, 'growth',
-   'est', NULL, TRUE, '정년퇴직자 지원 (복리후생제도 페이지 동기부여 항목, 정년퇴임 행사 사진 게재). 인사제도 페이지가 정년퇴직지원 및 퇴직예정자 지원 제도(창업, 재취업, 여행, 귀농, 재무 등)로 설명 — 지원 금액·기간 미기재', 70),
+   'est', NULL, TRUE, '정년퇴직자 지원 (복리후생제도 페이지 동기부여 항목, 정년퇴임 행사 사진 게재). 인사제도 페이지의 퇴직예정자 지원 제도 중 여행 지원 — 지원 금액·기간 미기재', 70),
   (@comp_id, 'mba', '학위취득 지원제도', NULL, 'growth',
    'est', NULL, TRUE, '국내 협약대학 석·박사학위 취득 지원 (채용사이트 학위취득 지원제도 항목) — 협약 대학명·학비 지원 비율·의무 근무 조건 미기재', 71),
 
