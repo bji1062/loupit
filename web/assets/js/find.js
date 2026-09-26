@@ -44,6 +44,8 @@ export const LABEL_OVERRIDE = {
   leisure_ticket: '여가·문화 이용권(티빙·CGV 이용권)',
   birthday_leave: '생일 휴가·조기퇴근',
   birthday_gift: '생일·기념일 선물',
+  // 2026-09-26: 6행 이름이 전부 달라 최단 이름(LIG 「정년 퇴임식·기념품」)이 6곳의 이름이 되던 것을 일반명으로.
+  retirement_support: '정년퇴직·퇴직 준비 지원',
 };
 
 export const MODES = ['and', 'or'];
