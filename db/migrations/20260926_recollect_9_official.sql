@@ -24,8 +24,11 @@
 --   한 트랜잭션이라 그때는 아무것도 바뀌지 않는다. 이미 적재했다면 (b) 대신 구 코드 행 10개를 지우면 결과가 같다.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
---   1) 백업
---      cd /home/ubuntu/loupit && set -a && . server/.env && set +a && MYSQL_PWD=$DB_PASSWORD /data/mysql/bin/mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER --no-tablespaces --single-transaction --default-character-set=utf8mb4 $DB_NAME TCOMPANY TCOMPANY_BENEFIT > /root/loupit-pre-recollect-9-$(date +%Y%m%d%H%M%S).sql
+--   0) 사전 확인 — 대상 35행(아래 DELETE · UPDATE 의 BENEFIT_ID)이 스냅숏 그대로인지 SELECT 로 본다
+--      (기대: 35행 · 전부 BADGE_CD official · 회사와 코드가 문장의 가드와 같다). 다르면 멈춘다.
+--      리드가 적용 직전에 조회 전용으로 돌려 결과를 전한다.
+--   1) 백업 — 적재(load.py)가 참조 테이블을 모두 다시 쓰므로 9테이블을 뜬다
+--      cd /home/ubuntu/loupit && set -a && . server/.env && set +a && MYSQL_PWD=$DB_PASSWORD /data/mysql/bin/mysqldump -h $DB_HOST -P $DB_PORT -u $DB_USER --no-tablespaces --single-transaction --default-character-set=utf8mb4 $DB_NAME TCOMPANY_TYPE TCOMPANY TCOMPANY_ALIAS TCOMPANY_BENEFIT TBENEFIT_PRESET TBENEFIT_EDIT_LOG TCOMPANY_EMAIL_DOMAIN TCORP TCOMPANY_CORP > /root/loupit-pre-recollect-9-$(date +%Y%m%d%H%M%S).sql
 --   2) 적용
 --      cd /home/ubuntu/loupit && set -a && . server/.env && set +a && MYSQL_PWD=$DB_PASSWORD /data/mysql/bin/mysql -vv -h $DB_HOST -P $DB_PORT -u $DB_USER $DB_NAME < db/migrations/20260926_recollect_9_official.sql
 --   3) 적재
@@ -34,7 +37,8 @@
 --      cd /home/ubuntu/loupit && RELEASE_CONFIRM=1 bash infra/deploy/release.sh
 -- 기대: DELETE 25문 각각 1 row affected · UPDATE 10문 각각 Rows matched 1 Changed 1. 두 번째 실행은 전부 0.
 --   다르면 멈추고 확인하라.
--- 사후 확인(리드): 9사를 떠서 python3 audit/_audit.py check-db <tsv> 불일치 0 · 총 2503행.
+-- 사후 확인(리드): 9사를 떠서 python3 audit/_audit.py check-db <tsv> — 불일치는 SK하이닉스 meal 1행(5필드)뿐이어야 한다
+--   (리드 판정: 432 미승계 · 정성, 감사 모델과 의도적으로 다르다) · 총 2503행.
 -- ══════════════════════════════════════════════════════════════════════
 
 SET NAMES utf8mb4;
