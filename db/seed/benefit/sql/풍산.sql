@@ -134,8 +134,8 @@ VALUES
   -- ── 성장·교육 (growth) ──
   (@comp_id, 'mba', 'MBA·석박사 과정 지원', NULL, 'growth',
    'est', NULL, TRUE, '미래 경영후보군 양성을 위한 국내·외 MBA 연수 지원과 핵심 기술분야 전문 인력 양성을 위한 석·박사 과정 지원 (공식 채용정보 인재육성 페이지 Expert 항목). 2025 지속가능경영보고서 67쪽에도 MBA 및 석·박사 학위 과정 지원 기재 — 선발 인원·지원 범위 미기재', 90),
-  (@comp_id, 'retirement_support', '퇴직자 재취업 지원', NULL, 'growth',
-   'est', NULL, TRUE, '퇴직 예정인 만 50세 이상 근로자 재취업 지원 서비스와 정년 앞둔 장기근속자 공로여행(유급휴가·여행 경비 지원) (2025 지속가능경영보고서 66쪽 복리후생 제도 표, 2025년 기준 · 공식 채용정보 복지제도 페이지 회사생활 항목 — 서비스 내용·기간·휴가 일수·여행 경비 한도 미기재)', 91)
+  (@comp_id, 'retirement_support', '정년 앞둔 장기근속자 공로여행', NULL, 'growth',
+   'est', NULL, TRUE, '정년 앞둔 장기근속자 공로여행(유급휴가·여행 경비 지원) (2025 지속가능경영보고서 66쪽 복리후생 제도 표, 2025년 기준 · 공식 채용정보 복지제도 페이지 회사생활 항목 — 휴가 일수·여행 경비 한도 미기재)', 91)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

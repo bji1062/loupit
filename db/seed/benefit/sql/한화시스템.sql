@@ -52,7 +52,7 @@ VALUES
   (@comp_id, 'edu_support', '학위과정/교육 지원', NULL, 'growth',
    'est', NULL, TRUE, '학술연수(국내 석/박사), 국내외 학위과정, 산업특화교육, Mentoring/Shadowing', 60),
   (@comp_id, 'career', '글로벌 리더 양성', NULL, 'growth',
-   'est', NULL, TRUE, '해외법인 파견(미국/독일/중국/일본 등 1~2년 주재), 직무역량 강화(MOIM, 온라인콘텐츠), 재취업 교육 지원', 61),
+   'est', NULL, TRUE, '해외법인 파견(미국/독일/중국/일본 등 1~2년 주재), 직무역량 강화(MOIM, 온라인콘텐츠)', 61),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '휴양소/워터파크', 50, 'leisure',

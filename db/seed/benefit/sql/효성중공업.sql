@@ -45,8 +45,8 @@ VALUES
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'career', '자랑스러운 효성인상', NULL, 'growth',
    'est', NULL, TRUE, '분기 및 연간 단위 시상. 마케팅/기술/연구/지원 부문별 수상자 선정, 포상금 및 인사 혜택 부여', 60),
-  (@comp_id, 'retirement_support', '퇴직자 지원 제도', NULL, 'growth',
-   'est', NULL, TRUE, '정년퇴직 예정자 재취업지원 제도 제공. 만 50세 이상 임직원 대상 진로설계교육 실시. 관계&네트워크/건강/재무/주거&여가 영역 중 필요 영역 개별 신청 가능', 61),
+  (@comp_id, 'retirement_support', '만 50세 이상 진로설계교육', NULL, 'growth',
+   'est', NULL, TRUE, '만 50세 이상 임직원 대상 진로설계교육 실시. 관계&네트워크/건강/재무/주거&여가 영역 중 필요 영역 개별 신청 가능', 61),
 
   -- ── 여가·라이프 (leisure) ──
 
