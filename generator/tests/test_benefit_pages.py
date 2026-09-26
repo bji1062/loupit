@@ -74,8 +74,9 @@ HOUSING = [
     ("naver", "NAVER", _b("housing_loan", "주택자금 대출이자 지원", desc="대출금액 1.5%를 10년간 지원(최대 2억원)")),
     ("cj_freshway", "CJ프레시웨이", _b("housing_loan", "주택자금 대출", desc="2년 이상 재직자 대상 (한도 미표기)")),
     ("sk_telecom", "SK텔레콤", _b("housing_loan", "사내 대출", desc="사내 대출 1억 한도, 주거 안정 자금 지원")),
-    ("sk_hynix", "SK하이닉스", _b("housing_loan", "주택자금 지원", desc="주택 구입/임차 자금 지원, 기혼 무주택자 임대아파트 3년 무료 제공",
-        amt=500, qual=False, src="estimated")),  # 원문은 실데이터(예외 해시가 맞물린다), 금액만 표본용
+    ("sk_hynix", "SK하이닉스", _b("housing_loan", "주택자금 지원",
+        desc="주택 임대·구매 시 필요 자금과 결혼 자금 저금리 융자, 자녀 3명 이상 구성원 최대 2억원 특별 주택 융자 (공식 채용 페이지 복지 제도 생활 항목·지속가능경영보고서 2026 — 일반 융자 한도·금리 미기재)",
+        amt=500, qual=False, src="estimated")),  # 원문은 2026-09-26 재수집본, 금액만 표본용
 ]
 
 
@@ -186,7 +187,7 @@ def test_real_housing_overrides_match_the_real_text():
     out = br.classify(cfg, rows)
     by = {r["comp"]: r for r in out["rows"]}
     assert [s for s in out["stale"] if "원문이 바뀌어" in s] == []
-    assert "no_home" not in by["sk_hynix"]["facets"], "「기혼 무주택자」는 임대아파트 조건이다"
+    assert "no_home" not in by["sk_hynix"]["facets"], "재수집 원문에는 무주택 조건이 없다 — 예외 없이 규칙만으로 맞아야 한다"
     assert by["doosan_enerbility"]["mode"] == "both"
     assert "limit" not in by["pearl_abyss"]["facets"], "「매월 50만원」 거주비가 대출 한도로 잡혔다"
 
@@ -422,7 +423,7 @@ def test_company_links_land_on_the_ledger_row_of_the_company_page():
 def test_money_table_and_note_appear_with_three_or_more_rows():
     pages, *_ = _render(HOUSING, {"housing_loan": _housing_cfg()})
     html = pages[0].html
-    assert "금액이 적힌 원문 3곳" in html  # CJ CGV · NAVER · SK텔레콤 (펄어비스는 예외로 빠진다)
+    assert "금액이 적힌 원문 4곳" in html  # CJ CGV · NAVER · SK텔레콤 · SK하이닉스(재수집 원문 「최대 2억원」) (펄어비스는 예외로 빠진다)
     assert _housing_cfg()["notes"]["money"] in html
 
 

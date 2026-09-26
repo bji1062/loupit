@@ -1,4 +1,4 @@
-# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,451행 · 2026-09-22 재코딩 52행 반영)
+# 웨이브 5 어휘표 — 코퍼스 실측 90종 (2026-09-21, 회사 150 · 복지 2,503행 · 2026-09-22 재코딩 52행 · 2026-09-26 재수집 9사 반영)
 
 새 코드를 만들기 전에 **여기서 같은 뜻을 찾는다.** 대응 어휘가 정말 없을 때만 신규 코드(evidence 에 「신규 코드」절로 사유 — 원문이 혜택 내용을 밝힐 때만).
 
@@ -8,82 +8,83 @@
 
 | 코드 | n | 카테고리 | 코퍼스의 대표 명칭 |
 |---|---:|---|---|
-| `event` | 133 | family | 경조사 지원 · 경조금 지원 · 경조사/명절 |
 | `health_check` | 133 | health | 건강검진 · 종합건강검진 · 건강검진 지원 |
+| `event` | 131 | family | 경조사 지원 · 경조금 지원 · 경조사/명절 |
 | `resort` | 118 | leisure | 휴양시설 · 숙박·여가 지원 · 휴양시설 지원 |
-| `child_edu` | 106 | family | 자녀학자금 · 자녀 학자금 지원 · 자녀 학자금 |
-| `meal` | 96 | perks | 구내식당 · 사내식당 · 식대 지원 |
-| `welfare_point` | 94 | perks | 복지포인트 · 카페테리아 포인트 · 선택적 복리후생 |
-| `club` | 90 | leisure | 사내 동호회 · 동호회 · 사내동호회 |
-| `housing_loan` | 79 | perks | 주택자금 대출 · 주택자금 대출 지원 · 주택자금 지원 |
-| `edu_support` | 75 | growth | 직무/리더십 교육 · 자기계발 지원 · 교육 프로그램 |
-| `medical` | 75 | health | 의료비 지원 · 본인 의료비 지원 · 가족 의료비 보조 |
-| `flex_work` | 74 | flexibility | 유연근무제 · 자율출퇴근제 · 선택적 근로시간제 |
-| `fitness` | 66 | health | 피트니스센터 · 사내 피트니스 · 사내 헬스장 |
-| `childcare` | 62 | family | 사내 어린이집 · 직장 어린이집 · CJ키즈빌(직장 어린이집) |
-| `insurance` | 62 | health | 단체상해보험 · 단체 상해보험 · 단체보험 |
-| `long_service_leave` | 61 | time_off | 장기근속 포상 · CREATIVE WEEK(창의휴가) · 장기근속 휴가 |
-| `parenting` | 59 | family | 임신·출산·육아 · 출산/육아 지원 · 임신/출산/육아 지원 |
+| `child_edu` | 106 | family | 자녀 학자금 지원 · 자녀학자금 · 자녀 학자금 |
+| `meal` | 97 | perks | 사내식당 · 구내식당 · 식대 지원 |
+| `welfare_point` | 95 | perks | 복지포인트 · 카페테리아 포인트 · 선택적 복리후생 |
+| `club` | 88 | leisure | 사내 동호회 · 동호회 · 사내동호회 |
+| `housing_loan` | 79 | perks | 주택자금 대출 · 대출이자 지원 · 주택자금 대출 지원 |
+| `flex_work` | 75 | flexibility | 유연근무제 · 선택적 근로시간제 · 자율출퇴근제 |
+| `medical` | 74 | health | 의료비 지원 · 가족 의료비 지원 · 본인 의료비 지원 |
+| `edu_support` | 70 | growth | 자기계발 지원 · 직무/리더십 교육 · 교육 프로그램 |
+| `fitness` | 68 | health | 피트니스센터 · 사내 피트니스 · 사내 헬스장 |
+| `childcare` | 63 | family | 사내 어린이집 · 직장 어린이집 · CJ키즈빌(직장 어린이집) |
+| `insurance` | 63 | health | 단체상해보험 · 단체 상해보험 · 단체보험 |
+| `long_service_leave` | 61 | time_off | 장기근속 포상 · 장기근속 휴가 · CREATIVE WEEK(창의휴가) |
+| `parenting` | 61 | family | 임신·출산·육아 · 출산/육아 지원 · 임신·출산·육아 지원 |
 | `commute_subsidy` | 58 | perks | 통근버스 · 출퇴근 지원 · 셔틀버스 |
 | `snack_bar` | 58 | perks | 사내 카페 · 사내 카페/간식 · 사내 카페/무인매점 |
-| `lang` | 53 | growth | 어학시험 응시료 · 어학교육 · 외국어 교육 지원 |
-| `mental` | 50 | health | 심리상담 · 심리상담 지원 · 심리상담센터 |
-| `long_service_bonus` | 49 | compensation | 장기근속 포상 · 장기근속 포상금 · 장기근속자 포상 |
-| `discount` | 46 | perks | CJ 계열사 할인 · 그룹사 제품 할인 · 제휴업체 할인 |
-| `holiday_gift` | 46 | compensation | 명절 선물 · 명절 상여 · 기념일 기념품 |
-| `leave_general` | 41 | time_off | 2시간 단위 휴가 · 경조휴가 · 1시간 단위 휴가 |
+| `mental` | 53 | health | 심리상담 지원 · 심리상담센터 · 심리상담 |
+| `lang` | 52 | growth | 어학시험 응시료 · 어학교육 · 외국어 교육 지원 |
+| `long_service_bonus` | 51 | compensation | 장기근속 포상 · 장기근속 포상금 · 장기근속자 포상 |
+| `holiday_gift` | 46 | compensation | 명절 선물 · 기념일 기념품 · 명절 상여 |
+| `leave_general` | 46 | time_off | 2시간 단위 휴가 · 경조휴가 · 리프레시 데이 |
+| `discount` | 44 | perks | CJ 계열사 할인 · 그룹사 제품 할인 · 제휴업체 할인 |
 | `dormitory` | 40 | work_env | 기숙사 · 기숙사 지원 · 사택 지원 |
-| `incentive` | 37 | compensation | 성과급 · 인센티브 · 성과 인센티브 |
+| `incentive` | 39 | compensation | 성과급 · 인센티브 · 성과 인센티브 |
+| `excellence_award` | 35 | compensation | 우수사원 포상 · 우수/모범사원 포상 · CEO 표창제도 |
 | `clinic` | 34 | health | 사내 부속의원 · 건강관리실 · 사내 건강관리실 |
-| `excellence_award` | 32 | compensation | 우수사원 포상 · 우수/모범사원 포상 · ENM Awards |
-| `refresh_leave` | 28 | time_off | 리프레시 휴가 · Refresh 휴가 · '쉴랜다' 리프레시 휴가 |
-| `books` | 27 | growth | 사내 도서관 · 도서 구입비 지원 · 도서구입비 지원 |
-| `mba` | 25 | growth | 국내외 학술연수 · Global MBA/유학 · H-MBA 핵심인재 프로그램 |
+| `mba` | 29 | growth | 국내외 학술연수 · Global MBA/유학 · H-MBA 핵심인재 프로그램 |
+| `books` | 26 | growth | 도서 구입비 지원 · 사내 도서관 · 도서구입비 지원 |
+| `company_event` | 26 | leisure | KB 패밀리데이 · 가정의 날 과일 선물·종무식 · 가족 초청 행사 |
+| `refresh_leave` | 25 | time_off | 리프레시 휴가 · Refresh 휴가 · '쉴랜다' 리프레시 휴가 |
+| `self_development` | 25 | growth | 자격증 취득 지원 · 자기계발비 · 자기계발비 지원 |
 | `birthday_gift` | 24 | perks | 기념일 선물 · 생일 선물 · 생일 상품권 |
-| `remote_work` | 24 | flexibility | 재택근무 · 재택근무제 · 자율 재택근무 |
-| `self_development` | 24 | growth | 자격증 취득 지원 · 자기계발비 · 자기계발비 지원 |
-| `lounge` | 22 | work_env | 직원 휴게실 · 고급 안마의자 · 공장 편의시설(휴게실·안마의자) |
-| `summer_leave` | 22 | time_off | 하계휴가 · 하기휴가 · 여름휴가 |
-| `company_event` | 20 | leisure | KB 패밀리데이 · 가정의 날 과일 선물·종무식 · 가족 초청 행사 |
-| `transport` | 20 | perks | 교통비 지원 · 야근 교통비 · KTX 비용 지원 |
-| `career` | 19 | growth | 멘토링 제도 · 멘토링 프로그램 · Global Talent/지역전문가 |
-| `pension_support` | 18 | perks | 개인연금 지원 · 개인연금 · 개인연금(IRP) 50% 지원 |
-| `satellite_office` | 16 | flexibility | CJ Work On 거점오피스 · 거점오피스 · 거점 오피스 |
-| `work_tools` | 15 | work_env | AI Tool 지원 · IT 장비 지원 · 고사양 PC 지원 |
-| `leisure_ticket` | 14 | leisure | 티빙·CGV 이용권 · 문화 활동 (콘서트 초대권) · 문화생활 지원(영화티켓 등) |
-| `telecom` | 14 | perks | 통신비 지원 · 통신비 · 통신비/단말기 지원 |
-| `fertility_support` | 13 | family | 난임 치료비 지원 · 난임 지원 · 난임 수술 지원 |
-| `parking` | 12 | work_env | 주차비 지원 · 주차장 · 주차장 제공 |
+| `remote_work` | 24 | flexibility | 재택근무 · 재택근무제 · 원격 기반 근무 선택 (Connected Work) |
+| `summer_leave` | 23 | time_off | 하계휴가 · 하기휴가 · 여름휴가 |
+| `career` | 21 | growth | 멘토링 제도 · 멘토링 프로그램 · Career Growth Program |
+| `lounge` | 21 | work_env | 직원 휴게실 · 고급 안마의자 · 공장 편의시설(휴게실·안마의자) |
+| `pension_support` | 20 | perks | 개인연금 지원 · 개인연금 · New Pension |
+| `transport` | 20 | perks | 교통비 지원 · 야근 교통비 · KTX 교통비 지원 (공장 근무 엔지니어) |
+| `fertility_support` | 17 | family | 난임 지원 · 난임 치료비 지원 · 난임 수술 지원 |
+| `satellite_office` | 17 | flexibility | CJ Work On 거점오피스 · 거점오피스 · 거점 오피스 |
+| `leisure_ticket` | 15 | leisure | 티빙·CGV 이용권 · 네이버 서비스 이용권 · 문화 활동 (콘서트 초대권) |
+| `telecom` | 15 | perks | 통신비 지원 · 통신비 · 통신비/단말기 지원 |
+| `stock_option` | 13 | compensation | 우리사주제도 · 스톡옵션 · 우리사주조합 |
+| `work_tools` | 13 | work_env | AI Tool 지원 · 고사양 PC 지원 · 노트북 지원 |
+| `pc_off` | 12 | flexibility | PC-OFF 제도 · PC OFF 제 · PC OFF 제도 |
+| `housing_support` | 11 | perks | 주거 지원 · 새내기 정착/주거지원금 · 숙소임차비용 지원 |
 | `library` | 11 | leisure | 사내 북카페 · 전자 도서관 · 전자도서관 |
-| `housing_support` | 10 | perks | 주거 지원 · 새내기 정착/주거지원금 · 숙소임차비용 지원 |
-| `stock_option` | 10 | compensation | 스톡옵션 · 우리사주조합 · 우리사주제도 |
-| `welcome_kit` | 10 | leisure | 웰컴키트 · Welcome Kit · 신규입사자 웰컴패키지 |
+| `welcome_kit` | 11 | leisure | 웰컴키트 · Welcome Kit · 신규입사자 웰컴패키지 |
+| `nap_room` | 10 | work_env | 남/여 휴게실 · 릴렉스룸 · 모유 수유실·여성 휴게실 |
+| `parking` | 10 | work_env | 주차장 제공 · 무료 주차장 (300대) · 전 직원 무상 주차 |
 | `birthday_leave` | 9 | time_off | 본인/가족 기념일 선물+휴가 · 생일 선물+조기퇴근 · 생일 연차 휴식 |
-| `family_day` | 9 | flexibility | 가정의 날 · 패밀리데이 · 가족의 날 조기 퇴근 |
-| `nap_room` | 9 | work_env | 남/여 휴게실 · 릴렉스룸 · 사내 수면실/샤워실 |
-| `pc_off` | 9 | flexibility | PC-OFF 제도 · PC OFF 제도 · PC OFF제 |
-| `relocation` | 8 | perks | 부임여비 지원 · 부임이사 지원 · 사택/정착지원금 |
-| `massage` | 7 | health | 마사지 테라피 라온(RA-ON) · 마사지(사이다룸) · 사내 마사지룸 |
-| `conference` | 6 | growth | 교육·세미나 참석 지원 · 세미나/컨퍼런스 · 외부 교육/컨퍼런스 |
-| `profit_sharing` | 6 | compensation | PS (Profit Sharing) · 경영성과금 · 부가급여(Profit Sharing System) |
+| `massage` | 9 | health | 네일케어·안마 서비스 · 마사지 테라피 라온(RA-ON) · 마사지(사이다룸) |
+| `relocation` | 9 | perks | 부임여비 지원 · 부임이사 지원 · 부임준비금·이사비 |
+| `family_day` | 8 | flexibility | 가정의 날 · 가족의 날 조기 퇴근 · 금요일 조기퇴근 |
+| `conference` | 7 | growth | 교육·세미나 참석 지원 · 외부 교육 및 연수 · 외부 세미나·컨퍼런스 참여 지원 |
+| `profit_sharing` | 7 | compensation | 경영성과금 · PS (Profit Sharing) · 부가급여(Profit Sharing System) |
+| `retirement_support` | 6 | growth | 상시 경력 전환 프로그램 (만 50세 이상 간부) · 정년 퇴임식·기념품 · 정년퇴직·Next Career 지원 |
+| `welfare_fund_loan` | 6 | perks | 사내 근로복지기금 대출 · 긴급자금 융자 · 사내근로복지기금 대출 |
 | `bonus` | 5 | compensation | 상여금 · 보너스(600%) · 성과급 |
+| `sports_ticket` | 5 | leisure | SK Knights 농구 관람 지원 · SSG랜더스 홈경기 혜택 · 스포츠 티켓 |
 | `foundation_day_leave` | 4 | time_off | 창립기념일 휴무 · 창립기념 휴가 · 창립기념일 휴가 |
-| `sports_ticket` | 4 | leisure | SSG랜더스 홈경기 혜택 · 스포츠 티켓 · 스포츠경기 관람권 |
+| `office_furniture` | 4 | work_env | 데스크테리어 비용 지원 · 인체공학 사무가구 · 인체공학적 가구 |
+| `summer_vacation_subsidy` | 4 | leisure | 붙여쓰면 지원금 (휴가 연속 사용 시 휴가비) · 하계 휴가비 · 하계휴가비 |
+| `travel_support` | 4 | leisure | 여행비 지원 (국내·해외) · 해외 배낭여행비 지원 · 해외여행 지원 |
 | `uniform` | 4 | work_env | 근무복 지원·세탁 · 유니폼 제공 · 유니폼·복장 |
+| `car_rental` | 3 | perks | 무료 전기차 대여 · 주말 업무용 차량 대여 · 해피쉐어카 |
 | `culture_day` | 3 | leisure | 문화가 있는 날 · 문화의 날 · 컬쳐데이 |
-| `retirement_support` | 3 | growth | 정년퇴직자·퇴직예정자 지원 · 퇴직자 재취업 지원 · 퇴직자 지원 제도 |
-| `summer_vacation_subsidy` | 3 | leisure | 하계 휴가비 · 하계휴가비 · 하계휴양비(체력단련비) |
 | `team_dinner` | 3 | perks | 부서 문화행사 지원 · 팀 회식비 지원 · 회식비 지원 |
-| `travel_support` | 3 | leisure | 해외 배낭여행비 지원 · 해외여행 지원 · 휴양프로그램 |
-| `welfare_fund_loan` | 3 | perks | 사내 근로복지기금 대출 · 사내근로복지기금 대출 |
 | `free_seating` | 2 | work_env | 자율좌석제 |
 | `leisure_room` | 2 | leisure | 복지동 · 카지노룸 |
-| `office_furniture` | 2 | work_env | 데스크테리어 비용 지원 · 인체공학 사무가구 |
 | `smart_office` | 2 | work_env | Smart Working Zone · 스마트오피스 |
 | `smoking_cessation` | 2 | health | 금연 성공 축하금 · 금연수당 |
 | `welfare_fund` | 2 | perks | 사내 근로복지기금 운영 · 생활안정자금 지원 |
+| `workation` | 2 | flexibility | 워케이션 |
 | `blood_bank` | 1 | health | 혈액은행 |
-| `car_rental` | 1 | perks | 무료 전기차 대여 |
 | `car_wash` | 1 | perks | 세차 서비스 |
 | `disability_family_support` | 1 | family | 장애인 가족 지원금 |
 | `guest_house` | 1 | leisure | 영빈관 |
@@ -93,10 +94,9 @@
 | `overseas_safety` | 1 | health | 해외종합안전관리서비스 |
 | `parent_care` | 1 | family | 부모 요양 치료비 |
 | `promotion_gift` | 1 | perks | 호칭 변경 기념 선물 |
-| `stock_grant` | 1 | compensation | 전 직원 주식 부여 |
+| `stock_grant` | 1 | compensation | 주식 지급(Stock Grant) |
 | `visa_support` | 1 | perks | 비자 발급 지원 |
 | `wedding` | 1 | family | 결혼 축하금+휴가 |
-| `workation` | 1 | flexibility | 워케이션 |
 | `youth_savings` | 1 | compensation | 청년내일채움공제 |
 
 ## 함정 (계약 규칙 5·8-2 와 같은 효력)
@@ -109,7 +109,9 @@
 - `parenting` = 자녀 양육·보육·입학 / `parent_care` = 부모 요양·돌봄 / `child_edu` = 자녀 학자금
 - `welfare_point` = 포인트·복지몰 / `self_development` = 자기계발비·개인 업무 지원비
 - `housing_loan` = 대출·이자 / `housing_support` = 임차비 현금 / `dormitory` = 사택·기숙사 시설 / `relocation` = 이주·정착지원금
-- **`welfare_fund` = 사내근로복지기금 운영·생활안정자금 / `welfare_fund_loan` = 그 기금의 대출**(웨이브 4 에서 갈라진 두 코드다 — 대출이면 뒤엣것)
+- **`welfare_fund` = 사내근로복지기금 운영·생활안정자금 지원(원문에 대출이 없을 때) / `welfare_fund_loan` = 주거 외 용도(생활안정·긴급·의료비)의 사내 대출, 사내근로복지기금 대출 포함** — 원문이 대출·융자·대부를 밝히면 뒤엣것이고, 원문에 기금 낱말이 없으면 명칭·서술에 기금을 쓰지 않는다. 주택 대출과 한 라벨이면 `housing_loan`(2026-09-26 재수집 감사 — LIG 의료비 대출을 새 코드 대신 여기로)
+- `summer_vacation_subsidy` = 휴가를 쓸 때 주는 현금(휴가비) — 이름과 달리 하계 한정이 아니다. 휴가를 붙여 쓸 때 주는 연중 휴가비도 이 코드(NAVER 붙여쓰면 지원금). 휴가 이름만 있고 돈이 원문의 주어가 아니면 휴가 코드
+- 사원이 스스로 지원하는 사내 이동(사내공모·잡포스팅·커리어 마켓·그룹사 내부 이동)은 `career` — 회사 주도 직무순환과 온보딩 멘토링·OJT 는 행이 아니다(규칙 8, 2026-09-26 재수집 감사)
 - 급여성 수당(학위·자격 수당·초임)·조직문화 담당자 역할(GWP·서포터즈)·상담실 「운영」만 있는 서술·보훈/장애 법정 의무 서술은 **행이 아니다**
 - 스톡옵션은 복지가 아니다(경영진 재량 선별) · **우리사주조합은 전원 대상이라 남기되, 코퍼스 실제 코드는 `stock_option` 이다**(루닛·에스티팜 선례 — `employee_stock` 은 코퍼스에 없는 코드다, 2026-09-20 정정)
 

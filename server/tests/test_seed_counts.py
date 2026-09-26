@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
 
 
-# ── SD-4: 복지 총행 2451(2452 − 데이터 정리 2차 1행, 2026-09-21), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2503(2451 − 재수집 9사 207 + 259, 2026-09-26), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -73,9 +73,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
           아니고(상담실 선례), welcome_kit 은 나머지 10사가 전부 입사 선물 물품에 쓰는 코드라
           뜻도 어긋났다(사용자 결정). 카테고리 통일 30행·문안 60행은 행 수 불변
           — db/migrations/20260921_data_cleanup_2.sql
+          + 재수집 R-1 9개사 207 → 259행(2026-09-26) = 2503
+          NAVER 37 · LIG넥스원 33 · SK텔레콤 32 · 현대자동차 31 · S-Oil 29 · 롯데케미칼 27 · SK하이닉스 25 · SK이노베이션 24 · 카카오페이 21
+          — 수집 246 − 삭제·병합 2 + 추가 15. 운영은 표적 삭제 25·재코딩 10 뒤 멱등 적재(db/migrations/20260926_recollect_9_official.sql).
+          검증(Fable ×5 레인, 9사)·감사(Opus) — loupit-evidence/2026-09-26-recollect/audit/integration-audit.md
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2451, f"복지 총행 불일치: {count} (기대 2451 = 2452 − 정리 2차 1)"
+    assert count == 2503, f"복지 총행 불일치: {count} (기대 2503 = 2451 − 재수집 9사 207 + 259)"
     assert count >= 1200
 
 

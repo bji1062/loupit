@@ -22,7 +22,7 @@
   - SK-13 폐기 허용은 서빙 스키마 이름이면 무조건 거부한다(DROP 전에) — 서빙 이름 목록은 C-1 가드와 같다.
 
 ⚠ 재직자 데이터를 만드는 테스트는 끝나면 `main(fresh=True, discard_member_edits=True)` 로 정본 시드를
-  다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2451 등)가 그 상태를 전제한다.
+  다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2503 등)가 그 상태를 전제한다.
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ if str(SEED_DIR) not in sys.path:
 import backfill_dec2  # noqa: E402  # db/seed/backfill_dec2.py
 import load as seed_load  # noqa: E402  # db/seed/load.py
 
-CANON_BENEFITS = 2451  # SD-4 정본 복지 행 수(test_seed_counts)
+CANON_BENEFITS = 2503  # SD-4 정본 복지 행 수(test_seed_counts)
 TAMPERED_NM = "SK 변조 대조군"
 RESTORE_MIGRATION = MIGRATIONS_DIR / "20260924_restore_member_edits.sql"
 

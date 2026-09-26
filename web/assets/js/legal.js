@@ -22,7 +22,6 @@ export const LEGAL_ROWS = Object.freeze([
   ['rainbow_robotics', 'parenting', '육아휴직'],
   ['samsung_card', 'parenting', '육아휴직·모성보호제도'],
   ['silicon2', 'parenting', '출산휴가/육아휴직'],
-  ['sk_innovation', 'parenting', '출산/육아 지원'],
 ]);
 
 const KEYS = new Set(LEGAL_ROWS.map((r) => r.join('\u0000')));
