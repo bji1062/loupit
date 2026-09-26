@@ -88,22 +88,5 @@
       ]
     }
   ],
-  "overrides": [
-    {
-      "comp": "skt",
-      "h": "406c817b46",
-      "facets_remove": [
-        "points"
-      ],
-      "why": "「장보기포인트 매월 5만원」은 장보기용 포인트이지 카페 포인트가 아니다"
-    },
-    {
-      "comp": "kakao_pay",
-      "h": "19fbe82a0b",
-      "facets_add": [
-        "cafe"
-      ],
-      "why": "항목명이 「사내 카페/매점」 — 원문 칸은 카페 메뉴 가격(아메리카노·라떼)만 적었다"
-    }
-  ]
+  "overrides": []
 }

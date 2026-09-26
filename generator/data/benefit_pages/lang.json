@@ -38,7 +38,6 @@
     {"text": "전화나 온라인으로 들을 수 있는 수업이 있나요?", "answered_by": ["facet:remote"]}
   ],
   "overrides": [
-    {"comp": "lig_nex1", "h": "692a66d8f8", "mode": "unknown", "facets_remove": ["remote"], "why": "「온라인/독서통신교육」은 어학이 아닌 교육 목록(사외 직무교육·학회 참석과 나란히)에서 걸렸다 — 어학교육은 누가 여는지 안 나온다"},
     {"comp": "lunit", "h": "18f4475e61", "mode": "both", "why": "사내 영어 강사 수업(사내 무료 어학 프로그램)과 외국인 임직원 한국어 수업 비용 지원을 함께 적었다"},
     {"comp": "psk", "h": "6001f72ae7", "mode": "both", "why": "사내 어학강좌 운영과 어학 시험 응시료 지원을 함께 적었다"},
     {"comp": "samsung_bio", "h": "b4a4fbd4d4", "facets_remove": ["remote"], "why": "「Biz. Skill Up 온라인 과정」에는 어학이라는 말이 없다 — 어학 과정은 사내 과정만 나온다"},

@@ -214,8 +214,9 @@ def test_legal_rows_cover_the_audited_companies():
     rows = legal.legal_rows()
     # 2026-09-20: 시간·2시간 단위 휴가 5행을 복지로 되돌려 등록 해제(사용자 결정)
     # 2026-09-22: 한화에어로스페이스 「아빠휴가」 등록(재코딩으로 parenting 에 들어오며 한화시스템과 같은 판정)
-    assert len(rows) == 14
-    assert len({r["comp_eng_nm"] for r in rows}) == 13
+    # 2026-09-26: SK이노베이션 「출산/육아 지원」 등록 해제 — 재수집 서술이 회사 제도(출산 전 휴직 1~3개월)뿐
+    assert len(rows) == 13
+    assert len({r["comp_eng_nm"] for r in rows}) == 12
     for r in rows:
         assert r["desc_at_review"] and r["why"], f"{r['comp_eng_nm']} 판정 근거가 비었다"
 

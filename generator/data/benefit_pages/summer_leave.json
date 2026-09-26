@@ -78,14 +78,5 @@
       ]
     }
   ],
-  "overrides": [
-    {
-      "comp": "hyundai_motor",
-      "h": "42a5d19140",
-      "facets_remove": [
-        "paid"
-      ],
-      "why": "「유급」은 책임 진급 때 주는 3주 휴가에 붙은 말이다 — 하기휴가의 유급 여부는 적혀 있지 않다"
-    }
-  ]
+  "overrides": []
 }
