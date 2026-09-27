@@ -606,3 +606,39 @@ CREATE TABLE IF NOT EXISTS TCORP_EMPLOY (
   INDEX idx_corp_employ_lookup (CORP_CODE, BSNS_YEAR),
   FOREIGN KEY (CORP_CODE) REFERENCES TCORP(CORP_CODE) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='법인별 연도별 직원 현황 (DART 사업보고서 — 부문×성별 원문 1벌)';
+
+-- ============================================================================
+-- 출처 주소 주간 점검 이력 — SP-DB-19 · SP-AUTH-19.9 (2026-09-27 신설, SC-1)
+--
+-- **왜**: 복지 데이터 78개사는 공식 출처 주소(TCOMPANY.CAREERS_BENEFIT_URL)를 근거로 하고 「공식」 배지도
+-- 거기에 기댄다. 그런데 회사가 페이지를 없애거나 옮겨도 알 방법이 없었다 — infra/verify/link-audit.py 는
+-- 사이트 안쪽 링크만 본다. `python3 -m server.ops source-check`(주 1회 타이머)가 주소마다 한 행을 쓰고,
+-- 운영 콘솔 「출처 점검」 탭이 마지막 실행과 연속 실패를 읽는다.
+--
+-- **본문은 저장하지 않는다**(저작권·용량) — 판정·상태·메타데이터만. TEXT·BLOB·JSON 열이 없는 것이 그 계약이다
+-- (test_schema_load SC-4g). 한 번 실행의 행은 전부 같은 RUN_DTM 이고 「마지막 점검」은 MAX(RUN_DTM) 이다.
+-- 보관 180일 — 매 실행이 지난 행을 지운다. 행을 고치는 경로는 없다(추가 전용, 감사 4종 미적용).
+--
+-- FK 부모는 TCOMPANY 하나(ON DELETE CASCADE — 회사가 빠지면 그 이력도 뜻이 없다). TMEMBER 를 참조하지 않아
+-- M9 와 무관하게 존재한다. 기존 서빙 DB 반영은 release [2/7] 의 이 파일 적용(CREATE TABLE IF NOT EXISTS)이다.
+-- ⚠ load.py 의 fresh 재시드는 TCOMPANY 를 다시 만들어 회사 번호가 새로 매겨진다 — 옛 행이 다른 회사를 가리키지
+--   않게 fresh 는 이 표를 비운다(load._truncate_source_check, #15 동형). 운영에서는 fresh 가 거부된다(SP-SEED-12).
+-- ============================================================================
+
+CREATE TABLE IF NOT EXISTS TSOURCE_CHECK (
+  CHECK_ID         INT AUTO_INCREMENT PRIMARY KEY COMMENT '출처 점검 결과 PK (추가 전용)',
+  RUN_DTM          DATETIME     NOT NULL COMMENT '점검 실행 시각(UTC, 실행 시작) — 한 번 실행의 모든 행이 같은 값. 마지막 점검 = MAX(RUN_DTM)',
+  COMP_ID          INT          NOT NULL COMMENT '회사 FK (TCOMPANY.COMP_ID). ON DELETE CASCADE',
+  CHECK_URL        VARCHAR(500) NOT NULL COMMENT '점검한 주소 (그 시점의 TCOMPANY.CAREERS_BENEFIT_URL — 주소가 바뀌면 연속 실패도 새로 센다)',
+  RESULT_CD        VARCHAR(16)  NOT NULL COMMENT '판정 (ok, content_lost, gone, blocked, error, moved, robots) — 값집합 SP-DB-19',
+  HTTP_STATUS_NO   SMALLINT     DEFAULT NULL COMMENT '최종 HTTP 상태 코드 (응답을 못 받았으면 NULL — 시간 초과·DNS·TLS·robots 금지)',
+  FINAL_URL        VARCHAR(500) DEFAULT NULL COMMENT '리다이렉트를 따라간 최종 주소 (원래 주소와 같으면 NULL)',
+  CONTENT_TYPE_NM  VARCHAR(100) DEFAULT NULL COMMENT '응답 Content-Type (매개변수 제외, 소문자)',
+  KEYWORD_YN       BOOLEAN      DEFAULT NULL COMMENT '복지 낱말(복리후생·복지·benefit·welfare) 포함 여부 — HTML 정상 응답일 때만. PDF·이동·실패는 NULL',
+  ELAPSED_MS_NO    INT          DEFAULT NULL COMMENT '요청 소요 시간(밀리초, 리다이렉트 포함)',
+  DETAIL_CTNT      VARCHAR(300) DEFAULT NULL COMMENT '짧은 설명 (오류 종류·이동 사유 등). 페이지 본문은 저장하지 않는다',
+  INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '기록 일시 (불변 append-only — 감사 4종 미적용, MOD 없음)',
+  INDEX idx_source_check_comp (COMP_ID, RUN_DTM),
+  INDEX idx_source_check_run  (RUN_DTM),
+  FOREIGN KEY (COMP_ID) REFERENCES TCOMPANY(COMP_ID) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='출처 주소 주간 점검 이력 (판정·메타데이터만 — 본문 무저장, 180일 보관)';

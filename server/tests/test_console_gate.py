@@ -170,6 +170,9 @@ def test_CO10_표면은_정확히_이_집합이다(monkeypatch):
         ("/api/v1/console/benefit-edits", "GET"),
         ("/api/v1/console/posts/{post_id}/visibility", "POST"),
         ("/api/v1/console/comments/{comment_id}/visibility", "POST"),
+        # SP-AUTH-19.9(2026-09-27): 출처 점검 결과 — 읽기만. 점검을 돌리는 POST 는 **없다**(남의 서버를 두드리는
+        # 일을 클릭 뒤에 두지 않는다 — 쓰는 쪽은 주간 타이머 하나).
+        ("/api/v1/console/source-checks", "GET"),
     }
 
 
@@ -233,16 +236,30 @@ def test_CO12_결정_입력에_결정자_필드가_없다():
             assert banned not in fields, f"{model.__name__} 이 결정자를 본문으로 받는다: {banned}"
 
 
+#: 링크를 만들어도 되는 **유일한** 함수(SP-AUTH-19.9 출처 주소). 본문은 CO-18 이 따로 잰다.
+_SOURCE_LINK_RE = re.compile(r"^function sourceLink\(url\) \{\n.*?^\}\n", re.M | re.S)
+
+
+def _page_code() -> str:
+    """콘솔 페이지의 코드 줄만 — `//` 주석 줄을 뺀다."""
+    from server.routers.console import _PAGE
+
+    return "\n".join(ln for ln in _PAGE.splitlines() if not ln.lstrip().startswith("//"))
+
+
 def test_CO13_콘솔_페이지는_innerHTML_과_자동링크를_쓰지_않는다():
     """SP-AUTH-19.5 ①② — 증빙·회사명·URL 은 전부 사용자 입력 원문이다.
 
     `innerHTML` 이면 XSS 고, `<a href>` 면 관리자가 무심코 눌러 IP 노출·피싱이다.
-    페이지는 노드 조립으로만 그리고 링크를 만들지 않는다."""
+    페이지는 노드 조립으로만 그리고 링크를 만들지 않는다 — 예외는 출처 주소 함수 `sourceLink` 하나뿐이고(우리 시드의
+    공식 페이지 주소, SP-AUTH-19.9), 그 함수만 떼어 낸 나머지에서 아래 검사를 한다. 그 함수의 계약은 CO-18 이 잰다."""
     from server.routers.console import _PAGE
 
     # ⚠ 주석까지 세면 "innerHTML 은 쓰지 않는다"라고 **적어 둔 주석**이 위반으로 잡힌다
     #   (2026-07-30 실발현 — 가드 문구가 의도보다 넓은 함정 ㊶ 의 축소판). 코드만 본다.
-    code = "\n".join(ln for ln in _PAGE.splitlines() if not ln.lstrip().startswith("//"))
+    code = _page_code()
+    assert len(_SOURCE_LINK_RE.findall(code)) == 1, "링크 예외 함수(sourceLink)가 정확히 하나가 아니다"
+    code = _SOURCE_LINK_RE.sub("", code)
 
     # HTML·스크립트로 해석되는 싱크 전부 — 이름을 문자열로 우회(`el['innerHTML']`)하거나 다른 경로(`srcdoc`·
     # `DOMParser`·`createContextualFragment`)로 파싱시키는 모양까지(2026-09-18 적대 검토 M2 로 넓혔다).
@@ -348,6 +365,78 @@ def test_CO16_콘솔_JSON_응답은_전부_no_store_다(monkeypatch):
         if isinstance(r, APIRoute) and "/console" in r.path and r.path != "/api/v1/console":
             names = [d.call.__name__ for d in r.dependant.dependencies if d.call]
             assert "_no_store" in names, f"{r.path} 응답에 no-store 가 걸리지 않는다"
+
+
+def test_CO18_출처_점검_탭과_단_하나의_링크_예외():
+    """SP-AUTH-19.9(2026-09-27) — 출처 점검 탭이 있고, 그 탭의 주소 링크가 **좁은 예외**의 모양을 지킨다.
+
+    링크를 허락한 이유는 대상이 사용자 입력이 아니라 우리 시드의 공식 페이지 주소이기 때문이다. 그러니 예외가 넓어지는
+    두 길을 막는다: ① 함수가 http(s) 밖(javascript: 등)을 링크로 만들거나 새 창을 이 창과 잇는 것 ② 그 함수를 출처
+    주소가 아닌 값 — 리다이렉트 최종 주소(남의 서버가 정한 값)나 사용자 입력 — 에 쓰는 것."""
+    from server.source_check import RESULT_CODES
+
+    code = _page_code()
+    [link_fn] = _SOURCE_LINK_RE.findall(code)
+    for needed in ("new URL(url)", "u.protocol !== 'https:'", "u.protocol !== 'http:'", "a.href = u.href",
+                   "a.target = '_blank'", "a.rel = 'noopener noreferrer'", "a.textContent = readableUrl(url)"):
+        assert needed in link_fn, f"sourceLink 에 {needed!r} 가 없다 — 예외가 넓어졌다"
+    # 구조 검사(2026-09-27 검토 LOW-7) — 호출 모양이 아니라 **이름이 나오는 모든 자리**를 센다. 정의 1 + 호출 1 이
+    # 전부여야 한다: `const f = sourceLink; f(x)` 같은 별칭·`sourceLink.call(…)`·다른 칸에서의 호출이 끼면 자리가 늘어난다.
+    # (글자 검사의 한계 — 문자열로 이름을 조립하는 식은 못 잡는다. 그 길은 CO-13 이 대괄호 대입·간접 대입을 막아 닫는다.)
+    rest = _SOURCE_LINK_RE.sub("", code)
+    mentions = re.findall(r"\bsourceLink\b(.{0,12})", rest)
+    assert mentions == ["(s.url) },"], f"sourceLink 는 출처 주소 칸의 `sourceLink(s.url)` 한 곳에서만 쓴다: {mentions}"
+    assert link_fn.count("createElement") == 1 and link_fn.count(".href") == 2, "링크 함수 안의 모양이 바뀌었다"
+
+    assert "renderSources" in code and "'/source-checks'" in code, "출처 점검 탭이 없다"
+    assert "id: 'sources'" in code, "탭 목록에 출처 점검이 없다"
+    assert "한 번 실패는 일시적일 수 있습니다 — 2주 연속부터 확인하세요" in code, "안내 한 줄이 없다"
+    assert "전체 보기" in code, "「전체 보기」 토글이 없다"
+    # 판정 이름표가 점검기의 값집합과 정확히 같다 — 새 판정이 생기면 화면에 영문 코드가 그대로 뜨는 것을 막는다.
+    labels = re.search(r"const SOURCE_LABEL = \{(.*?)\};", code, re.S).group(1)
+    assert set(re.findall(r"(\w+):\s*'", labels)) == set(RESULT_CODES)
+    # 현황에서 한 번에 간다(390px 에서는 탭 줄이 옆으로 밀려 여섯째 탭이 화면 밖일 수 있다).
+    assert "show('sources')" in code and "d.source_check" in code
+
+
+def test_CO19_출처_주소를_쓰는_앱_경로가_없다__링크_예외의_전제():
+    """출처 주소 링크 예외(CO-18)는 「`s.url` 은 시드 값」이라는 전제 위에 있다 — `TCOMPANY.CAREERS_BENEFIT_URL` 을 앱이
+    고칠 수 있게 되는 날(재직자 편집 등) 사용자 입력이 링크가 된다. 그래서 서버 코드에 TCOMPANY 쓰기 경로가 없음을
+    잰다(쓰기는 `db/seed` 뿐). 이 검사가 빨개지면 링크 예외를 다시 판단하라 — 이 검사를 고치지 말고."""
+    writers = []
+    for f in (ROOT / "server").rglob("*.py"):
+        rel = f.relative_to(ROOT).as_posix()
+        if "/tests/" in rel:
+            continue
+        if re.search(r"\b(?:UPDATE|INSERT(?:\s+IGNORE)?\s+INTO|REPLACE\s+INTO)\s+TCOMPANY\b(?!_)",
+                     f.read_text(encoding="utf-8"), re.I):
+            writers.append(rel)
+    assert writers == [], f"앱 코드가 TCOMPANY 를 쓴다: {writers} — 출처 주소 링크 예외(SP-AUTH-19.9)의 전제가 무너진다"
+
+
+def test_CO20_출처_칸은_보이지_않는_글자를_걷어_낸다():
+    """최종 주소·설명에는 남의 서버가 정한 값이 섞인다. 양방향 제어(U+202E)·폭 없는 공백이 퍼센트 인코딩으로 숨어
+    들어와도 풀어 보인 글자에는 없어야 한다(2026-09-27 검토 LOW-6). 페이지의 함수를 그대로 떼어 node 로 돌린다."""
+    import json
+    import shutil
+    import subprocess
+
+    from server.routers.console import _PAGE
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node 없음 — 페이지 함수를 돌려 볼 수 없다")
+    start = _PAGE.index("const INVISIBLE")
+    end = _PAGE.index("\n}\n", _PAGE.index("function readableUrl(")) + 3
+    samples = ["https://x.example/%E2%80%AEfdp.exe", "https://x.example/a\u202eb\u200bc\u0007d",
+               "https://cjnews.cj.net/cj-cgv-2024-%EC%8B%A0%EC%9E%85%EC%82%AC%EC%9B%90"]
+    script = _PAGE[start:end] + "\nconsole.log(JSON.stringify(%s.map((u) => [readableUrl(u), plain(u)])));" % (
+        json.dumps(samples))
+    out = subprocess.run([node, "-e", script], capture_output=True, text=True, timeout=30, check=True).stdout
+    shown = json.loads(out)
+    assert shown[0][0] == "https://x.example/fdp.exe", "퍼센트 인코딩으로 숨은 U+202E 가 풀려 보였다"
+    assert shown[1] == ["https://x.example/abcd", "https://x.example/abcd"], "제어·서식 문자가 남았다"
+    assert shown[2][0] == "https://cjnews.cj.net/cj-cgv-2024-신입사원", "한글 슬러그를 읽을 수 있게 풀지 못했다"
 
 
 def test_CO17_콘솔에_새_탭_4종이_있고_탭은_링크가_아니다():

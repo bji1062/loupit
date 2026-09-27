@@ -1,0 +1,14 @@
+# /etc/systemd/system/loupit-source-check.timer
+# 주 1회 월요일 00:17 UTC = **09:17 KST**. 서버 시간대는 UTC 다(timedatectl) — OnCalendar 도 UTC 로 해석된다.
+# 월요일 아침인 이유: 운영자가 한 주를 시작할 때 콘솔 「출처 점검」 탭이 새 결과를 들고 있게.
+# 17분인 이유: 정각을 피한다 — 남의 서버에도 정각에는 크론이 몰린다.
+[Unit]
+Description=loupit 주 1회 출처 주소 점검 타이머
+
+[Timer]
+OnCalendar=Mon *-*-* 00:17:00
+# 서버가 꺼져 있던 동안의 발화를 기동 후 한 번 보충한다(백업·요약·복원 훈련 타이머와 같은 규약).
+Persistent=true
+
+[Install]
+WantedBy=timers.target

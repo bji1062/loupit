@@ -1,0 +1,30 @@
+# /etc/systemd/system/loupit-source-check.service
+# 출처 주소 주간 점검(SC-1, 2026-09-27) 1회성 유닛. loupit-source-check.timer 가 스케줄한다.
+# 복지 데이터의 근거인 공식 출처 주소(TCOMPANY.CAREERS_BENEFIT_URL)가 살아 있는지 주소마다 한 번 두드려
+# TSOURCE_CHECK 에 남긴다 — 운영 콘솔 「출처 점검」 탭이 읽는다(SP-AUTH-19.9). 본체는 server/source_check.py.
+[Unit]
+Description=loupit 출처 주소 주간 점검
+# 남의 서버를 두드리므로 네트워크가 올라온 뒤에 돈다. After= 만으로는 network-online 을 끌어오지 않는다.
+After=mysql.service network-online.target
+Wants=mysql.service network-online.target
+
+[Service]
+Type=oneshot
+# server/.env(600, ubuntu 소유)를 ops.py 가 직접 읽는다 → 같은 사용자여야 한다(loupit-ops-digest 와 같다).
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/home/ubuntu/loupit
+# 종료 코드는 DB 실패만 비0 이다 — 두드린 사이트가 죽은 것은 점검 결과지 이 유닛의 실패가 아니다.
+ExecStart=/usr/bin/python3 -m server.ops source-check
+# oneshot 은 기본 제한 시간이 없다. 평소 78곳에 약 9분(2026-09-27 실측 8분 31초)이지만, 최악(전부 시간 초과)은 요청
+# 154번 × (20초 + 간격) ≈ 1시간을 넘는다. 그래서 점검기가 **스스로** 90분 예산(RUN_BUDGET_SEC)에서 남은 곳을 건너뛰고
+# 결과를 쓰고, 이 제한은 그보다 30분 넉넉하다 — systemd 가 먼저 끊으면(SIGTERM) 끝에 한 번 쓰는 결과가 통째로 사라진다.
+# 이 제한은 DNS 무한 대기처럼 예산 검사에 닿지 못하고 멈춘 실행만 끊는다(SRC-8 이 두 값을 대조한다).
+TimeoutStartSec=2h
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=loupit-source-check
+
+[Install]
+WantedBy=multi-user.target

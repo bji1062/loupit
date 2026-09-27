@@ -18,6 +18,7 @@
 
 명령:
   digest [--send]                      큐 3종 요약 출력(기본) / 발송. 타이머가 일 1회 --send
+  source-check [--dry-run] [--limit N] [--only X]  출처 주소 점검(SC-1). 타이머가 주 1회 — 본체 server/source_check.py
   list-pending                         수동 승인 대기 큐 조회
   approve <req_id> [--by N] [--note S] 승인 → manual 재직 인증 생성(+employ_vrf_ttl_days)
   reject  <req_id> [--by N] [--note S] 거부(사유 기록)
@@ -37,6 +38,7 @@ import sys
 import pymysql
 from dotenv import load_dotenv
 
+from server import source_check
 from server.config import get_settings
 from server.mailer import SERVICE_NAME, get_mailer
 from server.services import operator
@@ -444,6 +446,21 @@ def cmd_digest(conn, args) -> int:
     return 0
 
 
+def cmd_source_check(conn, args) -> int:
+    """출처 주소 점검(SC-1) — `loupit-source-check.timer` 가 주 1회 부른다. 본체는 `server/source_check.py`.
+
+    결과는 운영 콘솔 「출처 점검」 탭이 읽는다(SP-AUTH-19.9). `--dry-run`·`--only`·`--limit` 은 DB 에 쓰지 않는다 —
+    부분 실행이 「마지막 점검」을 덮으면 나머지 회사가 콘솔에서 사라진다. 종료 코드는 DB 실패만 비0 이다."""
+    return source_check.main(conn, dry_run=args.dry_run, only=args.only, limit=args.limit)
+
+
+def _positive_int(text: str) -> int:
+    n = int(text)
+    if n < 1:
+        raise argparse.ArgumentTypeError("1 이상이어야 한다")
+    return n
+
+
 def _benefit_snapshot(row: dict) -> str:
     """삭제 복지의 before 스냅샷 JSON — benefit_edit._snapshot 와 동일 형식(공개 이력 diff 정합)."""
     snap = {lo: row.get(up) for lo, up in _SNAP_MAP.items()}
@@ -535,6 +552,14 @@ def build_parser() -> argparse.ArgumentParser:
     dg.add_argument("--drill-state", default=None,
                     help=f"복원 훈련 상태 파일 경로(기본 {DRILL_STATE_PATH})")
     dg.set_defaults(func=cmd_digest)
+
+    sc = sub.add_parser("source-check", help="출처 주소 점검(SC-1) — 결과는 운영 콘솔 「출처 점검」 탭")
+    sc.add_argument("--dry-run", action="store_true", help="DB 에 쓰지 않고 결과만 표로 출력")
+    sc.add_argument("--limit", type=_positive_int, default=None,
+                    help="앞에서 N곳만 — 시험용이라 DB 에 쓰지 않는다")
+    sc.add_argument("--only", action="append", default=None, metavar="COMP_ENG_NM",
+                    help="이 회사만(여러 번 쓸 수 있다) — 시험용이라 DB 에 쓰지 않는다")
+    sc.set_defaults(func=cmd_source_check)
 
     cq = sub.add_parser("list-company-requests", help="회사 등록 요청 큐(검색에 없는 회사)")
     cq.add_argument("--all", action="store_true", help="처리분까지 포함")

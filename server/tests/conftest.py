@@ -233,14 +233,23 @@ MAIL_OPS_CREATE_ORDER = ["TMAIL_EVENT", "TMAIL_SUPPRESSION", "TMAIL_SEND_RATE"]
 # 소멸은 에러를 남기지 않는다(함정 (57)).
 CORP_FINANCE_CREATE_ORDER = ["TCORP", "TCOMPANY_CORP", "TCORP_FINANCE", "TCORP_EMPLOY"]
 
-# 활성 격리 사이클 = 참조 6 + 참여(7 + 요청 1 + 커뮤니티 4) + 운영자 조치 이력 1 + 메일 3 + DART 법인 4. 참여가 뒤에 오는 것이 FK 부모→자식
-# 순서를 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를 참조 — SI-4).
+# ── 출처 주소 점검 이력(SP-DB-19, 2026-09-27) ──────────────────────────────────────
+# 추가 전용 1테이블. FK 부모는 TCOMPANY(참조 그룹) 하나라 맨 뒤에 붙이면 SI-4 를 만족한다. M9 와 무관하다
+# (TMEMBER 를 참조하지 않는다) — 그래서 참여·조치 이력 그룹이 아니라 자기 그룹이다(메일 그룹과 같은 방식).
+# 🚨 여기 넣지 않으면 schema.sql 로 생성만 되고 DROP 목록에 없어 세션 간 행이 남는다 — TCOMPANY 가 다시
+# 만들어져 COMP_ID 가 새로 매겨지면 살아남은 점검 이력이 다른 회사의 연속 실패로 읽힌다(#15 동형).
+SOURCE_CHECK_CREATE_ORDER = ["TSOURCE_CHECK"]
+
+# 활성 격리 사이클 = 참조 6 + 참여(7 + 요청 1 + 커뮤니티 4) + 운영자 조치 이력 1 + 메일 3 + DART 법인 4 + 출처 점검 1.
+# 참여가 뒤에 오는 것이 FK 부모→자식 순서를 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를
+# 참조 — SI-4).
 TABLE_CREATE_ORDER = (
     _REFERENCE_CREATE_ORDER
     + PARTICIPATION_CREATE_ORDER
     + MODERATION_CREATE_ORDER
     + MAIL_OPS_CREATE_ORDER
     + CORP_FINANCE_CREATE_ORDER
+    + SOURCE_CHECK_CREATE_ORDER
 )
 TABLE_DROP_ORDER = list(reversed(TABLE_CREATE_ORDER))
 
