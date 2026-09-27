@@ -46,6 +46,11 @@ export const LABEL_OVERRIDE = {
   birthday_gift: '생일·기념일 선물',
   // 2026-09-26: 6행 이름이 전부 달라 최단 이름(LIG 「정년 퇴임식·기념품」)이 6곳의 이름이 되던 것을 일반명으로.
   retirement_support: '정년퇴직·퇴직 준비 지원',
+  // 2026-09-27 표본 재생성이 드러낸 같은 결함 — 한 회사의 서비스명·브랜드가 전체 이름(해피쉐어카·허먼밀러 의자),
+  // edu_support 는 동률 길이 규칙으로 「자기계발 지원」이 되어 self_development(「자기계발비」)와 구분이 안 됐다.
+  car_rental: '차량 대여 지원',
+  office_furniture: '사무용 가구·의자 지원',
+  edu_support: '직무·리더십 교육',
 };
 
 export const MODES = ['and', 'or'];
