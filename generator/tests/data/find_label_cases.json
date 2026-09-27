@@ -82,8 +82,8 @@
    "welcome_kit",
    "library",
    "sports_ticket",
-   "summer_vacation_subsidy",
    "travel_support",
+   "summer_vacation_subsidy",
    "culture_day",
    "leisure_room",
    "guest_house"
@@ -725,7 +725,7 @@
     "컬쳐데이": 1
    },
    "ctgr": "leisure",
-   "label": "컬쳐데이",
+   "label": "문화의 날",
    "aliases": [
     "컬쳐데이",
     "문화의 날",
@@ -950,7 +950,7 @@
     "해외 석/박사/교육": 1
    },
    "ctgr": "growth",
-   "label": "직무·리더십 교육",
+   "label": "직무 교육·교육비 지원",
    "aliases": [
     "자기계발 지원",
     "직무/리더십 교육",
@@ -1977,7 +1977,7 @@
     "힐링휴가·워라밸데이": 1
    },
    "ctgr": "time_off",
-   "label": "경조휴가",
+   "label": "휴가 제도",
    "aliases": [
     "경조휴가",
     "2시간 단위 휴가",
@@ -2026,7 +2026,7 @@
     "카지노룸": 1
    },
    "ctgr": "leisure",
-   "label": "복지동",
+   "label": "사내 여가·오락 시설",
    "aliases": [
     "복지동",
     "카지노룸"
@@ -2072,7 +2072,7 @@
     "전자책 구독 (밀리의서재·교보문고 E-BOOK)": 1
    },
    "ctgr": "leisure",
-   "label": "전자도서관",
+   "label": "전자도서관·북카페",
    "aliases": [
     "전자도서관",
     "사내 북카페",
@@ -2334,7 +2334,7 @@
     "핵심인재 학위파견": 1
    },
    "ctgr": "growth",
-   "label": "국내외 학술연수",
+   "label": "MBA·대학원 학위 지원",
    "aliases": [
     "국내외 학술연수",
     "학위지원제도",
@@ -2591,7 +2591,7 @@
     "해피라이프 컨설팅": 1
    },
    "ctgr": "health",
-   "label": "심리상담센터",
+   "label": "심리상담 지원",
    "aliases": [
     "심리상담센터",
     "심리상담 지원",
@@ -2642,7 +2642,7 @@
     "휴식 공간": 1
    },
    "ctgr": "work_env",
-   "label": "릴렉스룸",
+   "label": "수면실·휴식 공간",
    "aliases": [
     "릴렉스룸",
     "휴식 공간",
@@ -3396,7 +3396,7 @@
     "주식 매입 리워드": 1
    },
    "ctgr": "compensation",
-   "label": "우리사주제도",
+   "label": "우리사주·스톡옵션",
    "aliases": [
     "우리사주제도",
     "스톡옵션",
@@ -3534,7 +3534,7 @@
     "휴양프로그램": 1
    },
    "ctgr": "leisure",
-   "label": "휴양프로그램",
+   "label": "여행비 지원",
    "aliases": [
     "휴양프로그램",
     "해외여행 지원",
@@ -3608,7 +3608,7 @@
     "생활안정자금 지원": 1
    },
    "ctgr": "perks",
-   "label": "생활안정자금 지원",
+   "label": "사내근로복지기금",
    "aliases": [
     "생활안정자금 지원",
     "사내 근로복지기금 운영"

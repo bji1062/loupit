@@ -82,6 +82,10 @@ def build(bundle: dict) -> dict:
 def main(argv: list[str]) -> None:
     bundle = load_bundle_json(argv[0]) if argv else load_bundle()
     data = build(bundle)
+    if OUT.exists():  # 내용이 같으면 날짜만 바뀌는 diff 를 만들지 않는다
+        old = json.loads(OUT.read_text(encoding="utf-8"))
+        if {k: old.get(k) for k in ("note", "category_order", "codes")} == {k: data[k] for k in ("note", "category_order", "codes")}:
+            data["source"] = old.get("source", data["source"])
     OUT.write_text(json.dumps(data, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     print(f"wrote {OUT.relative_to(ROOT)} — {data['source']}")
 

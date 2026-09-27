@@ -6,14 +6,14 @@
 
 비-JS 본문을 「안내 문구」로 때우지 않는 이유(GC-10 정신 + 콘텐츠 두께):
   · 크롤러가 보는 것이 이 페이지의 전부다. 도구는 JS 라 색인되지 않는다.
-  · 카테고리 9개 × 코드 86종의 **보유 회사 수 표**는 그 자체로 사실이고, 표의 각 줄이
+  · 카테고리 9개 × 코드 90종의 **보유 회사 수 표**는 그 자체로 사실이고, 표의 각 줄이
     `/find?b=<code>` 로 도구에 들어가는 입구가 된다(정적 → 도구 연결).
   · 그래서 표는 도구가 켜져도 **숨기지 않는다**. 숨기면 색인 가치가 사라지고, 남겨 두면
     "이 사이트가 무엇을 알고 있는지"의 목록이 된다.
 
 코드 사전(대표 이름·별칭·최빈 카테고리·보유 회사 수)은 DB 컬럼이 아니라 **집계**다. 같은 규칙이
 JS 쪽(`find.js::deriveCodes`)에도 있고, 둘이 갈라지면 표와 칩이 다른 이름을 부른다 —
-`generator/tests/test_find_page.py` 가 표시명 override 열 줄을 문자열로 맞춰 잡는다.
+`generator/tests/test_find_page.py` 가 표시명 override 표 전체를 문자열로 맞춰 잡는다.
 """
 from __future__ import annotations
 
@@ -24,8 +24,8 @@ from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
 
-# 손으로 못 박는 표시명. **`web/assets/js/find.js::LABEL_OVERRIDE` 와 같은 열 줄이어야 한다**
-# (표는 여기서, 칩은 거기서 이름을 얻는다). test_find_page.py 가 강제한다. 두 갈래다:
+# 손으로 못 박는 표시명. **`web/assets/js/find.js::LABEL_OVERRIDE` 와 같은 줄이어야 한다**
+# (표는 여기서, 칩은 거기서 이름을 얻는다). test_find_page.py 가 강제한다. 세 갈래다:
 #   ① 같은 대표 이름을 쓰는 코드를 갈라 준다(앞 다섯 줄 — 통근버스·장기근속 뭉치).
 #   ② 빈도 1순위가 **한 그룹·한 회사의 표기**라 항목 전체의 이름이 되는 코드를 일반명으로 못 박는다
 #      (뒤 다섯 줄, 2026-09-18). CJ 7개사가 같은 문구를 쓰니 「CJ 계열사 할인」이 할인 45곳 전체의 이름이
@@ -46,19 +46,32 @@ LABEL_OVERRIDE = {
     # 2026-09-26: 6행 이름이 전부 달라(빈도 1 동률) 최단 이름이 대표가 된다 — 법정 문구 정리로 항목명 2개가 길어지자
     #   LIG 한 회사 표기 「정년 퇴임식·기념품」이 6곳의 이름이 됐다. 6행을 모두 참으로 덮는 일반명으로 못 박는다.
     "retirement_support": "정년퇴직·퇴직 준비 지원",
-    # 2026-09-27 표본 재생성(make_find_label_cases.py)이 드러낸 같은 결함 — 이름이 전부 1회라 최단인
-    #   한 회사의 서비스명·브랜드가 항목 전체의 이름이 됐다(해피쉐어카 · 허먼밀러 의자). edu_support 는
-    #   「자기계발 지원」이 6:6 동률에서 길이로 이겨 옆 코드 self_development(「자기계발비」)와 구분이 안 됐다.
+    # ③ 2026-09-27 표본 재생성(generator/tests/data/make_find_label_cases.py)과 그 검토가 드러낸 같은 결함 —
+    #   이름이 전부 1회거나 동률이라 길이 규칙으로 **한 회사의 서비스명·브랜드·건물명**이 항목 전체의 이름이
+    #   됐거나(해피쉐어카·허먼밀러 의자·릴렉스룸·복지동·휴양프로그램·컬쳐데이·국내외 학술연수), **옆 코드와
+    #   구분이 안 됐다**(자기계발 지원 ↔ self_development · 경조휴가 ↔ event · 우리사주제도 ↔ 스톡옵션 혼재 ·
+    #   생활안정자금 지원 ↔ welfare_fund_loan). 복지 항목 페이지(generator/data/benefit_pages)가 있는 코드는
+    #   그 제목에 맞춘다. mental 은 6:6 같은 길이의 코드포인트 동전 던지기라 행 하나에 뒤집히지 않게 박는다.
     "car_rental": "차량 대여 지원",
     "office_furniture": "사무용 가구·의자 지원",
-    "edu_support": "직무·리더십 교육",
+    "edu_support": "직무 교육·교육비 지원",
+    "mba": "MBA·대학원 학위 지원",
+    "leave_general": "휴가 제도",
+    "stock_option": "우리사주·스톡옵션",
+    "nap_room": "수면실·휴식 공간",
+    "leisure_room": "사내 여가·오락 시설",
+    "travel_support": "여행비 지원",
+    "culture_day": "문화의 날",
+    "welfare_fund": "사내근로복지기금",
+    "library": "전자도서관·북카페",
+    "mental": "심리상담 지원",
 }
 
 
 def _prefer_name(kv) -> tuple:
     """대표 이름 정렬 키 — **빈도 내림차순 → 이름 길이 오름차순 → 코드포인트**.
 
-    ① 길이가 두 번째 키인 이유: 86개 중 **26개는 이름이 전부 1회씩**이라 라벨이 tie-break 로만
+    ① 길이가 두 번째 키인 이유: 86개 중 **26개는 이름이 전부 1회씩**이라(2026-09-06 · 2026-09-27 표본은 90종 중 20종) 라벨이 tie-break 로만
        정해진다. 빈도만 보고 코드포인트로 가르면 라틴·숫자·괄호가 한글 앞에 서서 「KB 패밀리데이」
        「Global MBA/유학」처럼 **한 회사의 표기가 86종 전체의 이름**이 된다(2026-09-06 실데이터 검증).
        짧은 쪽은 대개 수식어가 없는 일반명이다.

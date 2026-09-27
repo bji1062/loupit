@@ -191,17 +191,18 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hmm21.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hmm';
 -- LIG넥스원은 2026-03-31 주총에서 **LIG 디펜스&에어로스페이스(LIG D&A)** 로 사명이 바뀌었다.
--- 도메인 3개(사용자 결정 2026-09-27 — 2026-07-29 의 lignex1.com 보류를 뒤집고 둘을 더한다):
+-- 도메인 2개(사용자 결정 2026-09-27 — 2026-07-29 의 lignex1.com 보류를 뒤집는다):
 --   · ligdna.com — 기존 등록(게시된 이메일 기준으로 채택).
---   · ligdefenseaerospace.com — 회사 메일 서버(MX sniper01/02.ligdefenseaerospace.com)와 공식 홈페이지·
---     채용 복지 페이지(www.ligdefenseaerospace.com/people/welfare.do)의 도메인. 9개사 재수집 근거표가 MX 를 관측했다.
---   · lignex1.com — 사명 변경 전 도메인. MX 가 ligdna.com 과 완전히 같아 회사 소유가 확실하다.
---     옛 보류 사유는 게시된 이메일 0건이었다 — 구 주소를 아직 쓰는 임직원이 422 → 수동 승인으로
---     빠지던 것을 도메인 인증으로 돌린다.
+--   · lignex1.com — 사명 변경 전 도메인. MX 가 ligdna.com 과 완전히 같다(sniper01/02.ligdefenseaerospace.com)
+--     — 회사 소유가 확실하다. 옛 보류 사유는 게시된 이메일 0건이었다. 구 주소를 아직 쓰는 임직원이
+--     422 → 수동 승인으로 빠지던 것을 도메인 인증으로 돌린다.
+-- ⚠ ligdefenseaerospace.com 은 회사 소유(NS prmns/secns.lg.co.kr · SPF 가 ligdna.com 과 글자까지 같다 · 공식
+--    홈페이지 도메인)지만 MX 가 도메인 없는 sniper01. · sniper02. 로 잘못 설정돼 지금 인터넷 메일을 받지 못한다
+--    (2026-09-27 dig 실측). 등록하면 인증 코드가 반송되고 그 주소가 발송 차단에 올라 막힌다 — 지금처럼 422 →
+--    수동 승인이 낫다. MX 가 고쳐지면 다시 본다(사용자 결정 2026-09-27).
+-- @rejected: ligdefenseaerospace.com — LIG D&A 소유 도메인이나 MX 가 도메인 없는 sniper01./sniper02. 로 잘못 설정돼 메일 수신 불가
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'ligdna.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lig_nex1';
-INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
-  SELECT COMP_ID, 'ligdefenseaerospace.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lig_nex1';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lignex1.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lig_nex1';
 
