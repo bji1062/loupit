@@ -24,7 +24,7 @@ export { CATEGORY_ORDER, CATEGORY_LABEL };
 // 탭 첫 화면에 여는 카테고리. `perks`(복리후생)가 행 수가 가장 많고(470) 검색 의도도 흔하다.
 export const DEFAULT_CATEGORY = 'perks';
 
-// 손으로 못 박는 표시명(`generator/pages/find.py::LABEL_OVERRIDE` 와 같은 열 줄). 두 갈래다:
+// 손으로 못 박는 표시명(`generator/pages/find.py::LABEL_OVERRIDE` 와 같은 줄). 세 갈래다:
 // ① 같은 대표 명칭을 쓰는 코드를 사람이 읽는 이름으로 갈라 준다(앞 다섯 줄). 실데이터에 두 뭉치가 있다:
 //   · 「통근버스」 = transport(24곳) · commute_subsidy(44곳)
 //   · 「장기근속 포상」 = long_service_leave(54) · long_service_bonus(21) · long_service(1, 구 코드)
@@ -46,6 +46,21 @@ export const LABEL_OVERRIDE = {
   birthday_gift: '생일·기념일 선물',
   // 2026-09-26: 6행 이름이 전부 달라 최단 이름(LIG 「정년 퇴임식·기념품」)이 6곳의 이름이 되던 것을 일반명으로.
   retirement_support: '정년퇴직·퇴직 준비 지원',
+  // ③ 2026-09-27 표본 재생성과 그 검토가 드러낸 같은 결함 — 길이 규칙으로 한 회사의 서비스명·브랜드·건물명이
+  // 항목 전체의 이름이 되거나 옆 코드와 구분이 안 되던 코드(자세한 근거는 find.py 같은 자리). 항목 페이지 제목에 맞춘다.
+  car_rental: '차량 대여 지원',
+  office_furniture: '사무용 가구·의자 지원',
+  edu_support: '직무 교육·교육비 지원',
+  mba: 'MBA·대학원 학위 지원',
+  leave_general: '휴가 제도',
+  stock_option: '우리사주·스톡옵션',
+  nap_room: '수면실·휴식 공간',
+  leisure_room: '사내 여가·오락 시설',
+  travel_support: '여행비 지원',
+  culture_day: '문화의 날',
+  welfare_fund: '사내근로복지기금',
+  library: '전자도서관·북카페',
+  mental: '심리상담 지원',
 };
 
 export const MODES = ['and', 'or'];
@@ -103,7 +118,7 @@ function hasKey(known, key) {
 
 // 대표 이름 고르기: **빈도 내림차순 → 이름 길이 오름차순 → 코드포인트**.
 //
-// ① 길이가 두 번째 키인 이유: 86개 중 **26개는 이름이 전부 1회씩**이라 라벨이 tie-break 로만
+// ① 길이가 두 번째 키인 이유: 86개 중 **26개는 이름이 전부 1회씩**이라(2026-09-06 · 2026-09-27 표본은 90종 중 20종) 라벨이 tie-break 로만
 //    정해진다. 빈도만 보고 코드포인트로 가르면 라틴·숫자·괄호가 한글 앞에 서서 「KB 패밀리데이」
 //    「Global MBA/유학」「PS (Profit Sharing)」처럼 **한 회사의 표기가 86종 전체의 이름**이 된다
 //    (2026-09-06 실데이터 검증). 짧은 쪽은 대개 수식어가 없는 일반명이다 — 야유회 · 대학원비 지원
