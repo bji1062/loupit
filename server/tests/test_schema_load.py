@@ -93,6 +93,22 @@ EXPECTED_COLUMNS: dict[str, dict[str, dict]] = {
         "B_COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
         "INS_DTM": {"DATA_TYPE": "timestamp", "IS_NULLABLE": "NO"},
     },
+    # 출처 주소 점검 이력(SP-DB-19, 2026-09-27). CHECK_URL 은 TCOMPANY.CAREERS_BENEFIT_URL 과 **같은 500자**여야
+    # 한다 — 짧으면 긴 출처 주소(CJ 뉴스룸의 퍼센트 인코딩 한글 주소가 이미 250자에 가깝다)에서 한 실행 전체의
+    # INSERT 가 실패한다.
+    "TSOURCE_CHECK": {
+        "CHECK_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
+        "RUN_DTM": {"DATA_TYPE": "datetime", "IS_NULLABLE": "NO"},
+        "COMP_ID": {"DATA_TYPE": "int", "IS_NULLABLE": "NO"},
+        "CHECK_URL": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO", "CHARACTER_MAXIMUM_LENGTH": 500},
+        "RESULT_CD": {"DATA_TYPE": "varchar", "IS_NULLABLE": "NO"},
+        "HTTP_STATUS_NO": {"DATA_TYPE": "smallint", "IS_NULLABLE": "YES", "COLUMN_DEFAULT": None},
+        "FINAL_URL": {"DATA_TYPE": "varchar", "IS_NULLABLE": "YES", "CHARACTER_MAXIMUM_LENGTH": 500},
+        "CONTENT_TYPE_NM": {"DATA_TYPE": "varchar", "IS_NULLABLE": "YES"},
+        "KEYWORD_YN": {"DATA_TYPE": "tinyint", "IS_NULLABLE": "YES", "COLUMN_DEFAULT": None},
+        "ELAPSED_MS_NO": {"DATA_TYPE": "int", "IS_NULLABLE": "YES"},
+        "DETAIL_CTNT": {"DATA_TYPE": "varchar", "IS_NULLABLE": "YES"},
+    },
 }
 
 AUDIT_COLUMNS = {"INS_ID", "INS_DTM", "MOD_ID", "MOD_DTM"}
@@ -234,7 +250,9 @@ def test_SC3_verified_by_id_absent(schema_db, db_name):
 # 않는다** — 누가 언제 억제를 풀었는지는 감사 대상이다.
 # TPOST_ACTION_LOG 면제(SP-AUTH-19.7, 2026-09-18): 운영자 조치 이력 — TBENEFIT_EDIT_LOG 와 같은 불변
 # append-only 라 `INS_DTM` 하나만 두고, 주체는 도메인 FK `ACTOR_MBR_ID` 가 든다. 부재는 SC-4f 가 적극 검증한다.
-AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG", "TMAIL_EVENT", "TPOST_ACTION_LOG"}
+# TSOURCE_CHECK 면제(SP-DB-19, 2026-09-27): 출처 점검 이력 — 주간 점검기가 추가만 하고(보관 기한 삭제 외 UPDATE·DELETE
+# 없음) 입력 주체도 언제나 그 점검기 하나라 INS_ID 가 담을 정보가 없다. 부재와 **본문 무저장**은 SC-4g 가 적극 검증한다.
+AUDIT_EXEMPT_TABLES = {"TCOMPARE_LOG", "TBENEFIT_EDIT_LOG", "TMAIL_EVENT", "TPOST_ACTION_LOG", "TSOURCE_CHECK"}
 
 
 @pytest.mark.parametrize("table", [t for t in TABLE_CREATE_ORDER if t not in AUDIT_EXEMPT_TABLES])
@@ -281,6 +299,29 @@ def test_SC4f_post_action_log_append_only_contract(schema_db, db_name):
     forbidden = {"INS_ID", "MOD_ID", "MOD_DTM"} & cols
     assert not forbidden, f"TPOST_ACTION_LOG 는 append-only 인데 수정 감사 컬럼 발견: {sorted(forbidden)}"
     assert {"ACTOR_MBR_ID", "NOTE_CTNT", "FROM_STATUS_CD", "TO_STATUS_CD", "ACTION_CD", "SOURCE_CD"} <= cols
+
+
+def test_SC4g_source_check_is_append_only_and_stores_no_page_body(schema_db, db_name):
+    """SP-DB-19: 출처 점검 이력은 **판정과 메타데이터만** 담는다 — 페이지 본문·스크린샷은 저작권·용량 문제라 두지 않는다.
+
+    본문을 담을 수 있는 자료형(TEXT·BLOB·JSON)이 하나라도 생기면 "잠깐 디버깅용으로" 원문을 싣는 날이 온다.
+    그래서 계약을 이름이 아니라 **자료형**으로 건다(가장 긴 칸이 주소 500자). 수정 감사 열이 없어야 이력이다."""
+    with schema_db.cursor() as cur:
+        cur.execute(
+            "SELECT COLUMN_NAME, DATA_TYPE, CHARACTER_MAXIMUM_LENGTH FROM information_schema.COLUMNS "
+            "WHERE TABLE_SCHEMA=%s AND TABLE_NAME='TSOURCE_CHECK'",
+            (db_name,),
+        )
+        rows = cur.fetchall()
+    assert rows, "TSOURCE_CHECK 가 없다 — 이 검사가 공회전한다"
+    cols = {r[0] for r in rows}
+    assert "INS_DTM" in cols
+    forbidden = {"INS_ID", "MOD_ID", "MOD_DTM"} & cols
+    assert not forbidden, f"TSOURCE_CHECK 는 추가 전용인데 수정 감사 열이 있다: {sorted(forbidden)}"
+    bulky = [r[0] for r in rows if r[1] in ("text", "mediumtext", "longtext", "blob", "mediumblob", "longblob", "json")]
+    assert not bulky, f"본문을 담을 수 있는 열: {bulky} — 판정·메타데이터만 저장한다(SP-DB-19)"
+    widest = max((r[2] or 0) for r in rows)
+    assert widest <= 500, f"가장 긴 칸이 {widest}자 — 주소(500자)보다 긴 칸은 본문 저장의 입구다"
 
 
 def test_SC4d_mail_event_ledger_contract(schema_db, db_name):

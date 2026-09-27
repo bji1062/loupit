@@ -118,6 +118,8 @@ def test_TS1_participation_surface_exact(app_instance):
         "/api/v1/console/posts",
         "/api/v1/console/comments",
         "/api/v1/console/benefit-edits",
+        # SP-AUTH-19.9(2026-09-27) 출처 주소 점검 결과 — 운영자 세션 필수·no-store·읽기 전용(쓰는 쪽은 주간 타이머).
+        "/api/v1/console/source-checks",
         # SC15 커뮤니티 열람 3종(FR-121~123) — 익명·no-store. 상세·댓글은 `optional_member` 로 세션을
         # 선택적으로 읽되 401 을 내지 않는다(AU-2: dependant 트리에 require_member 부재, test_community_api CM-7.4).
         "/api/v1/posts",

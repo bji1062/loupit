@@ -1,4 +1,4 @@
-"""SP-AUTH-19.7 운영 콘솔 조회 — 현황·회원·게시판·복지 수정 이력 (읽기 전용).
+"""SP-AUTH-19.7 운영 콘솔 조회 — 현황·회원·게시판·복지 수정 이력·출처 점검(19.9) (읽기 전용).
 
 콘솔 라우터(`routers/console.py`)만 부른다. 그 라우터는 노출 범위 관문(`require_console_access`)과
 운영자 관문(`require_operator`) 뒤에 있으므로, 여기서 돌려주는 **회원 로그인 이메일**은 운영자
@@ -16,6 +16,8 @@
 from __future__ import annotations
 
 import json
+
+from pymysql.err import ProgrammingError
 
 from server import database
 from server.services import post as post_svc
@@ -91,6 +93,7 @@ async def overview() -> dict:
         "reports": {"pending": r["reports_pending"]},
         "benefit_edits": {"total": r["edits_total"], "new_30d": r["edits_30d"]},
         "mail_suppression": {"active": r["suppressed_active"]},
+        "source_check": await source_check_brief(),  # SP-AUTH-19.9 — 기록이 없거나 표가 없으면 None
     }
 
 
@@ -286,3 +289,98 @@ async def list_benefit_edits(limit: int, before: int | None) -> tuple[list[dict]
             "at": _dt(r["INS_DTM"]),
         })
     return items, next_before
+
+
+# ── 출처 점검(SP-AUTH-19.9 · SP-DB-19, 2026-09-27) ─────────────────────────────────────────────
+#
+# 주간 점검기(`server/source_check.py`, 타이머)가 쓴 `TSOURCE_CHECK` 를 **읽기만** 한다. 「마지막 실행」= MAX(RUN_DTM)
+# 의 행들이다 — 한 실행은 한 트랜잭션·한 시각으로 쓰이고, 부분 실행(--only·--limit)은 쓰지 않는다.
+# 연속·처음 실패·마지막 정상은 **같은 회사·같은 주소**의 이력으로 센다: 주소를 고치면 새 주소부터 다시 센다.
+# 「연속」은 확인 필요 판정(`ATTENTION_CODES`)만 센다 — robots 금지는 점검하지 않은 것이라 연속을 끊는다(늘지 않는다).
+# 이력은 최대 180일 × 약 80곳(2천 행 남짓)이라 한 번에 읽어 파이썬에서 센다.
+# 판정 값집합은 점검기(`server/source_check.py`)가 정본이다 — 다만 **부를 때** 가져온다: API 프로세스가 기동하면서
+# 점검기 모듈(전송 계층·TLS 설정)을 싣지 않게 한다(2026-09-27 검토 LOW-8).
+SQL_SOURCE_LAST_RUN = "SELECT MAX(RUN_DTM) AS RUN_DTM FROM TSOURCE_CHECK"
+SQL_SOURCE_RUN = """
+  SELECT s.CHECK_ID, s.COMP_ID, c.COMP_NM, c.COMP_ENG_NM, s.CHECK_URL, s.RESULT_CD, s.HTTP_STATUS_NO,
+         s.FINAL_URL, s.DETAIL_CTNT
+    FROM TSOURCE_CHECK s JOIN TCOMPANY c ON c.COMP_ID = s.COMP_ID
+   WHERE s.RUN_DTM = %s
+   ORDER BY s.CHECK_ID"""
+SQL_SOURCE_HISTORY = """
+  SELECT COMP_ID, CHECK_URL, RUN_DTM, RESULT_CD FROM TSOURCE_CHECK
+   ORDER BY RUN_DTM DESC, CHECK_ID DESC"""
+
+
+def source_streak(history: list[dict]) -> tuple[int, object, object]:
+    """최신부터 거꾸로 — (확인 필요 판정의 연속 횟수, 그 연속의 시작, 마지막 정상). `history` 는 최신순이어야 한다.
+
+    정상(ok)이나 robots 금지가 나오면 연속이 끊긴다. 마지막 정상은 연속 너머까지 찾는다(없으면 None)."""
+    from server.source_check import ATTENTION_CODES
+
+    streak, first_fail, last_ok, counting = 0, None, None, True
+    for h in history:
+        if h["RESULT_CD"] == "ok":
+            last_ok = h["RUN_DTM"]
+            break
+        if counting and h["RESULT_CD"] in ATTENTION_CODES:
+            streak += 1
+            first_fail = h["RUN_DTM"]
+        else:
+            counting = False
+    return streak, first_fail, last_ok
+
+
+async def list_source_checks() -> dict:
+    """마지막 실행의 회사별 결과 + 판정별 개수. 한 번도 돌지 않았으면 **빈 결과**다(오류가 아니다).
+
+    정렬: 연속이 긴 것부터 → 같은 연속이면 확인 필요 → robots 금지 → 정상, 그 안에서는 회사명.
+    ⚠ 주소·설명은 우리 시드와 점검기가 만든 값이지 사용자 입력이 아니다 — 그래도 화면은 `textContent` 로만 그린다."""
+    from server.source_check import RESULT_CODES
+
+    counts = {cd: 0 for cd in RESULT_CODES}
+    last = (await database.fetch_one(SQL_SOURCE_LAST_RUN))["RUN_DTM"]
+    if last is None:
+        return {"last_run_dtm": None, "total": 0, "counts": counts, "items": []}
+    latest: dict[int, dict] = {}
+    for r in await database.fetch_all(SQL_SOURCE_RUN, (last,)):
+        latest[r["COMP_ID"]] = r  # 같은 실행에 한 회사가 둘이면(같은 초에 두 번 돌았다) 나중 행
+    history: dict[tuple, list[dict]] = {}
+    for h in await database.fetch_all(SQL_SOURCE_HISTORY):
+        history.setdefault((h["COMP_ID"], h["CHECK_URL"]), []).append(h)
+    items = []
+    for r in latest.values():
+        streak, first_fail, last_ok = source_streak(history.get((r["COMP_ID"], r["CHECK_URL"]), []))
+        counts[r["RESULT_CD"]] = counts.get(r["RESULT_CD"], 0) + 1
+        items.append({
+            "comp_nm": r["COMP_NM"], "comp_eng_nm": r["COMP_ENG_NM"], "url": r["CHECK_URL"],
+            "result_cd": r["RESULT_CD"], "http_status": r["HTTP_STATUS_NO"], "final_url": r["FINAL_URL"],
+            "detail": r["DETAIL_CTNT"], "fail_streak": streak,
+            "first_fail_dtm": _dt(first_fail), "last_ok_dtm": _dt(last_ok),
+        })
+    rank = {"ok": 2, "robots": 1}
+    items.sort(key=lambda it: (-it["fail_streak"], rank.get(it["result_cd"], 0), it["comp_nm"]))
+    return {"last_run_dtm": _dt(last), "total": len(items), "counts": counts, "items": items}
+
+
+async def source_check_brief() -> dict | None:
+    """현황 카드 한 장 — 마지막 점검 시각·곳 수·확인 필요 수·robots 금지 수. 탭과 **같은 계산**을 쓴다(두 화면이
+    다른 숫자를 보이면 어느 쪽도 믿지 않게 된다). 한 번도 돌지 않았으면 None.
+
+    표가 없어도(1146 — 스키마 적용 전에 앱이 먼저 떴다) None 이다. 현황은 콘솔의 첫 화면이자 로그인 확인이라, 부수
+    카드 하나 때문에 콘솔 전체가 500 이 되면 안 된다(`ops.collect_drill_status` 와 같은 원칙). 탭 자체는 삼키지
+    않는다 — 거기서는 오류가 곧 「스키마를 적용하라」는 신호다."""
+    from server.source_check import ATTENTION_CODES
+
+    try:
+        d = await list_source_checks()
+    except ProgrammingError as exc:
+        if exc.args and exc.args[0] == 1146:
+            return None
+        raise
+    if d["last_run_dtm"] is None:
+        return None
+    return {
+        "last_run_dtm": d["last_run_dtm"], "total": d["total"],
+        "attention": sum(d["counts"][cd] for cd in ATTENTION_CODES), "robots": d["counts"]["robots"],
+    }

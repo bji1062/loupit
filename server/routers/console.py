@@ -234,6 +234,15 @@ async def benefit_edits(
     return {"items": items, "next_before": next_before}
 
 
+@router.get("/source-checks")
+async def source_checks(_op: dict = Depends(require_operator)) -> dict:
+    """출처 주소 점검 결과(SP-AUTH-19.9) — 마지막 실행의 회사별 판정 + 연속 실패. **읽기 전용**.
+
+    쓰는 쪽은 주간 타이머(`ops source-check`) 하나다. 여기서 점검을 돌리는 버튼은 두지 않는다 — 남의 서버를
+    두드리는 일을 브라우저 클릭 뒤에 두면 새로고침 몇 번이 곧 수백 요청이 된다(예절 규칙이 무너진다)."""
+    return await console_view.list_source_checks()
+
+
 async def _visibility(target_type: str, target_id: int, body: VisibilityIn, op: dict) -> dict:
     try:
         out = await report_svc.set_visibility(target_type, target_id, body.action, op["MBR_ID"], body.note)
@@ -361,6 +370,8 @@ async def console_page() -> Response:
 #      `textContent` 로만 넣는다.
 #   ② 자동 하이퍼링크 금지. 증빙·참고 URL 은 사용자가 넣은 외부 주소다. `<a href>` 로 만들면
 #      관리자가 무심코 눌러 IP 노출·피싱을 당한다 → 텍스트로 보여주고 **복사**하게 한다.
+#      예외는 딱 하나 — 출처 점검 탭의 출처 주소(`sourceLink`, SP-AUTH-19.9). 사용자 입력이 아니라 우리가 시드에
+#      넣은 공식 페이지 주소이고, 운영자는 그 페이지를 열어 봐야 한다. http(s) 만·새 창·noopener noreferrer.
 #   (탭도 링크가 아니라 버튼이다 — 화면 전환에 URL 이동이 필요 없다.)
 # r-문자열인 이유: 안의 JS 에 역슬래시가 들어가는 날 파이썬이 조용히 먼저 해석해 버린다.
 _PAGE = r"""<!doctype html>
@@ -421,8 +432,8 @@ _PAGE = r"""<!doctype html>
   td.txt { min-width: 14rem; max-width: 28rem; word-break: normal; }
   td .sub { color: var(--mut); display: block; }
   .pill { display: inline-block; font-size: .75rem; padding: 0 .4rem; border-radius: 999px; border: 1px solid var(--bd); }
-  .pill.hidden, .pill.pending { border-color: var(--hot); color: var(--hot); }
-  .pill.deleted, .pill.withdrawn, .pill.revoked, .pill.expired { color: var(--mut); }
+  .pill.hidden, .pill.pending, .pill.bad { border-color: var(--hot); color: var(--hot); }
+  .pill.deleted, .pill.withdrawn, .pill.revoked, .pill.expired, .pill.skip { color: var(--mut); }
   .diff { margin: 0; padding-left: 1rem; }
   .filters { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; margin: .5rem 0; }
   .filters button[aria-pressed="true"] { background: #8882; font-weight: 600; }
@@ -714,12 +725,20 @@ async function renderOverview() {
   grid.appendChild(card('신고', [['대기', d.reports.pending, true]]));
   grid.appendChild(card('복지 수정 이력', [['전체', d.benefit_edits.total], ['최근 30일', d.benefit_edits.new_30d]]));
   grid.appendChild(card('메일 발송 억제', [['억제 중', d.mail_suppression.active, true]]));
+  // 출처 점검(SP-AUTH-19.9) — 한 번도 안 돌았거나 표가 아직 없으면 null 이다.
+  const sc = d.source_check;
+  grid.appendChild(card('출처 점검', sc
+    ? [['확인 필요', sc.attention, true], ['robots 금지', sc.robots], ['점검한 곳', sc.total]]
+    : [['점검 기록', '없음']]));
   root.appendChild(grid);
   const todo = d.verifications.pending + d.company_requests.pending + d.reports.pending;
   const go = $('div', 'rowbtns');
   const btn = $('button', null, '처리 대기 열기 (' + todo + ')');
   btn.onclick = () => show('queues');
   go.appendChild(btn);
+  const src = $('button', null, '출처 점검: 확인 필요 ' + (sc ? sc.attention : '—'));
+  src.onclick = () => show('sources');
+  go.appendChild(src);
   root.appendChild(go);
 }
 
@@ -973,6 +992,90 @@ async function renderEdits() {
   ], (before) => api('/benefit-edits' + qs({ before })), '이력 없음.'));
 }
 
+// ── 탭 6: 출처 점검(읽기 전용, SP-AUTH-19.9) ────────────────────────────────────
+// 주 1회 타이머(loupit-source-check)가 공식 출처 주소를 두드린 결과다. 여기서 점검을 돌리는 버튼은 없다.
+const SOURCE_LABEL = {
+  ok: '정상', content_lost: '복지 내용 사라짐', gone: '페이지 없어짐', blocked: '접속 차단(봇 방어일 수 있음)',
+  error: '접속 오류', moved: '다른 주소로 이동', robots: 'robots 금지(점검 안 함)',
+};
+const sources = { all: false };
+
+// 출처 주소 링크 — 이 페이지에서 링크를 만드는 **유일한** 곳이다(위 규칙 ②의 예외, CO-13·CO-18·CO-19 가 지킨다).
+// 이 주소는 사용자 입력이 아니라 우리가 시드에 넣은 공식 페이지 주소(TCOMPANY.CAREERS_BENEFIT_URL)이고, 운영자는 그
+// 페이지를 직접 열어 봐야 한다. 그래도 http(s) 만 링크로 만들고, 새 창 + noopener noreferrer 로 이 창과 끊는다.
+// 리다이렉트 뒤 최종 주소는 남의 서버가 정한 값이라 링크로 만들지 않는다(설명 칸의 텍스트).
+// ⚠ 전제: 그 열을 쓰는 길은 시드뿐이다. 재직자 편집 등 앱에서 이 열을 고치는 길이 생기는 날 이 예외는 다시 판단해야
+//   한다 — 사용자 입력이 링크가 된다(CO-19 가 앱 코드에 그 쓰기 경로가 없음을 잰다).
+function sourceLink(url) {
+  let u = null;
+  try { u = new URL(url); } catch (e) { u = null; }
+  if (!u || (u.protocol !== 'https:' && u.protocol !== 'http:')) return url || '—';
+  const a = document.createElement('a');
+  a.href = u.href;
+  a.target = '_blank';
+  a.rel = 'noopener noreferrer';
+  a.title = plain(url);
+  a.textContent = readableUrl(url);
+  return a;
+}
+
+/** 보이는 글자만 — 제어 문자(Cc)와 서식 문자(Cf: 양방향 제어 U+202E·폭 없는 공백 등)를 걷어 낸다. 최종 주소·설명은
+ *  남의 서버가 정한 값이 섞여 있어, 양방향 제어 한 글자가 칸의 글자 순서를 뒤집어 보이게 할 수 있다(2026-09-27 검토 LOW-6). */
+const INVISIBLE = /[\p{Cc}\p{Cf}]/gu;
+const plain = (v) => String(v === null || v === undefined ? '' : v).replace(INVISIBLE, '');
+
+/** 사람이 읽는 주소 — 퍼센트 인코딩을 풀고(한글 슬러그) 보이지 않는 글자를 걷은 뒤 90자에서 자른다. 전체 주소는 링크의
+ *  title·href 에 있다(href 는 `new URL()` 이 정규화한 값이라 푼 글자와 무관하다). */
+function readableUrl(url) {
+  let text = String(url || '');
+  try { text = decodeURI(text); } catch (e) { text = String(url || ''); }
+  text = plain(text);
+  return text.length > 90 ? text.slice(0, 89) + '…' : text;
+}
+
+/** 판정 알약 색 — 정상은 기본, robots 금지는 흐리게(점검 안 함), 나머지는 확인 필요(주황). */
+const sourcePill = (cd, text) => pill(cd === 'ok' ? 'ok' : (cd === 'robots' ? 'skip' : 'bad'), text);
+
+function sourceDetail(s) {
+  if (!s.detail && !s.final_url) return '—';
+  const f = document.createDocumentFragment();
+  if (s.detail) f.appendChild(document.createTextNode(plain(s.detail)));
+  if (s.final_url) f.appendChild($('span', 'sub', '최종 주소: ' + readableUrl(s.final_url)));
+  return f;
+}
+
+async function renderSources() {
+  const d = await api('/source-checks');
+  if (!d.last_run_dtm) {
+    root.appendChild($('div', 'empty', '아직 점검 기록이 없다 — 주 1회 타이머(월 09:17 KST)가 처음 돌면 채워진다.'));
+    return;
+  }
+  const attention = d.total - d.counts.ok - d.counts.robots;
+  root.appendChild($('div', 'meta', '마지막 점검 ' + kst(d.last_run_dtm) + ' · ' + d.total + '곳 중 정상 '
+    + d.counts.ok + ' · 확인 필요 ' + attention + (d.counts.robots ? ' · robots 금지 ' + d.counts.robots : '')));
+  root.appendChild($('div', 'warn', '한 번 실패는 일시적일 수 있습니다 — 2주 연속부터 확인하세요'));
+  const bar = $('div', 'filters');
+  const all = $('button', null, '전체 보기');
+  all.setAttribute('aria-pressed', String(sources.all));
+  all.onclick = () => { sources.all = !sources.all; rerender(); };
+  bar.appendChild(all);
+  Object.keys(SOURCE_LABEL).forEach((cd) => {
+    if (cd !== 'ok' && d.counts[cd]) bar.appendChild(sourcePill(cd, SOURCE_LABEL[cd] + ' ' + d.counts[cd]));
+  });
+  root.appendChild(bar);
+  const rows = sources.all ? d.items : d.items.filter((s) => s.result_cd !== 'ok');
+  root.appendChild(await pagedTable([
+    { label: '회사', get: (s) => titleCell(s.comp_nm, s.comp_eng_nm) },
+    { label: '상태', cls: 'nw', get: (s) => sourcePill(s.result_cd, lab(s.result_cd, SOURCE_LABEL)) },
+    { label: 'HTTP', cls: 'nw', get: (s) => s.http_status },
+    { label: '연속', cls: 'nw', get: (s) => (s.fail_streak ? s.fail_streak + '회' : '—') },
+    { label: '처음 실패', cls: 'nw', get: (s) => kst(s.first_fail_dtm) },
+    { label: '마지막 정상', cls: 'nw', get: (s) => kst(s.last_ok_dtm) },
+    { label: '주소', cls: 'txt', get: (s) => sourceLink(s.url) },
+    { label: '설명', cls: 'txt', get: (s) => sourceDetail(s) },
+  ], async () => ({ items: rows, next_before: null }), '확인할 곳 없음 — 전부 정상이다.'));
+}
+
 // ── 탭 전환 ─────────────────────────────────────────────────────────────────
 // 탭은 링크가 아니라 버튼이다(위 규칙 ②). 지금 탭은 URL 조각(#members 등)에 적어 새로고침해도 남긴다.
 const TABS = [
@@ -980,7 +1083,8 @@ const TABS = [
   { id: 'queues', label: '처리 대기', render: renderQueues },
   { id: 'members', label: '회원', render: renderMembers },
   { id: 'board', label: '게시판', render: renderBoard },
-  { id: 'edits', label: '복지 이력', render: renderEdits },  // 390px 에서 탭 다섯이 한 줄에 들도록 짧게
+  { id: 'edits', label: '복지 이력', render: renderEdits },  // 탭 이름은 짧게 — 390px 에서 탭 줄이 덜 밀리게
+  { id: 'sources', label: '출처 점검', render: renderSources },  // SP-AUTH-19.9 — 현황 카드 아래 버튼으로도 간다
 ];
 let current = 'overview';
 

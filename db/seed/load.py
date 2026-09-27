@@ -164,6 +164,14 @@ def _truncate_compare_log(cur) -> None:
     cur.execute("TRUNCATE TABLE TCOMPARE_LOG")
 
 
+def _truncate_source_check(cur) -> None:
+    """#15 방지 — 출처 점검 이력(TSOURCE_CHECK, SP-DB-19)도 `COMP_ID` 로 회사를 가리킨다. --fresh 가 TCOMPANY 를 다시
+    만들어 번호가 새로 매겨지면 살아남은 이력이 **다른 회사의 연속 실패·마지막 정상**으로 읽힌다. 이력은 다음 주간
+    점검이 다시 채우므로 비워도 잃는 것은 연속 횟수뿐이다. (운영에서는 --fresh 가 거부된다 — SP-SEED-12.)
+    호출 시점은 run_sql_file(SCHEMA_SQL) 직후라 표 존재가 보장된다."""
+    cur.execute("TRUNCATE TABLE TSOURCE_CHECK")
+
+
 # ── SP-SEED-12 재직자 행 보존 (모듈 머리말 ①~⑥) ────────────────────────────────────
 
 def _member_data_counts(cur) -> tuple[int, int]:
@@ -464,6 +472,7 @@ def main(fresh: bool = False, discard_member_edits: bool = False) -> dict:
             run_sql_file(cur, SCHEMA_SQL)  # 1: schema (idempotent CREATE TABLE IF NOT EXISTS)
             if fresh:
                 _truncate_compare_log(cur)  # #15: 스키마 보장 후 비움 — 옛 COMP_ID 오귀속 차단
+                _truncate_source_check(cur)  # #15: 출처 점검 이력도 같은 이유(SP-DB-19)
                 _clear_edit_log(cur)  # SP-SEED-12: 다시 매겨질 BENEFIT_ID 를 가리킬 이력을 남기지 않는다
             run_sql_file(cur, COMPANY_TYPES_SQL)  # 2a: 기업유형 6종
             run_sql_file(cur, BENEFIT_PRESETS_SQL)  # 2b: 프리셋 28행(full-refresh)
@@ -524,14 +533,14 @@ if __name__ == "__main__":
     discard_member_edits_flag = os.environ.get("LOUPIT_DISCARD_MEMBER_EDITS") == "1"
     allow_fresh_flag = os.environ.get("LOUPIT_ALLOW_FRESH") == "1"
     if fresh_flag:
-        # #14: --fresh 는 서빙 참조 5테이블 DROP + TCOMPARE_LOG TRUNCATE 로 데이터를 파괴한다.
+        # #14: --fresh 는 서빙 참조 5테이블 DROP + TCOMPARE_LOG·TSOURCE_CHECK TRUNCATE 로 데이터를 파괴한다.
         # 환경변수 LOUPIT_ALLOW_FRESH=1 또는 CLI --yes 없이는 거부한다(셸 히스토리 재실행·오타 방어).
         # run_tests.sh 등 복원 책임을 지는 래퍼는 LOUPIT_ALLOW_FRESH=1 을 전달해 통과한다.
         _target = _target_desc()
         if not allow_fresh_flag and "--yes" not in _argv:
             print(
                 f"거부: --fresh 는 대상 [{_target}] 의 참조 5테이블(TCOMPANY_TYPE·TCOMPANY·"
-                "TCOMPANY_ALIAS·TCOMPANY_BENEFIT·TBENEFIT_PRESET)을 DROP 하고 TCOMPARE_LOG 를 "
+                "TCOMPANY_ALIAS·TCOMPANY_BENEFIT·TBENEFIT_PRESET)을 DROP 하고 TCOMPARE_LOG·TSOURCE_CHECK 를 "
                 "TRUNCATE 한다.\n"
                 "      시드 변경 반영이라면 --fresh 가 아니라 `python3 db/seed/load.py`(멱등 재적용)다.\n"
                 "      의도한 실행이면 LOUPIT_ALLOW_FRESH=1 환경변수 또는 --yes 플래그를 붙여라.",
@@ -541,7 +550,7 @@ if __name__ == "__main__":
         # (b) 파괴 작업 직전 대상 명시 — 어느 host/db 를 비우는지 로그에 남긴다.
         print(
             f"[load --fresh] 대상 [{_target}] — 재직자 데이터 확인 후 참조 5테이블 DROP/재시드 + "
-            "TCOMPARE_LOG TRUNCATE",
+            "TCOMPARE_LOG·TSOURCE_CHECK TRUNCATE",
             file=sys.stderr,
         )
     try:

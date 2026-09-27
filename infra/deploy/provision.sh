@@ -78,6 +78,8 @@ sudo cp "${ROOT_DIR}/infra/systemd/loupit-ops-digest.service" /etc/systemd/syste
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-ops-digest.timer" /etc/systemd/system/loupit-ops-digest.timer
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-restore-drill.service" /etc/systemd/system/loupit-restore-drill.service
 sudo cp "${ROOT_DIR}/infra/systemd/loupit-restore-drill.timer" /etc/systemd/system/loupit-restore-drill.timer
+sudo cp "${ROOT_DIR}/infra/systemd/loupit-source-check.service" /etc/systemd/system/loupit-source-check.service
+sudo cp "${ROOT_DIR}/infra/systemd/loupit-source-check.timer" /etc/systemd/system/loupit-source-check.timer
 # 테스트 DB 상호 배제 락(0666) — 훈련(User=ubuntu)과 pytest(사람: ubuntu 또는 root)가 같은
 # 파일을 flock 한다. 먼저 만든 쪽의 0644 소유가 남으면 **다른 쪽이 열지 못해 훈련이 죽는다**
 # (2026-07-30 실발현). tmpfiles 로 선언해야 재부팅(/run/lock 은 tmpfs) 후에도 유지된다.
@@ -116,6 +118,10 @@ sudo systemctl enable --now loupit-ops-digest.timer
 # 다른 질문이다 — 복원해 본 적 없는 백업은 백업이 아니라 백업이라는 믿음이다.
 # 결과는 일일 요약 메일에 실린다(server/ops.py 가 restore-drill.json 을 읽는다).
 sudo systemctl enable --now loupit-restore-drill.timer
+# 출처 주소 점검(주 1회 월요일 00:17 UTC = 09:17 KST, SC-1). 복지 출처 페이지가 사라지거나 옮겨 가면 운영 콘솔
+# 「출처 점검」 탭에 뜬다. ⚠ 전제: db/schema.sql 의 TSOURCE_CHECK 가 서빙 DB 에 있어야 한다(release [2/7]) —
+# 없으면 점검은 네트워크를 쓰기 전에 "표가 없다"로 실패한다(exit 1).
+sudo systemctl enable --now loupit-source-check.timer
 
 echo "[5/6] certbot·방화벽 부트스트랩 호출 (SP-INFRA-4·8, 별도 스크립트)"
 echo "  최초 인증서 발급은 :80이 활성화된 뒤 수동 실행: infra/deploy 문서(SP-INFRA-4.1) 참고"
