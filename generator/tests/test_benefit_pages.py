@@ -65,8 +65,11 @@ def _bundle(rows: list[tuple[str, str, dict]]) -> dict:
 HOUSING = [
     ("doosan_enerbility", "두산에너빌리티", _b("housing_loan", "주거지원",
         desc="기숙사/사택, 이사비/대출이자 지원, 신용협동조합(주택구입/전세/생활안정 무이자/저금리)")),
-    ("pearl_abyss", "펄어비스", _b("housing_loan", "거주비/대출 이자 지원",
-        note="회사 인근 거주 시 매월 50만원 거주비, 그 외 지역 대출 이자 실비 지원", amt=600, qual=False, src="stated")),
+    # 펄어비스는 2026-09-28 재수집(R-3) 원문이다 — 거주비는 housing_support 새 행으로 갈라졌다. 운영 금액은
+    # NULL(한도, L6)이 됐지만 금액 칸 표시 규칙을 재려고 600(공식)을 표본용으로 남긴다.
+    ("pearl_abyss", "펄어비스", _b("housing_loan", "대출 이자 지원",
+        desc="안양·과천·의왕·군포시 외 지역에 거주하는 임직원에게 대출 이자를 매달 실비로 지원 (2025 ESG 보고서 기준 37만 5천 원 한도)",
+        amt=600, qual=False, src="stated")),
     ("kt", "KT", _b("housing_loan", "주택자금 대출", desc="저금리 주택자금 대출 지원")),
     ("gaon_cable", "가온전선", _b("housing_loan", "주택자금 지원",
         desc="주택구입자금 및 전세자금 지원 (공식 채용 페이지 복리후생 주거 지원 항목 — 대출·이자 지원 등 지원 방식, 한도, 자격 요건 미기재)")),
@@ -189,7 +192,7 @@ def test_real_housing_overrides_match_the_real_text():
     assert [s for s in out["stale"] if "원문이 바뀌어" in s] == []
     assert "no_home" not in by["sk_hynix"]["facets"], "재수집 원문에는 무주택 조건이 없다 — 예외 없이 규칙만으로 맞아야 한다"
     assert by["doosan_enerbility"]["mode"] == "both"
-    assert "limit" not in by["pearl_abyss"]["facets"], "「매월 50만원」 거주비가 대출 한도로 잡혔다"
+    assert "limit" not in by["pearl_abyss"]["facets"], "달마다 내 주는 이자 한도(37만 5천 원)가 대출 한도로 잡혔다"
 
 
 def test_stale_override_is_printed_to_build_log_not_raised():

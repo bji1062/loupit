@@ -186,13 +186,14 @@ def _companies_from_label_cases(cases: dict) -> list[dict]:
 
 
 def test_real_bundle_labels_match_the_shared_fixture():
-    """실데이터 90종의 대표 이름·별칭 순서를 못 박는다.
+    """실데이터 89종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
+    흡수돼 wedding 을 쓰는 회사가 0 → 90 → 89종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
 
     같은 파일을 `web/assets/js/find.test.js` 도 읽어 같은 기대값을 검사한다 — 표(파이썬)와
     칩(JS)이 **같은 이름을 부른다**는 약속을 실데이터로 재는 자리다. 규칙을 손대면 여기가 먼저 빨개진다.
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
-    assert len(cases["codes"]) == 90, "픽스처가 실데이터 90종이 아니다"
+    assert len(cases["codes"]) == 89, "픽스처가 실데이터 89종이 아니다"
     codes = find.derive_codes(_companies_from_label_cases(cases))
     assert sorted(codes) == sorted(cases["codes"])
     for code, want in cases["codes"].items():
@@ -224,12 +225,14 @@ def test_short_generic_name_wins_over_one_company_wording():
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
     # 대표 이름(`base_label`)을 잰다 — 표시명(`label`)은 override 가 덮을 수 있다
-    # (`birthday_leave` 는 2026-09-18 부터 「생일 휴가·조기퇴근」으로 못 박혔지만 동률 규칙은 그대로 「생일 축하」를 고른다).
+    # (`birthday_leave` 는 2026-09-18 부터 「생일 휴가·조기퇴근」으로 못 박혔지만 동률 규칙은 그대로 짧은 일반명(2026-09-28 부터 「생일 휴가」)을 고른다).
     codes = find.derive_codes(_companies_from_label_cases(cases))
     # 2026-09-27 표본 재생성: mba·profit_sharing 은 이제 최다 이름이 하나라 동률 예시가 아니다 → 동률인 코드로 바꿨다.
+    # 2026-09-28 R-3 묶음 1: team_dinner 에 더 짧은 일반명 「회식비」가 들어와 동률 규칙대로 그것이 대표가 됐다 ·
+    #   birthday_leave 의 「생일 축하」 표기가 재수집으로 사라져 가장 짧은 일반명 「생일 휴가」가 대표다.
     for code, expect in (("company_event", "야유회"), ("relocation", "정착 지원금"),
-                         ("work_tools", "노트북 지원"), ("team_dinner", "회식비 지원"),
-                         ("massage", "안마의자"), ("birthday_leave", "생일 축하")):
+                         ("work_tools", "노트북 지원"), ("team_dinner", "회식비"),
+                         ("massage", "안마의자"), ("birthday_leave", "생일 휴가")):
         names = cases["codes"][code]["names"]
         assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
         top = max(names.values())

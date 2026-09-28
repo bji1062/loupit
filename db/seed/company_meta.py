@@ -232,16 +232,19 @@ def _row_chunks(sql_text: str) -> list[str]:
     return [c for c in chunks if c.strip().startswith("(@comp_id,")]
 
 
-def _row_info(chunk: str) -> tuple[str | None, bool, str | None]:
-    """청크 → (BENEFIT_CD, QUAL_YN 여부, 설명텍스트[NOTE 또는 QUAL_DESC])."""
+def _row_info(chunk: str) -> tuple[str | None, bool, str | None, str | None]:
+    """청크 → (BENEFIT_CD, QUAL_YN 여부, 설명텍스트[NOTE 또는 QUAL_DESC], BENEFIT_CTGR_CD)."""
     code_m = re.match(r"\(@comp_id,\s*'([a-zA-Z0-9_]+)'", chunk)
     code = code_m.group(1) if code_m else None
     is_qual = bool(re.search(r",\s*TRUE\s*,", chunk))
-    quoted = re.findall(r"'([^']*)'", chunk)
+    # SQL 문자열 안의 홑따옴표 이스케이프(두 개 연속)를 한 칸으로 읽는다 — 안 그러면 이름 칸에 이스케이프가
+    # 있는 행(CJ ENM 커머스부문 쉴랜다 리프레시 휴가)처럼 칸이 밀려 카테고리 자리에 이름 조각이 온다(2026-09-28).
+    quoted = [q.replace("''", "'") for q in re.findall(r"'((?:[^']|'')*)'", chunk)]
     # quoted[0..3] = CODE,NAME,CATEGORY,BADGE. 그 뒤 NOTE 또는 QUAL_DESC 중 존재하는
     # 쪽만 콤마당 1개 추가되므로, 마지막 원소가 그 설명 텍스트다(존재 시).
     desc = quoted[-1] if len(quoted) > 4 else None
-    return code, is_qual, desc
+    ctgr = quoted[2] if len(quoted) > 2 else None
+    return code, is_qual, desc, ctgr
 
 
 def derive_work_style(sql_text: str) -> dict:
@@ -250,10 +253,13 @@ def derive_work_style(sql_text: str) -> dict:
     unlimited_hit = False
     refresh_desc: str | None = None
     for chunk in _row_chunks(sql_text):
-        code, is_qual, desc = _row_info(chunk)
+        code, is_qual, desc, ctgr = _row_info(chunk)
         if code:
             codes.add(code)
-        if is_qual and desc and ("무제한" in desc or "자율 휴가" in desc):
+        # 휴가 카테고리 행만 본다(2026-09-28) — 「음료 무제한」(에이피알) · 「도서 구매 무제한」(카카오페이)이
+        # 「무제한 휴가」 칩으로 화면과 이직 계산기에 나가고 있었고, 재수집한 NH투자증권의 「본인 의료비 무제한」도
+        # 걸릴 참이었다.
+        if is_qual and desc and ctgr == "time_off" and ("무제한" in desc or "자율 휴가" in desc):
             unlimited_hit = True
         if code in ("refresh_leave", "long_service_leave") and desc:
             refresh_desc = desc[:60]

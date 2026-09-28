@@ -168,7 +168,8 @@ def test_SI8_company_count_not_200(seeded_db):
 
 def test_SI_M5_stated_amount_matches_note(seeded_db):
     """M-5 회귀: note에 명시된 만원 금액과 BENEFIT_AMT(연간 환산 만원) 정합성 —
-    화면 노출값과 calc 합산값 불일치 방지. 파크시스템스 출산축하금 100, 크래프톤 운동비 연 120."""
+    화면 노출값과 calc 합산값 불일치 방지. 파크시스템스 출산축하금 100.
+    (크래프톤 운동비 연 120 은 2026-09-28 재수집(R-3)에서 공식 원문에 금액이 없어 비웠다 — 검사에서 뺀다.)"""
     park = _scalar(
         seeded_db,
         "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
@@ -176,47 +177,49 @@ def test_SI_M5_stated_amount_matches_note(seeded_db):
         ("park_systems", "fertility_support"),
     )
     assert park == 100, f"파크시스템스 출산축하금 100(만원) 기대(현재 {park})"
-    kraft = _scalar(
-        seeded_db,
-        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
-        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
-        ("krafton", "fitness"),
-    )
-    assert kraft == 120, f"크래프톤 운동비 연환산 120(만원) 기대(현재 {kraft})"
 
 
 def test_SI_B2_monthly_amount_annualized(seeded_db):
     """B-2 회귀(2026-07-12): note가 '월 N만원'인데 BENEFIT_AMT가 월값으로 저장된
     월→연 환산 누락 방지. 95개 시드 SQL 전수 스윕+적대검증으로 확정된 유일 실버그 —
     카카오뱅크 영유아지원금 '월 10만원' → 연 120(만원). (크래프톤·파크는 M-5에서 처리,
-    LS 체력단련비 30은 청구주기 서술일 뿐 이미 연값이라 대상 아님.)"""
-    kakao = _scalar(
-        seeded_db,
-        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
-        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
-        ("kakao_bank", "child_edu"),
-    )
-    assert kakao == 120, f"카카오뱅크 영유아지원금 월10만원→연환산 120(만원) 기대(현재 {kakao})"
+    LS 체력단련비 30은 청구주기 서술일 뿐 이미 연값이라 대상 아님.)
+
+    2026-09-28 재수집(R-3)으로 그 행은 금액이 없어졌다(공식 원문에 「월 10만원」이 없다) — 한 행을
+    못 박던 검사를 **전수 검사**로 바꾼다: 비고에 「월 N만원」이 있는데 금액이 N 그대로인 행이 없어야 한다."""
+    rows = _rows(seeded_db, """
+        SELECT C.COMP_ENG_NM, B.BENEFIT_CD, B.BENEFIT_AMT, B.NOTE_CTNT
+          FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+         WHERE B.BENEFIT_AMT IS NOT NULL AND B.NOTE_CTNT IS NOT NULL""")
+    monthly = _re.compile(r"월\s*(\d+)\s*만\s*원")
+    bad = [(eng, cd, amt) for eng, cd, amt, note in rows
+           if (m := monthly.search(note)) and int(m.group(1)) == int(amt)]
+    assert not bad, f"월액을 연으로 바꾸지 않은 금액: {bad}"
+    assert monthly.search("월 10만원 지원"), "검사식이 옛 결함 문장을 못 잡는다"
 
 
-# ── SI-M4: 앵커 추정값 stated 위장 방지 회귀(2026-07-12 검증 M-4) ──
+# ── SI-M4: 금액출처는 DG-2 판별 하나로만 정한다 — M-4 앵커 강등 폐기(2026-09-28 사용자 결정) ──
 
 
-def test_SI_M4_no_stated_anchor_across_companies(seeded_db):
-    """M-4 회귀: 무관 회사 간 동일 (복지코드·금액)이 3개사 이상 반복되면 회사가 개별
-    명시한 값이 아니라 표준 앵커/환산일 가능성이 높다 → stated(±5%)로 남기지 않고
-    estimated(±20%)로 강등해야 한다(DEC-2 정직성, 근거없는 정밀도 방지)."""
-    anchors = _rows(
-        seeded_db,
-        """
+def test_SI_M4_amt_source_follows_dg2_only_no_anchor_demotion(seeded_db):
+    """M-4(무관 회사 간 같은 (코드·금액)이 3개사 이상이면 stated→estimated)는 폐기했다 — 「당연히 겹칠 수도
+    있지」(사용자, 2026-09-28). 공식 원문에 적힌 금액(CJ 6사 복지포인트 100 · 명절 60 3사 등)까지 추정치로
+    내리고 있었다. 이제 모든 공식 행의 금액출처 = DG-2 판별(`derive_amt_source`) 그대로여야 한다 — 다른 단계가
+    값을 바꾸면(앵커 강등이 되살아나면) 여기서 걸린다. 겹치는 명시 금액이 실제로 stated 로 남는지도 함께 본다."""
+    from db.seed.backfill_dec2 import derive_amt_source
+    rows = _rows(seeded_db, """
+        SELECT B.BENEFIT_ID, B.BENEFIT_AMT, B.QUAL_YN, B.NOTE_CTNT, B.AMT_SOURCE_CD
+          FROM TCOMPANY_BENEFIT B WHERE B.BADGE_CD <> 'verified'""")
+    bad = [(bid, src, derive_amt_source(amt, bool(q), note)) for bid, amt, q, note, src in rows
+           if src != derive_amt_source(amt, bool(q), note)]
+    assert not bad, f"DG-2 판별과 다른 금액출처(앵커 강등 부활?): {bad[:10]}"
+    shared = _rows(seeded_db, """
         SELECT BENEFIT_CD, BENEFIT_AMT, COUNT(DISTINCT COMP_ID) AS c
           FROM TCOMPANY_BENEFIT
          WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL
          GROUP BY BENEFIT_CD, BENEFIT_AMT
-        HAVING c >= 3
-        """,
-    )
-    assert anchors == (), f"stated로 남은 앵커(3개사+ 동일값): {anchors}"
+        HAVING c >= 3""")
+    assert shared, "3개사 이상이 같은 금액을 명시한 공식 행이 stated 로 남아 있어야 한다(CJ 복지포인트 100 등)"
 
 
 # ── SI-R1: 사명 변경 2건(2026-08-21) — 표시명은 새 이름, **옛 이름은 별칭에 보존** ──
@@ -332,3 +335,30 @@ def test_SI9_meal_count_reads_the_benefit_name_too():
     assert _meal_count("구내식당 (중식/석식/야식)") == 3
     assert _meal_count("점심/저녁식사 제공") == 2
     assert _meal_count("구내식당 일 18,000원 x 240일") == 0
+
+
+# ── SI-10: 무제한 휴가 파생은 휴가 행만 본다(2026-09-28) ──
+# 정성 행 설명의 「무제한」을 카테고리 없이 보던 때, 「음료 무제한」(에이피알) · 「도서 구매 무제한」(카카오페이)이
+# 회사 페이지와 이직 계산기에 「무제한 휴가」로 나갔고, 재수집한 NH투자증권의 「본인 의료비 무제한」도 걸릴 참이었다.
+def _ws_row(code: str, ctgr: str, desc: str) -> str:
+    return ("INSERT INTO TCOMPANY_BENEFIT (COMP_ID) VALUES\n"
+            f"  (@comp_id, '{code}', '이름', NULL, '{ctgr}',\n   'est', NULL, TRUE, '{desc}', 10)\n"
+            "ON DUPLICATE KEY UPDATE X = 1;")
+
+
+def test_SI10_unlimited_pto_reads_time_off_rows_only():
+    from db.seed.company_meta import derive_work_style
+    assert derive_work_style(_ws_row("leave_general", "time_off", "자율 휴가제 운영"))["unlimitedPTO"] is True
+    assert derive_work_style(_ws_row("leave_general", "time_off", "휴가 무제한 사용"))["unlimitedPTO"] is True
+    assert derive_work_style(_ws_row("medical", "health", "본인 의료비 무제한"))["unlimitedPTO"] is False
+    assert derive_work_style(_ws_row("snack_bar", "perks", "음료를 무제한 무료로 이용"))["unlimitedPTO"] is False
+
+
+def test_SI10_unlimited_pto_real_companies(seeded_db):
+    """휴가 아닌 행의 「무제한」에 걸리던 3사. 참 쪽(자율 휴가제)은 단위 시험이 맡는다 — 실데이터의 참 사례(하이브)는
+    구본이 다른 회사 데이터라 재수집하면 뒤집힐 수 있어 여기 못 박지 않는다."""
+    rows = dict(_rows(seeded_db, """
+        SELECT COMP_ENG_NM, WORK_STYLE_VAL FROM TCOMPANY
+         WHERE COMP_ENG_NM IN ('nh_invest', 'apr', 'kakao_pay')"""))
+    got = {eng: (json.loads(v) if isinstance(v, str) else v).get("unlimitedPTO") for eng, v in rows.items()}
+    assert got == {"nh_invest": False, "apr": False, "kakao_pay": False}, got

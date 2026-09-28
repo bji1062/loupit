@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 84 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 금액 표기 정리(2026-09-28): meal 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('nepes', '네패스',
@@ -67,7 +68,7 @@ VALUES
   (@comp_id, 'welfare_point', '복지포인트', 40, 'perks',
    'est', '직급에 따라 30~50만원', FALSE, NULL, 80),
   (@comp_id, 'meal', '구내식당 (중식/석식/야식)', 432, 'perks',
-   'est', '구내 식당 운영', FALSE, NULL, 81),
+   'est', '구내 식당 운영 (추정)', FALSE, NULL, 81),
   (@comp_id, 'snack_bar', '사내 카페/무인매점', NULL, 'perks',
    'est', NULL, TRUE, '사내 카페, 무인매점, 카페 제휴업체 운영', 82),
   (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',

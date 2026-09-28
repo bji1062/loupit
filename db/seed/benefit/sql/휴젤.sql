@@ -6,6 +6,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 20 행 삭제. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 금액 표기 정리(2026-09-28): health_check 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hugel', '휴젤',
@@ -45,7 +46,7 @@ VALUES
   (@comp_id, 'insurance', '단체상해보험', 30, 'health',
    'est', '(추정)', FALSE, NULL, 40),
   (@comp_id, 'health_check', '종합건강검진', 100, 'health',
-   'est', '당일 반차 지원', FALSE, NULL, 41),
+   'est', '당일 반차 지원 (추정)', FALSE, NULL, 41),
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'parenting', '육아지원금', 120, 'family',

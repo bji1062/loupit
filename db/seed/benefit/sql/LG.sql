@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- 참고: 원본 txt 내용은 LG유플러스와 동일 — LG 지주 공통 복지로 매핑
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 금액 표기 정리(2026-09-28): health_check 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('lg', 'LG',
@@ -31,7 +32,7 @@ VALUES
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',
-   'est', '종합건강진단 격년 1회', FALSE, NULL, 40),
+   'est', '종합건강진단 격년 1회 (추정)', FALSE, NULL, 40),
   (@comp_id, 'medical', '의료비 지원', 100, 'health',
    'est', '의료비 지원 (추정)', FALSE, NULL, 41),
 

@@ -14,7 +14,6 @@ export const LEGAL_ROWS = Object.freeze([
   ['hanwha_systems', 'parenting', '출산휴가/아빠휴가'],
   ['hanwha_aerospace', 'parenting', '아빠휴가'],
   ['hyundai_steel', 'parenting', '출산/육아'],
-  ['kakao_bank', 'parenting', '임신/출산/육아 제도'],
   ['kt', 'parenting', '출산/육아 지원'],
   ['nepes', 'birthday_leave', '생일 연차 휴식'],
   ['nepes', 'leave_general', '연차촉진제도'],

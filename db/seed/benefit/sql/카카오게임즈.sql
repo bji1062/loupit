@@ -7,6 +7,8 @@
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 50 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 71 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 금액 표기 정리(2026-09-28): SORT 80 meal 비고에 연 환산 표기 — 월액×12 는 추정치(재수집 규칙 R6). R-3 묶음 1 로 (meal, 240) 앵커가 2사로 줄어 공식 수치로 올라가던 것을 막는다. 행 수 변동 없음.
+
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao_games', '카카오게임즈',
@@ -61,7 +63,7 @@ VALUES
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'meal', '점심 식대', 240, 'perks',
-   'est', '월 20만원 점심 식대(점심시간 12:30~14:00)', FALSE, NULL, 80),
+   'est', '월 20만원 점심 식대(점심시간 12:30~14:00) (연 240만원 환산)', FALSE, NULL, 80),
   (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
    'est', '(추정)', FALSE, NULL, 81),
   (@comp_id, 'snack_bar', '모닝간식/카페/맥주', 144, 'perks',

@@ -61,6 +61,9 @@ export const LABEL_OVERRIDE = {
   welfare_fund: '사내근로복지기금',
   library: '전자도서관·북카페',
   mental: '심리상담 지원',
+  // ④ 2026-09-28 재수집 R-3 묶음 1 — conference 가 edu_support 와 구분되지 않던 이름 · stock_grant 한 회사 프로그램명
+  conference: '컨퍼런스·세미나 참가 지원',
+  stock_grant: '자사주 지급',
 };
 
 export const MODES = ['and', 'or'];

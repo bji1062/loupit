@@ -35,7 +35,6 @@
     {"text": "먼저 받아서 쓰나요, 쓰고 나서 영수증으로 돌려받나요?", "answered_by": ["facet:settle"]}
   ],
   "overrides": [
-    {"comp": "kakao", "h": "f69b2dc553", "facets_remove": ["uses"], "why": "「자기계발비 지원, 도서 구입 지원」 — 도서 구입은 자기계발비의 쓰임이 아니라 나란히 적은 별개 항목이다"},
     {"comp": "bh", "h": "0c8e0a47b6", "mode": "allowance", "why": "항목명이 「자기계발비 지원」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"},
     {"comp": "rainbow_robotics", "h": "0c8e0a47b6", "mode": "allowance", "why": "항목명이 「자기계발비 지원」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"}
   ]

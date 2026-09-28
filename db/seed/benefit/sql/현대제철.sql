@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 금액 표기 정리(2026-09-28): health_check 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hyundai_steel', '현대제철',
@@ -29,7 +30,7 @@ VALUES
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',
-   'est', '정기검진+종합건강진단', FALSE, NULL, 40),
+   'est', '정기검진+종합건강진단 (추정)', FALSE, NULL, 40),
   -- 2026-09-18 정성 전환 (금액 100 은 비율 100퍼센트였지 100만원이 아니다): db/migrations/20260918_recode_misclassified_rows.sql
   (@comp_id, 'medical', '의료비 지원', NULL, 'health',
    'est', NULL, TRUE, '본인 100%, 가족 50%', 41),
