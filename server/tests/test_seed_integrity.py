@@ -203,7 +203,7 @@ def test_SI_B2_monthly_amount_annualized(seeded_db):
 
 def test_SI_M4_amt_source_follows_dg2_only_no_anchor_demotion(seeded_db):
     """M-4(무관 회사 간 같은 (코드·금액)이 3개사 이상이면 stated→estimated)는 폐기했다 — 「당연히 겹칠 수도
-    있지」(사용자, 2026-09-28). 공식 원문에 적힌 금액(CJ 5사 복지포인트 100 · 명절 60 3사 등)까지 추정치로
+    있지」(사용자, 2026-09-28). 공식 원문에 적힌 금액(CJ 6사 복지포인트 100 · 명절 60 3사 등)까지 추정치로
     내리고 있었다. 이제 모든 공식 행의 금액출처 = DG-2 판별(`derive_amt_source`) 그대로여야 한다 — 다른 단계가
     값을 바꾸면(앵커 강등이 되살아나면) 여기서 걸린다. 겹치는 명시 금액이 실제로 stated 로 남는지도 함께 본다."""
     from db.seed.backfill_dec2 import derive_amt_source
