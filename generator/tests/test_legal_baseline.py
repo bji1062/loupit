@@ -38,8 +38,35 @@ def test_only_annual_leave_is_convertible():
 
 
 def test_every_item_is_identifiable():
-    """식별은 15개 전부 — 법정 제도를 복지 항목 수에서 빼려면 전부 알아야 한다."""
+    """식별은 전부 — 법정 제도를 복지 항목 수에서 빼려면 전부 알아야 한다."""
     assert all(it["identify"] for it in legal.items())
+
+
+def test_fixed_baseline_extra_keys_are_all_rendered():
+    """`fixed` 기준의 덧붙임 키(미숙아·다태아·요건 충족 시·최대)는 화면 렌더러가 아는 키여야 한다.
+
+    렌더러(`pages/benefit.py::_baseline_text`)가 모르는 키를 표에만 넣으면 화면에서 **조용히 빠진다**
+    (2026-09-28 대조 때 `premature_birth` 등을 넣으며 드러난 함정 — 옛 렌더러는 `multiple_birth` 만 읽었다).
+    """
+    from generator.pages.benefit import FIXED_EXTRA_KEYS
+    known = {"type", "value", "unit"} | {k for k, _ in FIXED_EXTRA_KEYS}
+    for it in legal.items():
+        bl = it["baseline"]
+        if bl.get("type") == "fixed":
+            assert set(bl) <= known, f"{it['key']} 의 {set(bl) - known} 를 렌더러가 모른다"
+
+
+def test_revised_baselines_match_the_law_as_checked_2026_09_28():
+    """법제처 현행 원문 대조(2026-09-28)로 바로잡은 값 — 옛 값으로 되돌아가면 화면이 법과 어긋난다.
+
+    육아휴직 18개월 한 값은 과대(기본 1년, 요건 충족 시 18개월) · 육아기 단축 24개월은 개정 전 구조(최대 3년) ·
+    출산전후휴가 미숙아 100일 누락 · 근로자의 날 → 노동절(법률 제21134호).
+    """
+    assert legal.by_key("parental_leave")["baseline"] == {"type": "fixed", "value": 12, "unit": "개월", "extended": 18}
+    assert legal.by_key("parental_work_reduction")["baseline"]["max"] == 36
+    assert legal.by_key("maternity_leave")["baseline"]["premature_birth"] == 100
+    assert legal.by_key("labor_day")["law"] == "노동절 제정에 관한 법률"
+    assert not [it["key"] for it in legal.items() if it["confidence"] == "확인필요"]
 
 
 def test_unconfirmed_items_are_locked_out_of_conversion():

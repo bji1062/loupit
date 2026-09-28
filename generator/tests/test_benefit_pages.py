@@ -446,9 +446,18 @@ def test_legal_cell_quotes_the_baseline_table_or_says_it_is_absent():
     assert "법정 기준선 표에 없는 항목" in housing[0].html
     parenting, *_ = _render(PARENTING, {"parenting": _PARENTING_CFG})
     html = parenting[0].html
-    assert "근로기준법 제74조" in html and "90일 (다태아 120일)" in html
-    assert "확인필요" in html, "표의 confidence 가 화면에서 사라졌다"
-    assert "재수집 대상" not in html, "기준선 표의 내부 메모(note)가 새어 나왔다"
+    assert "근로기준법 제74조" in html and "90일 (미숙아 100일 · 다태아 120일)" in html
+    assert "12개월 (요건 충족 시 18개월)" in html and "12개월 (최대 36개월)" in html
+    assert "재수집 대상" not in html and "법률 제" not in html, "기준선 표의 내부 메모(note)가 새어 나왔다"
+
+
+def test_legal_cell_still_shows_the_unconfirmed_tag(monkeypatch):
+    """지금 표에 「확인필요」 항목은 없지만(2026-09-28 대조), 법이 바뀌어 다시 생기면 화면에 표식이 나가야 한다."""
+    from generator import legal
+    items = [dict(it, confidence="확인필요") if it["key"] == "parental_leave" else it for it in legal.items()]
+    monkeypatch.setattr(legal, "items", lambda: items)
+    parenting, *_ = _render(PARENTING, {"parenting": _PARENTING_CFG})
+    assert '<span class="bn-tag">확인필요</span>' in parenting[0].html, "표의 confidence 가 화면에서 사라졌다"
 
 
 def _visible_text(page_html: str) -> str:

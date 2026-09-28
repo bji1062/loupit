@@ -44,6 +44,9 @@ MONEY_MIN_ROWS = 3
 
 # 법정 기준선 표의 `paid` 코드 → 칸 라벨. 표에 `paid_note` 가 있으면 그쪽이 이긴다(표의 말이 정본).
 PAID_LABEL = {"employer": "사업주 유급", "insurance": "고용보험", "unpaid": "무급", "mixed": "일부 유급"}
+# 법정 기준선 표 `fixed` 기준의 덧붙임 키 → 화면 앞말. 순서 = 화면 순서.
+FIXED_EXTRA_KEYS = (("premature_birth", "미숙아 "), ("multiple_birth", "다태아 "),
+                    ("extended", "요건 충족 시 "), ("max", "최대 "))
 
 _FIRST_SENTENCE = re.compile(r"^(.+?[다요]\.)(?:\s|$)")
 
@@ -126,10 +129,10 @@ def _baseline_text(bl: dict) -> str:
     unit = bl.get("unit", "")
     kind = bl.get("type")
     if kind == "fixed":
-        text = f"{bl['value']}{unit}"
-        if bl.get("multiple_birth"):
-            text += f" (다태아 {bl['multiple_birth']}{unit})"
-        return text
+        # 덧붙임 값은 원문의 순서(미숙아 → 다태아)로 괄호 하나에 모은다. 새 덧붙임 키를 표에 더하면
+        # 여기에도 더할 것 — 안 더하면 화면에서 조용히 빠진다(test_legal_baseline 이 키 목록을 강제한다).
+        extras = [f"{label}{bl[k]}{unit}" for k, label in FIXED_EXTRA_KEYS if bl.get(k)]
+        return f"{bl['value']}{unit}" + (f" ({' · '.join(extras)})" if extras else "")
     if kind == "tenure_table":
         vals = [row["value"] for row in bl.get("table", [])] + [row["cap"] for row in bl.get("table", []) if row.get("cap")]
         return f"{min(vals)}~{max(vals)}{unit} (근속별)" if vals else "—"
