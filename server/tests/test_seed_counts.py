@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
 
 
-# ── SD-4: 복지 총행 2503(2451 − 재수집 9사 207 + 259, 2026-09-26), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2530(2503 − 재수집 R-2 2사 33 + 60, 2026-09-28), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -77,9 +77,12 @@ def test_SD4_benefit_total_row_count(seeded_db):
           NAVER 37 · LIG넥스원 33 · SK텔레콤 32 · 현대자동차 31 · S-Oil 29 · 롯데케미칼 27 · SK하이닉스 25 · SK이노베이션 24 · 카카오페이 21
           — 수집 246 − 삭제·병합 2 + 추가 15. 운영은 표적 삭제 25·재코딩 10 뒤 멱등 적재(db/migrations/20260926_recollect_9_official.sql).
           검증(Fable ×5 레인, 9사)·감사(Opus) — loupit-evidence/2026-09-26-recollect/audit/integration-audit.md
+          + 재수집 R-2 2개사 33 → 60행(2026-09-28, 출처 끊김 — 주간 점검 첫 실행) = 2530
+          LG전자 15 → 26 · 현대모비스 18 → 34 — 수집 60 − 삭제 1 + 추가 1. 운영은 재코딩 2 뒤 멱등 적재
+          (db/migrations/20260928_recollect_2_lg_mobis.sql) — loupit-evidence/2026-09-27-recollect-2/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2503, f"복지 총행 불일치: {count} (기대 2503 = 2451 − 재수집 9사 207 + 259)"
+    assert count == 2530, f"복지 총행 불일치: {count} (기대 2530 = 2503 − 재수집 R-2 2사 33 + 60)"
     assert count >= 1200
 
 
