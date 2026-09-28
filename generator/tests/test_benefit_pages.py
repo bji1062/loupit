@@ -192,7 +192,7 @@ def test_real_housing_overrides_match_the_real_text():
     assert [s for s in out["stale"] if "원문이 바뀌어" in s] == []
     assert "no_home" not in by["sk_hynix"]["facets"], "재수집 원문에는 무주택 조건이 없다 — 예외 없이 규칙만으로 맞아야 한다"
     assert by["doosan_enerbility"]["mode"] == "both"
-    assert "limit" not in by["pearl_abyss"]["facets"], "「매월 50만원」 거주비가 대출 한도로 잡혔다"
+    assert "limit" not in by["pearl_abyss"]["facets"], "달마다 내 주는 이자 한도(37만 5천 원)가 대출 한도로 잡혔다"
 
 
 def test_stale_override_is_printed_to_build_log_not_raised():

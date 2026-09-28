@@ -334,8 +334,8 @@ def test_SI9_meal_count_reads_the_benefit_name_too():
 
 
 # ── SI-10: 무제한 휴가 파생은 휴가 행만 본다(2026-09-28) ──
-# 정성 행 설명의 「무제한」을 카테고리 없이 보던 때, 「본인 의료비 무제한」(NH투자증권) · 「음료 무제한」(에이피알) ·
-# 「도서 구매 무제한」(카카오페이)이 회사 페이지와 이직 계산기에 「무제한 휴가」로 나갔다.
+# 정성 행 설명의 「무제한」을 카테고리 없이 보던 때, 「음료 무제한」(에이피알) · 「도서 구매 무제한」(카카오페이)이
+# 회사 페이지와 이직 계산기에 「무제한 휴가」로 나갔고, 재수집한 NH투자증권의 「본인 의료비 무제한」도 걸릴 참이었다.
 def _ws_row(code: str, ctgr: str, desc: str) -> str:
     return ("INSERT INTO TCOMPANY_BENEFIT (COMP_ID) VALUES\n"
             f"  (@comp_id, '{code}', '이름', NULL, '{ctgr}',\n   'est', NULL, TRUE, '{desc}', 10)\n"
@@ -351,8 +351,10 @@ def test_SI10_unlimited_pto_reads_time_off_rows_only():
 
 
 def test_SI10_unlimited_pto_real_companies(seeded_db):
+    """휴가 아닌 행의 「무제한」에 걸리던 3사. 참 쪽(자율 휴가제)은 단위 시험이 맡는다 — 실데이터의 참 사례(하이브)는
+    구본이 다른 회사 데이터라 재수집하면 뒤집힐 수 있어 여기 못 박지 않는다."""
     rows = dict(_rows(seeded_db, """
         SELECT COMP_ENG_NM, WORK_STYLE_VAL FROM TCOMPANY
-         WHERE COMP_ENG_NM IN ('nh_invest', 'apr', 'kakao_pay', 'hybe')"""))
+         WHERE COMP_ENG_NM IN ('nh_invest', 'apr', 'kakao_pay')"""))
     got = {eng: (json.loads(v) if isinstance(v, str) else v).get("unlimitedPTO") for eng, v in rows.items()}
-    assert got == {"nh_invest": False, "apr": False, "kakao_pay": False, "hybe": True}, got
+    assert got == {"nh_invest": False, "apr": False, "kakao_pay": False}, got
