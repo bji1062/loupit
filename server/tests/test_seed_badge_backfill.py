@@ -88,7 +88,8 @@ def test_SB7_amt_source_rule_samples(seeded_db):
     assert samsung_rows.get("health_check") == "estimated"  # note '(추정)'
     assert samsung_rows.get("meal") == "estimated"  # note '환산' 포함
 
-    # M-4(2026-07-12): CJ welfare_point(=100)는 앵커(동일 코드·금액이 ≥3개사)라 estimated로 강등된다.
+    # CJ welfare_point(=100)는 여러 회사가 같은 금액을 명시해도 stated 다 — M-4 앵커 강등은 2026-09-28 폐기
+    # (예전엔 동일 코드·금액 ≥3개사라 estimated 로 내려갔다).
     cj_amt_source = _scalar(
         seeded_db,
         """
@@ -97,7 +98,7 @@ def test_SB7_amt_source_rule_samples(seeded_db):
         WHERE c.COMP_ENG_NM='cj' AND b.BENEFIT_CD='welfare_point'
         """,
     )
-    assert cj_amt_source == "estimated"  # M-4 앵커 강등(welfare_point=100, ≥3개사)
+    assert cj_amt_source == "stated"  # 「年 1,000p(100만원 상당)」 명시 — 겹친다고 추정치가 아니다
 
     # stated 브랜치: 앵커가 아닌(단일 회사 고유) 명시 금액은 stated로 유지되어야 한다(기본 규칙 존속).
     unique_stated = _scalar(

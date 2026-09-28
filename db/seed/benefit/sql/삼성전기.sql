@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 금액 표기 정리(2026-09-28): health_check 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('samsung_electro', '삼성전기',
@@ -20,7 +21,7 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', 100, 'health',
-   'est', '매년/격년 정기 본인+배우자', FALSE, NULL, 40),
+   'est', '매년/격년 정기 본인+배우자 (추정)', FALSE, NULL, 40),
   (@comp_id, 'medical', '의료비 지원', 100, 'health',
    'est', '본인/배우자/자녀 (추정)', FALSE, NULL, 41),
 

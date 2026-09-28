@@ -8,10 +8,11 @@ DG-1 확정(TASK/00 §4, 2026-07-11): 만료 TTL = **균일 18개월**(카테고
 DG-2 확정: amt_source 판별 규칙 — 정성/금액없음→none, (추정·환산 표기 OR note
 없음)→estimated, 명시금액+추정표기 없음→stated.
 
-M-4(2026-07-12 검증): 위 규칙 적용 후, 무관 회사 간 동일 (복지코드·금액) 앵커값
-(≥ ANCHOR_MIN_COMPANIES 개사)은 stated→estimated로 강등한다. 같은 코드·금액이 여러
-회사에 반복되면 회사가 개별 명시한 값이 아니라 표준 앵커/환산일 가능성이 높으므로,
-근거없는 ±5% 정밀도를 피하고 ±20% estimated 밴드로 정직하게 표기한다(DEC-2).
+M-4 앵커 강등(2026-07-12 ~ 2026-09-28)은 **폐기했다**(사용자 결정 2026-09-28: 「당연히 겹칠 수도 있지」).
+무관 회사 간 같은 (복지코드·금액)이 N개사 이상이면 stated→estimated 로 내리던 규칙이다. 공식 원문으로 다시
+모은 회사가 늘면서, 원문에 적힌 금액(CJ 5사 복지포인트 100 · 카카오·카카오페이·엔씨소프트 명절 60 등)까지
+「추정치」로 내리고 있었다. 금액출처는 이제 DG-2 판별 하나로만 정한다 — 추정이면 시드 NOTE 에 「추정」·「환산」을
+적는 것이 정본이다(재수집 계약 R6). 되살리지 마라 — test_seed_integrity.py SI-M4 가 막는다.
 
 🚨 SP-SEED-12(2026-09-24): **백필은 재직자 행(`BADGE_CD='verified'`)을 읽지도 쓰지도 않는다.**
 재직자 행 = 편집 서비스(`server/services/benefit_edit.py`)가 등록·수정한 행이고, 그 금액출처·출처·
@@ -34,7 +35,6 @@ if str(_THIS_DIR) not in sys.path:
 from company_meta import BENEFIT_SQL_DIR, parse_header_insert  # noqa: E402
 
 TTL_MONTHS_UNIFORM = 18  # DG-1 확정: 카테고리 무관 균일 18개월
-ANCHOR_MIN_COMPANIES = 3  # M-4: 동일 (복지코드·금액)이 N개사 이상 반복 → 앵커로 보고 stated→estimated 강등
 # SP-SEED-12: 재직자 행 표지. 편집 서비스(server/services/benefit_edit.py)만 이 값을 쓴다 —
 # 시드는 'est', 백필은 'official' 만 쓴다. 두 값이 갈라지면 보존이 조용히 꺼진다(SK-8 이 대조한다).
 MEMBER_BADGE_CD = "verified"
@@ -48,7 +48,7 @@ def derive_amt_source(benefit_amt, qual_yn, note_ctnt) -> str:
     if qual_yn or benefit_amt is None:  # 정성/금액없음
         return "none"
     n = note_ctnt or ""
-    if ("추정" in n) or ("환산" in n) or (n == ""):  # 앵커/계산/근거없음 → 보수적 넓은 밴드
+    if ("추정" in n) or ("환산" in n) or (n == ""):  # 추정·환산 표기 또는 근거(NOTE) 없음 → 보수적 넓은 밴드
         return "estimated"
     return "stated"  # note에 명시 금액 근거 있고 추정 표기 없음
 
@@ -69,7 +69,7 @@ def _parse_provenance(dst_dir: Path) -> dict:
 def backfill(cur) -> dict:
     """단계5 — 로드된 복지행에 DEC-2 백필 적용. 처리 카운트 반환(로그/테스트용).
 
-    재직자 행(`BADGE_CD=MEMBER_BADGE_CD`)은 2·2b·3 단계 모두에서 뺀다(모듈 머리말 SP-SEED-12).
+    재직자 행(`BADGE_CD=MEMBER_BADGE_CD`)은 2·3 단계 모두에서 뺀다(모듈 머리말 SP-SEED-12).
     그래서 `amt_source` 합계는 "재직자 행을 뺀 전 행" 이다.
     """
     stats: dict = {}
@@ -93,30 +93,7 @@ def backfill(cur) -> dict:
             (src, benefit_id, MEMBER_BADGE_CD),
         )
 
-    # 2b) M-4: 무관 회사 간 동일 (복지코드·금액) 앵커값 → stated에서 estimated로 강등.
-    #     판정(GROUP BY)과 강등(UPDATE) **둘 다** 재직자 행을 뺀다 — 재직자 값이 셋째 회사로 세어져
-    #     두 회사의 공식 명시 금액을 강등시키면 안 되고, 재직자 행 자체도 강등 대상이 아니다.
-    cur.execute(
-        """
-        SELECT BENEFIT_CD, BENEFIT_AMT
-          FROM TCOMPANY_BENEFIT
-         WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL AND BADGE_CD <> %s
-         GROUP BY BENEFIT_CD, BENEFIT_AMT
-        HAVING COUNT(DISTINCT COMP_ID) >= %s
-        """,
-        (MEMBER_BADGE_CD, ANCHOR_MIN_COMPANIES),
-    )
-    demoted = 0
-    for bcd, bamt in cur.fetchall():
-        cur.execute(
-            "UPDATE TCOMPANY_BENEFIT SET AMT_SOURCE_CD='estimated' "
-            "WHERE AMT_SOURCE_CD='stated' AND BENEFIT_CD=%s AND BENEFIT_AMT=%s AND BADGE_CD <> %s",
-            (bcd, bamt, MEMBER_BADGE_CD),
-        )
-        demoted += cur.rowcount
-    amt_source_counts["stated"] -= demoted
-    amt_source_counts["estimated"] += demoted
-    stats["anchor_demoted"] = demoted
+    # (2b M-4 앵커 강등은 2026-09-28 폐기 — 모듈 머리말.)
 
     stats["amt_source"] = amt_source_counts
 

@@ -198,24 +198,28 @@ def test_SI_B2_monthly_amount_annualized(seeded_db):
     assert monthly.search("월 10만원 지원"), "검사식이 옛 결함 문장을 못 잡는다"
 
 
-# ── SI-M4: 앵커 추정값 stated 위장 방지 회귀(2026-07-12 검증 M-4) ──
+# ── SI-M4: 금액출처는 DG-2 판별 하나로만 정한다 — M-4 앵커 강등 폐기(2026-09-28 사용자 결정) ──
 
 
-def test_SI_M4_no_stated_anchor_across_companies(seeded_db):
-    """M-4 회귀: 무관 회사 간 동일 (복지코드·금액)이 3개사 이상 반복되면 회사가 개별
-    명시한 값이 아니라 표준 앵커/환산일 가능성이 높다 → stated(±5%)로 남기지 않고
-    estimated(±20%)로 강등해야 한다(DEC-2 정직성, 근거없는 정밀도 방지)."""
-    anchors = _rows(
-        seeded_db,
-        """
+def test_SI_M4_amt_source_follows_dg2_only_no_anchor_demotion(seeded_db):
+    """M-4(무관 회사 간 같은 (코드·금액)이 3개사 이상이면 stated→estimated)는 폐기했다 — 「당연히 겹칠 수도
+    있지」(사용자, 2026-09-28). 공식 원문에 적힌 금액(CJ 5사 복지포인트 100 · 명절 60 3사 등)까지 추정치로
+    내리고 있었다. 이제 모든 공식 행의 금액출처 = DG-2 판별(`derive_amt_source`) 그대로여야 한다 — 다른 단계가
+    값을 바꾸면(앵커 강등이 되살아나면) 여기서 걸린다. 겹치는 명시 금액이 실제로 stated 로 남는지도 함께 본다."""
+    from db.seed.backfill_dec2 import derive_amt_source
+    rows = _rows(seeded_db, """
+        SELECT B.BENEFIT_ID, B.BENEFIT_AMT, B.QUAL_YN, B.NOTE_CTNT, B.AMT_SOURCE_CD
+          FROM TCOMPANY_BENEFIT B WHERE B.BADGE_CD <> 'verified'""")
+    bad = [(bid, src, derive_amt_source(amt, bool(q), note)) for bid, amt, q, note, src in rows
+           if src != derive_amt_source(amt, bool(q), note)]
+    assert not bad, f"DG-2 판별과 다른 금액출처(앵커 강등 부활?): {bad[:10]}"
+    shared = _rows(seeded_db, """
         SELECT BENEFIT_CD, BENEFIT_AMT, COUNT(DISTINCT COMP_ID) AS c
           FROM TCOMPANY_BENEFIT
          WHERE AMT_SOURCE_CD='stated' AND BENEFIT_AMT IS NOT NULL
          GROUP BY BENEFIT_CD, BENEFIT_AMT
-        HAVING c >= 3
-        """,
-    )
-    assert anchors == (), f"stated로 남은 앵커(3개사+ 동일값): {anchors}"
+        HAVING c >= 3""")
+    assert shared, "3개사 이상이 같은 금액을 명시한 공식 행이 stated 로 남아 있어야 한다(CJ 복지포인트 100 등)"
 
 
 # ── SI-R1: 사명 변경 2건(2026-08-21) — 표시명은 새 이름, **옛 이름은 별칭에 보존** ──

@@ -4,6 +4,7 @@
 -- URL: 수동 입력
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- ⚠ 금액 표기 정리(2026-09-28): meal 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -42,7 +43,7 @@ VALUES
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'meal', '구내식당 삼시세끼', 432, 'perks',
-   'est', '사내 식당 아침/점심/저녁 삼시세끼 제공', FALSE, NULL, 80),
+   'est', '사내 식당 아침/점심/저녁 삼시세끼 제공 (추정)', FALSE, NULL, 80),
   (@comp_id, 'snack_bar', '사내 카페', NULL, 'perks',
    'est', NULL, TRUE, '전문 바리스타 커피/음료/베이커리 메뉴 제공', 81),
   (@comp_id, 'housing_loan', '사내 대출', NULL, 'perks',

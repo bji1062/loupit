@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 30 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- ⚠ 금액 표기 정리(2026-09-28): health_check · meal 비고에 (추정) 표기 — 원문 서술에 금액이 없는 값이라 추정치로 둔다(M-4 앵커 강등 폐기에 따라 표기로 옮김). 행 수 변동 없음.
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -43,7 +44,7 @@ VALUES
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진 (본인+가족 1인)', 100, 'health',
-   'est', '본인 + 동반 가족 1인 (배우자 또는 직계존비속 중 1인)', FALSE, NULL, 40),
+   'est', '본인 + 동반 가족 1인 (배우자 또는 직계존비속 중 1인) (추정)', FALSE, NULL, 40),
   (@comp_id, 'insurance', '단체상해보험 (본인+가족)', 30, 'health',
    'est', '의료실손형/치과보장형 택 1, 본인/배우자/자녀 포함 (추정)', FALSE, NULL, 41),
   (@comp_id, 'mental', 'EAP 심리상담', NULL, 'health',
@@ -65,7 +66,7 @@ VALUES
   (@comp_id, 'welfare_point', '복지카드', 250, 'perks',
    'est', '연 250만원', FALSE, NULL, 80),
   (@comp_id, 'meal', '구내식당 삼시세끼', 432, 'perks',
-   'est', '아침 무료(주먹밥/샌드위치 등), 점심 4가지 메뉴, 저녁 제공', FALSE, NULL, 81),
+   'est', '아침 무료(주먹밥/샌드위치 등), 점심 4가지 메뉴, 저녁 제공 (추정)', FALSE, NULL, 81),
   (@comp_id, 'snack_bar', '사내 카페테리아', NULL, 'perks',
    'est', NULL, TRUE, '카페/스무디 등 모든 제조 음료 1,000원, 야간 매점(20시)', 82),
   (@comp_id, 'commute_subsidy', '셔틀버스', 120, 'perks',
