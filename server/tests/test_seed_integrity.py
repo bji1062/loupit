@@ -168,7 +168,8 @@ def test_SI8_company_count_not_200(seeded_db):
 
 def test_SI_M5_stated_amount_matches_note(seeded_db):
     """M-5 회귀: note에 명시된 만원 금액과 BENEFIT_AMT(연간 환산 만원) 정합성 —
-    화면 노출값과 calc 합산값 불일치 방지. 파크시스템스 출산축하금 100, 크래프톤 운동비 연 120."""
+    화면 노출값과 calc 합산값 불일치 방지. 파크시스템스 출산축하금 100.
+    (크래프톤 운동비 연 120 은 2026-09-28 재수집(R-3)에서 공식 원문에 금액이 없어 비웠다 — 검사에서 뺀다.)"""
     park = _scalar(
         seeded_db,
         "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
@@ -176,27 +177,25 @@ def test_SI_M5_stated_amount_matches_note(seeded_db):
         ("park_systems", "fertility_support"),
     )
     assert park == 100, f"파크시스템스 출산축하금 100(만원) 기대(현재 {park})"
-    kraft = _scalar(
-        seeded_db,
-        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
-        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
-        ("krafton", "fitness"),
-    )
-    assert kraft == 120, f"크래프톤 운동비 연환산 120(만원) 기대(현재 {kraft})"
 
 
 def test_SI_B2_monthly_amount_annualized(seeded_db):
     """B-2 회귀(2026-07-12): note가 '월 N만원'인데 BENEFIT_AMT가 월값으로 저장된
     월→연 환산 누락 방지. 95개 시드 SQL 전수 스윕+적대검증으로 확정된 유일 실버그 —
     카카오뱅크 영유아지원금 '월 10만원' → 연 120(만원). (크래프톤·파크는 M-5에서 처리,
-    LS 체력단련비 30은 청구주기 서술일 뿐 이미 연값이라 대상 아님.)"""
-    kakao = _scalar(
-        seeded_db,
-        "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
-        "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
-        ("kakao_bank", "child_edu"),
-    )
-    assert kakao == 120, f"카카오뱅크 영유아지원금 월10만원→연환산 120(만원) 기대(현재 {kakao})"
+    LS 체력단련비 30은 청구주기 서술일 뿐 이미 연값이라 대상 아님.)
+
+    2026-09-28 재수집(R-3)으로 그 행은 금액이 없어졌다(공식 원문에 「월 10만원」이 없다) — 한 행을
+    못 박던 검사를 **전수 검사**로 바꾼다: 비고에 「월 N만원」이 있는데 금액이 N 그대로인 행이 없어야 한다."""
+    rows = _rows(seeded_db, """
+        SELECT C.COMP_ENG_NM, B.BENEFIT_CD, B.BENEFIT_AMT, B.NOTE_CTNT
+          FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+         WHERE B.BENEFIT_AMT IS NOT NULL AND B.NOTE_CTNT IS NOT NULL""")
+    monthly = _re.compile(r"월\s*(\d+)\s*만\s*원")
+    bad = [(eng, cd, amt) for eng, cd, amt, note in rows
+           if (m := monthly.search(note)) and int(m.group(1)) == int(amt)]
+    assert not bad, f"월액을 연으로 바꾸지 않은 금액: {bad}"
+    assert monthly.search("월 10만원 지원"), "검사식이 옛 결함 문장을 못 잡는다"
 
 
 # ── SI-M4: 앵커 추정값 stated 위장 방지 회귀(2026-07-12 검증 M-4) ──
@@ -332,3 +331,28 @@ def test_SI9_meal_count_reads_the_benefit_name_too():
     assert _meal_count("구내식당 (중식/석식/야식)") == 3
     assert _meal_count("점심/저녁식사 제공") == 2
     assert _meal_count("구내식당 일 18,000원 x 240일") == 0
+
+
+# ── SI-10: 무제한 휴가 파생은 휴가 행만 본다(2026-09-28) ──
+# 정성 행 설명의 「무제한」을 카테고리 없이 보던 때, 「본인 의료비 무제한」(NH투자증권) · 「음료 무제한」(에이피알) ·
+# 「도서 구매 무제한」(카카오페이)이 회사 페이지와 이직 계산기에 「무제한 휴가」로 나갔다.
+def _ws_row(code: str, ctgr: str, desc: str) -> str:
+    return ("INSERT INTO TCOMPANY_BENEFIT (COMP_ID) VALUES\n"
+            f"  (@comp_id, '{code}', '이름', NULL, '{ctgr}',\n   'est', NULL, TRUE, '{desc}', 10)\n"
+            "ON DUPLICATE KEY UPDATE X = 1;")
+
+
+def test_SI10_unlimited_pto_reads_time_off_rows_only():
+    from db.seed.company_meta import derive_work_style
+    assert derive_work_style(_ws_row("leave_general", "time_off", "자율 휴가제 운영"))["unlimitedPTO"] is True
+    assert derive_work_style(_ws_row("leave_general", "time_off", "휴가 무제한 사용"))["unlimitedPTO"] is True
+    assert derive_work_style(_ws_row("medical", "health", "본인 의료비 무제한"))["unlimitedPTO"] is False
+    assert derive_work_style(_ws_row("snack_bar", "perks", "음료를 무제한 무료로 이용"))["unlimitedPTO"] is False
+
+
+def test_SI10_unlimited_pto_real_companies(seeded_db):
+    rows = dict(_rows(seeded_db, """
+        SELECT COMP_ENG_NM, WORK_STYLE_VAL FROM TCOMPANY
+         WHERE COMP_ENG_NM IN ('nh_invest', 'apr', 'kakao_pay', 'hybe')"""))
+    got = {eng: (json.loads(v) if isinstance(v, str) else v).get("unlimitedPTO") for eng, v in rows.items()}
+    assert got == {"nh_invest": False, "apr": False, "kakao_pay": False, "hybe": True}, got

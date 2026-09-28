@@ -177,10 +177,10 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
 
   // 실데이터 픽스처 — `generator/tests/test_find_page.py` 가 **같은 파일**로 같은 기대값을 잰다.
   // 표(파이썬)와 칩(JS)이 같은 이름을 부른다는 약속을 실데이터에서 확인하는 자리다.
-  test('실 번들 90종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
+  test('실 번들 89종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
     const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
     const entries = Object.entries(cases.codes);
-    assert.equal(entries.length, 90, '픽스처가 실데이터 90종이 아니다');
+    assert.equal(entries.length, 89, '픽스처가 실데이터 89종이 아니다'); // 2026-09-28 wedding 사용 회사 0
     // 행 하나 = 회사 하나. 회사 안에서 코드는 UNIQUE 라 빈도만큼 회사를 나눈다(파이썬 쪽과 같은 방식).
     const companies = [];
     for (const [code, info] of entries) {
@@ -228,8 +228,8 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     }
     const codes = deriveCodes({ companies });
     for (const [code, expect] of [['company_event', '야유회'], ['relocation', '정착 지원금'],
-      ['work_tools', '노트북 지원'], ['team_dinner', '회식비 지원'], ['massage', '안마의자'],
-      ['birthday_leave', '생일 축하']]) {
+      ['work_tools', '노트북 지원'], ['team_dinner', '회식비'], ['massage', '안마의자'],
+      ['birthday_leave', '생일 휴가']]) {
       assert.equal(codes[code].baseLabel, expect, code);
     }
   });

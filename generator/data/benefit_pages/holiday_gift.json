@@ -117,12 +117,6 @@
   },
   "overrides": [
     {
-      "comp": "ncsoft",
-      "h": "ff4a57b2c7",
-      "mode": "cash",
-      "why": "항목명이 「명절 상여」 — 원문 칸은 「설/추석 각 30만원」 금액뿐이라 규칙으로는 방식이 안 나온다"
-    },
-    {
       "comp": "jeju_semi",
       "h": "1955b1a0a1",
       "mode": "both",

@@ -22,7 +22,7 @@
   - SK-13 폐기 허용은 서빙 스키마 이름이면 무조건 거부한다(DROP 전에) — 서빙 이름 목록은 C-1 가드와 같다.
 
 ⚠ 재직자 데이터를 만드는 테스트는 끝나면 `main(fresh=True, discard_member_edits=True)` 로 정본 시드를
-  다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2530 등)가 그 상태를 전제한다.
+  다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2609 등)가 그 상태를 전제한다.
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ if str(SEED_DIR) not in sys.path:
 import backfill_dec2  # noqa: E402  # db/seed/backfill_dec2.py
 import load as seed_load  # noqa: E402  # db/seed/load.py
 
-CANON_BENEFITS = 2530  # SD-4 정본 복지 행 수(test_seed_counts)
+CANON_BENEFITS = 2609  # SD-4 정본 복지 행 수(test_seed_counts)
 TAMPERED_NM = "SK 변조 대조군"
 RESTORE_MIGRATION = MIGRATIONS_DIR / "20260924_restore_member_edits.sql"
 
@@ -152,7 +152,7 @@ async def _service_edits(krafton, cj_com, resort, telecom, collide_cd, kim, lee)
         assert r["result"] == "ok", r
         # (다) 충돌 등록 — 시드에서 지운 코드를 재직자가 등록했다(다음 웨이브 시드가 그 코드를 새로 들고 오는 상황).
         r = await svc.create_benefit(krafton, kim, BenefitCreateIn(
-            benefit_cd=collide_cd, benefit_nm="재직자 등록 도서 지원", benefit_ctgr_cd="perks",
+            benefit_cd=collide_cd, benefit_nm="재직자 등록 간식 지원", benefit_ctgr_cd="perks",
             benefit_amt=12, qual_yn=False, note_ctnt="월 1만원 재직자 확인"))
         assert r["result"] == "ok", r
         collide_id = r["benefit"]["benefit_id"]
@@ -217,7 +217,7 @@ def test_SK1_멱등_재적용은_재직자_행을_전_컬럼_그대로_두고_�
     kim, lee = members["sk-kim"], members["sk-lee"]
     krafton, cj_com = _comp_id(seeded_db, "krafton"), _comp_id(seeded_db, "cj_enm_com")
     resort, telecom = _benefit_id(seeded_db, krafton, "resort"), _benefit_id(seeded_db, cj_com, "telecom")
-    collide_cd = "books"
+    collide_cd = "snack_bar"  # 크래프톤 시드에 있는 코드(2026-09-28 재수집 전엔 books — 새 시드에서 빠졌다)
     with seeded_db.cursor() as cur:  # 시드에 있던 코드를 비워 재직자 등록 자리를 만든다
         cur.execute("DELETE FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD=%s", (krafton, collide_cd))
     control = _benefit_id(seeded_db, cj_com, "welfare_point")

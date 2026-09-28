@@ -37,12 +37,9 @@
     {"text": "내가 일할 사업장에도 도서관이 있나요?", "answered_by": ["facet:site"]}
   ],
   "overrides": [
-    {"comp": "apr", "h": "1a82c92a61", "mode": "buy", "facets_add": ["scope"], "why": "항목명이 「직무 도서 구매비」 — 원문 칸에는 매월 금액만 있어 책값을 대 주는 방식과 직무 도서라는 범위가 항목명에만 있다"},
-    {"comp": "hanmi_semi", "h": "0c8e0a47b6", "mode": "buy", "why": "항목명이 「도서 구매 지원」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"},
     {"comp": "olix", "h": "0c8e0a47b6", "mode": "library", "why": "항목명이 「사내 도서관」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"},
     {"comp": "isens", "h": "eab245295c", "mode": "both", "why": "업무도서 구입비 지원과 사내도서관 운영을 함께 적었다"},
     {"comp": "samsung_fire", "h": "87857f7bd2", "mode": "both", "why": "교보문고 제휴 e북 열람(전자도서관)과 매년 도서 구입비 지원을 함께 적었다"},
-    {"comp": "wgames", "h": "110c74e77a", "mode": "both", "why": "업무 관련 도서 구매와 사내 도서관 운영을 함께 적었다"},
     {"comp": "yuhan", "h": "b4f71c4191", "mode": "both", "why": "희망 도서구매 지원과 회사 전용 전자도서관을 함께 적었다"}
   ]
 }

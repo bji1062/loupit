@@ -100,22 +100,6 @@
   },
   "overrides": [
     {
-      "comp": "kia",
-      "h": "1efeadebc3",
-      "facets_remove": [
-        "amount"
-      ],
-      "why": "「20만원」은 명절 신세계상품권 금액이다 — 경조금 액수가 아니다"
-    },
-    {
-      "comp": "wgames",
-      "h": "40473e23b6",
-      "facets_remove": [
-        "family"
-      ],
-      "why": "「가족 기념일 꽃다발/케이크」는 기념일 선물이다 — 가족 경조사를 지원 범위로 밝힌 것이 아니다"
-    },
-    {
       "comp": "seegene",
       "h": "fd7bb4c3e1",
       "facets_remove": [

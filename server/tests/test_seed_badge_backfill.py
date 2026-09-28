@@ -191,6 +191,10 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 재수집 R-1(2026-09-26, 9) — 구본 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
         "skt", "sk_innovation", "sk_hynix", "lig_nex1", "naver", "kakao_pay",
         "hyundai_motor", "s_oil", "lotte_chem",
+        # 재수집 R-2(2026-09-28, 2) — lg_elec · hyundai_mobis 는 위 재이식분에 이미 있다(새 정본 URL 로 교체)
+        # 재수집 R-3 묶음 1(2026-09-28, 10) — 근거 URL 없던 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
+        "apr", "pearl_abyss", "wgames", "kakao_bank", "ncsoft",
+        "kia", "krafton", "kakao", "hanmi_semi", "nh_invest",
     }
     rows = _rows(
         seeded_db,

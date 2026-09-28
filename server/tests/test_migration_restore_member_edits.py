@@ -208,12 +208,16 @@ def test_RM1_되돌아간_재직자_행만_AFTER_VAL_로_되살리고_재실행�
     ids, kim = reverted["ids"], reverted["kim"]
     restored = {ids["resort"], ids["telecom"], ids["fitness"], ids["commute"], ids["ticket"], ids["edu"], ids["lang"]}
     # 정성 → 금액으로 바꾼 수정이 이력에 있고 마지막 상태가 금액 행 — 시드 설명·공식 출처 URL 을 비운다
-    qual_to_amt = {ids["telecom"], ids["lang"]}
+    # 크래프톤 운동비는 2026-09-28 재수집(R-3)부터 시드에서 정성 행이다(공식 원문에 금액 없음) — 금액으로 고친 두 번의
+    # 편집이 정성 → 금액 전환이 됐다.
+    qual_to_amt = {ids["telecom"], ids["lang"], ids["fitness"]}
     with _utc_conn() as uc:
         before = _all_rows(uc)
         # 재현 전제 — 운영 사고와 같은 모양: 시드 값·official·시드 출처인데 MOD_ID 는 재직자
         r = before[ids["resort"]]
-        assert (r["BADGE_CD"], r["BENEFIT_AMT"], r["NOTE_CTNT"], r["MOD_ID"]) == ("official", 50, "(추정)", kim)
+        # 시드 값 — 2026-09-28 재수집(R-3)부터 NOTE 가 원문 요약 + 「(추정)」이다(금액 50 은 추정치 승계)
+        assert (r["BADGE_CD"], r["BENEFIT_AMT"], r["MOD_ID"]) == ("official", 50, kim)
+        assert r["NOTE_CTNT"].endswith("(추정)"), r["NOTE_CTNT"]
         assert before[ids["samsung_fitness"]]["BADGE_CD"] == "verified", "전제: 되돌아가지 않은 재직자 행"
         assert before[ids["edu"]]["BADGE_SRC_URL_CTNT"], "전제: 시드 충돌이 공식 출처 URL 을 채웠다"
         for bid in qual_to_amt:  # 전제: 시드에서 정성 행이고 설명·공식 출처 URL 이 있다(1400 운영 모양)

@@ -7,6 +7,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 31 카테고리 통일. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- ⚠ 금액 표기 정리(2026-09-28): SORT 80 meal 비고에 연 환산 표기 — 월액×12 는 추정치(재수집 규칙 R6). R-3 묶음 1 로 (meal, 240) 앵커가 2사로 줄어 공식 수치로 올라가던 것을 막는다. 행 수 변동 없음.
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hybe', '하이브',
@@ -53,7 +54,7 @@ VALUES
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'meal', '중식/석식 식대 지원', 240, 'perks',
-   'est', '월 20만원 점심식대 + 석식 별도 지원', FALSE, NULL, 80),
+   'est', '월 20만원 점심식대 + 석식 별도 지원 — 연 환산', FALSE, NULL, 80),
   (@comp_id, 'snack_bar', '간식/맥주 무제한', NULL, 'perks',
    'est', NULL, TRUE, '간식 무한 제공, 맥주 무제한 공급', 81)
 ON DUPLICATE KEY UPDATE
