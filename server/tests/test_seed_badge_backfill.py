@@ -199,6 +199,8 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 재수집 R-3 묶음 2(2026-10-01, 9) — lg(지주)는 공식 원문이 없어 넣지 않았고 같은 날 회사 등록을 해제했다
         "lg_uplus", "lg_energy", "lg_chem", "hybe", "kakao_games",
         "samsung_life", "pharma_research", "hugel", "nepes",
+        # 재수집 R-3 묶음 3(2026-10-01, 8) — ls · yuhan 은 이번에 넣지 않았다(ls 는 후속 등록 해제 · yuhan 은 원문 대기)
+        "park_systems", "tck", "hmm", "jlk", "ifamilysc", "com2us", "wemade", "cj",
     }
     rows = _rows(
         seeded_db,

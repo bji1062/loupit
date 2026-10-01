@@ -170,15 +170,16 @@ def test_SI8_company_count_not_200(seeded_db):
 
 def test_SI_M5_stated_amount_matches_note(seeded_db):
     """M-5 회귀: note에 명시된 만원 금액과 BENEFIT_AMT(연간 환산 만원) 정합성 —
-    화면 노출값과 calc 합산값 불일치 방지. 파크시스템스 출산축하금 100.
-    (크래프톤 운동비 연 120 은 2026-09-28 재수집(R-3)에서 공식 원문에 금액이 없어 비웠다 — 검사에서 뺀다.)"""
-    park = _scalar(
+    화면 노출값과 calc 합산값 불일치 방지. 컴투스 복지카드 250.
+    (크래프톤 운동비 연 120 은 2026-09-28 재수집(R-3)에서 공식 원문에 금액이 없어 비웠다 — 검사에서 뺀다.
+    파크시스템스는 2026-10-01 R-3 묶음 3 에서 공식 원문에 금액이 없어 비웠다.)"""
+    com2us = _scalar(
         seeded_db,
         "SELECT b.BENEFIT_AMT FROM TCOMPANY_BENEFIT b JOIN TCOMPANY c ON b.COMP_ID=c.COMP_ID "
         "WHERE c.COMP_ENG_NM=%s AND b.BENEFIT_CD=%s",
-        ("park_systems", "fertility_support"),
+        ("com2us", "welfare_point"),
     )
-    assert park == 100, f"파크시스템스 출산축하금 100(만원) 기대(현재 {park})"
+    assert com2us == 250, f"컴투스 복지카드 250(만원) 기대(현재 {com2us})"
 
 
 def test_SI_B2_monthly_amount_annualized(seeded_db):

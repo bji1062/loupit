@@ -100,22 +100,6 @@
   },
   "overrides": [
     {
-      "comp": "hmm",
-      "h": "7de8c44597",
-      "facets_add": [
-        "cash"
-      ],
-      "why": "항목명이 「복지카드/포인트」 — 원문 칸에는 쓰임만 있고 카드라는 말은 항목명에만 있다"
-    },
-    {
-      "comp": "com2us",
-      "h": "4bb00414f8",
-      "facets_add": [
-        "cash"
-      ],
-      "why": "항목명이 「복지카드」 — 원문 칸에는 금액만 있다"
-    },
-    {
       "comp": "ls_electric",
       "h": "738406afdd",
       "facets_add": [
