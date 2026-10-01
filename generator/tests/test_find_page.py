@@ -233,7 +233,8 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-10-01 R-3 묶음 2: company_event 에 2회 나온 표기가 생기고 team_dinner 의 「회식비 지원」이 2회가 돼 둘 다
     #   동률이 아니다 → 지금 동률인 foundation_day_leave(창립기념 휴가) · parking(주차 지원)으로 바꿨다. birthday_leave 도
     #   「생일 휴가」가 2회가 돼 동률이 풀려 smoking_cessation(금연수당)으로 바꿨다.
-    for code, expect in (("foundation_day_leave", "창립기념 휴가"), ("relocation", "정착 지원금"),
+    # 2026-10-01 R-3 묶음 3: relocation 은 「부임이사 지원」이 2회가 돼 동률이 풀렸다 → 지금 동률인 summer_vacation_subsidy(하계휴가비)로 바꿨다.
+    for code, expect in (("foundation_day_leave", "창립기념 휴가"), ("summer_vacation_subsidy", "하계휴가비"),
                          ("work_tools", "노트북 지원"), ("parking", "주차 지원"),
                          ("massage", "안마의자"), ("smoking_cessation", "금연수당")):
         names = cases["codes"][code]["names"]
