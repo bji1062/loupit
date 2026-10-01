@@ -621,6 +621,10 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     assert.match(how, /법으로 모든 회사에 정해진 제도만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
     assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 복지 제외\) — KT 10개 · 네패스 18개/);
     assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\)$/);
+    // 법정 항목이 두 회사에 하나씩일 때 「 · 」로 잇는 경로 — 네패스 해제로 사라진 단언을 KT · 삼성카드로 다시 잰다
+    const { mount: sc } = render(verifyState('KT', '삼성카드'), 'benefits', V);
+    assert.match(txt(sc, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\) · 법정 육아휴직·모성보호제도\(삼성카드\)/);
+    assert.match(txt(sc, '.calc-vd .calc-how'), /법으로 모든 회사에 정해진 제도만 적힌 항목\(2개\)은 복지로 세지 않았습니다/);
     const { mount: g } = render(goldenEngineState(), 'benefits');
     const rows = [...g.querySelectorAll('#calc-b-bridge .sr-only tr')].map((tr) => tr.textContent);
     assert.ok(rows.includes('카카오 실효 총보상7,739±145 (7,594 ~ 7,884)'), rows.join(' | '));

@@ -67,6 +67,7 @@ export const LABEL_OVERRIDE = {
   // ⑤ 2026-10-01 재수집 R-3 묶음 2 — self_development 가 자격증 이름으로 좁아짐 · company_event 가 「가족친화 프로그램」
   self_development: '자기계발비·자격증 지원',
   company_event: '사내 행사·가족 초청',
+  meal: '구내식당·식대 지원',
 };
 
 export const MODES = ['and', 'or'];

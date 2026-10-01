@@ -22,7 +22,7 @@
   - SK-13 폐기 허용은 서빙 스키마 이름이면 무조건 거부한다(DROP 전에) — 서빙 이름 목록은 C-1 가드와 같다.
 
 ⚠ 재직자 데이터를 만드는 테스트는 끝나면 `main(fresh=True, discard_member_edits=True)` 로 정본 시드를
-  다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2609 등)가 그 상태를 전제한다.
+  다시 세운다(`members` 픽스처) — 다른 파일의 정확 카운트(SD-4 2705 등)가 그 상태를 전제한다.
 """
 from __future__ import annotations
 
