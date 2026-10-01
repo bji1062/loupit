@@ -32,10 +32,10 @@ def test_SD2_benefit_preset_total_count(seeded_db):
 def test_SD3_company_count_is_102(seeded_db):
     """정확 카운트 핀. 회사 추가는 **의도적으로만** 가능해야 한다(시드 유실·중복 조기 발견).
     회사를 늘리거나 줄일 땐 이 값과 SI-8·멱등성 스냅샷을 함께 갱신하라."""
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 149  # 150 − LG 지주 등록 해제(2026-10-01, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 2705(2609 − 재수집 R-3 묶음 2 9사 134 + 230, 2026-10-01), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2691(2705 − LG 지주 등록 해제 14, 2026-10-01), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -88,9 +88,12 @@ def test_SD4_benefit_total_row_count(seeded_db):
           LG에너지솔루션 30 · LG화학 29 · 카카오게임즈 27 · 삼성생명 26 · 파마리서치 25 · 휴젤 24 ·
           LG유플러스 23 · 하이브 23 · 네패스 23 — 운영은 표적 삭제 17 · 재코딩 5 뒤 멱등 적재
           (db/migrations/20261001_recollect_3_batch2.sql) — loupit-evidence/2026-10-01-recollect-3-2/
+          − LG 지주 등록 해제 14행(2026-10-01) = 2691 — 공식 복지 원문이 없고(수집 · 검증 · DART 사업보고서 원문 확인)
+          구본은 LG유플러스 옛 자료의 사본이었다. 회사 · 별칭 · 메일 도메인 · DART 연결째 지운다
+          (db/migrations/20261001_unregister_lg_holding.sql)
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2705, f"복지 총행 불일치: {count} (기대 2705 = 2609 − 재수집 R-3 묶음 2 9사 134 + 230)"
+    assert count == 2691, f"복지 총행 불일치: {count} (기대 2691 = 2705 − LG 지주 등록 해제 14)"
     assert count >= 1200
 
 

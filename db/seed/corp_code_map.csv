@@ -4,7 +4,6 @@ comp_id,comp_nm,status,corp_code,stock_code,note
 3,HMM,auto,00164645,011200,
 4,HPSP,auto,01288827,403870,
 5,KT,manual,00190321,030200,DART 정식명이 한글 '케이티' 라 영문 표기로는 매칭되지 않는다
-6,LG,auto,00120021,003550,
 7,LG디스플레이,auto,00105873,034220,
 8,LG에너지솔루션,auto,01515323,373220,
 9,LG유플러스,auto,00231363,032640,
