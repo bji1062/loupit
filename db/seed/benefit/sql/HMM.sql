@@ -14,8 +14,8 @@
 --     가르지 않아 서술에 직군을 적지 않았다. 선원 수당 항목은 원문에 없다.
 --   robots: www.hmm21.com 은 User-agent * 에 Disallow / 라 요청하지 않았다(지속가능경영보고서 · 보도자료 미확인).
 --     careers.hmm21.com/robots.txt 는 403(파일 없음) — RFC 9309 의 접근 불가 4xx 라 허용으로 판정.
---   금액: 원문 환산 1(parenting 유아교육비 월 10만원 → 120) · 구본 추정 승계 8(snack_bar 30 · welfare_point 200 ·
---     telecom 30 · pension_support 50 · resort 50 · child_edu 200 · insurance 30 · health_check 100 — 전부 틀 값,
+--   금액: 원문 환산 1(child_edu 유아교육비 월 10만원 → 120) · 구본 추정 승계 7(snack_bar 30 · welfare_point 200 ·
+--     telecom 30 · pension_support 50 · resort 50 · insurance 30 · health_check 100 — 전부 틀 값,
 --     NOTE 끝에 (추정)). transport 30 은 회사 고유값이라, event 50 은 경조금이라, parenting 10 은 1회성이라
 --     승계하지 않았다. 원문에 원 단위 금액은 유아교육비 월 10만원 하나다.
 --   구본에서 뺀 행: lang (어학교육은 회사 주도 교육 과정 — 비용 지원 문장 없음).

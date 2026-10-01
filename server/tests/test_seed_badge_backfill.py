@@ -98,7 +98,7 @@ def test_SB7_amt_source_rule_samples(seeded_db):
         WHERE c.COMP_ENG_NM='cj' AND b.BENEFIT_CD='welfare_point'
         """,
     )
-    assert cj_amt_source == "stated"  # 「年 1,000p(100만원 상당)」 명시 — 겹친다고 추정치가 아니다
+    assert cj_amt_source == "stated"  # 「카페테리아 포인트 연 100만원」 명시 — 겹친다고 추정치가 아니다
 
     # stated 브랜치: 앵커가 아닌(단일 회사 고유) 명시 금액은 stated로 유지되어야 한다(기본 규칙 존속).
     unique_stated = _scalar(

@@ -6,7 +6,7 @@
 --
 -- 배경: 2026-04-15 초기 AI 파싱으로 등록돼 근거 URL 이 없던 회사 중 8사를 공식 출처에서 다시 세웠다
 --   (수집 Opus ×10 → 적대 검증 Opus 레인 5). 위메이드 구본은 위메이드플레이, LS 구본은 다른 법인 데이터였다.
---   정본 = /home/ubuntu/loupit-evidence/2026-10-01-recollect-3-3/ (verify/_ACTIONS-1~5.md · 1b §3 이 이 파일의 입력).
+--   정본 = /home/ubuntu/loupit-evidence/2026-10-01-recollect-3-3/ (verify/_ACTIONS-1~5.md · 1b §2 이 이 파일의 입력).
 --   새 시드 8파일은 같은 PR 에서 바뀐다(128 → 150행, 전체 2691 → 2713). LS.sql · 유한양행.sql 은 그대로다.
 --
 -- 무엇을 바꾸나:
@@ -23,6 +23,7 @@
 --   적재를 먼저 돌리면 새 코드 행이 먼저 생겨 UPDATE 가 uq_comp_benefit 중복 키로 실패하고 옛 행이 남는다.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
+--   0) 머지 → git pull — pull 하는 순간 web/assets/js/find.js 가 라이브가 되므로 아래 1~4 를 release 까지 멈추지 않고 잇는다
 --   1) 백업 — 적재가 참조 테이블을 모두 다시 쓰므로 9테이블을 뜬다
 --   2) 이 파일을 mysql -vv 로 적용
 --   3) cd /home/ubuntu/loupit && python3 db/seed/load.py   (--fresh 금지)
@@ -35,7 +36,7 @@ SET NAMES utf8mb4;
 START TRANSACTION;
 
 -- ── 코드 바꾸기 (6) ──
--- park_systems 1063: fertility_support → parenting · 출산 축하금 → 출산·육아 지원 — 검증 확정
+-- park_systems 1063: fertility_support → parenting · 출산 축하금 → 출산 축하금·산후조리비용 지원 — 검증 확정
 UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
    SET b.BENEFIT_CD = 'parenting'
  WHERE b.BENEFIT_ID = 1063 AND c.COMP_ENG_NM = 'park_systems' AND b.BENEFIT_CD = 'fertility_support' AND b.BADGE_CD = 'official';
@@ -47,7 +48,7 @@ UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
 UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
    SET b.BENEFIT_CD = 'leisure_room'
  WHERE b.BENEFIT_ID = 1020 AND c.COMP_ENG_NM = 'tck' AND b.BENEFIT_CD = 'library' AND b.BADGE_CD = 'official';
--- hmm 38: edu_support → self_development · 교육 지원 → 자기계발 지원 — 검증 레인 4 확정
+-- hmm 38: edu_support → self_development · 직무/리더십 교육 → 전문자격 취득 지원 — 검증 레인 4 확정
 UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
    SET b.BENEFIT_CD = 'self_development'
  WHERE b.BENEFIT_ID = 38 AND c.COMP_ENG_NM = 'hmm' AND b.BENEFIT_CD = 'edu_support' AND b.BADGE_CD = 'official';
