@@ -196,6 +196,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 재수집 R-3 묶음 1(2026-09-28, 10) — 근거 URL 없던 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
         "apr", "pearl_abyss", "wgames", "kakao_bank", "ncsoft",
         "kia", "krafton", "kakao", "hanmi_semi", "nh_invest",
+        # 재수집 R-3 묶음 2(2026-10-01, 9) — lg(지주)는 공식 원문이 없어 이번에 넣지 않았다(후속 PR)
+        "lg_uplus", "lg_energy", "lg_chem", "hybe", "kakao_games",
+        "samsung_life", "pharma_research", "hugel", "nepes",
     }
     rows = _rows(
         seeded_db,

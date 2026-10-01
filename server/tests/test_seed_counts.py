@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 150
 
 
-# ── SD-4: 복지 총행 2609(2530 − 재수집 R-3 묶음 1 10사 163 + 242, 2026-09-28), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2705(2609 − 재수집 R-3 묶음 2 9사 134 + 230, 2026-10-01), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -84,9 +84,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
           펄어비스 40 · 기아 29 · 엔씨소프트 28 · 크래프톤 27 · 에이피알 25 · 카카오 23 · 카카오뱅크 21 ·
           더블유게임즈 18 · 한미반도체 18 · NH투자증권 13 — 운영은 표적 삭제 21 · 재코딩 13 뒤 멱등 적재
           (db/migrations/20260928_recollect_3_batch1.sql) — loupit-evidence/2026-09-28-recollect-3/
+          + 재수집 R-3 묶음 2 9개사 134 → 230행(2026-10-01, 근거 URL 없던 62곳 중 다음 10 — LG 지주는 후속) = 2705
+          LG에너지솔루션 30 · LG화학 29 · 카카오게임즈 27 · 삼성생명 26 · 파마리서치 25 · 휴젤 24 ·
+          LG유플러스 23 · 하이브 23 · 네패스 23 — 운영은 표적 삭제 17 · 재코딩 5 뒤 멱등 적재
+          (db/migrations/20261001_recollect_3_batch2.sql) — loupit-evidence/2026-10-01-recollect-3-2/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2609, f"복지 총행 불일치: {count} (기대 2609 = 2530 − 재수집 R-3 묶음 1 10사 163 + 242)"
+    assert count == 2705, f"복지 총행 불일치: {count} (기대 2705 = 2609 − 재수집 R-3 묶음 2 9사 134 + 230)"
     assert count >= 1200
 
 

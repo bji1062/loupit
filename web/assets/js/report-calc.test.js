@@ -614,12 +614,13 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
   });
 
   test('LOW-11 목업의 작은 것들 — 복지 카드 두 숫자·법정 안내, 흐름 표 끝 막대 범위, 4분해 눈금, 비교표 제목 「법정 복지 제외」', () => {
+    // 2026-10-01: 네패스 법정 등록 2행(생일 · 연차촉진) 해제 — R-3 묶음 2. 픽스처의 옛 네패스 행은 이제 복지로 센다.
     const { mount } = render(verifyState('KT', '네패스'), 'benefits', V);
     const how = txt(mount, '.calc-vd .calc-how');
     assert.match(how, /그대로 계산한 값\(\+342\)과 네패스에만 금액이 등록된 1건을 뺀 값\(\+142\)이 서로 다른 회사를 가리키면/);
-    assert.match(how, /법으로 모든 회사에 정해진 제도만 적힌 항목\(3개\)은 복지로 세지 않았습니다/);
-    assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 복지 제외\) — KT 10개 · 네패스 16개/);
-    assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\) · 법정 연차촉진제도\(네패스\) · 법정 생일 연차 휴식\(네패스\)/);
+    assert.match(how, /법으로 모든 회사에 정해진 제도만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
+    assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 복지 제외\) — KT 10개 · 네패스 18개/);
+    assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\)$/);
     const { mount: g } = render(goldenEngineState(), 'benefits');
     const rows = [...g.querySelectorAll('#calc-b-bridge .sr-only tr')].map((tr) => tr.textContent);
     assert.ok(rows.includes('카카오 실효 총보상7,739±145 (7,594 ~ 7,884)'), rows.join(' | '));

@@ -48,7 +48,7 @@ if str(SEED_DIR) not in sys.path:
 import backfill_dec2  # noqa: E402  # db/seed/backfill_dec2.py
 import load as seed_load  # noqa: E402  # db/seed/load.py
 
-CANON_BENEFITS = 2609  # SD-4 정본 복지 행 수(test_seed_counts)
+CANON_BENEFITS = 2705  # SD-4 정본 복지 행 수(test_seed_counts)
 TAMPERED_NM = "SK 변조 대조군"
 RESTORE_MIGRATION = MIGRATIONS_DIR / "20260924_restore_member_edits.sql"
 

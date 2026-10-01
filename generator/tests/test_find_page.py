@@ -230,9 +230,12 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-09-27 표본 재생성: mba·profit_sharing 은 이제 최다 이름이 하나라 동률 예시가 아니다 → 동률인 코드로 바꿨다.
     # 2026-09-28 R-3 묶음 1: team_dinner 에 더 짧은 일반명 「회식비」가 들어와 동률 규칙대로 그것이 대표가 됐다 ·
     #   birthday_leave 의 「생일 축하」 표기가 재수집으로 사라져 가장 짧은 일반명 「생일 휴가」가 대표다.
-    for code, expect in (("company_event", "야유회"), ("relocation", "정착 지원금"),
-                         ("work_tools", "노트북 지원"), ("team_dinner", "회식비"),
-                         ("massage", "안마의자"), ("birthday_leave", "생일 휴가")):
+    # 2026-10-01 R-3 묶음 2: company_event 에 2회 나온 표기가 생기고 team_dinner 의 「회식비 지원」이 2회가 돼 둘 다
+    #   동률이 아니다 → 지금 동률인 foundation_day_leave(창립기념 휴가) · parking(주차 지원)으로 바꿨다. birthday_leave 도
+    #   「생일 휴가」가 2회가 돼 동률이 풀려 smoking_cessation(금연수당)으로 바꿨다.
+    for code, expect in (("foundation_day_leave", "창립기념 휴가"), ("relocation", "정착 지원금"),
+                         ("work_tools", "노트북 지원"), ("parking", "주차 지원"),
+                         ("massage", "안마의자"), ("smoking_cessation", "금연수당")):
         names = cases["codes"][code]["names"]
         assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
         top = max(names.values())
