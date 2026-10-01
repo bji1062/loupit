@@ -18,12 +18,13 @@
 -- 순서 (반드시): 이 파일 → python3 db/seed/load.py → release.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
---   1) 백업 — 참조 9테이블
+--   1) 백업 — 참조 9테이블 + 이 파일이 지우는 TCOMPARE_LOG · TSOURCE_CHECK · TAUTH_CODE
 --   2) 이 파일을 mysql -vv 로 적용
 --   3) cd /home/ubuntu/loupit && python3 db/seed/load.py   (--fresh 금지)
 --   4) 릴리스
 -- 기대: lg_comp_id 6 · DELETE 8문 = 14 · 3 · 1 · 1 · 0 · 0 · 0 · 1 rows affected ·
 --   두 번째 실행은 lg_comp_id NULL · 전부 0 · 적재 뒤 회사 149 · 복지 2691행.
+--   TCOMPARE_LOG 는 적용 전에 누가 LG 를 비교하면 0 이 아닐 수 있다(익명 비교 기록이라 지워도 된다).
 -- ══════════════════════════════════════════════════════════════════════
 
 SET NAMES utf8mb4;

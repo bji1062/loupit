@@ -344,6 +344,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 전부 그 회사로 갔다** — 목록에 선택지가 없었기 때문이다. CJ 계열사를 추가하면서 IN(...) 으로
 -- 합쳐, 이제 삼성(samsung.com 7사)·SK(sk.com 3사)와 같은 그룹단위 인증이 된다.
 -- 오매핑 비율이 18사 중 1사 → 18사 중 8사로 개선됐다(여전히 완전하지 않다는 점은 위 주석 참조).
+-- ⚠ 2026-10-01 LG 지주 회사 등록 해제(공식 복지 원문 없음)로 lg.com 매핑 줄도 함께 내렸다 — db/migrations/20261001_unregister_lg_holding.sql.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'cj.net', TRUE FROM TCOMPANY
    WHERE COMP_ENG_NM IN ('cj','cj_enm_ent','cj_enm_com','cj_freshway',
