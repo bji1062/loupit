@@ -227,9 +227,10 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
       }
     }
     const codes = deriveCodes({ companies });
-    for (const [code, expect] of [['company_event', '야유회'], ['relocation', '정착 지원금'],
-      ['work_tools', '노트북 지원'], ['team_dinner', '회식비'], ['massage', '안마의자'],
-      ['birthday_leave', '생일 휴가']]) {
+    // 2026-10-01 R-3 묶음 2: company_event · team_dinner · birthday_leave 가 동률이 아니게 돼 파이썬 쪽과 같이 바꿨다.
+    for (const [code, expect] of [['foundation_day_leave', '창립기념 휴가'], ['relocation', '정착 지원금'],
+      ['work_tools', '노트북 지원'], ['parking', '주차 지원'], ['massage', '안마의자'],
+      ['smoking_cessation', '금연수당']]) {
       assert.equal(codes[code].baseLabel, expect, code);
     }
   });

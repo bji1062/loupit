@@ -64,6 +64,10 @@ export const LABEL_OVERRIDE = {
   // ④ 2026-09-28 재수집 R-3 묶음 1 — conference 가 edu_support 와 구분되지 않던 이름 · stock_grant 한 회사 프로그램명
   conference: '컨퍼런스·세미나 참가 지원',
   stock_grant: '자사주 지급',
+  // ⑤ 2026-10-01 재수집 R-3 묶음 2 — self_development 가 자격증 이름으로 좁아짐 · company_event 가 「가족친화 프로그램」
+  self_development: '자기계발비·자격증 지원',
+  company_event: '사내 행사·가족 초청',
+  meal: '구내식당·식대 지원',
 };
 
 export const MODES = ['and', 'or'];
