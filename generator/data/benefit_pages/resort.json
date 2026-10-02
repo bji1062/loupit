@@ -106,14 +106,6 @@
       "why": "「할인」은 테마파크 할인이다 — 숙소를 할인가로 쓰는 게 아니다"
     },
     {
-      "comp": "samsung_sdi",
-      "h": "94f839fa6b",
-      "facets_remove": [
-        "discount"
-      ],
-      "why": "「저렴이용」은 캐리비안베이(워터파크)에 붙은 말이다 — 숙소 할인이 아니다"
-    },
-    {
       "comp": "samsung_sds",
       "h": "fdf6127494",
       "facets_remove": [
