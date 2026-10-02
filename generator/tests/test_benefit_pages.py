@@ -61,7 +61,7 @@ def _bundle(rows: list[tuple[str, str, dict]]) -> dict:
     return b
 
 
-# 주택자금 대출 실원문 표본(2026-09-18 DB). 해시가 housing_loan.json 의 예외와 맞는 두 행을 포함한다.
+# 주택자금 대출 실원문 표본(2026-09-18 DB). 해시가 housing_loan.json 의 예외와 맞는 한 행(펄어비스)과 규칙만으로 direct 인 두산에너빌리티 행을 포함한다.
 HOUSING = [
     # 두산에너빌리티는 2026-10-02 재수집(R-3 묶음 5) 원문이다 — 기숙사 · 이사비 · 대출이자가 다른 코드로 갈라져
     # 근로복지기금 직접 대출만 남았고, 예외 없이 규칙만으로 direct 다(예전 「both」 예외는 지웠다).
