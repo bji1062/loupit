@@ -201,6 +201,8 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "samsung_life", "pharma_research", "hugel", "nepes",
         # 재수집 R-3 묶음 3(2026-10-01, 8) — ls 는 이번에 넣지 않았다(ls 는 같은 날 회사 등록을 해제했다)
         "park_systems", "tck", "hmm", "jlk", "ifamilysc", "com2us", "wemade", "cj",
+        # 재수집 R-3 묶음 4-A(2026-10-02, 7) — hyundai_rotem · hyundai_steel · hyundai_glovis 는 사용자 원문 대기(4-B)
+        "hyundai_autoever", "hyundai_muvex", "lg_display", "samsung_electro", "samsung_sdi", "samsung_ct", "samsung_bio",
         # 재수집 R-3 묶음 3 후속(2026-10-01, 1) — yuhan 은 2026-10-01 후속 PR(사용자 붙여넣기 원문)
         "yuhan",
     }
