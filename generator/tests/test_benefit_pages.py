@@ -231,7 +231,7 @@ _PARENTING_CFG = {
     "questions": [{"text": "휴직 중 급여가 있나요?", "answered_by": ["facet:leave"]}],
 }
 PARENTING = [
-    ("classys", "클래시스", _b("parenting", "산전후휴가/육아휴직", desc="산전후 휴가, 남성출산휴가, 육아휴직", ctgr="family")),
+    ("kt", "KT", _b("parenting", "출산/육아 지원", desc="산전후 휴가, 남성출산휴가, 육아휴직", ctgr="family")),
     ("a_co", "가회사", _b("parenting", "육아휴직 확대", desc="육아휴직 2년 보장", ctgr="family")),
     ("b_co", "나회사", _b("parenting", "출산 축하금", desc="출산 축하금 지급", amt=100, qual=False, src="stated", ctgr="family")),
 ]
@@ -245,9 +245,9 @@ def test_legal_rows_stay_in_table_but_leave_every_aggregate():
     assert view["facets"][0]["count"] == 1, "법정 행의 「육아휴직」이 원문 항목 개수에 섞였다"
     assert view["questions"][0]["count"] == 1
     assert sum(s["count"] for s in view["amount_sources"] if s["key"] in ("stated", "est", "qual", "blank")) == 2
-    assert "산전후휴가/육아휴직" not in view["names"]["shown"], "법정 행 이름이 「부르는 이름」에 섞였다"
+    assert "출산/육아 지원" not in view["names"]["shown"], "법정 행 이름이 「부르는 이름」에 섞였다"
     table = view["rows_first"] + view["rows_rest"]
-    assert [r["comp_nm"] for r in table][-1] == "클래시스" and table[-1]["legal"], "법정 행은 표 맨 끝에 남는다"
+    assert [r["comp_nm"] for r in table][-1] == "KT" and table[-1]["legal"], "법정 행은 표 맨 끝에 남는다"
 
 
 def test_legal_row_renders_the_same_badge_as_the_company_page():

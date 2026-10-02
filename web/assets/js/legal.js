@@ -9,10 +9,7 @@
 // 법정 행과 진짜 복지 행이 섞여 있다(코드만 보면 멀쩡한 복지가 빠진다).
 
 export const LEGAL_ROWS = Object.freeze([
-  ['classys', 'parenting', '산전후휴가/육아휴직'],
-  ['eo_technics', 'parenting', '출산/육아 지원'],
   ['kt', 'parenting', '출산/육아 지원'],
-  ['rainbow_robotics', 'parenting', '육아휴직'],
   ['samsung_card', 'parenting', '육아휴직·모성보호제도'],
   ['silicon2', 'parenting', '출산휴가/육아휴직'],
 ]);

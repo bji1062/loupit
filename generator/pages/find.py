@@ -90,6 +90,9 @@ LABEL_OVERRIDE = {
     "childcare": "사내 어린이집",
     "fitness": "피트니스센터·운동 지원",
     "clinic": "사내 부속의원·건강관리실",
+    # 2026-10-02 R-3 묶음 6-A — lounge 는 2:2 동률이라 항목 페이지 제목에, work_tools 는 1회 이름뿐이라 일반명에 못 박는다.
+    "lounge": "직원 휴게실·휴식 공간",
+    "work_tools": "업무 장비·도구 지원",
 }
 
 

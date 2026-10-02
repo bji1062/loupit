@@ -52,8 +52,8 @@ def test_FN1_seed_populates_mapping_at_last_step(seeded_db):
     """`load.main(fresh=True)` 만으로 TCORP·TCOMPANY_CORP 가 채워진다(재시드 후 매핑 소실 방지)."""
     rows = load_corp.read_map()
     mapped = [r for r in rows if r["status"] != "UNMAPPED"]
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 147  # − LG · LS 지주 등록 해제(2026-10-01)
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 146
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 146  # − LG · LS 지주 · HPSP 등록 해제(2026-10-02)
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 145
     # 매핑된 회사는 전부 실재하는 TCOMPANY 를 가리킨다(고아 0)
     assert _scalar(
         seeded_db,
@@ -74,7 +74,7 @@ def test_FN1_reapply_is_idempotent(seeded_db):
     seeded_db.commit()
     assert _rows(seeded_db, "SELECT COMP_ID, CORP_CODE, MATCH_CD FROM TCOMPANY_CORP ORDER BY COMP_ID") == before
     assert _rows(seeded_db, "SELECT CORP_CODE, CORP_NM, STOCK_CD, ACCT_SET_CD, FS_DIV_CD FROM TCORP ORDER BY CORP_CODE") == corps_before
-    assert stats["mapped"] == 147 and stats["unmatched"] == []
+    assert stats["mapped"] == 146 and stats["unmatched"] == []
     assert all(db_id == dict((nm, cid) for cid, nm in _rows(seeded_db, "SELECT COMP_ID, COMP_NM FROM TCOMPANY"))[nm]
                for nm, _csv_id, db_id in stats["id_drift"]), "드리프트가 이름으로 해소되지 않았다"
     drift_lines = [ln for ln in lines if "드리프트" in ln]
