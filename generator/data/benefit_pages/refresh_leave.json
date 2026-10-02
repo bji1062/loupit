@@ -114,14 +114,6 @@
   },
   "overrides": [
     {
-      "comp": "hyundai_steel",
-      "h": "e801564d44",
-      "facets_remove": [
-        "days"
-      ],
-      "why": "「5일」은 하기휴가 일수다 — 반기별 Refresh 휴가의 일수는 적혀 있지 않다"
-    },
-    {
       "comp": "hanmi_pharm",
       "h": "0db553251d",
       "facets_remove": [

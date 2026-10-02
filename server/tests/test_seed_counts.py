@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 148  # 150 − LG · LS 지주 등록 해제(2026-10-01, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 2832(2710 − 88 + 210 그룹 계열 7사 재수집, 2026-10-02), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2861(2832 − 40 + 69 현대 3사 재수집, 2026-10-02), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -105,9 +105,12 @@ def test_SD4_benefit_total_row_count(seeded_db):
           + 재수집 R-3 묶음 4-A 그룹 계열 7사(현대오토에버 · 현대무벡스 · LG디스플레이 · 삼성전기 · 삼성SDI · 삼성물산 · 삼성바이오로직스) 88 → 210행
           2710 − 88 + 210 = 2832 (R-3 묶음 4-A 7사) — 운영은 표적 삭제 6 · 재코딩 3 뒤 멱등 적재
           (db/migrations/20261002_recollect_3_batch4a.sql) — loupit-evidence/2026-10-02-recollect-3-4/
+          + 재수집 R-3 묶음 4-B 현대 3사(현대로템 · 현대제철 · 현대글로비스, 사용자가 붙여 넣은 공식 채용 사이트 원문) 40 → 69행
+          2832 − 40 + 69 = 2861 (R-3 묶음 4-B 현대 3사) — 운영은 표적 삭제 6 · 재코딩 2 뒤 멱등 적재
+          (db/migrations/20261002_recollect_3_batch4b.sql) — loupit-evidence/2026-10-02-recollect-3-4/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2832, f"복지 총행 불일치: {count} (기대 2832 = 2710 − 88 + 210 그룹 계열 7사 재수집)"
+    assert count == 2861, f"복지 총행 불일치: {count} (기대 2861 = 2832 − 40 + 69 현대 3사 재수집)"
     assert count >= 1200
 
 
