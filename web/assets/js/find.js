@@ -73,6 +73,12 @@ export const LABEL_OVERRIDE = {
   meal: '구내식당·식대 지원',
   // 2026-10-01 묶음 3 검토 — career 2:2 · 6:6 코드포인트 동률(「멘토링 제도」 · 「사내공모제도」 — 행 하나에 이름이 뒤집힌다)
   career: '경력개발·사내공모',
+  // 2026-10-02 R-3 묶음 5 — 한 회사 표기가 대표가 된 코드와 항목 페이지가 있는 코드를 일반명 · 페이지 제목에 못 박는다(find.py 같은 자리).
+  housing_support: '주거·숙소 지원금',
+  disability_family_support: '장애 가족 지원',
+  childcare: '사내 어린이집',
+  fitness: '피트니스센터·운동 지원',
+  clinic: '사내 부속의원·건강관리실',
 };
 
 export const MODES = ['and', 'or'];

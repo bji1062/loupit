@@ -245,8 +245,9 @@ def test_legal_rows_cover_the_audited_companies():
     # 2026-09-28: 카카오뱅크 parenting 등록 해제 — 재수집 서술이 회사 제도(영유아지원금)뿐
     # 2026-10-01: 네패스 생일 휴가 · 2시간 단위 휴가 · 파마리서치 단체 휴가 등록 해제 — R-3 묶음 2 재수집 원문이 회사 복지
     # 2026-10-02: 현대제철 「출산/육아」 등록 해제 — R-3 묶음 4-B 재수집 서술이 회사 제도(육아휴직 최대 2년 등 상회분)뿐
-    assert len(rows) == 8
-    assert len({r["comp_eng_nm"] for r in rows}) == 8
+    # 2026-10-02: 한화시스템 · 한화에어로스페이스 parenting 등록 해제 — R-3 묶음 5 재수집 서술이 회사 상회분(배우자 출산휴가 법정 20일 초과분 등)뿐
+    assert len(rows) == 6
+    assert len({r["comp_eng_nm"] for r in rows}) == 6
     for r in rows:
         assert r["desc_at_review"] and r["why"], f"{r['comp_eng_nm']} 판정 근거가 비었다"
 
