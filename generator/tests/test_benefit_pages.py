@@ -231,7 +231,7 @@ _PARENTING_CFG = {
     "questions": [{"text": "휴직 중 급여가 있나요?", "answered_by": ["facet:leave"]}],
 }
 PARENTING = [
-    ("classys", "클래시스", _b("parenting", "산전후휴가/육아휴직", desc="산전후 휴가, 남성출산휴가, 육아휴직", ctgr="family")),
+    ("kt", "클래시스", _b("parenting", "출산/육아 지원", desc="산전후 휴가, 남성출산휴가, 육아휴직", ctgr="family")),
     ("a_co", "가회사", _b("parenting", "육아휴직 확대", desc="육아휴직 2년 보장", ctgr="family")),
     ("b_co", "나회사", _b("parenting", "출산 축하금", desc="출산 축하금 지급", amt=100, qual=False, src="stated", ctgr="family")),
 ]

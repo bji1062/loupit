@@ -206,9 +206,9 @@ def test_benefit_cd_lookup_flags_statutory_codes():
 def test_legal_rows_lookup_is_by_company_code_and_name():
     """같은 코드(`parenting`·`leave_general`)에 법정 행과 진짜 복지 행이 섞여 있다.
     코드만 보고 판정하면 멀쩡한 복지가 통째로 빠진다."""
-    assert legal.is_legal_row("rainbow_robotics", "parenting", "육아휴직")
+    assert legal.is_legal_row("kt", "parenting", "출산/육아 지원")
     assert not legal.is_legal_row("yuhan", "leave_general", "연차휴가 (법정 상회)")
-    assert not legal.is_legal_row("rainbow_robotics", "parenting", "다른 이름")
+    assert not legal.is_legal_row("kt", "parenting", "다른 이름")
 
 
 def test_legal_rows_all_exist_in_seed_sql():
@@ -246,8 +246,11 @@ def test_legal_rows_cover_the_audited_companies():
     # 2026-10-01: 네패스 생일 휴가 · 2시간 단위 휴가 · 파마리서치 단체 휴가 등록 해제 — R-3 묶음 2 재수집 원문이 회사 복지
     # 2026-10-02: 현대제철 「출산/육아」 등록 해제 — R-3 묶음 4-B 재수집 서술이 회사 제도(육아휴직 최대 2년 등 상회분)뿐
     # 2026-10-02: 한화시스템 · 한화에어로스페이스 parenting 등록 해제 — R-3 묶음 5 재수집 서술이 회사 상회분(배우자 출산휴가 법정 20일 초과분 등)뿐
-    assert len(rows) == 6
-    assert len({r["comp_eng_nm"] for r in rows}) == 6
+    # 2026-10-02: 이오테크닉스 「출산/육아 지원」 등록 해제 — R-3 묶음 6 재수집에서 법정 제도만 적힌 항목이라 행을 싣지 않음
+    # 2026-10-02: 클래시스 「산전후휴가/육아휴직」 등록 해제 — R-3 묶음 6 재수집 서술이 회사 상회분(출산 축하금)뿐
+    # 2026-10-02: 레인보우로보틱스 「육아휴직」 등록 해제 — R-3 묶음 6 재수집에서 법정 제도만 적힌 항목이라 행을 싣지 않음
+    assert len(rows) == 3
+    assert len({r["comp_eng_nm"] for r in rows}) == 3
     for r in rows:
         assert r["desc_at_review"] and r["why"], f"{r['comp_eng_nm']} 판정 근거가 비었다"
 
@@ -266,7 +269,7 @@ def test_corpus_excludes_legal_rows_from_item_count():
     from generator import corpus as corpus_mod
     from generator.pages.company import CATEGORY_ORDER
 
-    c = _fake_company("rainbow_robotics", ["육아휴직", "하계휴가"], ctgr="parenting")
+    c = _fake_company("kt", ["출산/육아 지원", "하계휴가"], ctgr="parenting")
     built = corpus_mod.build([c], CATEGORY_ORDER)
     assert built.items[1] == 1, "법정 행 1개가 항목 수에서 빠져야 한다"
 
@@ -284,8 +287,8 @@ def test_ledger_keeps_the_legal_row_but_flags_it(fake_now):
     """행은 남는다 — 「이 회사가 연차를 준다」는 사실은 정보다. 배지만 붙는다."""
     from generator.pages.company import _group_benefits
 
-    c = _fake_company("rainbow_robotics", ["육아휴직", "하계휴가"], ctgr="parenting")
-    groups = _group_benefits(c["benefits"], fake_now, comp_eng_nm="rainbow_robotics")
+    c = _fake_company("kt", ["출산/육아 지원", "하계휴가"], ctgr="parenting")
+    groups = _group_benefits(c["benefits"], fake_now, comp_eng_nm="kt")
     items = [i for _, _, its in groups for i in its]
     assert len(items) == 2, "원장에서 행을 지우지 않는다"
     assert [i["legal"] for i in items].count(True) == 1
@@ -295,6 +298,6 @@ def test_group_benefits_without_company_name_flags_nothing(fake_now):
     """회사 이름이 없으면 판정이 전부 False 가 된다 — 조합 페이지가 eng 를 꼭 넘겨야 하는 이유."""
     from generator.pages.company import _group_benefits
 
-    c = _fake_company("rainbow_robotics", ["육아휴직"], ctgr="parenting")
+    c = _fake_company("kt", ["출산/육아 지원"], ctgr="parenting")
     groups = _group_benefits(c["benefits"], fake_now)
     assert all(not i["legal"] for _, _, its in groups for i in its)

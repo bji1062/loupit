@@ -32,10 +32,10 @@ def test_SD2_benefit_preset_total_count(seeded_db):
 def test_SD3_company_count_is_102(seeded_db):
     """정확 카운트 핀. 회사 추가는 **의도적으로만** 가능해야 한다(시드 유실·중복 조기 발견).
     회사를 늘리거나 줄일 땐 이 값과 SI-8·멱등성 스냅샷을 함께 갱신하라."""
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 148  # 150 − LG · LS 지주 등록 해제(2026-10-01, 공식 복지 원문 없음)
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 2968(2861 − 135 + 242 묶음 5 10사 재수집, 2026-10-02), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 2989(2968 − 92 − 14 + 127 묶음 6-A 8사 재수집 · HPSP 등록 해제, 2026-10-02), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -111,9 +111,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
           + 재수집 R-3 묶음 5 10사(한화 · 한화에어로스페이스 · 한화시스템 · 한화오션 · ㈜두산 · 두산에너빌리티 · ㈜에코프로 · 에코프로비엠 · 올릭스 · 솔브레인) 135 → 242행
           2861 − 135 + 242 = 2968 (R-3 묶음 5 10사) — 운영은 표적 삭제 28 · 재코딩 5 뒤 멱등 적재
           (db/migrations/20261002_recollect_3_batch5.sql) — loupit-evidence/2026-10-02-recollect-3-5/
+          + 재수집 R-3 묶음 6-A 8사(이오테크닉스 · 주성엔지니어링 · 테크윙 · 덕산네오룩스 · 비에이치 · 지놈앤컴퍼니 · 클래시스 · 레인보우로보틱스) 92 → 127행
+            · HPSP 회사 등록 해제(복지 14행 — 공식 복지 원문 없음)
+          2968 − 92 − 14 + 127 = 2989 (R-3 묶음 6-A 8사 · HPSP 등록 해제) — 운영은 표적 삭제 17 · 재코딩 2 뒤 멱등 적재
+          (db/migrations/20261002_unregister_hpsp.sql · 20261002_recollect_3_batch6a.sql) — loupit-evidence/2026-10-02-recollect-3-6/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2968, f"복지 총행 불일치: {count} (기대 2968 = 2861 − 135 + 242 묶음 5 10사 재수집)"
+    assert count == 2989, f"복지 총행 불일치: {count} (기대 2989 = 2968 − 92 − 14 + 127 묶음 6-A 8사 재수집 · HPSP 등록 해제)"
     assert count >= 1200
 
 
