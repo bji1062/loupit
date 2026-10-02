@@ -19,6 +19,7 @@
 -- 가드: 문마다 BENEFIT_ID · 회사 영문명 · 지금 코드 · BADGE_CD = official 을 함께 건다.
 -- 멱등: 두 번째 실행은 전부 0행이다. 한 트랜잭션이다.
 -- 순서 (반드시): 이 파일 → python3 db/seed/load.py → release.
+-- 선행 (반드시): LS 지주 등록 해제 20261001_unregister_ls_holding.sql (PR #89) 운영 반영 뒤 — 그 전이면 적재 뒤 실측이 회사 149 · 2715 로 기대와 어긋난다.
 --   적재를 먼저 돌리면 새 코드 행이 먼저 생겨 UPDATE 가 uq_comp_benefit 중복 키로 실패하고 옛 행이 남는다.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
