@@ -95,10 +95,10 @@ def test_SI4_no_orphan_benefit_rows(seeded_db):
 
 
 def test_SI4_eng_mismatch_14_companies_have_benefits(seeded_db):
-    """SP-SEED-2.2 eng-상이 14건 표본(LS 등) — 복지 정상 연결 확인.
+    """SP-SEED-2.2 eng-상이 14건 표본 — 복지 정상 연결 확인.
 
-    lg(LG 지주)는 2026-10-01 등록 해제됐다(공식 복지 원문 없음 · 구본은 LG유플러스 사본) — 표본에서 뺐다."""
-    sample_engs = ["ls", "wgames", "doosan_enerbility", "lino", "bh", "samsung_ct"]
+    lg(LG 지주) · ls(LS 지주)는 2026-10-01 등록 해제됐다(공식 복지 원문 없음 · 구본은 LG유플러스 사본 · KLT 데이터) — 표본에서 뺐다."""
+    sample_engs = ["wgames", "doosan_enerbility", "lino", "bh", "samsung_ct"]
     for eng in sample_engs:
         count = _scalar(
             seeded_db,
@@ -161,7 +161,7 @@ def test_SI7_no_duplicate_alias_per_company(seeded_db):
 # ── SI-8: 200-seed 미등록 — 회사 수 = 95 (≠ 200) ──
 def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
-    assert count == 149  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG 지주 등록 해제(2026-10-01)
+    assert count == 148  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 등록 해제(2026-10-01)
     assert count != 200
 
 
