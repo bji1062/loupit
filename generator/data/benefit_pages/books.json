@@ -39,7 +39,6 @@
   "overrides": [
     {"comp": "olix", "h": "0c8e0a47b6", "mode": "library", "why": "항목명이 「사내 도서관」 — 원문 칸은 비어 있다(수집자 표식 (추정)뿐)"},
     {"comp": "isens", "h": "eab245295c", "mode": "both", "why": "업무도서 구입비 지원과 사내도서관 운영을 함께 적었다"},
-    {"comp": "samsung_fire", "h": "87857f7bd2", "mode": "both", "why": "교보문고 제휴 e북 열람(전자도서관)과 매년 도서 구입비 지원을 함께 적었다"},
-    {"comp": "yuhan", "h": "b4f71c4191", "mode": "both", "why": "희망 도서구매 지원과 회사 전용 전자도서관을 함께 적었다"}
+    {"comp": "samsung_fire", "h": "87857f7bd2", "mode": "both", "why": "교보문고 제휴 e북 열람(전자도서관)과 매년 도서 구입비 지원을 함께 적었다"}
   ]
 }

@@ -71,6 +71,8 @@ export const LABEL_OVERRIDE = {
   relocation: '이사·정착 지원',
   promotion_gift: '승진 축하 선물',
   meal: '구내식당·식대 지원',
+  // 2026-10-01 묶음 3 검토 — career 2:2 · 6:6 코드포인트 동률(「멘토링 제도」 · 「사내공모제도」 — 행 하나에 이름이 뒤집힌다)
+  career: '경력개발·사내공모',
 };
 
 export const MODES = ['and', 'or'];
