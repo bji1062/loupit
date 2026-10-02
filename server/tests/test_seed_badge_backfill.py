@@ -205,6 +205,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "hyundai_autoever", "hyundai_muvex", "lg_display", "samsung_electro", "samsung_sdi", "samsung_ct", "samsung_bio",
         # 재수집 R-3 묶음 4-B(2026-10-02, 3) — 사용자가 붙여 넣은 공식 채용 사이트 원문
         "hyundai_rotem", "hyundai_steel", "hyundai_glovis",
+        # 재수집 R-3 묶음 5(2026-10-02, 10) — 한화 4 · 두산 2 · 에코프로 2 · 올릭스 · 솔브레인
+        "hanwha", "hanwha_aerospace", "hanwha_systems", "hanwha_ocean", "doosan", "doosan_enerbility",
+        "ecopro", "ecopro_bm", "olix", "soulbrain",
         # 재수집 R-3 묶음 3 후속(2026-10-01, 1) — yuhan 은 2026-10-01 후속 PR(사용자 붙여넣기 원문)
         "yuhan",
     }

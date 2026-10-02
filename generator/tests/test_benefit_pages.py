@@ -63,8 +63,10 @@ def _bundle(rows: list[tuple[str, str, dict]]) -> dict:
 
 # 주택자금 대출 실원문 표본(2026-09-18 DB). 해시가 housing_loan.json 의 예외와 맞는 두 행을 포함한다.
 HOUSING = [
-    ("doosan_enerbility", "두산에너빌리티", _b("housing_loan", "주거지원",
-        desc="기숙사/사택, 이사비/대출이자 지원, 신용협동조합(주택구입/전세/생활안정 무이자/저금리)")),
+    # 두산에너빌리티는 2026-10-02 재수집(R-3 묶음 5) 원문이다 — 기숙사 · 이사비 · 대출이자가 다른 코드로 갈라져
+    # 근로복지기금 직접 대출만 남았고, 예외 없이 규칙만으로 direct 다(예전 「both」 예외는 지웠다).
+    ("doosan_enerbility", "두산에너빌리티", _b("housing_loan", "사내 근로복지기금 대출 (주택구입·전세·생활안정)",
+        desc="사내 근로복지기금을 조성하여 주택구입 및 전세자금, 생활안정자금을 무이자 또는 저금리로 대출, 회사 내 신용협동조합 운영 (공식 홈페이지 채용 복리후생 사내 근로복지기금 항목) — 대출 한도·금리 미기재")),
     # 펄어비스는 2026-09-28 재수집(R-3) 원문이다 — 거주비는 housing_support 새 행으로 갈라졌다. 운영 금액은
     # NULL(한도, L6)이 됐지만 금액 칸 표시 규칙을 재려고 600(공식)을 표본용으로 남긴다.
     ("pearl_abyss", "펄어비스", _b("housing_loan", "대출 이자 지원",
@@ -191,7 +193,7 @@ def test_real_housing_overrides_match_the_real_text():
     by = {r["comp"]: r for r in out["rows"]}
     assert [s for s in out["stale"] if "원문이 바뀌어" in s] == []
     assert "no_home" not in by["sk_hynix"]["facets"], "재수집 원문에는 무주택 조건이 없다 — 예외 없이 규칙만으로 맞아야 한다"
-    assert by["doosan_enerbility"]["mode"] == "both"
+    assert by["doosan_enerbility"]["mode"] == "direct"
     assert "limit" not in by["pearl_abyss"]["facets"], "달마다 내 주는 이자 한도(37만 5천 원)가 대출 한도로 잡혔다"
 
 

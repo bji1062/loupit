@@ -126,12 +126,6 @@
   },
   "overrides": [
     {
-      "comp": "doosan_enerbility",
-      "h": "fc087ebbed",
-      "mode": "both",
-      "why": "신용협동조합 무이자·저금리 대출(직접)과 대출이자 지원을 함께 적었다"
-    },
-    {
       "comp": "pearl_abyss",
       "h": "32125c7545",
       "mode": "interest",
