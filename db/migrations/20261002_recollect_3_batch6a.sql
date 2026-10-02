@@ -24,13 +24,13 @@
 -- 순서 (반드시): 20261002_unregister_hpsp.sql → 이 파일 → python3 db/seed/load.py → release.
 --   적재를 먼저 돌리면 새 코드 행이 먼저 생겨 UPDATE 가 uq_comp_benefit 중복 키로 실패하고 옛 행이 남는다.
 --
--- 🚨 이 PR 은 web/assets/js/legal.js(이오테크닉스 · 클래시스 · 레인보우로보틱스 법정 등록 해제)를 바꾼다. web/assets 는 라이브 docroot 라
---   git pull 하는 순간 바로 라이브가 된다 — 아래 pull → 백업 → 마이그레이션 → load.py → release 를 끊지 않고 잇는다
+-- 🚨 이 PR 은 web/assets/js/legal.js(이오테크닉스 · 클래시스 · 레인보우로보틱스 법정 등록 해제)와 find.js(/find 대표 이름 고정 2)를 바꾼다.
+--   web/assets 는 라이브 docroot 라 git pull 하는 순간 legal.js · find.js 가 둘 다 바로 라이브가 된다 — 아래 pull → 백업 → 마이그레이션 → load.py → release 를 끊지 않고 잇는다
 --   (묶음 3 · 유한양행 · 4-A · 4-B · 5 마이그레이션 머리말 「0) 머지 → git pull」 줄과 같은 경고).
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
---   0) 머지 → git pull — pull 하는 순간 legal.js 가 라이브가 되므로 아래 1~5 를 release 까지 멈추지 않고 잇는다
---   1) 백업 — 적재가 참조 테이블을 모두 다시 쓰므로 9테이블을 뜬다
+--   0) 머지 → git pull — pull 하는 순간 legal.js · find.js 가 라이브가 되므로 아래 1~5 를 release 까지 멈추지 않고 잇는다
+--   1) 백업 — 적재가 참조 테이블을 모두 다시 쓰므로 참조 9테이블 + HPSP 등록 해제가 지우는 TCOMPARE_LOG · TSOURCE_CHECK · TAUTH_CODE 를 뜬다
 --   2) 20261002_unregister_hpsp.sql 을 mysql -vv 로 적용
 --   3) 이 파일을 mysql -vv 로 적용
 --   4) cd /home/ubuntu/loupit && python3 db/seed/load.py   (--fresh 금지)

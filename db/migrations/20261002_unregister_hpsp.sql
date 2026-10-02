@@ -16,6 +16,8 @@
 --   되어 아래 문장이 전부 0행으로 끝난다(아무것도 지우지 않는다). 2026-10-02 운영 기준 그런 행은 0건이다.
 -- 멱등: 두 번째 실행은 @hpsp 가 NULL 이라 전부 0행이다. 한 트랜잭션이다.
 -- 순서 (반드시): 이 파일 → 20261002_recollect_3_batch6a.sql → python3 db/seed/load.py → release.
+-- 🚨 같은 PR 이 web/assets/js/legal.js · find.js 를 바꾼다 — web/assets 는 라이브 docroot 라 git pull 하는 순간 바로 라이브가 되므로
+--   pull → 백업 → 이 파일 → 20261002_recollect_3_batch6a.sql → load.py → release 를 끊지 않고 잇는다.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
 --   1) 백업 — 참조 9테이블 + 이 파일이 지우는 TCOMPARE_LOG · TSOURCE_CHECK · TAUTH_CODE
