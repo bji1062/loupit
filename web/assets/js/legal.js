@@ -13,7 +13,6 @@ export const LEGAL_ROWS = Object.freeze([
   ['eo_technics', 'parenting', '출산/육아 지원'],
   ['hanwha_systems', 'parenting', '출산휴가/아빠휴가'],
   ['hanwha_aerospace', 'parenting', '아빠휴가'],
-  ['hyundai_steel', 'parenting', '출산/육아'],
   ['kt', 'parenting', '출산/육아 지원'],
   ['rainbow_robotics', 'parenting', '육아휴직'],
   ['samsung_card', 'parenting', '육아휴직·모성보호제도'],
