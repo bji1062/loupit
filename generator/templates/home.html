@@ -51,7 +51,7 @@
     <p class="home-intro">직장을 비교할 때 우리는 흔히 연봉부터 봅니다. 하지만 복지도 연봉의 일부입니다.</p>
     <p class="home-intro">채용공고에 적힌 ‘각종 복지 제도’가 실제로 얼마의 가치가 있는지, 함께 따져봐야 합니다.</p>
     <p class="home-intro">잡초위키는 흩어진 기업 복지 정보를 한곳에 모으고, 실제 구성원들의 경험을 더해 연봉만으로는 보이지 않는 회사의 가치를 비교할 수 있도록 돕습니다.</p>
-    <p class="home-intro-note">(복지는 회사 공식 채용·복지 페이지에서 수집해 {{ view.total_codes }}종의 표준 항목으로 다시 분류하고, 항목마다 연간 환산 금액과 금액의 성격(회사 공식 수치/추정치)을 적습니다.)</p>
+    <p class="home-intro-note">(복지는 회사 공식 페이지·공시에서 수집해 {{ view.total_codes }}종의 표준 항목으로 다시 분류하고, 항목마다 연간 환산 금액과 금액의 성격(회사 공식 수치/추정치)을 적습니다.)</p>
     <p class="home-intro">여러분들이 남긴 한 줄의 경험이 누군가의 더 나은 직장 선택을 만듭니다.</p>
   </section>
 
@@ -145,7 +145,7 @@
   <section class="home-sec" aria-labelledby="home-trust-h">
     <h2 id="home-trust-h">읽기 전에 알아 둘 것</h2>
     {%- set t = view.trust %}
-    <p class="home-trust">복지 {{ t.total }}건은 모두 회사 공식 페이지를 근거로 하지만, 회사가 금액을 직접 밝힌 항목은 <strong>{{ t.stated }}건({{ t.stated_pct }}%)</strong>입니다. {{ t.estimated }}건은 공개된 조건을 바탕으로 계산한 추정치이며 「추정」 표시와 함께 ±20% 범위로 보여 줍니다. 나머지 {{ t.qual }}건은 금액으로 환산하지 않는 정성 항목입니다.{% if t.no_amount %} 금액이 아직 적히지 않은 항목은 {{ t.no_amount }}건입니다.{% endif %}{% if t.pivot %} 항목마다 확인일을 적어 두었고, {{ t.on_pivot }}건은 {{ t.pivot }}에, {{ t.after }}건은 그 뒤에, {{ t.before }}건은 그 전에 확인했습니다.{% endif %}{% if t.undated %} 확인일이 없는 항목은 {{ t.undated }}건입니다.{% endif %} 만료된 항목은 「재확인 필요」로 표시합니다. 채용·이직처럼 중요한 결정 전에는 회사 공식 자료로 다시 확인하세요.</p>
+    <p class="home-trust">복지 <strong>{{ t.total }}건</strong> 가운데 <strong>{{ t.official }}건</strong>은 회사 공식 페이지·공시를 근거로 {% if t.summary %}하고, <strong>{{ t.summary }}건</strong>은 공식 원문을 찾지 못한 <strong>{{ t.summary_companies }}개</strong> 회사의 검색 AI 요약을 근거로 합니다(「검색 요약」 표시){% else %}합니다{% endif %}.{% if t.member %} 재직자가 등록하거나 고친 항목은 <strong>{{ t.member }}건</strong>입니다.{% endif %} 회사가 금액을 직접 밝힌 항목은 <strong>{{ t.stated }}건({{ t.stated_pct }}%)</strong>입니다. {{ t.estimated }}건은 공개된 조건을 바탕으로 계산한 추정치이며 「추정」 표시와 함께 ±20% 범위로 보여 줍니다. 나머지 {{ t.qual }}건은 금액으로 환산하지 않는 정성 항목입니다.{% if t.no_amount %} 금액이 아직 적히지 않은 항목은 {{ t.no_amount }}건입니다.{% endif %}{% if t.pivot %} 항목마다 확인일을 적어 두었고, {{ t.on_pivot }}건은 {{ t.pivot }}에, {{ t.after }}건은 그 뒤에, {{ t.before }}건은 그 전에 확인했습니다{% if t.summary %}(검색 요약 항목에는 확인일 대신 요약 기준일을 적었습니다){% endif %}.{% endif %}{% if t.undated %} 확인일이 없는 항목은 {{ t.undated }}건입니다.{% endif %}{% if t.marked_legal or t.marked_work_edu %} {% if t.marked_legal %}법으로 모든 회사에 정해진 제도만 적힌 {{ t.marked_legal }}건{% endif %}{% if t.marked_legal and t.marked_work_edu %}과 {% endif %}{% if t.marked_work_edu %}회사가 업무를 맡기려고 여는 교육만 적힌 {{ t.marked_work_edu }}건{% endif %}은 {% if t.marked_legal and t.marked_work_edu %}「법정」·「업무 교육」{% elif t.marked_legal %}「법정」{% else %}「업무 교육」{% endif %} 표시만 달고 복지 항목 수에서 뺍니다.{% endif %} 만료된 항목은 「재확인 필요」로 표시합니다. 채용·이직처럼 중요한 결정 전에는 회사 공식 자료로 다시 확인하세요.</p>
   </section>
 
   {#- SP-ADS: 랜딩 콘텐츠 하단 광고 슬롯(런타임 ads.js 마운트). page_type 'landing' 과 한 쌍이다. #}

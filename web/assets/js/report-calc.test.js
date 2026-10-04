@@ -19,7 +19,7 @@ import { BLOCK_ORDER, headlineText } from './report-calc.js';
 import { normalizeCompany, fillBenefits, blankWs } from './inputs.js';
 import { createInitialState, runReport } from './app.js';
 import { renderInputView, syncExclusionNote } from './ui.js';
-import { isLegalRow } from './legal.js';
+import { rowMark } from './marks.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const G = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-golden-naver-kakao.json'), 'utf8'));
@@ -30,7 +30,7 @@ const VP = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-verify-p
 const NOW_VERIFY = Date.parse('2026-09-23T00:00:00+09:00');
 function verifyState(an, bn, o = {}) {
   const pick = (nm) => VP.companies.find((c) => c.comp_nm === nm);
-  const side = (c) => c.benefits.map((b) => (isLegalRow(c.comp_eng_nm, b.benefit_cd, b.benefit_nm) ? { ...b, legal_yn: true, checked: false } : { ...b, checked: true }));
+  const side = (c) => c.benefits.map((b) => (rowMark(c.comp_eng_nm, b) ? { ...b, mark_cd: rowMark(c.comp_eng_nm, b), checked: false } : { ...b, checked: true }));
   const A = pick(an), B = pick(bn);
   const sal = o.sal ?? 6000;
   const ws = (c) => ({ remote: !!(c.work_style_val && c.work_style_val.remote), flex: !!(c.work_style_val && c.work_style_val.flex) });
@@ -330,6 +330,20 @@ describe('RC-5 상호작용 — 축 전환 · 행별 「빼고 다시 계산」(
   }
   const run = (s) => runReport({ state: s, save: false, compareFn: (st) => compare(st, NOW) });
 
+  test('조건 칩(6c) — app.js 배선(runReport → condHints)을 거쳐 각주가 나오고, 체크하면 사라진다', () => {
+    const s = appState();
+    s.matched.a = normalizeCompany({ ...G.naver, comp_nm: '한미약품', work_style_val: { remote: false, flex: true, cond: { remote: ['육아기'] } } });
+    fillBenefits(s, 'a');
+    run(s);
+    document.getElementById('calc-out-wlb').click(); // 근무 자율성 줄은 워라밸 축에 있다
+    const t = document.getElementById('report-body').textContent;
+    assert.match(t, /※ 한미약품의 재택근무는 「육아기」 조건이 붙어 있어 계산에 넣지 않았습니다\. 해당되면 조건을 고쳐 주세요\./);
+    s.wsState.a.remote = true;
+    run(s);
+    document.getElementById('calc-out-wlb').click();
+    assert.doesNotMatch(document.getElementById('report-body').textContent, /조건이 붙어 있어 계산에 넣지 않았습니다/, '사용자가 체크했으면 각주를 생략한다');
+  });
+
   test('세그먼트 → 재계산 없이 축 전환 · curPri 동기 · 낭독 줄은 결론 한 줄', () => {
     const s = appState();
     let calls = 0;
@@ -462,10 +476,10 @@ describe('RC-5 상호작용 — 축 전환 · 행별 「빼고 다시 계산」(
     s.matched.a.benefits = s.matched.a.benefits.map((b) => (b.benefit_cd === 'parenting2' ? { ...b, benefit_cd: 'parenting' } : b)).filter((b, i, arr) => !(b.benefit_cd === 'parenting' && b.benefit_nm !== '출산/육아 지원' && arr.some((x) => x.benefit_cd === 'parenting' && x.benefit_nm === '출산/육아 지원')));
     fillBenefits(s, 'a');
     const r = run(s);
-    assert.equal(r.pairs.legal.a.length, 1);
+    assert.equal(r.pairs.marked.a.length, 1);
     const diffs = document.getElementById('calc-b-diffs');
     diffs.open = true;
-    assert.match(diffs.textContent, /법으로 모든 회사에 정해진 제도만 적혀 있어 비교에서 뺀 항목: 법정 출산\/육아 지원\(KT\)/);
+    assert.match(diffs.textContent, /복지로 세지 않아 비교에서 뺀 항목: 법정 출산\/육아 지원\(KT\)/);
     assert.equal(r.axes.benefits.counts.a, G.naver.benefits.length - 1 + 0, '항목 수에서 빠진다(원래 parenting 을 법정 행이 대신)');
     assert.equal(s.benS.a.find((b) => b.benefit_cd === 'parenting').checked, true, 'App.state 는 건드리지 않는다(복사본에만 표시)');
   });
@@ -613,18 +627,28 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     assert.match(txt(m2, '#calc-recalc'), /\+518만원/, '양수에도 부호(fmtSigned)');
   });
 
-  test('LOW-11 목업의 작은 것들 — 복지 카드 두 숫자·법정 안내, 흐름 표 끝 막대 범위, 4분해 눈금, 비교표 제목 「법정 복지 제외」', () => {
+  test('LOW-11 목업의 작은 것들 — 복지 카드 두 숫자·법정 안내, 흐름 표 끝 막대 범위, 4분해 눈금, 비교표 제목 「법정 제외」', () => {
     // 2026-10-01: 네패스 법정 등록 2행(생일 · 연차촉진) 해제 — R-3 묶음 2. 픽스처의 옛 네패스 행은 이제 복지로 센다.
     const { mount } = render(verifyState('KT', '네패스'), 'benefits', V);
     const how = txt(mount, '.calc-vd .calc-how');
     assert.match(how, /그대로 계산한 값\(\+342\)과 네패스에만 금액이 등록된 1건을 뺀 값\(\+142\)이 서로 다른 회사를 가리키면/);
     assert.match(how, /법으로 모든 회사에 정해진 제도만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
-    assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 복지 제외\) — KT 10개 · 네패스 18개/);
-    assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\)$/);
+    assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 제외\) — KT 10개 · 네패스 18개/);
+    assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /복지로 세지 않아 비교에서 뺀 항목: 법정 출산\/육아 지원\(KT\)$/);
     // 법정 항목이 두 회사에 하나씩일 때 「 · 」로 잇는 경로 — 네패스 해제로 사라진 단언을 KT · 삼성카드로 다시 잰다
     const { mount: sc } = render(verifyState('KT', '삼성카드'), 'benefits', V);
-    assert.match(txt(sc, '#calc-b-contrast .calc-foot'), /이 표와 계산에서 뺀 항목: 법정 출산\/육아 지원\(KT\) · 법정 육아휴직·모성보호제도\(삼성카드\)/);
-    assert.match(txt(sc, '.calc-vd .calc-how'), /법으로 모든 회사에 정해진 제도만 적힌 항목\(2개\)은 복지로 세지 않았습니다/);
+    assert.match(txt(sc, '#calc-b-contrast .calc-foot'), /복지로 세지 않아 비교에서 뺀 항목: 법정 출산\/육아 지원\(KT\) · 법정 육아휴직·모성보호제도\(삼성카드\)/);
+    // 삼성카드에는 업무 교육 표시 행(Job master 양성과정)도 있다 — 두 kind 를 「과」로 잇고 제목 꼬리도 합친다(SP-MARK).
+    assert.match(txt(sc, '.calc-vd .calc-how'), /법으로 모든 회사에 정해진 제도만 적힌 항목\(2개\)과 회사가 업무를 맡기려고 여는 교육만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
+    assert.match(txt(sc, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정·업무 교육 제외\)/);
+    assert.match(txt(sc, '#calc-b-contrast .calc-foot'), /업무 교육 Job master 양성과정\(삼성카드\)$/);
+    assert.match(txt(sc, '#calc-b-basis'), /회사가 업무를 맡기려고 여는 교육만 적힌 항목 1개는 표시만 하고 비교에서 뺐습니다/);
+    // 검색 요약(ai_parse) 행 — 「이 비교에 쓴 자료」에 한 줄, 금액 칸 배지는 「검색 요약」(SP-MARK). 집계에는 그대로 든다.
+    const ss = verifyState('KT', '네패스');
+    ss.benS.b = ss.benS.b.map((b, i) => (i < 2 ? { ...b, badge_src_cd: 'ai_parse' } : b));
+    const nSum = ss.benS.b.filter((b) => b.badge_src_cd === 'ai_parse').length;
+    const { mount: sm } = render(ss, 'benefits', V);
+    assert.match(txt(sm, '#calc-b-basis'), new RegExp('회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목\\(네패스 ' + nSum + '\\)'));
     const { mount: g } = render(goldenEngineState(), 'benefits');
     const rows = [...g.querySelectorAll('#calc-b-bridge .sr-only tr')].map((tr) => tr.textContent);
     assert.ok(rows.includes('카카오 실효 총보상7,739±145 (7,594 ~ 7,884)'), rows.join(' | '));
@@ -818,5 +842,21 @@ describe('후속 소문구(2026-09-23) — 「모두」는 둘 이상일 때만 
     const all = allText(render(goldenEngineState(), 'salary').mount);
     assert.match(all, /범위 −2,663 ~ −1,759/);
     assert.match(all, /±452/);
+  });
+});
+
+describe('RC-COND 조건 칩(6c) 각주 — 미리 체크하지 않은 재택 · 유연', () => {
+  test('조건이 붙은 재택은 「계산에 넣지 않았습니다」 각주, 사용자가 체크했으면 생략', () => {
+    const st = verifyState('KT', '네패스');
+    const hints = { a: [{ key: 'remote', label: '재택근무', cond: '육아기' }], b: [] };
+    const { mount } = render(st, 'wlb', { condHints: hints });
+    const t = allText(mount);
+    assert.match(t, /※ KT의 재택근무는 「육아기」 조건이 붙어 있어 계산에 넣지 않았습니다\. 해당되면 조건을 고쳐 주세요\./);
+    const st2 = verifyState('KT', '네패스');
+    st2.wsState = { ...st2.wsState, a: { ...(st2.wsState && st2.wsState.a), remote: true } };
+    const { mount: m2 } = render(st2, 'wlb', { condHints: hints });
+    assert.doesNotMatch(allText(m2), /조건이 붙어 있어 계산에 넣지 않았습니다/);
+    const { mount: m3 } = render(verifyState('KT', '네패스'), 'wlb', {});
+    assert.doesNotMatch(allText(m3), /조건이 붙어 있어 계산에 넣지 않았습니다/, '조건 힌트가 없으면 각주도 없다');
   });
 });

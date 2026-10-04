@@ -27,6 +27,16 @@ describe('badgeKind — 우선순위(만료 > member > edited > official > est)'
     assert.equal(badgeKind({ edit_origin: 'seed', badge_cd: 'official' }, { now: NOW }), 'official');
   });
 
+  test('검색 요약(ai_parse) — 만료 · member · edited 뒤, official 앞', () => {
+    assert.equal(badgeKind({ badge_src_cd: 'ai_parse', badge_cd: 'official' }, { now: NOW }), 'summary');
+    assert.equal(badgeKind({ badge_src_cd: 'ai_parse', badge_cd: 'official', expires_dtm: PAST }, { now: NOW }), 'expired');
+    assert.equal(badgeKind({ badge_src_cd: 'ai_parse', edit_origin: 'member' }, { now: NOW }), 'member');
+    assert.equal(badgeKind({ badge_src_cd: 'ai_parse', edit_origin: 'edited' }, { now: NOW }), 'edited');
+    assert.equal(badgeKind({ badge_src_cd: 'scrape_official', badge_cd: 'official' }, { now: NOW }), 'official');
+    assert.equal(badgeClass('summary'), 'badge badge-summary');
+    assert.equal(badgeClassBem('summary'), 'badge badge--summary');
+  });
+
   test('그 외는 추정', () => {
     assert.equal(badgeKind({ badge_cd: 'est' }, { now: NOW }), 'est');
     assert.equal(badgeKind({}, { now: NOW }), 'est');
@@ -65,7 +75,7 @@ describe('클래스·라벨 규약', () => {
 
   test('상세 라벨은 generator/format.py 문구와 일치한다(화면 간 용어 표류 방지)', () => {
     const py = readFileSync(new URL('../../../generator/format.py', import.meta.url), 'utf8');
-    for (const label of ['만료·재확인 필요', '재직자 등록', '공식·재직자 수정']) {
+    for (const label of ['만료·재확인 필요', '재직자 등록', '공식·재직자 수정', '검색 요약']) {
       assert.ok(py.includes(`"${label}"`), `generator/format.py 에 "${label}" 이 없다 — 어휘가 갈렸다`);
       assert.ok(Object.values(BADGE_LABEL_FULL).includes(label));
     }

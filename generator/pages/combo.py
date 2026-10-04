@@ -9,7 +9,8 @@ import json
 import logging
 from pathlib import Path
 
-from generator import corpus as corpus_mod
+from generator import corpus as corpus_mod, marks
+from generator.format import WS_KEYS, WS_LABELS, work_style_cell
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, _group_benefits, _truncate
@@ -22,14 +23,6 @@ log = logging.getLogger(__name__)
 # monkeypatch해 소형 fake 목록으로 교체한다(conftest.py `fake_combinations_path`).
 COMBINATIONS_PATH = Path(__file__).resolve().parents[1] / "data" / "combinations.json"
 
-_WS_KEYS = ("remote", "flex", "unlimitedPTO", "refreshLeave", "overtime")
-_WS_LABEL_MAP = {
-    "remote": "재택근무",
-    "flex": "유연근무",
-    "unlimitedPTO": "무제한 휴가",
-    "refreshLeave": "리프레시 휴가",
-    "overtime": "야근 있음(고지)",
-}
 
 
 def _company_summary(c: dict, t: dict) -> dict:
@@ -42,10 +35,10 @@ def _company_summary(c: dict, t: dict) -> dict:
     }
 
 
-def _work_style_compare(ws_a: dict, ws_b: dict) -> list[tuple[str, str, bool, bool]]:
-    """M2 근무형태 5축 나란히 대조 — true만 "제공"(허위 표기 금지)."""
+def _work_style_compare(ws_a: dict, ws_b: dict) -> list[tuple[str, str, str, str]]:
+    """M2 근무형태 5축 나란히 대조 — 셀은 '' | '제공' | '제공 · 패션부문'(허위 표기 금지, 조건은 `cond` 에서). 판정은 format 하나."""
     return [
-        (k, _WS_LABEL_MAP[k], bool(ws_a.get(k)), bool(ws_b.get(k))) for k in _WS_KEYS
+        (k, WS_LABELS[k], work_style_cell(ws_a, k), work_style_cell(ws_b, k)) for k in WS_KEYS
     ]
 
 
@@ -53,8 +46,9 @@ def _category_summary(a_benefits: list[dict], b_benefits: list[dict], now,
                       a_eng: str | None = None, b_eng: str | None = None) -> list[dict]:
     """M3 9카테고리별 항목수·대표복지·정량금액+배지 대조.
 
-    회사 eng 이름을 받는 이유는 법정 제도 행 판정(SP-LEGAL-5)이 (회사, 코드, 항목명) 3튜플이기
-    때문이다 — 없으면 판정이 조용히 전부 False 가 되어 조합 화면만 법정 행을 복지로 센다."""
+    회사 eng 이름을 받는 이유는 표시 행(법정 · 업무 교육, SP-MARK) 판정이 (회사, 코드, 항목명) 3튜플이기
+    때문이다 — 없으면 판정이 조용히 전부 False 가 되어 조합 화면만 표시 행을 복지로 센다.
+    표시 행은 항목 수 · 대표 복지에서 뺀다(순위 · 9각형과 같은 분모)."""
     groups_a = {k: (label, items) for k, label, items in _group_benefits(a_benefits, now, comp_eng_nm=a_eng)}
     groups_b = {k: (label, items) for k, label, items in _group_benefits(b_benefits, now, comp_eng_nm=b_eng)}
     rows = []
@@ -63,8 +57,8 @@ def _category_summary(a_benefits: list[dict], b_benefits: list[dict], now,
         lb = groups_b.get(k)
         if not la and not lb:
             continue
-        items_a = la[1] if la else []
-        items_b = lb[1] if lb else []
+        items_a = [i for i in (la[1] if la else []) if not i["mark"]]
+        items_b = [i for i in (lb[1] if lb else []) if not i["mark"]]
         rows.append(
             {
                 "key": k,
@@ -106,7 +100,7 @@ def _combo_view(a: dict, b: dict, ctx, pairs, corpus=None) -> dict:
         # 렌더러가 정본이라 도구(JS 포트)가 어긋나면 골든 테스트가 잡는다. JS 는 여기 0 이다.
         # ⚠ 자동 생성 그림은 「비슷한 페이지」 판정을 바꾸지 못한다 — 그것을 가르는 것은 산문뿐이다.
         "radar_pair": None if corpus is None else radar_pair_svg(
-            _per_category(a["benefits"]), _per_category(b["benefits"]),
+            _per_category(marks.countable(a)), _per_category(marks.countable(b)),
             [round(corpus.avgs.get(k, 0.0), 2) for k in CATEGORY_ORDER],
             [CATEGORY_LABEL[k] for k in CATEGORY_ORDER],
             corpus.rmax, a["comp_nm"], b["comp_nm"],

@@ -13,6 +13,7 @@ import { slugOf } from './directory.js';
 // `find.js` 가 그 이름의 원래 집이라 호출부·테스트의 import 경로를 바꾸지 않는다.
 import { initDeckCollapse, DESKTOP_MIN } from './deck.js';
 import { CATEGORY_ORDER, CATEGORY_LABEL } from './categories.js';
+import { SUMMARY, countable, isSummary } from './marks.js'; // 표시 행(법정 · 업무 교육)은 칩 수 · 매칭에서 뺀다(SP-MARK)
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -171,7 +172,7 @@ export function deriveCodes(ref) {
   const comps = new Map(); // code → Set(comp_id)
   const amts = new Map(); // code → 금액이 있는 회사 수
   for (const c of (ref && ref.companies) || []) {
-    for (const b of c.benefits || []) {
+    for (const b of countable(c)) {
       const cd = b && b.benefit_cd;
       if (!cd) continue; // BENEFIT_CD 는 NOT NULL 이다 — 없는 행은 조용히 건너뛴다(코드가 검색의 축)
       if (!names.has(cd)) { names.set(cd, new Map()); ctgrs.set(cd, new Map()); comps.set(cd, new Set()); amts.set(cd, 0); }
@@ -290,7 +291,7 @@ export function buildParams(state) {
 /** 회사 한 곳의 `{코드: 복지행}`. 회사 안에서 코드는 UNIQUE(`uq_comp_benefit`)라 충돌이 없다. */
 export function benefitsByCode(company) {
   const map = {};
-  for (const b of (company && company.benefits) || []) if (b && b.benefit_cd && !map[b.benefit_cd]) map[b.benefit_cd] = b;
+  for (const b of countable(company)) if (b && b.benefit_cd && !map[b.benefit_cd]) map[b.benefit_cd] = b;
   return map;
 }
 
@@ -322,7 +323,7 @@ export function matchCompanies(ref, codes, state = {}) {
       hits,
       byCode,
       amtSum: hits.reduce((s, b) => s + amountOf(b), 0),
-      total: (c.benefits || []).length,
+      total: countable(c).length,
     });
   }
   return out;
@@ -468,7 +469,7 @@ export function renderRow(row, { codes = {}, sel = [], types = {}, compare = nul
   const hits = el('ul', { class: 'find-hits' });
   const shown = sel.length
     ? sel.map((cd) => ({ cd, b: row.byCode[cd] }))
-    : (c.benefits || []).filter((b) => amountOf(b) > 0).sort((x, y) => amountOf(y) - amountOf(x)).slice(0, 3)
+    : countable(c).filter((b) => amountOf(b) > 0).sort((x, y) => amountOf(y) - amountOf(x)).slice(0, 3)
       .map((b) => ({ cd: b.benefit_cd, b }));
   for (const { cd, b } of shown) {
     const li = el('li', { class: 'find-hit' });
@@ -478,6 +479,7 @@ export function renderRow(row, { codes = {}, sel = [], types = {}, compare = nul
       li.append(el('span', { class: 'find-hit-d', text: '이 회사 페이지에 해당 항목이 없습니다' }));
     } else {
       li.append(el('span', { class: 'find-hit-k', text: b.benefit_nm }));
+      if (isSummary(b)) li.append(el('span', { class: 'find-tag find-tag-sum', title: SUMMARY.title, text: SUMMARY.label }));
       li.append(renderAmount(b));
       li.append(el('span', { class: 'find-hit-d', title: benefitNote(b), text: benefitNote(b) }));
     }
@@ -489,7 +491,7 @@ export function renderRow(row, { codes = {}, sel = [], types = {}, compare = nul
     li.append(el('span', { class: 'find-amt', text: `조건형 ${row.total}개` }));
     li.append(el('span', {
       class: 'find-hit-d',
-      text: (c.benefits || []).slice(0, 4).map((b) => b.benefit_nm).join(' · ') || '등록된 복지 없음',
+      text: countable(c).slice(0, 4).map((b) => b.benefit_nm).join(' · ') || '등록된 복지 없음',
     }));
     hits.append(li);
   }
@@ -729,7 +731,7 @@ export function mountFind(root, ref, opts = {}) {
           ? el('a', { class: 'find-sugg-item', href: `/company/${slug}` })
           : el('span', { class: 'find-sugg-item' });
         item.append(el('span', { text: c.comp_nm }));
-        item.append(el('small', { text: `${c.industry_nm || ''} · 복지 ${(c.benefits || []).length}개` }));
+        item.append(el('small', { text: `${c.industry_nm || ''} · 복지 ${countable(c).length}개` }));
         nodes.sugg.append(item);
       }
     }

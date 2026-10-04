@@ -24,7 +24,7 @@ import {
   weeklyHours, overtimePay, timeSheet, wageScenarios, sensitivity, robustness, askList,
   buildAllVdCards, calculatorExtras, unsureCause, BREAKEVEN_BOUNDS, exclusionSummary,
 } from './calc.js';
-import { isLegalRow } from './legal.js';
+import { rowMark } from './marks.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CALC_SRC = readFileSync(join(HERE, 'calc.js'), 'utf8');
@@ -986,11 +986,11 @@ describe('CALC-FACET 표식(표시 전용)', () => {
     assert.deepEqual([g.earned.length, g.pending.length, g.unjudged.length], [0, 0, 3]);
     assert.equal(tenureItems(items(G.naver)).length, 3);
   });
-  test('법정 행(legal_yn)은 짝짓기·카테고리·근속·항목 수에서 빠진다', () => {
-    const a = items(G.naver).concat([{ benefit_cd: 'parenting2', benefit_nm: '육아휴직', qual_yn: true, benefit_amt: null, benefit_ctgr_cd: 'family', legal_yn: true, checked: false }]);
+  test('표시 행(mark_cd — 법정 · 업무 교육)은 짝짓기·카테고리·근속·항목 수에서 빠진다', () => {
+    const a = items(G.naver).concat([{ benefit_cd: 'parenting2', benefit_nm: '육아휴직', qual_yn: true, benefit_amt: null, benefit_ctgr_cd: 'family', mark_cd: 'legal', checked: false }]);
     const p = classifyPairs(a, items(G.kakao));
     assert.equal(p.onlyA.length, 12);
-    assert.equal(p.legal.a.length, 1);
+    assert.equal(p.marked.a.length, 1);
     const fam = catProfile(a, items(G.kakao), NOW_CALC).find((c) => c.ctgr === 'family');
     assert.equal(fam.cntA, 3);
   });
@@ -1055,9 +1055,9 @@ describe('CALC-SURF 산출 묶음 구성(calculatorExtras = compare 의 덧붙�
 const VP = JSON.parse(readFileSync(join(HERE, '../../test/fixtures/calc-verify-pairs.json'), 'utf8'));
 const NOW_VERIFY = Date.parse('2026-09-23T00:00:00+09:00');
 const vpc = (nm) => VP.companies.find((c) => c.comp_nm === nm);
-// 앱의 조립(assembleCompareState)과 같다: 전부 체크 · 법정 행은 legal_yn + checked:false(SP-LEGAL-5).
+// 앱의 조립(assembleCompareState)과 같다: 전부 체크 · 표시 행은 mark_cd + checked:false(SP-LEGAL-5 · SP-MARK).
 function verifyState(an, bn, o = {}) {
-  const side = (c) => c.benefits.map((b) => (isLegalRow(c.comp_eng_nm, b.benefit_cd, b.benefit_nm) ? { ...b, legal_yn: true, checked: false } : { ...b, checked: true }));
+  const side = (c) => c.benefits.map((b) => (rowMark(c.comp_eng_nm, b) ? { ...b, mark_cd: rowMark(c.comp_eng_nm, b), checked: false } : { ...b, checked: true }));
   const A = vpc(an), B = vpc(bn);
   const sal = o.sal ?? 6000;
   const ws = (c) => ({ remote: !!(c.work_style_val && c.work_style_val.remote), flex: !!(c.work_style_val && c.work_style_val.flex) });
@@ -1235,9 +1235,9 @@ describe('CALC-EXCL 뺀 금액 ≠ 미등록(MED-5) · 「N건」 = 누른 행 �
     assert.equal(ex.rows, 5);
     assert.equal(compare(st, NOW_CALC).exclusions.rows, 5, 'compare 가 같은 값을 싣는다');
   });
-  test('법정 행(checked:false · legal_yn)은 사용자의 뺌이 아니다', () => {
+  test('표시 행(checked:false · mark_cd)은 사용자의 뺌이 아니다', () => {
     const st = verifyState('KT', '네패스');
-    assert.ok(st.benS.a.some((b) => b.legal_yn) || st.benS.b.some((b) => b.legal_yn), '사전조건: 법정 행');
+    assert.ok(st.benS.a.some((b) => b.mark_cd) || st.benS.b.some((b) => b.mark_cd), '사전조건: 표시 행');
     assert.equal(compare(st, NOW_VERIFY).exclusions.rows, 0);
   });
 });

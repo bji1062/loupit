@@ -94,7 +94,7 @@
         <ul class="sc-rows">
         {% for item in cat.rows %}
           <li><a class="sc-row{% if item.amt %} has-amt{% endif %}" href="#{{ item.anchor }}" data-lens="{{ item.lens }}">
-            <span class="sc-nm">{{ item.name }}</span>
+            <span class="sc-nm">{{ item.name }}</span>{% if item.mark %}<span class="sc-mark">{{ item.mark.label }}</span>{% endif %}
             {#- 숫자 대신 무엇을 말할지는 뷰모델이 정한다(`no_amt_label`) — 템플릿이 스스로 판정하면
                 금액 신뢰도 판정이 한 곳 더 생기고, 정성과 '금액 미기재'가 뭉개진다. -#}
             {% if item.no_amt_label %}<span class="sc-qual">{{ item.no_amt_label }}</span>
@@ -113,7 +113,7 @@
     <div class="sc-block">
       <h2>근무형태</h2>
       <ul class="sc-ws">
-      {% for k, v in work_style %}<li>{{ k | ws_label }} 제공</li>{% endfor %}
+      {% for w in work_style %}<li>{% if w.cond %}{{ w.label }} · {{ w.cond }}{% else %}{{ w.label }} 제공{% endif %}</li>{% endfor %}
       </ul>
     </div>
     {% endif %}
@@ -126,6 +126,7 @@
         <div class="sub" data-lens-row="stated"><dt>회사 공식 수치<span>밴드 ±5%</span></dt><dd>{{ card.counts.stated }}</dd></div>
         <div class="sub" data-lens-row="est"><dt>추정치<span>밴드 ±20%</span></dt><dd>{{ card.counts.est }}</dd></div>
         <div data-lens-row="qual"><dt>정성 항목<span>금액 환산 불가</span></dt><dd>{{ card.counts.qual }}</dd></div>
+        {% if card.counts.summary %}<div><dt>검색 요약<span>공식 원문 미확인</span></dt><dd>{{ card.counts.summary }}</dd></div>{% endif %}
         {% if card.counts.blank %}<div data-lens-row="blank"><dt>금액 미기재<span>환산 가능·값 모름</span></dt><dd>{{ card.counts.blank }}</dd></div>{% endif %}
         <div data-lens-row="edited"><dt>재직자 등록·수정</dt><dd>{{ card.counts.edited }}</dd></div>
         <div data-lens-row="expired"><dt>만료·재확인 필요<span>밴드 +15%p 가산</span></dt><dd>{{ card.counts.expired }}</dd></div>

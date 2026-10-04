@@ -6,8 +6,8 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, syncExclusionNote, clearExclusions } from './ui.js';
-import { isLegalRow } from './legal.js'; // 법정 행 — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5)
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, condHints, syncExclusionNote, clearExclusions } from './ui.js';
+import { rowMark } from './marks.js'; // 표시 행(법정 · 업무 교육) — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5 · SP-MARK)
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
 import { mountDirectory } from './directory.js';
@@ -811,25 +811,26 @@ export function salToStr(s) { // {low,high} → "lo-hi" | null
   return s.low + '-' + s.high;
 }
 
-// 법정 행 표시(SP-LEGAL-5) — 계산기 입력 복사본에만 `legal_yn` 을 달고 합산에서 뺀다(checked:false).
+// 표시 행(SP-LEGAL-5 · SP-MARK: 법정 · 업무 교육) — 계산기 입력 복사본에만 `mark_cd`(kind)를 달고 합산에서 뺀다(checked:false).
 // App.state.benS 는 건드리지 않는다: 모드 A(복지 비교)와 초안이 같은 배열을 쓴다.
-function markLegal(list, comp) {
+function markRows(list, comp) {
   const eng = comp && comp.comp_eng_nm;
   if (!eng || !Array.isArray(list)) return list || [];
   let hit = false;
   const out = list.map((b) => {
-    if (!b || !isLegalRow(eng, b.benefit_cd, b.benefit_nm)) return b;
+    const kind = b && rowMark(eng, b);
+    if (!kind) return b;
     hit = true;
-    return { ...b, legal_yn: true, checked: false };
+    return { ...b, mark_cd: kind, checked: false };
   });
-  return hit ? out : list; // 법정 행이 없으면 원본 그대로(pass-through 계약 유지)
+  return hit ? out : list; // 표시 행이 없으면 원본 그대로(pass-through 계약 유지)
 }
 
 export function assembleCompareState(state, { allChecked = false } = {}) { // App.state → CompareState(SP-ENGINE-2) — 유일 변환점(A-1)
   // allChecked: 「빼고 다시 계산」 이전의 기준 결과(결론이 그대로인지 비교할 짝)를 만들 때만 쓴다.
   const benOf = (slot) => {
-    const list = markLegal(state.benS[slot], state.matched && state.matched[slot]);
-    return allChecked ? list.map((b) => (b && !b.legal_yn && !b.checked ? { ...b, checked: true } : b)) : list;
+    const list = markRows(state.benS[slot], state.matched && state.matched[slot]);
+    return allChecked ? list.map((b) => (b && !b.mark_cd && !b.checked ? { ...b, checked: true } : b)) : list;
   };
   return {
     salStr: salToStr(state.salS.a), // 슬롯 a만; 슬롯 b는 rate 파생(A-2)
@@ -845,10 +846,10 @@ export function assembleCompareState(state, { allChecked = false } = {}) { // Ap
   };
 }
 
-// 사용자가 결과 화면에서 뺀 복지가 있는가(법정 행의 checked:false 는 사용자의 뺌이 아니다).
+// 사용자가 결과 화면에서 뺀 복지가 있는가(표시 행의 checked:false 는 사용자의 뺌이 아니다).
 export function hasExclusions(state) {
   return ['a', 'b'].some((slot) => (state.benS[slot] || []).some((b) => b && b.checked === false
-    && !isLegalRow(state.matched[slot] && state.matched[slot].comp_eng_nm, b.benefit_cd, b.benefit_nm)));
+    && !rowMark(state.matched[slot] && state.matched[slot].comp_eng_nm, b)));
 }
 
 /**
@@ -892,6 +893,8 @@ export function runReport(hooks = {}) {
       },
       // 재택 플래그가 원문과 어긋날 때 원문을 보여 주는 재료(입력 화면과 같은 판정 — ui.js remoteHint)
       remoteHints: { a: remoteHint(state, 'a'), b: remoteHint(state, 'b') },
+      // 조건이 붙은 재택 · 유연(cond 맵, 6c) — 계산기가 미리 체크하지 않은 근무형태(결과 각주 재료)
+      condHints: { a: condHints(state, 'a'), b: condHints(state, 'b') },
       onAxis: (axis) => {
         const label = Object.keys(PRI_KEY).find((k) => PRI_KEY[k] === axis);
         if (label) state.curPri = label;

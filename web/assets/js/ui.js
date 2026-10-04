@@ -590,6 +590,8 @@ export function remoteHint(state, slot) {
   const m = state.matched && state.matched[slot];
   const ws = state.wsState[slot] || {};
   if (!m || ws.remote) return null;
+  // 조건이 붙은 재택(`cond.remote`, 6c)은 우리가 이미 「조건이 붙어 있어 체크하지 않았습니다」라고 말한다 — 같은 행을 두 번 말하지 않는다.
+  if (condHints(state, slot).some((h) => h.key === 'remote')) return null;
   for (const b of (state.benS && state.benS[slot]) || []) {
     const text = b.qual_desc_ctnt || b.note_ctnt || '';
     if (/재택|원격|Type_R/.test(text)) return { name: b.benefit_nm, text };
@@ -597,8 +599,25 @@ export function remoteHint(state, slot) {
   return null;
 }
 
-function fillSummaryText(ws) {
-  return (ws.flex ? '유연근무 있음' : '유연근무 없음') + ' · ' + (ws.remote ? '재택 있음' : '재택 없음');
+/**
+ * 조건 칩(근무형태 `cond` 맵, 6c)이 붙은 근무형태 — `[{key, label, cond}]`(재택 · 유연만 — 계산기가 쓰는 둘).
+ * 조건 있는 키는 `work_style_val` 값이 false 라 미리 체크가 안 된다(해당되는지는 사용자가 안다).
+ */
+export function condHints(state, slot) {
+  const m = state.matched && state.matched[slot];
+  const cond = m && m.work_style_val && m.work_style_val.cond;
+  if (!cond) return [];
+  return [['remote', '재택근무'], ['flex', '유연근무']]
+    .filter(([k]) => Array.isArray(cond[k]) && cond[k].length)
+    .map(([k, label]) => ({ key: k, label, cond: cond[k].filter(Boolean).join(', ') }));
+}
+
+function fillSummaryText(ws, hints = []) {
+  const cr = hints.find((h) => h.key === 'remote');
+  const cf = hints.find((h) => h.key === 'flex');
+  const flex = ws.flex ? '유연근무 있음' : (cf ? `유연근무 조건부(${cf.cond})` : '유연근무 없음');
+  const remote = ws.remote ? '재택 있음' : (cr ? `재택 조건부(${cr.cond})` : '재택 없음');
+  return flex + ' · ' + remote;
 }
 
 function prefillCell(state, slot) {
@@ -606,7 +625,8 @@ function prefillCell(state, slot) {
   const ws = state.wsState[slot] || (state.wsState[slot] = {});
   const d = el('details', { class: 'calc-fill', id: 'calc-fill-' + slot });
   const sum = el('summary');
-  const b = el('b', { text: fillSummaryText(ws) });
+  const hints = condHints(state, slot);
+  const b = el('b', { text: fillSummaryText(ws, hints) });
   sum.append(el('span', {}, '회사에 등록된 정보로 미리 채웠습니다 — ', b), el('span', { class: 'calc-fix', 'aria-hidden': 'true', text: '고치기' }));
   d.append(sum);
   const body = el('div', { class: 'calc-fill-body' });
@@ -614,8 +634,12 @@ function prefillCell(state, slot) {
     const id = 'ws-' + key + '-' + slot;
     const cb = el('input', { type: 'checkbox', id });
     cb.checked = !!ws[key];
-    cb.addEventListener('change', () => { ws[key] = cb.checked; b.textContent = fillSummaryText(ws); });
+    const hint = hints.find((h) => h.key === key);
+    const note = hint ? el('p', { class: 'calc-fill-note', id: id + '-cond', text: `${hint.label}는 「${hint.cond}」 조건이 붙어 있어 체크하지 않았습니다. 해당되면 체크해 주세요.` }) : null;
+    if (note) note.hidden = cb.checked;
+    cb.addEventListener('change', () => { ws[key] = cb.checked; b.textContent = fillSummaryText(ws, hints); if (note) note.hidden = cb.checked; });
     body.append(el('label', { class: 'calc-check', for: id }, cb, ' ' + text));
+    if (note) body.append(note);
   }
   const hint = remoteHint(state, slot);
   if (hint) {

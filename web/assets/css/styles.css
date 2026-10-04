@@ -68,6 +68,9 @@
   --badge-member-fg:#5b3a9e;   --badge-member-bg:#efe9fb;
   --badge-expired-fg:#b23a0b;  --badge-expired-bg:#fceadd;
   --badge-qual-fg:var(--t2);   --badge-qual-bg:#eef0f2;
+  /* 검색 요약 배지(SP-MARK, 2026-10) — 회사 공식 원문 없이 검색 AI 요약을 근거로 한 행. 회색 바탕 + 점선 테두리라
+     「공식」 초록 · 「추정」 호박색과 구별된다. #4a5160 / #f1f2f4 ≈ 7.1:1(AA). */
+  --badge-summary-fg:#4a5160;  --badge-summary-bg:#f1f2f4;  --badge-summary-line:#9aa1ac;
   --band-label-fg:var(--t3);   --band-expired-fg:var(--amber);
   --ad-label-fg:#5f646b; --ad-label-fs:12px;
   --ad-slot-bg:#f0f2f4; --ad-slot-border:var(--bg-3);
@@ -309,6 +312,7 @@ main p { margin-top:var(--sp-3); }
 .badge-est { background:var(--badge-est-bg); color:var(--badge-est-fg); }
 .badge-edited { background:var(--badge-edited-bg); color:var(--badge-edited-fg); }
 .badge-member { background:var(--badge-member-bg); color:var(--badge-member-fg); }
+.badge-summary, .badge--summary { background:var(--badge-summary-bg); color:var(--badge-summary-fg); border:1px dashed var(--badge-summary-line); }
 /* 만료 배지는 코드가 `stale` 인데 CSS 는 `.badge-expired` 만 있어 **스타일이 안 먹고 있었다**
    (2026-07-31 발견, 선재 결함). 같은 자리라 함께 고친다. */
 .badge-stale { background:var(--badge-expired-bg); color:var(--badge-expired-fg); }
@@ -351,7 +355,15 @@ main p { margin-top:var(--sp-3); }
    복지 항목 수에서는 빠진다. 「공식/추정」 출처 배지와 다른 축이라 색을 빌려 쓰지 않는다. */
 .benefit-legal { color:var(--t3); font-size:var(--fs-xs); font-weight:var(--fw-medium);
   border:1px solid var(--line); border-radius:3px; padding:0 .35em; white-space:nowrap; }
-.led-legal .benefit-name { color:var(--t3); }  /* .benefit-src 는 출처 열 제거로 삭제(2026-07-30) */
+.led-legal .benefit-name { color:var(--t3); }
+/* 행 표시(SP-MARK) — 「법정」 · 「업무 교육」. 위 `.benefit-legal` 과 같은 모양(「세지 않는 행」 한 가족)이고,
+   옛 클래스는 release 전 정적 페이지와 캐시(max-age 300)가 쓰므로 남긴다(다음 정리 PR 에서 지운다). */
+.benefit-mark, .sc-mark, .cmp-mark, .calc-bd-mark { color:var(--t3); font-size:var(--fs-xs); font-weight:var(--fw-medium);
+  border:1px solid var(--line); border-radius:3px; padding:0 .35em; white-space:nowrap; }
+.sc-mark, .cmp-mark { margin-left:var(--sp-1); }
+.led-mark .benefit-name { color:var(--t3); }
+.cmp-tag-sum, .find-tag-sum { color:var(--badge-summary-fg); background:var(--badge-summary-bg); border:1px dashed var(--badge-summary-line);
+  font-size:var(--fs-xs); border-radius:var(--r-pill); padding:0 var(--sp-2); white-space:nowrap; }  /* .benefit-src 는 출처 열 제거로 삭제(2026-07-30) */
 
 /* ── 넓은 표는 **자기 상자 안에서만** 스크롤한다(SPEC 10 MD-4, 2026-09-05) ──────────
    실측(390px, iPhone Safari UA): 재무 11개년 표(7열)가 회사 상세 110/113 페이지에서
@@ -1422,7 +1434,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .bn-amt-v { color:var(--brand); font-weight:var(--fw-semibold); }
 .bn-amt-none { color:var(--t3); }
 .bn-est { font-style:normal; font-size:var(--fs-xs); color:var(--badge-est-fg); background:var(--badge-est-bg); border-radius:var(--r-xs); padding:0 var(--sp-1); }
-.bn-legal-row th a { color:var(--t3); }
+.bn-legal-row th a, .bn-mark-row th a { color:var(--t3); }
 .bn-chip { display:inline-block; font-size:var(--fs-xs); border-radius:var(--r-pill); padding:1px var(--sp-2); white-space:nowrap; }
 .bn-chip.bn-m1 { background:var(--brand-tint); color:var(--brand-active); }
 .bn-chip.bn-m2 { background:var(--badge-edited-bg); color:var(--badge-edited-fg); }
@@ -1592,7 +1604,7 @@ main p.calc-exnote { margin:0; }
 .calc-bd-neutral, .calc-bd-q { color:var(--t2); background:var(--bg-2); }
 .calc-bd-q { font-weight:var(--fw-medium); }
 .calc-bd-warn { color:var(--amber); background:var(--amber-dim); }
-.calc-bd-legal { color:var(--t2); background:var(--bg-2); border:var(--bw) solid var(--border-strong); }
+.calc-bd-legal, .calc-bd-mark { color:var(--t2); background:var(--bg-2); border:var(--bw) solid var(--border-strong); }
 .calc-tagm { font-size:var(--fs-ad); color:var(--t3); white-space:nowrap; }
 .calc-stat { display:inline-flex; align-items:center; flex-wrap:wrap; gap:var(--sp-1); padding:2px var(--sp-2); border-radius:var(--r-pill); background:var(--bg-2); font-size:var(--fs-ad); font-weight:var(--fw-medium); font-variant-numeric:tabular-nums; }
 .calc-hatch-sw { display:inline-block; width:14px; height:11px; margin-right:var(--sp-1); vertical-align:-.1em; border:var(--bw) solid var(--bg-4); background:repeating-linear-gradient(45deg, transparent 0 2px, var(--t3) 2px 3px); }
@@ -2065,3 +2077,6 @@ main p.calc-exnote { margin:0; }
   .calc-ct-vc > span { display:block; margin-bottom:var(--sp-1); }
   .calc-waffle { grid-template-columns:repeat(2, minmax(0,1fr)); }
 }
+
+/* 업무 교육 행 설명 글(SP-MARK) — 회사 상세(SPA) 행에서 한 줄 아래로 */
+.cp-ben-row .benefit-mark-note { display:block; flex-basis:100%; }

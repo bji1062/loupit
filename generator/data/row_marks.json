@@ -1,0 +1,66 @@
+{
+ "_": "행 표시 등록표(SP-MARK) — 화면에 남기되 무엇인지 밝히고 복지 항목 수 집계에서 빼는 행. kind: legal 「법정」 · work_edu 「업무 교육」.",
+ "_정본주의": "행 자체는 지우지 않는다 — 「이 회사가 연차·육아휴직을 준다」는 사실은 남기고 집계에서만 뺀다(사용자 결정 2026-09-16).",
+ "_판정근거": {
+  "legal": "docs/PLAN-회사확장-2026-09-01.md 「법정 제도 미수록」. 근로기준법·남녀고용평등법이 모든 회사에 강제하는 제도는 복지가 아니다.",
+  "work_edu": "사용자 결정 2026-10-04 — 수집 계약 규칙 8 업무 교육(신입 · 입문 · 온보딩 · OJT · 멘토링 · 직무 필수 · 리더십 · 직급별 · 승진자 · 법정 의무 · 선발형)만 적힌 행. 섞인 행은 싣지 않는다(서술 그대로)."
+ },
+ "_한계": [
+  "시드 SQL 이 아니라 생성기 참조 파일이다(company_registrations.json 선례). 시드가 바뀌면 낡는다 —",
+  "test_registry_rows_all_exist_in_seed_sql(전 kind) 이 시드 SQL 과 항목명으로 대조해 낡으면 빌드를 깨뜨린다.",
+  "법정과 복지가 한 줄에 섞인 행은 여기 없다 — 시드 문안에서 법정 낱말만 걷어낸다(2026-09-20 전수 정리로 52행 집행).",
+  "시간 단위·반반차 연차는 여기 없다 — 법정 연차를 쓰더라도 그렇게 쪼개 쓰게 해주는 회사가 소수라 제도 자체가 복지다(사용자 결정 2026-09-20). CJ올리브영 시간 연차·제주반도체 반차·반반차는 그래서 등록하지 않는다. 크래프톤 명절 반차는 회사가 더 주는 반차라 애초에 대상이 아니다.",
+  "검색 요약은 여기 없다 — BADGE_SRC_CD 로 판정(집계 포함)."
+ ],
+ "reviewed": "2026-10-04",
+ "rows": [
+  {
+   "comp_eng_nm": "kt",
+   "benefit_cd": "parenting",
+   "benefit_nm": "출산/육아 지원",
+   "kind": "legal",
+   "desc_at_review": "출산휴가 및 육아휴직 지원",
+   "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
+  },
+  {
+   "comp_eng_nm": "samsung_card",
+   "benefit_cd": "parenting",
+   "benefit_nm": "육아휴직·모성보호제도",
+   "kind": "legal",
+   "desc_at_review": "육아휴직제도 및 단축근무 등 모성보호제도 운영",
+   "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
+  },
+  {
+   "comp_eng_nm": "silicon2",
+   "benefit_cd": "parenting",
+   "benefit_nm": "출산휴가/육아휴직",
+   "kind": "legal",
+   "desc_at_review": "출산 휴가, 육아 휴직 제도",
+   "why": "근로기준법이 모든 회사에 강제하는 제도만 적혀 있음"
+  },
+  {
+   "comp_eng_nm": "alteogen",
+   "benefit_cd": "edu_support",
+   "benefit_nm": "신입사원 교육",
+   "desc_at_review": "신입사원 교육 운영",
+   "why": "회사가 신입 직원에게 일을 맡기려고 여는 입문 교육만 적혀 있음(규칙 8 업무 교육)",
+   "kind": "work_edu"
+  },
+  {
+   "comp_eng_nm": "isens",
+   "benefit_cd": "edu_support",
+   "benefit_nm": "교육 프로그램",
+   "desc_at_review": "직무·역할별 교육 체계 운영 — 입문·Remind-Up·승진자·직책자 리더십 교육, 자기주도 직무교육, 특별·가치교육",
+   "why": "입문 · 승진자 · 직책자 리더십 · 직무 교육 체계만 적혀 있음",
+   "kind": "work_edu"
+  },
+  {
+   "comp_eng_nm": "samsung_card",
+   "benefit_cd": "edu_support",
+   "benefit_nm": "Job master 양성과정",
+   "desc_at_review": "직무별 사내 전문가 선발·양성 과정, 기본·리더십·직무 교육체계 운영",
+   "why": "선발형 사내 전문가 양성 · 리더십 · 직무 교육 체계만 적혀 있음",
+   "kind": "work_edu"
+  }
+ ]
+}

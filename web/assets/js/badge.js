@@ -7,8 +7,10 @@
 //   1. 만료      — expires_dtm < now. 신선도가 최우선(누가 넣었든 오래된 값은 오래된 값)
 //   2. 재직자 등록 — edit_origin='member'. 원래 없던 항목을 재직자가 더했다
 //   3. 공식·재직자 수정 — edit_origin='edited'. 공식 값을 재직자가 고쳤다
-//   4. 공식      — 편집 이력 없음(시드 원본 = 회사 공식 페이지)
-//   5. 추정      — 그 외
+//   4. 검색 요약 — badge_src_cd='ai_parse'(근거 URL 없는 회사, 기준 39). 「공식」이라 쓰면 행 꼬리
+//                  「(공식 원문 미확인 …)」과 한 줄 안에서 어긋난다(SP-MARK). 집계에는 든다.
+//   5. 공식      — 편집 이력 없음(시드 원본 = 회사 공식 페이지)
+//   6. 추정      — 그 외
 //
 // ⚠ 2·3 의 '재직자'는 수사가 아니다 — 복지 편집은 `require_employment` 게이트 뒤라
 //   그 회사 재직 인증을 통과한 사람만 쓸 수 있다.
@@ -20,19 +22,21 @@
 
 // 만료를 CSS·정적 템플릿에서는 `stale` 이라 부른다(`_badge.html` 의 `badge-{{code}}`).
 // 의미상의 종류(kind)와 클래스 접미(suffix)를 분리해 어휘 차이를 여기서 흡수한다.
+import { SUMMARY_SRC_CD } from './marks.js';
+
 const CLASS_SUFFIX = {
-  expired: 'stale', member: 'member', edited: 'edited', official: 'official', est: 'est',
+  expired: 'stale', member: 'member', edited: 'edited', summary: 'summary', official: 'official', est: 'est',
 };
 
 // 상세 화면(정적 회사 페이지·SPA 회사 복지 페이지) — generator/format.py 와 같은 문구.
 export const BADGE_LABEL_FULL = {
   expired: '만료·재확인 필요', member: '재직자 등록', edited: '공식·재직자 수정',
-  official: '공식', est: '추정',
+  summary: '검색 요약', official: '공식', est: '추정',
 };
 
 // 좁은 표(비교 리포트 밴드·디렉터리 요약) — 폭이 없어 'edited' 만 줄인다.
 export const BADGE_LABEL_SHORT = {
-  expired: '만료', member: '재직자 등록', edited: '공식·수정', official: '공식', est: '추정',
+  expired: '만료', member: '재직자 등록', edited: '공식·수정', summary: '검색 요약', official: '공식', est: '추정',
 };
 
 /**
@@ -49,6 +53,7 @@ export function badgeKind(item, { now = Date.now(), withExpiry = true } = {}) {
   }
   if (b.edit_origin === 'member') return 'member';
   if (b.edit_origin === 'edited') return 'edited';
+  if (b.badge_src_cd === SUMMARY_SRC_CD) return 'summary';
   return b.badge_cd === 'official' ? 'official' : 'est';
 }
 

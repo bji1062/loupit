@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import re
 
-from generator import charts, corpus as corpus_mod, legal
+from generator import charts, corpus as corpus_mod, marks
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.employ import company_metrics
 from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
-from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon
+from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon, work_style_items
 from generator.radar import fmt, radar_svg
 from generator.slug import combo_slug
 
@@ -121,7 +121,7 @@ def lens_keys(kind: str, qual: bool, badge_code: str) -> list[str]:
     한 행이 두 통에 드는 것은 정상이다(예: 추정치이면서 만료). 통이 겹치니 칩의 합은 전체보다
     클 수 있고, 그래서 **칩은 필터가 아니라 강조**다 — 어느 칩에서도 행이 사라지지 않는다.
 
-    ⚠ `badge_code` 는 `badge_state()["code"]`(`official`/`est`/`edited`/`member`/`stale`)이지
+    ⚠ `badge_code` 는 `badge_state()["code"]`(`official`/`est`/`edited`/`member`/`summary`/`stale`)이지
       DB 의 `BADGE_CD`(`official`/`est`)가 **아니다.** DB 값을 넘기면 예외 없이 `edited`·`expired`
       가 영원히 0 이 된다 — 이 저장소에서 가장 비싼 고장은 언제나 조용한 고장이었다.
     ⚠ 만료된 재직자 수정 행은 `expired` 에만 든다. `badge_state` 가 신선도를 최우선으로 두는
@@ -231,8 +231,10 @@ def _group_benefits(benefits: list[dict], now, comp_id: int | None = None,
             "anchor": anchor,
             # 렌즈 키 — 카드 행과 원장 행이 **같은 문자열**을 갖는다(둘이 갈리면 한 화면만 띠가 깔린다).
             "lens": " ".join(lens_keys(kind, bool(b["qual_yn"]), badge["code"])),
-            # 법정 제도만 담은 행(SP-LEGAL-5) — 화면에는 배지를 달아 남기고 **집계에서만** 뺀다.
-            "legal": bool(comp_eng_nm) and legal.is_legal_row(comp_eng_nm, b.get("benefit_cd"), b["benefit_nm"]),
+            # 표시 행(SP-MARK: 법정 · 업무 교육) — 화면에는 표시를 달아 남기고 **집계에서만** 뺀다.
+            "mark": marks.mark_view(marks.row_mark(comp_eng_nm, b.get("benefit_cd"), b["benefit_nm"])) if comp_eng_nm else None,
+            # 검색 요약 행(근거 URL 없는 회사) — 계보 배지가 「검색 요약」이고 확인일 칸은 「요약 기준일」. 집계에는 든다(2a).
+            "summary": marks.is_summary(b),
             "src_text": AMOUNT_SOURCE_TEXT[kind],
             # 복지 항목 페이지(SP-BEN-12) — 그 페이지가 **생성됐고 이 회사가 실려 있을 때만**. 예외로
             # 뺀 회사에 링크를 걸면 도착한 페이지에 자기 회사가 없다.
@@ -281,14 +283,15 @@ def _card_view(c: dict, groups, corpus) -> dict:
         items = by_key.get(key, [])
         stated = sum(i["amt"] for i in items if i["amt"] and i["amt_kind"] == "stated")
         est = sum(i["amt"] for i in items if i["amt"] and i["amt_kind"] == "estimated")
+        n_items = sum(1 for i in items if not i["mark"])  # 표시 행은 카테고리 수에 안 든다(SP-MARK)
         cats.append({
-            "key": key, "label": CATEGORY_LABEL[key], "rows": items, "count": len(items),
+            "key": key, "label": CATEGORY_LABEL[key], "rows": items, "count": n_items,
             "amount": stated + est, "amount_text": krw_manwon(stated + est) if stated + est else "",
             "stated": stated, "est": est,
-            "empty_text": "" if items else fmt(0),
+            "empty_text": "" if n_items else fmt(0),
         })
-    # 법정 행은 세지 않는다 — 원장에는 남지만 항목 수·렌즈·레이더의 분모가 아니다(SP-LEGAL-5).
-    flat = [i for _, _, items in groups for i in items if not i["legal"]]
+    # 표시 행(법정 · 업무 교육)은 세지 않는다 — 원장에는 남지만 항목 수·렌즈·레이더의 분모가 아니다(SP-LEGAL-5·SP-MARK).
+    flat = [i for _, _, items in groups for i in items if not i["mark"]]
     # 사이드 「항목 구성」의 숫자와 렌즈 칩의 숫자는 **같은 곳에서 나온다** — 행이 지닌 렌즈 키를
     # 셀 뿐이다. 두 곳에서 따로 세면 칩이 "추정치 8" 이라 말하고 띠는 7행에만 깔리는 날이 온다.
     # (정성 = 환산 **불가**, 금액 미기재 = 환산 가능하지만 **모른다** — 갈라 센다, DEC-B.)
@@ -298,13 +301,15 @@ def _card_view(c: dict, groups, corpus) -> dict:
         "amount": sum(1 for i in flat if i["amt_kind"] != "none"),
         "categories": len(used),
         "category_total": len(CATEGORY_ORDER),
+        # 검색 요약 행 수 — 계보 통이 아니라(렌즈 아님) 「항목 구성」 한 줄이다. 0이면 줄이 없다.
+        "summary": sum(1 for i in flat if i["summary"]),
         **per_key,
     }
     # 레이더: 카테고리 정본 순서로 항목 수 / 등록 회사 평균. 빈 카테고리는 0 이다(빼지 않는다 —
     # 없는 축은 "모른다"가 아니라 "없다"이고, 그 사실이 모양의 절반을 만든다).
     per_cat = {k: 0 for k in CATEGORY_ORDER}
     for key, _, items in groups:
-        per_cat[key] = sum(1 for i in items if not i["legal"])
+        per_cat[key] = sum(1 for i in items if not i["mark"])
     counts_list = [per_cat[k] for k in CATEGORY_ORDER]
     avgs = [round(corpus.avgs.get(k, 0.0), 2) for k in CATEGORY_ORDER]
     labels = [CATEGORY_LABEL[k] for k in CATEGORY_ORDER]
@@ -362,11 +367,7 @@ def _company_view(c: dict, ctx, now, corpus, benefit_index: dict | None = None) 
         "comp_nm": c["comp_nm"],
         "industry_nm": c.get("industry_nm"),
         "comp_tp_nm": t.get("comp_tp_nm"),
-        "work_style": [
-            (k, ws[k])
-            for k in ("remote", "flex", "unlimitedPTO", "refreshLeave", "overtime")
-            if ws.get(k)
-        ],
+        "work_style": work_style_items(ws),
         "benefit_groups": groups,
         "compare_href": f"{CFG.compare_path}?a={c['comp_eng_nm']}",
         "finance": _finance_view(c, ctx),
@@ -540,7 +541,7 @@ def _company_seo(c: dict, ctx, url: str) -> dict:
     top = ", ".join(b["benefit_nm"] for b in c["benefits"][:3])
     desc = (
         f"{c['comp_nm']}({' · '.join(parts)})의 복지·연봉·근무조건 정보. "
-        f"{top} 등 복지 {len(c['benefits'])}개 항목을 확인하고 다른 회사와 비교해 보세요."
+        f"{top} 등 복지 {len(marks.countable(c))}개 항목을 확인하고 다른 회사와 비교해 보세요."
     )
     desc = _truncate(desc, CFG.desc_max)
     jsonld = {

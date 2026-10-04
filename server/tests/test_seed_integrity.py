@@ -139,7 +139,7 @@ def test_SI5_preset_category_domain(seeded_db):
 
 # ── SI-6: WORK_STYLE_VAL 키 부분집합 + 불리언 3키 타입 ──
 def test_SI6_work_style_keys_and_types(seeded_db):
-    allowed_keys = {"remote", "flex", "unlimitedPTO", "refreshLeave", "overtime"}
+    allowed_keys = {"remote", "flex", "unlimitedPTO", "refreshLeave", "overtime", "cond"}
     rows = _rows(seeded_db, "SELECT WORK_STYLE_VAL FROM TCOMPANY WHERE WORK_STYLE_VAL IS NOT NULL")
     assert rows, "WORK_STYLE_VAL 시드 결과 없음"
     for (raw,) in rows:
@@ -148,6 +148,14 @@ def test_SI6_work_style_keys_and_types(seeded_db):
         for bkey in ("remote", "flex", "unlimitedPTO"):
             if bkey in val:
                 assert isinstance(val[bkey], bool), f"{bkey} 불리언 아님: {val[bkey]!r}"
+        # 조건 칩(6c) — cond 는 {remote|flex|refreshLeave: 비지 않은 문자열 목록} · 비면 키를 쓰지 않는다 · 조건 있는 키는 false/null
+        cond = val.get("cond")
+        if cond is not None:
+            assert isinstance(cond, dict) and cond, f"cond 가 비었거나 dict 가 아님: {cond!r}"
+            assert set(cond) <= {"remote", "flex", "refreshLeave"}, f"cond 키: {set(cond)}"
+            for k, labels in cond.items():
+                assert isinstance(labels, list) and labels and all(isinstance(x, str) and x for x in labels), (k, labels)
+                assert not val.get(k), f"불변식 k ∈ cond ⇒ !ws[k] 위반: {k}={val.get(k)!r}"
 
 
 # ── SI-7: 별칭 UNIQUE — 회사 내 중복 별칭 0 ──
@@ -424,3 +432,97 @@ def test_SI12_no_lane_memo_words_in_user_facing_fields(seeded_db):
             if text and memo.search(text):
                 bad.append(f"{comp}/{code}: {text[:50]}")
     assert bad == [], f"레인 메모 낱말이 사용자 노출 칸에 있는 행 {len(bad)}: {bad[:5]}"
+
+
+# ── SI-13: 근무형태 칩 조건(6c, 2026-10-04) — 이름만 읽는다 ──
+# 칩 = 조건 없는 단정 · 조건 있는 키는 false + `cond` 맵. DB 없이 시드 파일에서 바로 파생한다(실데이터 고정).
+def test_SI13a_ws_conditions_name_forms():
+    from db.seed.company_meta import ws_conditions as w
+    assert w("육아기 재택근무") == ["육아기"]
+    assert w("자녀돌봄 재택근무") == ["자녀돌봄"]
+    assert w("재택근무 (필요 시)") == ["필요 시"]
+    assert w("재택근무 (필요시)") == ["필요 시"]
+    assert w("재택근무 (글로벌부문)") == ["글로벌부문"]
+    assert w("유연근무제·자율출퇴근제 (패션부문)") == ["패션부문"]
+    assert w("장기근속 휴가·휴가비 (건설·리조트부문)") == ["건설·리조트부문"]
+    assert w("재택근무 (휴가는 건설부문)") == ["건설부문"]
+    assert w("탄력근무 (자녀를 둔 부·모)") == ["자녀를 둔 부·모"]
+    assert w("시차출퇴근제 (조건부)") == ["조건부"]       # ⚖11
+    assert w("부서별 유연근무제") == ["부서별"]            # ⚖11
+    # 한정으로 읽지 않는 꼴
+    assert w("재택근무") == []
+    assert w("원격근무제(재택근무 포함)") == []
+    assert w("재택근무 (주 1회)") == []
+    assert w("재택근무(WFA)") == []
+    assert w("정기휴가 (글로벌부문)·Refresh 휴가") == []  # 끝이 아닌 중간 괄호
+    assert w("육아기재택") == []                           # 붙여쓰기는 맨 칩으로 샌다(SI-13d 가드 + 수집 계약)
+    assert w(None) == [] and w("") == []
+
+
+def _row(code: str, name: str, desc: str = "서술") -> str:
+    return f"  (@comp_id, '{code}', '{name}', NULL, 'flexibility',\n   'est', NULL, TRUE, '{desc}', 10)"
+
+
+def _sql(*rows: str) -> str:
+    """행 문자열들 → 한 INSERT(`_row_chunks` 는 첫 ON DUPLICATE 앞까지만 읽는다)."""
+    return "INSERT INTO TCOMPANY_BENEFIT (COMP_ID) VALUES\n" + ",\n".join(rows) + "\nON DUPLICATE KEY UPDATE X = 1;"
+
+
+def test_SI13b_plain_row_wins_and_conditions_merge_in_row_order():
+    from db.seed.company_meta import derive_work_style as d
+    plain_and_cond = d(_sql(_row("remote_work", "재택근무"), _row("telecommute", "육아기 재택근무")))
+    assert plain_and_cond["remote"] is True and "cond" not in plain_and_cond, "맨 행이 하나라도 있으면 맨 칩"
+    only_cond = d(_sql(_row("remote_work", "육아기 재택근무"), _row("wfh", "재택근무 (필요 시)"), _row("telecommute", "육아기 재택근무")))
+    assert only_cond["remote"] is False and only_cond["cond"] == {"remote": ["육아기", "필요 시"]}, "행 순서 · 중복 제거"
+    refresh = d(_sql(_row("refresh_leave", "리프레시 휴가 (건설부문)", "건설 서술"), _row("long_service_leave", "장기근속 휴가", "맨 행 서술")))
+    assert refresh["refreshLeave"] == "맨 행 서술" and "cond" not in refresh, "refreshLeave 문구 = 조건 없는 행의 마지막 서술"
+    refresh_cond = d(_sql(_row("refresh_leave", "리프레시 휴가 (건설부문)")))
+    assert refresh_cond["refreshLeave"] is None and refresh_cond["cond"] == {"refreshLeave": ["건설부문"]}
+    assert "cond" not in d(_sql(_row("flex_work", "유연근무제"))), "조건이 없으면 cond 키를 쓰지 않는다"
+
+
+def _real_ws() -> dict:
+    from db.seed.company_meta import build_company_meta
+    return {eng: v["work_style"] for eng, v in build_company_meta().items()}
+
+
+def test_SI13c_real_companies_cond_is_pinned():
+    ws = _real_ws()
+    got = {eng: v["cond"] for eng, v in ws.items() if "cond" in v}
+    assert got == {
+        "hanmi_pharm": {"remote": ["육아기"]},
+        "krafton": {"remote": ["자녀돌봄"]},
+        "posco_futurem": {"remote": ["육아기"]},
+        "doosan_enerbility": {"remote": ["필요 시"]},
+        "telechips": {"remote": ["필요 시"]},
+        "hanwha": {"remote": ["글로벌부문"]},
+        "samsung_ct": {"flex": ["패션부문"], "refreshLeave": ["건설·리조트부문"]},
+        "pharma_research": {"flex": ["자녀를 둔 부·모"]},
+        "rainbow_robotics": {"flex": ["조건부"]},
+        "jeju_semi": {"flex": ["부서별"]},
+    }
+    for eng in ("db_insurance", "hyundai_glovis"):
+        assert ws[eng]["remote"] is True and "cond" not in ws[eng], f"{eng}: 「재택근무 포함」 · 신청형은 맨 칩 유지"
+    assert ws["hanwha_systems"]["remote"] is True
+    assert ws["hanwha"]["flex"] is True and ws["hanwha"]["refreshLeave"] is not None, "㈜한화 flex · refreshLeave 는 맨 칩 유지"
+    for eng, v in ws.items():
+        for k in v.get("cond", {}):
+            assert not v.get(k), f"{eng}: 불변식 k ∈ cond ⇒ !ws[k]"
+
+
+def test_SI13d_guard_condition_looking_names_must_yield_a_condition():
+    """근무형태 4코드 행 이름에 육아 · 자녀 · 부문 · 필요시가 보이는데 조건으로 못 읽으면 칩이 조용히 맨 칩으로 샌다(수집 계약 위반)."""
+    import re
+    from db.seed.company_meta import BENEFIT_SQL_DIR, _WS_CODE_KEY, _row_chunks, _row_info, ws_conditions
+    looks = re.compile(r"육아|자녀|부문|필요\s*시")
+    exceptions = {("hanwha", "정기휴가 (글로벌부문)·Refresh 휴가")}  # 중간 괄호 = 한정 아님(PR #98 이름)
+    bad = []
+    for f in sorted(BENEFIT_SQL_DIR.glob("*.sql")):
+        text = f.read_text(encoding="utf-8")
+        m = re.search(r"COMP_ENG_NM\s*=\s*'([A-Za-z0-9_]+)'", text)
+        eng = m.group(1) if m else f.stem
+        for chunk in _row_chunks(text):
+            code, _q, _d, _c, name = _row_info(chunk)
+            if code in _WS_CODE_KEY and name and looks.search(name) and not ws_conditions(name) and (eng, name) not in exceptions:
+                bad.append((eng, code, name))
+    assert not bad, f"조건처럼 보이지만 읽히지 않는 근무형태 행 이름(수집 계약 「근무형태 칩 이름 규칙」 확인): {bad}"

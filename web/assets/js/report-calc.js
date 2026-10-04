@@ -15,6 +15,7 @@ import { el } from './dom.js';
 import { withJosa, fmt, fmt1, fmtSigned, fmtPct } from './josa.js';
 import { badgeKind, badgeClassBem, BADGE_LABEL_SHORT } from './badge.js';
 import { CATEGORY_LABEL } from './categories.js';
+import { MARK, SUMMARY, isSummary, rowMark } from './marks.js';
 
 const AXES = [['salary', '연봉'], ['wlb', '워라밸'], ['benefits', '복지']];
 const AXIS_LABEL = Object.fromEntries(AXES);
@@ -59,10 +60,10 @@ function srcText(text, cls = 'calc-src') {
 }
 
 // 금액 칸의 배지 — 「공식·추정」은 **금액 신뢰도(amt_source)** 다(밴드 ±5%·±20% 와 같은 기준, DEC-2). 번들의
-// badge_cd 는 출처 계보라 거의 전부 official 이다. 계보가 따로 말할 것(만료·재직자 수정·등록)이 있으면 그것을 단다.
+// badge_cd 는 출처 계보라 거의 전부 official 이다. 계보가 따로 말할 것(만료·재직자 수정·등록·검색 요약)이 있으면 그것을 단다.
 function badge(item, now) {
   const lineage = badgeKind(item, { now });
-  const kind = lineage === 'expired' || lineage === 'member' || lineage === 'edited' ? lineage : (item && item.amt_source === 'stated' ? 'official' : 'est');
+  const kind = lineage === 'expired' || lineage === 'member' || lineage === 'edited' || lineage === 'summary' ? lineage : (item && item.amt_source === 'stated' ? 'official' : 'est');
   return el('span', { class: badgeClassBem(kind), text: BADGE_LABEL_SHORT[kind] });
 }
 const byAmtDesc = (get) => (x, y) => (amtOf(get(y)) || 0) - (amtOf(get(x)) || 0);
@@ -72,6 +73,29 @@ function amountCell(item, now) {
   const s = el('span', { class: 'calc-amt' }, m(v) + ' ');
   s.append(badge(item, now));
   return s;
+}
+
+// ── 표시 행(SP-MARK: 법정 · 업무 교육) 공용 문장 · 각주 ───────────────────────────────
+const markedCount = (basis, kind) => ((basis.a.marked && basis.a.marked[kind]) || 0) + ((basis.b.marked && basis.b.marked[kind]) || 0);
+/** 「…항목(1개)과 …항목(1개)은 복지로 세지 않았습니다.」 — 있는 kind 만. 없으면 ''. */
+function markedSentence(basis) {
+  const parts = Object.keys(MARK).map((k) => [k, markedCount(basis, k)]).filter(([, n]) => n)
+    .map(([k, n]) => MARK[k].phrase + '(' + n + '개)');
+  return parts.length ? parts.join('과 ') + '은 복지로 세지 않았습니다.' : '';
+}
+/** 비교표 제목 꼬리 — 「(법정 제외)」 · 「(업무 교육 제외)」 · 「(법정·업무 교육 제외)」. */
+function markedTitleTag(marked) {
+  const kinds = Object.keys(MARK).filter((k) => marked.some(([, it]) => it.mark_cd === k));
+  return kinds.length ? '(' + kinds.map((k) => MARK[k].label).join('·') + ' 제외)' : '';
+}
+/** 각주 한 줄 — 「복지로 세지 않아 비교에서 뺀 항목: [법정] 출산/육아 지원(KT) · …」. */
+function markedFoot(marked) {
+  const lp = el('p', { class: 'calc-foot' }, '복지로 세지 않아 비교에서 뺀 항목: ');
+  marked.forEach(([who, it], i) => {
+    if (i) lp.append(' · ');
+    lp.append(el('span', { class: 'calc-bd calc-bd-mark', text: MARK[it.mark_cd].label }), ' ' + it.benefit_nm + '(' + who + ')');
+  });
+  return lp;
 }
 
 // ── 문맥(회사 이름·입력·현재 결과) ────────────────────────────────────────────
@@ -85,12 +109,12 @@ function makeCtx(report, ctx) {
   const input = ctx.input || {};
   const ws = input.ws || {};
   const benS = ctx.benS || { a: [], b: [] };
-  const legalKeys = { a: new Set(((report.pairs && report.pairs.legal.a) || []).map(keyOf)), b: new Set(((report.pairs && report.pairs.legal.b) || []).map(keyOf)) };
-  // 사용자가 뺀 항목(checked=false) — 법정 행은 사용자의 뺌이 아니다.
+  const markedKeys = { a: new Set(((report.pairs && report.pairs.marked.a) || []).map(keyOf)), b: new Set(((report.pairs && report.pairs.marked.b) || []).map(keyOf)) };
+  // 사용자가 뺀 항목(checked=false) — 표시 행(법정 · 업무 교육)은 사용자의 뺌이 아니다.
   const excluded = [];
   for (const slot of ['a', 'b']) {
     for (const it of benS[slot] || []) {
-      if (it && it.checked === false && !legalKeys[slot].has(keyOf(it))) excluded.push({ slot, it });
+      if (it && it.checked === false && !markedKeys[slot].has(keyOf(it))) excluded.push({ slot, it });
     }
   }
   const isOff = (slot, it) => !!(it && (benS[slot] || []).some((x) => keyOf(x) === keyOf(it) && x.checked === false));
@@ -394,8 +418,8 @@ function salaryCard(X) {
   let howText = '실효 총보상은 연봉에 복지를 돈으로 환산한 금액(금액이 등록된 복지만)과 야근수당(입력하신 조건 기준)을 더한 값입니다. '
     + '금액이 등록되지 않은 복지(' + nm.a + ' ' + ben.noAmt.a + '개 · ' + nm.b + ' ' + ben.noAmt.b + '개)는 0으로 계산했습니다. '
     + '가치가 없다는 뜻이 아니라 금액을 알 수 없다는 뜻입니다.';
-  const legalN = (report.basis.a.legal || 0) + (report.basis.b.legal || 0);
-  if (legalN) howText += ' 법으로 모든 회사에 정해진 제도만 적힌 항목(' + legalN + '개)은 복지로 세지 않았습니다.';
+  const mk = markedSentence(report.basis);
+  if (mk) howText += ' ' + mk;
   sec.append(how(howText));
   return sec;
 }
@@ -461,6 +485,15 @@ function autonomyLine(X) {
     p.append('두 회사 모두 ' + withJosa(join(a.perksA), '이/가') + ' 있어 ', b('우열을 가릴 수 없습니다.'));
   } else {
     p.append(nm.a + '에는 ' + (join(a.perksA) || '등록 없음') + ', ' + nm.b + '에는 ' + (join(a.perksB) || '등록 없음') + ' — ', b('우열을 가릴 수 없습니다.'));
+  }
+  // 조건이 붙은 재택 · 유연(6c)은 미리 체크하지 않았다 — 사용자가 체크했으면(계산에 넣었으면) 각주를 생략한다.
+  const cond = (ctx.condHints) || {};
+  const wsIn = (ctx.input && ctx.input.ws) || {};
+  for (const s of ['a', 'b']) {
+    for (const h of cond[s] || []) {
+      if (wsIn[s] && wsIn[s][h.key]) continue;
+      p.append(' ', el('span', { class: 'calc-muted calc-small', text: '※ ' + nm[s] + '의 ' + h.label + '는 「' + h.cond + '」 조건이 붙어 있어 계산에 넣지 않았습니다. 해당되면 조건을 고쳐 주세요.' }));
+    }
   }
   const hints = (ctx.remoteHints) || {};
   for (const s of ['a', 'b']) {
@@ -599,11 +632,11 @@ function benefitsCard(X) {
     sec.append(line('', ...t));
   }
   const X2 = onlyRegistered(X);
-  const legalN = (report.basis.a.legal || 0) + (report.basis.b.legal || 0);
+  const mk = markedSentence(report.basis);
   sec.append(how('결론은 등록된 복지 금액의 합계와 그 오차 범위로만 냅니다. 복지 항목 수(' + v.counts.a + '개 → ' + v.counts.b + '개)는 회사가 얼마나 자세히 공개했느냐에 따라 '
     + '달라지므로 결론에 쓰지 않고 참고로만 보여 드립니다.'
     + (v.exMixed ? ' 그대로 계산한 값(' + fmtSigned(d) + ')과 ' + X2 + ' ' + v.mixed.count + '건을 뺀 값(' + fmtSigned(v.exMixed.diff) + ')이 서로 다른 회사를 가리키면, 어느 쪽이 낫다고 말하지 않습니다.' : '')
-    + (legalN ? ' 법으로 모든 회사에 정해진 제도만 적힌 항목(' + legalN + '개)은 복지로 세지 않았습니다.' : '')));
+    + (mk ? ' ' + mk : '')));
   return sec;
 }
 
@@ -1245,12 +1278,8 @@ function diffsBlock(X, axis) {
   const qa = p.onlyA.filter((it) => amtOf(it) == null).length;
   const kids = [ctrl, lumpNew, lumpBoth, isoBox(X), lumpLost];
   if (p.onlyA.length) kids.push(el('p', { class: 'calc-foot', text: '이 ' + p.onlyA.length + '개 중 ' + qa + '개는 금액을 알 수 없어 계산에 0으로 넣었습니다.' }));
-  const legal = [...p.legal.a.map((it) => [nm.a, it]), ...p.legal.b.map((it) => [nm.b, it])];
-  if (legal.length) {
-    const lp = el('p', { class: 'calc-foot' }, '법으로 모든 회사에 정해진 제도만 적혀 있어 비교에서 뺀 항목: ');
-    legal.forEach(([who, it], i) => { if (i) lp.append(' · '); lp.append(el('span', { class: 'calc-bd calc-bd-legal', text: '법정' }), ' ' + it.benefit_nm + '(' + who + ')'); });
-    kids.push(lp);
-  }
+  const marked = [...p.marked.a.map((it) => [nm.a, it]), ...p.marked.b.map((it) => [nm.b, it])];
+  if (marked.length) kids.push(markedFoot(marked));
   return blk('diffs', '이직하면 달라지는 복지 — 새로 생기는 것 ' + p.onlyB.length + ' · 두 회사 모두 있는 것 ' + bothN + ' · ' + nm.b + '에 등록되지 않은 것 ' + p.onlyA.length, '복지 변화', kids, 'calc-diffs');
 }
 
@@ -1634,15 +1663,11 @@ function contrastBlock(X) {
     }
   }
   applyFilter(filter);
-  // 법정 행은 이 표에 없다(SP-LEGAL-5) — 제목이 「전체」라고 거짓말하지 않게 적고, 아래에 무엇을 뺐는지 남긴다.
-  const legal = [...report.pairs.legal.a.map((it) => [nm.a, it]), ...report.pairs.legal.b.map((it) => [nm.b, it])];
+  // 표시 행(법정 · 업무 교육)은 이 표에 없다(SP-LEGAL-5 · SP-MARK) — 제목이 「전체」라고 거짓말하지 않게 적고, 아래에 무엇을 뺐는지 남긴다.
+  const marked = [...report.pairs.marked.a.map((it) => [nm.a, it]), ...report.pairs.marked.b.map((it) => [nm.b, it])];
   const kids = [recalc, ctrl, wrap];
-  if (legal.length) {
-    const lp = el('p', { class: 'calc-foot' }, '법으로 모든 회사에 정해진 제도만 적혀 있어 이 표와 계산에서 뺀 항목: ');
-    legal.forEach(([who, it], i) => { if (i) lp.append(' · '); lp.append(el('span', { class: 'calc-bd calc-bd-legal', text: '법정' }), ' ' + it.benefit_nm + '(' + who + ')'); });
-    kids.push(lp);
-  }
-  return blk('contrast', '복지 전체 비교표' + (legal.length ? '(법정 복지 제외)' : '') + ' — ' + nm.a + ' ' + report.axes.benefits.counts.a + '개 · ' + nm.b + ' ' + report.axes.benefits.counts.b + '개 · 안 쓸 복지는 빼고 다시 계산해 보세요',
+  if (marked.length) kids.push(markedFoot(marked));
+  return blk('contrast', '복지 전체 비교표' + markedTitleTag(marked) + ' — ' + nm.a + ' ' + report.axes.benefits.counts.a + '개 · ' + nm.b + ' ' + report.axes.benefits.counts.b + '개 · 안 쓸 복지는 빼고 다시 계산해 보세요',
     '전체 목록', kids, 'calc-ct-blk');
 }
 
@@ -1666,8 +1691,15 @@ function basisBlock(X) {
   const exp = expired ? '이번 비교에서는 ' + expired + '건이 유효기간을 넘겨 범위를 넓혔습니다' : bs.earliestExpiry ? '이번 비교는 해당 없음 — 가장 빠른 유효기간이 ' + String(bs.earliestExpiry).slice(0, 10) + '입니다' : '이번 비교는 해당 없음';
   ul.append(li('오차 범위: 공식 금액 ±5% · 추정 금액 ±20%. 자료가 유효기간을 넘기면 범위를 15%p 넓힙니다(' + exp + ').'));
   ul.append(li('계산하지 않은 것: 세금·4대보험(모두 세전 기준) · 통근 시간의 금액 환산 · 법정 연차(두 회사의 연차 일수를 확인하지 못함) · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '개 · 퇴직금·주가 변동'));
-  const legalN = (bs.a.legal || 0) + (bs.b.legal || 0);
-  if (legalN) ul.append(li(el('span', { class: 'calc-bd calc-bd-legal', text: '법정' }), ' 법으로 모든 회사에 정해진 제도만 적힌 항목 ' + legalN + '개는 표시만 하고 비교에서 뺐습니다.'));
+  for (const kind of Object.keys(MARK)) {
+    const n = markedCount(bs, kind);
+    if (n) ul.append(li(el('span', { class: 'calc-bd calc-bd-mark', text: MARK[kind].label }), ' ' + MARK[kind].phrase + ' ' + n + '개는 표시만 하고 비교에서 뺐습니다.'));
+  }
+  // 검색 요약 — 집계에는 들지만 근거가 다르다(SP-MARK). 비교에 쓴(표시 행 제외) 행만 센다.
+  // `X.benS` 는 App.state 원본이라 `mark_cd` 가 없다(복사본에만 단다) — 표시 행은 등록표로 직접 가른다.
+  const sumN = (slot) => (X.benS[slot] || []).filter((it) => it && !rowMark(X.ctx.matched && X.ctx.matched[slot] && X.ctx.matched[slot].comp_eng_nm, it) && isSummary(it)).length;
+  const sa = sumN('a'), sb = sumN('b');
+  if (sa + sb) ul.append(li(el('span', { class: badgeClassBem('summary'), text: SUMMARY.label }), ' 회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목(' + [sa ? nm.a + ' ' + sa : '', sb ? nm.b + ' ' + sb : ''].filter(Boolean).join(' · ') + ')'));
   ul.append(li('복지 금액에는 대출 한도나 한 번만 주는 포상처럼 1년 단위가 아닌 값이 섞여 있을 수 있어서, 위에서 여러 경우로 나눠 다시 계산해 보였습니다. 또 복지는 연봉과 세금 방식이 달라, 실제로 손에 쥐는 금액은 이보다 작을 수 있습니다.'));
   const amtN = bs.a.amt + bs.b.amt;
   return blk('basis', '이 비교에 쓴 자료 — 금액 ' + amtN + '건(회사 공개 ' + (bs.a.stated + bs.b.stated) + ' · 추정 ' + (bs.a.estimated + bs.b.estimated) + ') · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '건',

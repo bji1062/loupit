@@ -56,7 +56,7 @@ class Company(BaseModel):  # FR-D4 / TCOMPANY (+aliases,+benefits 인라인)
     comp_tp_cd: str  # TCOMPANY_TYPE 조인 파생
     industry_nm: str | None = None
     logo_nm: str | None = None
-    work_style_val: dict | None = None  # {remote,flex,unlimitedPTO,refreshLeave,overtime}
+    work_style_val: dict | None = None  # {remote,flex,unlimitedPTO,refreshLeave,overtime,cond?} — cond = {키: [조건 라벨]}(조건 있는 키는 false, 6c)
     careers_benefit_url: str | None = None
     aliases: list[str]  # 회사당 ≥1
     benefits: list[Benefit]  # 회사당 ≥1 (실복지, 비어있지 않음)

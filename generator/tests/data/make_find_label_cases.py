@@ -25,6 +25,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(ROOT))
 
+from generator import marks  # noqa: E402
 from generator.bundle import load_bundle, load_bundle_json  # noqa: E402
 from generator.pages import find  # noqa: E402
 
@@ -45,10 +46,11 @@ def build(bundle: dict) -> dict:
     names: dict[str, Counter] = {}
     rows = 0
     for c in companies:
-        for b in c.get("benefits") or []:
+        rows += sum(1 for b in c.get("benefits") or [] if b.get("benefit_cd"))
+        # 표시 행(법정 · 업무 교육, SP-MARK)은 코드 사전에서 빠진다 — `find.derive_codes` 와 같은 분모
+        for b in marks.countable(c):
             if not b.get("benefit_cd"):
                 continue
-            rows += 1
             names.setdefault(b["benefit_cd"], Counter())[b.get("benefit_nm")] += 1
     codes = find.derive_codes(companies)
     assert sorted(codes) == sorted(names), "derive_codes 와 빈도표의 코드 집합이 다르다"

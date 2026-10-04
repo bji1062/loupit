@@ -24,7 +24,7 @@ import re
 import sys
 from collections import Counter
 
-from generator import benefit_rules, legal
+from generator import benefit_rules, legal, marks
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -52,7 +52,7 @@ _FIRST_SENTENCE = re.compile(r"^(.+?[다요]\.)(?:\s|$)")
 
 
 def collect_rows(ctx, code: str) -> list[dict]:
-    """이 코드를 가진 회사 행 전부(회사당 1행) — 법정 행도 포함하고 `legal` 로 표시한다.
+    """이 코드를 가진 회사 행 전부(회사당 1행) — 표시 행(법정 · 업무 교육)도 포함하고 `mark` 로 표시한다.
 
     `desc`·`note` 는 `benefit_rules.classify` 가 매칭·해시에 쓰는 원문 두 칸이다(해시 = 예외의 열쇠라
     이 두 칸의 뜻이 바뀌면 예외 전부가 `stale` 로 꺼진다).
@@ -71,7 +71,7 @@ def collect_rows(ctx, code: str) -> list[dict]:
                 "desc": b.get("qual_desc_ctnt"),
                 "note": b.get("note_ctnt"),
                 "benefit": b,
-                "legal": legal.is_legal_row(c["comp_eng_nm"], code, b["benefit_nm"]),
+                "mark": marks.row_mark(c["comp_eng_nm"], code, b["benefit_nm"]),
                 "unverified": amount_kind(b) == "none"
                 and "(추정)" in (b.get("qual_desc_ctnt") or "") + (b.get("note_ctnt") or ""),
             })
@@ -181,7 +181,9 @@ def _row_view(r: dict, code: str, mode_by_key: dict) -> dict:
         # 정성 설명과 비고는 다른 칸이다 — 회사 페이지 원장과 같이 둘 다 싣고, 같으면 한 번만.
         "note": note if note != desc else "",
         "mode": mode_by_key.get(r.get("mode")),
-        "legal": r["legal"],
+        "mark": marks.mark_view(r["mark"]),
+        # 검색 요약 행(근거 URL 없는 회사) — 서술 칸 앞에 「검색 요약」 배지. 집계에는 든다(2a).
+        "summary": marks.is_summary(b),
         **amount_view(b),
     }
 
@@ -214,10 +216,10 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
     code = cfg["code"]
     codes = codes if codes is not None else derive_codes(ctx.companies)
     all_rows = collect_rows(ctx, code)
-    legal_rows = [r for r in all_rows if r["legal"]]
-    # 세는 행 = 법정 행과 `exclude` 예외를 **둘 다** 뺀 나머지다. 아래의 N·방식·원문·질문·금액 출처·
+    marked_rows = [r for r in all_rows if r["mark"]]
+    # 세는 행 = 표시 행(법정 · 업무 교육)과 `exclude` 예외를 **둘 다** 뺀 나머지다. 아래의 N·방식·원문·질문·금액 출처·
     # 부르는 이름·표가 전부 이 목록 하나에서 나온다 — 분모가 둘이면 같은 페이지의 숫자가 서로 어긋난다.
-    result = benefit_rules.classify(cfg, [r for r in all_rows if not r["legal"]])
+    result = benefit_rules.classify(cfg, [r for r in all_rows if not r["mark"]])
     classified = result["rows"]
     n = len(classified)
 
@@ -254,13 +256,18 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
         row["mode_key"] = r.get("mode")
         table.append(row)
     first, rest = _split_first(table, [m["key"] for m in mode_defs] or [None])
-    # 법정 행은 **맨 끝**에 배지를 달고 남긴다 — 세지 않은 행이 센 행 사이에 끼면 표의 머리 숫자와
-    # 눈으로 센 줄 수가 어긋나 보인다.
-    legal_view = [dict(_row_view(r, code, mode_by_key), mode_key=None) for r in sorted(legal_rows, key=lambda r: r["comp_nm"])]
+    # 표시 행은 **맨 끝**에 표시를 달고 남긴다(kind 순서 → 회사명 순) — 세지 않은 행이 센 행 사이에 끼면
+    # 표의 머리 숫자와 눈으로 센 줄 수가 어긋나 보인다.
+    marked_view = [dict(_row_view(r, code, mode_by_key), mode_key=None)
+                   for kind in marks.KINDS for r in sorted((x for x in marked_rows if x["mark"] == kind),
+                                                          key=lambda r: r["comp_nm"])]
+    marked_counts = {kind: sum(1 for r in marked_rows if r["mark"] == kind) for kind in marks.KINDS}
+    marked = [{"kind": kind, "sub": spec["sub"], "count": marked_counts[kind]}
+              for kind, spec in marks.KINDS.items() if marked_counts[kind]]
     if rest:
-        rest += legal_view
+        rest += marked_view
     else:
-        first += legal_view
+        first += marked_view
 
     ctgr = (codes.get(code) or {}).get("ctgr", "")
     total = len(ctx.companies)
@@ -284,7 +291,7 @@ def build_view(ctx, cfg: dict, codes: dict | None = None) -> dict:
         # 자리마다 빈 문자열을 깔아 둔다 — StrictUndefined 라 없는 키를 템플릿이 읽으면 렌더가 죽는다.
         "notes": {k: (cfg.get("notes") or {}).get(k, "") for k in benefit_rules.NOTE_SLOTS},
         "legal": _legal_view(code),
-        "legal_rows": len(legal_rows),
+        "marked": marked,
         "rows_first": first,
         "rows_rest": rest,
         "stale": result["stale"],
@@ -355,17 +362,17 @@ def render_all(env, ctx, cfg=CFG, *, configs: dict[str, dict] | None = None,
 def page_index(ctx, pages: list[Page], configs: dict[str, dict] | None = None) -> dict[str, dict]:
     """생성된 항목 페이지 → `{code: {"url", "count", "members"}}` — 회사 페이지가 원장 행에서 링크를 걸 때 쓴다.
 
-    `members` = 그 페이지 표에 **실제로 실린** 회사(센 행 + 배지를 단 법정 행). `exclude` 로 뺀 회사는
+    `members` = 그 페이지 표에 **실제로 실린** 회사(센 행 + 표시를 단 행). `exclude` 로 뺀 회사는
     없다 — 눌러서 간 페이지에 자기 회사가 없으면 링크가 거짓말을 한 셈이다(예: 정착지원금을
     주택자금 대출로 잘못 분류한 행). `count` 는 페이지 머리의 「이 복지가 있는 회사 N곳」과 **같은 수**다
-    (`build_view` 의 N — 법정 행·예외 제외). 링크 글과 도착한 페이지가 다른 숫자를 말하면 안 된다.
+    (`build_view` 의 N — 표시 행·예외 제외). 링크 글과 도착한 페이지가 다른 숫자를 말하면 안 된다.
     """
     configs = configs if configs is not None else benefit_rules.load_pages()
     out: dict[str, dict] = {}
     for code, url in links(pages, configs).items():
         all_rows = collect_rows(ctx, code)
-        result = benefit_rules.classify(configs[code], [r for r in all_rows if not r["legal"]])
-        members = {r["comp"] for r in result["rows"]} | {r["comp"] for r in all_rows if r["legal"]}
+        result = benefit_rules.classify(configs[code], [r for r in all_rows if not r["mark"]])
+        members = {r["comp"] for r in result["rows"]} | {r["comp"] for r in all_rows if r["mark"]}
         out[code] = {"url": url, "count": len(result["rows"]), "members": frozenset(members)}
     return out
 

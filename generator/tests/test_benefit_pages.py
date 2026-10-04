@@ -231,7 +231,7 @@ def test_mode_colors_follow_display_order_not_rule_order():
         ("direct", "bn-m1"), ("interest", "bn-m2"), ("both", "bn-mx"), ("unknown", "bn-m0")]
 
 
-# 법정 행 표본 — `legal_rows.json` 에 실제로 있는 (회사, 코드, 이름) 이다. 코드만 같은 다른 행은 복지다.
+# 법정 행 표본 — `row_marks.json` 에 실제로 있는 (회사, 코드, 이름) 이다. 코드만 같은 다른 행은 복지다.
 _PARENTING_CFG = {
     "code": "parenting", "slug": "parenting", "title": "육아 지원", "intro": ["육아 지원은 회사마다 다릅니다."],
     "facets": [{"key": "leave", "label": "휴직", "pattern": "휴직"}],
@@ -248,19 +248,19 @@ def test_legal_rows_stay_in_table_but_leave_every_aggregate():
     ctx = build_context(_bundle(PARENTING))
     view = benefit.build_view(ctx, _PARENTING_CFG)
     assert view["count"] == 2, "법정 행이 보유 회사 수에 섞였다"
-    assert view["legal_rows"] == 1
+    assert view["marked"] == [{"kind": "legal", "sub": "법정 제도만 적은 회사", "count": 1}]
     assert view["facets"][0]["count"] == 1, "법정 행의 「육아휴직」이 원문 항목 개수에 섞였다"
     assert view["questions"][0]["count"] == 1
     assert sum(s["count"] for s in view["amount_sources"] if s["key"] in ("stated", "est", "qual", "blank")) == 2
     assert "출산/육아 지원" not in view["names"]["shown"], "법정 행 이름이 「부르는 이름」에 섞였다"
     table = view["rows_first"] + view["rows_rest"]
-    assert [r["comp_nm"] for r in table][-1] == "KT" and table[-1]["legal"], "법정 행은 표 맨 끝에 남는다"
+    assert [r["comp_nm"] for r in table][-1] == "KT" and table[-1]["mark"]["kind"] == "legal", "법정 행은 표 맨 끝에 남는다"
 
 
 def test_legal_row_renders_the_same_badge_as_the_company_page():
     pages, *_ = _render(PARENTING, {"parenting": _PARENTING_CFG})
     html = pages[0].html
-    assert 'class="benefit-legal"' in html and ">법정</span>" in html
+    assert 'class="benefit-mark"' in html and ">법정</span>" in html
     assert "+ 법정 제도만 적은 회사 1곳" in html
 
 
@@ -628,3 +628,54 @@ def test_no_item_link_without_a_generated_page():
     html, idx = _company_html_with_index(HOUSING, {})
     assert idx == {}
     assert not any('class="led-more"' in h for h in html.values())
+
+
+# ── 업무 교육 · 검색 요약 표시(SP-MARK) ─────────────────────────────────────────
+
+_EDU_CFG = {
+    "code": "edu_support", "slug": "edu-support", "title": "직무 교육·교육비 지원", "intro": ["교육 지원은 회사마다 다릅니다."],
+    "facets": [{"key": "fee", "label": "교육비", "pattern": "교육비"}],
+    "questions": [{"text": "교육비를 대 주나요?", "answered_by": ["facet:fee"]}],
+}
+EDU = [
+    ("alteogen", "알테오젠", _b("edu_support", "신입사원 교육", desc="신입사원 교육 운영", ctgr="growth")),
+    ("a_co", "가회사", _b("edu_support", "교육비 지원", desc="외부 교육비 지원", ctgr="growth")),
+    ("b_co", "나회사", _b("edu_support", "자기계발비", desc="교육비 연 100만원", ctgr="growth")),
+]
+
+
+def test_work_edu_row_stays_in_table_end_and_leaves_every_aggregate():
+    ctx = build_context(_bundle(EDU))
+    view = benefit.build_view(ctx, _EDU_CFG)
+    assert view["count"] == 2, "업무 교육 행이 보유 회사 수에 섞였다"
+    assert view["marked"] == [{"kind": "work_edu", "sub": "업무 교육만 적은 회사", "count": 1}]
+    assert view["facets"][0]["count"] == 2
+    table = view["rows_first"] + view["rows_rest"]
+    assert table[-1]["comp_nm"] == "알테오젠" and table[-1]["mark"]["label"] == "업무 교육"
+    assert "신입사원 교육" not in view["names"]["shown"]
+
+
+def test_work_edu_row_renders_mark_and_h2_sub():
+    pages, *_ = _render(EDU, {"edu_support": _EDU_CFG})
+    html = pages[0].html
+    assert 'class="benefit-mark"' in html and ">업무 교육</span>" in html
+    assert "+ 업무 교육만 적은 회사 1곳" in html
+
+
+def test_marked_rows_follow_kind_order_legal_before_work_edu():
+    rows = [("kt", "KT", _b("parenting", "출산/육아 지원", desc="출산휴가 및 육아휴직 지원", ctgr="family")),
+            ("a_co", "가회사", _b("parenting", "육아휴직 확대", desc="육아휴직 2년", ctgr="family"))]
+    ctx = build_context(_bundle(rows))
+    assert benefit.build_view(ctx, _PARENTING_CFG)["marked"][0]["kind"] == "legal"
+
+
+def test_summary_row_stays_counted_and_gets_search_summary_badge():
+    rows = [("a_co", "가회사", dict(_b("edu_support", "교육비 지원", desc="외부 교육비 지원", ctgr="growth"), badge_src_cd="ai_parse")),
+            ("b_co", "나회사", _b("edu_support", "자기계발비", desc="교육비 연 100만원", ctgr="growth"))]
+    ctx = build_context(_bundle(rows))
+    view = benefit.build_view(ctx, _EDU_CFG)
+    assert view["count"] == 2, "검색 요약 행도 센다(2a)"
+    table = view["rows_first"] + view["rows_rest"]
+    assert sorted(r["summary"] for r in table) == [False, True]
+    pages, *_ = _render(rows, {"edu_support": _EDU_CFG})
+    assert "badge badge-summary" in pages[0].html and ">검색 요약</span>" in pages[0].html

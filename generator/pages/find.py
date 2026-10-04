@@ -19,6 +19,7 @@ from __future__ import annotations
 
 from collections import Counter
 
+from generator import marks
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -130,7 +131,7 @@ def derive_codes(companies: list[dict]) -> dict[str, dict]:
     comps: dict[str, set] = {}
     amts: dict[str, int] = {}
     for c in companies:
-        for b in c.get("benefits") or []:
+        for b in marks.countable(c):  # 표시 행(법정 · 업무 교육)은 칩 수 · 매칭에서 뺀다(SP-MARK)
             code = b.get("benefit_cd")
             if not code:
                 continue  # BENEFIT_CD 는 NOT NULL — 없는 행은 검색의 축이 없어 건너뛴다
@@ -199,7 +200,7 @@ def build_view(ctx, benefit_links: dict[str, str] | None = None) -> dict:
             # 「이 카테고리 항목을 하나라도 가진 회사」 — 표 머리에 놓는 사실
             "companies": len({
                 c["comp_id"] for c in ctx.companies
-                for b in (c.get("benefits") or []) if b.get("benefit_ctgr_cd") == key
+                for b in marks.countable(c) if b.get("benefit_ctgr_cd") == key
             }),
             "rows": [{
                 "code": i["code"],

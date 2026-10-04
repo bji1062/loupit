@@ -9,6 +9,8 @@ import json
 import re
 from datetime import date, datetime
 
+from generator.marks import SUMMARY_SRC_CD
+
 
 def krw_manwon(amt) -> str:
     """만원 정수 → 한국어 "N억 M,MMM만원"/"N억원"/"M,MMM만원" (FR-04).
@@ -64,8 +66,10 @@ def badge_state(benefit: dict, now: datetime) -> dict:
                   오래된 값이고, 그게 사용자에게 가장 급한 정보다.
       2. 재직자 등록 — 편집 이력에 `create`. 원래 데이터에 없던 항목을 재직자가 더한 것.
       3. 공식·재직자 수정 — 편집 이력에 `update`. 공식 값을 재직자가 고친 것.
-      4. 공식   — 편집 이력 없음 = 시드 원본(회사 공식 페이지 기준).
-      5. 추정   — 그 외.
+      4. 검색 요약 — 근거 URL 없는 회사(기준 39, `BADGE_SRC_CD='ai_parse'`). 「공식」이라 쓰면 행 꼬리
+                  「(공식 원문 미확인 …)」과 한 줄 안에서 어긋난다(묶음 7 검토 L2).
+      5. 공식   — 편집 이력 없음 = 시드 원본(회사 공식 페이지 기준).
+      6. 추정   — 그 외.
 
     ⚠ 2·3 의 '재직자'는 수사가 아니다 — 복지 편집은 `require_employment` 게이트 뒤라
       **그 회사 재직 인증을 통과한 사람만** 쓸 수 있다(2026-07-31 문구 결정).
@@ -81,6 +85,8 @@ def badge_state(benefit: dict, now: datetime) -> dict:
         return {"code": "member", "label": "재직자 등록"}
     if origin == "edited":
         return {"code": "edited", "label": "공식·재직자 수정"}
+    if benefit.get("badge_src_cd") == SUMMARY_SRC_CD:
+        return {"code": "summary", "label": "검색 요약"}
     if benefit.get("badge_cd") == "official":
         return {"code": "official", "label": "공식"}
     return {"code": "est", "label": "추정"}
@@ -115,9 +121,45 @@ WS_LABELS = {
 }
 
 
+WS_KEYS = tuple(WS_LABELS)  # 화면 순서 = 라벨 표 순서
+
+
 def work_style_label(key: str) -> str:
     """근무형태 키 → 한국어 라벨. 미상 키는 원문 그대로 반환."""
     return WS_LABELS.get(key, key)
+
+
+def _ws_cond(ws: dict, key: str) -> str:
+    """조건 라벨(`cond` 맵, 6c)을 「, 」로 이은 글. 없으면 ''. 「·」는 「건설·리조트부문」 안에 있어 섞이므로 쓰지 않는다."""
+    conds = (ws.get("cond") or {}).get(key) or []
+    return ", ".join(c for c in conds if c)
+
+
+def work_style_items(ws: dict | None) -> list[dict]:
+    """근무형태 칩 목록 `[{key, label, cond}]` — 칩은 조건 없는 단정(truthy)이거나 조건 칩(`cond`)이다(SP-SEED-6.2).
+
+    값이 문구형인 `refreshLeave`(문자열)도 truthy 라 맨 칩이다. 조건 있는 키는 값이 false 이고 `cond` 에 라벨이 있다
+    (불변식 `k ∈ cond ⇒ !ws[k]`) — 그 칩은 「재택근무 · 육아기」 꼴로 읽힌다. 맨 칩의 `cond` 는 ''.
+    """
+    ws = ws or {}
+    out = []
+    for k in WS_KEYS:
+        if ws.get(k):
+            out.append({"key": k, "label": WS_LABELS[k], "cond": ""})
+        else:
+            cond = _ws_cond(ws, k)
+            if cond:
+                out.append({"key": k, "label": WS_LABELS[k], "cond": cond})
+    return out
+
+
+def work_style_cell(ws: dict | None, key: str) -> str:
+    """조합 페이지 근무형태 셀 — '' | '제공' | '제공 · 육아기'. 허위 표기 금지(조건 없는 단정만 맨 「제공」)."""
+    ws = ws or {}
+    if ws.get(key):
+        return "제공"
+    cond = _ws_cond(ws, key)
+    return f"제공 · {cond}" if cond else ""
 
 
 # ── 재무 표시(SP-FIN-5, 2026-08-27) ──────────────────────────────────────────

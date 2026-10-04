@@ -214,3 +214,37 @@ def test_combo_radar_scale_is_the_whole_corpus_not_the_pair(fake_bundle, fake_no
     for p in pages:
         ticks = [int(t) for t in re.findall(r'<text class="rdp-tick"[^>]*>(\d+)</text>', p.html)]
         assert ticks == expected, f"{p.path}: 눈금이 전 회사 기준이 아니다"
+
+
+def test_marked_rows_leave_category_counts_and_top_of_combo(fake_now):
+    """표시 행(법정 · 업무 교육, SP-MARK)은 조합 카테고리 수 · 대표 복지에서 빠진다(순위 · 9각형과 같은 분모)."""
+    def row(cd, nm):
+        return {"benefit_cd": cd, "benefit_nm": nm, "benefit_ctgr_cd": "growth", "qual_yn": True, "benefit_amt": None,
+                "badge_cd": "official", "amt_source": "none", "qual_desc_ctnt": nm, "note_ctnt": None,
+                "verified_dtm": "2026-06-01", "expires_dtm": "2099-12-31", "badge_src_cd": "scrape_official",
+                "badge_src_url_ctnt": None, "sort_order_no": 0 if nm == "신입사원 교육" else 1}
+    a = [row("edu_support", "신입사원 교육"), row("edu_support", "교육비 지원")]
+    b = [row("edu_support", "교육비 지원")]
+    out = combo._category_summary(a, b, fake_now, a_eng="alteogen", b_eng="other")
+    r = next(x for x in out if x["key"] == "growth")
+    assert (r["count_a"], r["count_b"]) == (1, 1)
+    assert r["top_a"]["name"] == "교육비 지원"
+    assert combo._per_category(__import__("generator.marks", fromlist=["x"]).countable({"comp_eng_nm": "alteogen", "benefits": a}))[
+        combo.CATEGORY_ORDER.index("growth")] == 1
+
+
+def test_work_style_cells_three_states(fake_bundle, fake_now, fake_combinations_path):
+    """근무형태 셀 — 맨 「제공」 · 조건 칩 「제공 · 패션부문」 · 빈칸(허위 표기 금지, 6c)."""
+    import copy
+    b = copy.deepcopy(fake_bundle)
+    for c in b["companies"]:
+        if c["comp_eng_nm"] == "samsung_elec":
+            c["work_style_val"] = {"remote": True, "flex": False, "cond": {"flex": ["패션부문"]}}
+        if c["comp_eng_nm"] == "sk_hynix":
+            c["work_style_val"] = {"remote": False, "flex": False}
+    pages = _render(b, fake_now)
+    p = next(p for p in pages if p.path == "vs/samsung-elec-sk-hynix.html")
+    sec = re.search(r'<section class="combo-work-style".*?</section>', p.html, re.S).group(0)
+    rows = {m.group(1): re.findall(r"<td>(.*?)</td>", m.group(2)) for m in re.finditer(r"<tr>\s*<td>(.*?)</td>(.*?)</tr>", sec, re.S)}
+    assert rows["재택근무"] == ["제공", ""]
+    assert rows["유연근무"] == ["제공 · 패션부문", ""]

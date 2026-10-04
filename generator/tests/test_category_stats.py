@@ -69,6 +69,23 @@ CASE_INPUTS = [
         ),
     },
     {
+        # 표시 행(SP-MARK: 법정 · 업무 교육)은 집계에서 빠진다 — 파이썬 `corpus.build` 와 JS `categoryStats` 가 같은 등록표
+        # (alteogen/edu_support/신입사원 교육 = 업무 교육 · kt/parenting/출산/육아 지원 = 법정)로 같은 값을 낸다.
+        "name": "marked_rows_excluded",
+        "why": "표시 행(업무 교육 · 법정)은 평균 · 최댓값에서 뺀다 — 안 빼면 정적(3.04)과 도구(3.06)가 갈린다",
+        "companies": [
+            {"comp_id": 30, "comp_eng_nm": "alteogen", "benefits": [
+                {"benefit_cd": "edu_support", "benefit_nm": "신입사원 교육", "benefit_ctgr_cd": "growth", "qual_yn": True, "benefit_amt": None},
+                {"benefit_cd": "lang", "benefit_nm": "어학 지원", "benefit_ctgr_cd": "growth", "qual_yn": True, "benefit_amt": None},
+                {"benefit_cd": "meal", "benefit_nm": "식대", "benefit_ctgr_cd": "perks", "qual_yn": True, "benefit_amt": None}]},
+            {"comp_id": 31, "comp_eng_nm": "kt", "benefits": [
+                {"benefit_cd": "parenting", "benefit_nm": "출산/육아 지원", "benefit_ctgr_cd": "family", "qual_yn": True, "benefit_amt": None},
+                {"benefit_cd": "parenting2", "benefit_nm": "육아휴직 확대", "benefit_ctgr_cd": "family", "qual_yn": True, "benefit_amt": None}]},
+            {"comp_id": 32, "comp_eng_nm": "x_co", "benefits": [
+                {"benefit_cd": "edu_support", "benefit_nm": "신입사원 교육", "benefit_ctgr_cd": "growth", "qual_yn": True, "benefit_amt": None}]},
+        ],
+    },
+    {
         "name": "empty_bundle",
         "why": "회사 0곳(부팅 번들 실패 폴백)에서도 죽지 않고 rmax 는 1 로 선다",
         "companies": [],

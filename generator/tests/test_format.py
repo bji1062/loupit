@@ -12,6 +12,8 @@ from generator.format import (
     iso_date,
     jsonld_dumps,
     krw_manwon,
+    work_style_cell,
+    work_style_items,
     work_style_label,
 )
 
@@ -220,3 +222,29 @@ def test_pct_delta_none_when_undefined():
     assert pct_delta(None, 5) is None
     assert pct_delta(5, None) is None
     assert pct_delta(0, 5) is None
+
+
+# ── 근무형태 칩 · 조건(6c) ───────────────────────────────────────────────
+
+
+def test_work_style_items_plain_cond_and_text_form():
+    ws = {"remote": False, "flex": True, "unlimitedPTO": False, "refreshLeave": "연말 재충전 휴가", "overtime": None,
+          "cond": {"remote": ["육아기"]}}
+    assert work_style_items(ws) == [
+        {"key": "remote", "label": "재택근무", "cond": "육아기"},
+        {"key": "flex", "label": "유연근무", "cond": ""},
+        {"key": "refreshLeave", "label": "리프레시 휴가", "cond": ""},  # 문구형 refreshLeave 도 맨 칩
+    ]
+    assert work_style_items(None) == [] and work_style_items({}) == []
+    # 조건 둘은 「, 」로 잇는다(「·」는 「건설·리조트부문」 안에 있다)
+    assert work_style_items({"cond": {"refreshLeave": ["건설·리조트부문", "패션부문"]}}) == [
+        {"key": "refreshLeave", "label": "리프레시 휴가", "cond": "건설·리조트부문, 패션부문"}]
+
+
+def test_work_style_cell_three_states():
+    ws = {"remote": False, "flex": True, "cond": {"remote": ["육아기"], "refreshLeave": ["패션부문"]}}
+    assert work_style_cell(ws, "flex") == "제공"
+    assert work_style_cell(ws, "remote") == "제공 · 육아기"
+    assert work_style_cell(ws, "refreshLeave") == "제공 · 패션부문"
+    assert work_style_cell(ws, "unlimitedPTO") == ""
+    assert work_style_cell(None, "remote") == ""

@@ -28,6 +28,7 @@ from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from collections import Counter
 
+from generator import marks
 from generator.format import amount_kind, krw_eok
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, benefit_anchor
 from generator.sector import UNLISTED, load_sectors, sector_of
@@ -88,9 +89,10 @@ def _latest_with_yoy(fin: dict | None):
 def _welfare_items(ctx, sectors):
     items = []
     for c in ctx.companies:
-        n = len(c["benefits"])
-        amt = sum(int(b["benefit_amt"] or 0) for b in c["benefits"] if not b.get("qual_yn"))
-        cats = len({b["benefit_ctgr_cd"] for b in c["benefits"]})
+        bens = marks.countable(c)  # 표시 행(법정 · 업무 교육)은 항목 수 · 카테고리 수에서 뺀다(SP-MARK)
+        n = len(bens)
+        amt = sum(int(b["benefit_amt"] or 0) for b in bens if not b.get("qual_yn"))
+        cats = len({b["benefit_ctgr_cd"] for b in bens})
         items.append({"c": c, "sector": sector_of(ctx.finance.get(c["comp_id"]), sectors), "weight": n,
                       "n": n, "amt": amt, "cats": cats})
     cuts = _quantile_cuts([i["amt"] for i in items])
@@ -133,7 +135,7 @@ def _item_labels(ctx) -> dict[str, str]:
     """코드별 묶음 이름 — ITEM_LABEL 우선, 없으면 그 코드의 최빈 benefit_nm(짧게)."""
     names: dict[str, Counter] = {}
     for c in ctx.companies:
-        for b in c["benefits"]:
+        for b in marks.countable(c):
             code = b.get("benefit_cd") or b["benefit_nm"]
             names.setdefault(code, Counter())[b["benefit_nm"]] += 1
     out = {}
@@ -145,7 +147,7 @@ def _item_labels(ctx) -> dict[str, str]:
 
 def _category_items(ctx, ctgr: str, labels: dict[str, str]) -> list[dict]:
     """한 카테고리의 복지 행 전부 → 타일 아이템. 정성(금액 없음)은 최소 칸(그 카테고리 최소 금액의 60%)."""
-    rows = [(c, b) for c in ctx.companies for b in c["benefits"] if b["benefit_ctgr_cd"] == ctgr]
+    rows = [(c, b) for c in ctx.companies for b in marks.countable(c) if b["benefit_ctgr_cd"] == ctgr]
     amts = [int(b["benefit_amt"]) for _, b in rows if not b.get("qual_yn") and b.get("benefit_amt")]
     floor = max(1.0, (min(amts) if amts else 10) * 0.6)
     items = []

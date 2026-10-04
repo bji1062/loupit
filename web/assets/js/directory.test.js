@@ -68,6 +68,11 @@ describe('rowMeta', () => {
   test('업종 · 복지 N개', () => {
     assert.equal(rowMeta(comp(1, '가', [BEN_MEAL, BEN_QUAL])), 'IT · 복지 2개');
   });
+  test('표시 행(법정 · 업무 교육, SP-MARK)은 「복지 N개」에서 뺀다 — 회사 페이지 · /find 와 같은 분모', () => {
+    const c = { industry_nm: 'IT', comp_eng_nm: 'alteogen', benefits: [
+      { benefit_cd: 'edu_support', benefit_nm: '신입사원 교육' }, { benefit_cd: 'x', benefit_nm: '식대' }, { benefit_cd: 'y', benefit_nm: '검색 요약 행', badge_src_cd: 'ai_parse' }] };
+    assert.equal(rowMeta(c), 'IT · 복지 2개');
+  });
   test('복지 0개면 개수를 적지 않는다', () => {
     assert.equal(rowMeta(comp(1, '가', [])), 'IT');
   });
