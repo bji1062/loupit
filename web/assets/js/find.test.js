@@ -177,10 +177,10 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
 
   // 실데이터 픽스처 — `generator/tests/test_find_page.py` 가 **같은 파일**로 같은 기대값을 잰다.
   // 표(파이썬)와 칩(JS)이 같은 이름을 부른다는 약속을 실데이터에서 확인하는 자리다.
-  test('실 번들 89종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
+  test('실 번들 88종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
     const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
     const entries = Object.entries(cases.codes);
-    assert.equal(entries.length, 89, '픽스처가 실데이터 89종이 아니다'); // 2026-09-28 wedding 사용 회사 0
+    assert.equal(entries.length, 88, '픽스처가 실데이터 88종이 아니다'); // 2026-09-28 wedding 사용 회사 0 · 2026-10-04 long_service 사용 회사 0
     // 행 하나 = 회사 하나. 회사 안에서 코드는 UNIQUE 라 빈도만큼 회사를 나눈다(파이썬 쪽과 같은 방식).
     const companies = [];
     for (const [code, info] of entries) {
@@ -231,8 +231,9 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     // 2026-10-02 R-3 묶음 4-A: summer_vacation_subsidy 는 「하계 휴가비」가 2회가 돼 동률이 풀렸다 → 지금 동률인 uniform(피복 지원)으로 바꿨다(파이썬 쪽과 같음).
     // 2026-10-02 R-3 묶음 6-A: work_tools 의 「노트북 지원」이 시드에서 사라져 → 지금 동률인 lounge(휴게실)로 바꿨다(파이썬 쪽과 같음).
     // 2026-10-02 R-3 묶음 6-A: smoking_cessation 은 「금연수당」이 2회가 돼 동률이 풀렸다 → 지금 8:8 동률인 resort(휴양시설)로 바꿨다.
-    for (const [code, expect] of [['foundation_day_leave', '창립기념 휴가'], ['uniform', '피복 지원'],
-      ['lounge', '휴게실'], ['parking', '주차 지원'], ['massage', '안마의자'],
+    // 2026-10-04 R-3 묶음 7: foundation_day_leave 는 동률이 풀렸다 → 지금 동률인 family_day(가정의 날)로 · uniform 은 대표가 「유니폼지급」으로 바뀌었다 · lounge · parking 도 단독 최다가 돼 car_wash · promotion_gift 로 바꿨다(파이썬 쪽과 같음).
+    for (const [code, expect] of [['family_day', '가정의 날'], ['uniform', '유니폼지급'],
+      ['car_wash', '세차 서비스'], ['promotion_gift', '승진자 축하선물'], ['massage', '안마의자'],
       ['resort', '휴양시설']]) {
       assert.equal(codes[code].baseLabel, expect, code);
     }

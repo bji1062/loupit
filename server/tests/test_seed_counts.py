@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 2989(2968 − 92 − 14 + 127 묶음 6-A 8사 재수집 · HPSP 등록 해제, 2026-10-02), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 3093(2989 − 125 + 229 묶음 7 12사 재수집, 2026-10-04), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -115,9 +115,13 @@ def test_SD4_benefit_total_row_count(seeded_db):
             · HPSP 회사 등록 해제(복지 14행 — 공식 복지 원문 없음)
           2968 − 92 − 14 + 127 = 2989 (R-3 묶음 6-A 8사 · HPSP 등록 해제) — 운영은 표적 삭제 17 · 재코딩 2 뒤 멱등 적재
           (db/migrations/20261002_unregister_hpsp.sql · 20261002_recollect_3_batch6a.sql) — loupit-evidence/2026-10-02-recollect-3-6/
+          + 재수집 R-3 묶음 7 12사(보로노이 · 오스코텍 · 한미약품 · 케어젠 · 텔레칩스 · 리노공업 · 아모레퍼시픽 · 리메드 · 기업은행 · 효성중공업 · 대한항공 · 네오위즈) 125 → 229행
+            · 케어젠 · 리노공업 · 리메드 3사는 공식 출처가 없어 사용자 제공 검색 AI 요약 기준(기준 39)
+          2989 − 125 + 229 = 3093 (R-3 묶음 7 12사) — 운영은 표적 삭제 19 · 재코딩 7 뒤 멱등 적재
+          (db/migrations/20261004_recollect_3_batch7.sql) — loupit-evidence/2026-10-02-recollect-3-7/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 2989, f"복지 총행 불일치: {count} (기대 2989 = 2968 − 92 − 14 + 127 묶음 6-A 8사 재수집 · HPSP 등록 해제)"
+    assert count == 3093, f"복지 총행 불일치: {count} (기대 3093 = 2989 − 125 + 229 묶음 7 12사 재수집)"
     assert count >= 1200
 
 

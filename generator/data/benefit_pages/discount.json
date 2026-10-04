@@ -92,14 +92,6 @@
   ],
   "overrides": [
     {
-      "comp": "amorepacific",
-      "h": "39ce10df59",
-      "facets_add": [
-        "group"
-      ],
-      "why": "항목명이 「자사 제품 임직원 특별가」 — 원문 칸은 「임직원 전용 구매사이트」만 적었다"
-    },
-    {
       "comp": "samsung_elec",
       "h": "795690a4f1",
       "facets_add": [
@@ -117,11 +109,11 @@
     },
     {
       "comp": "korean_air",
-      "h": "dee30538f0",
+      "h": "9ad21345a7",
       "facets_add": [
         "group"
       ],
-      "why": "자사 항공권(국내선·국제선 할인 항공권)과 타항공사 협정 할인을 함께 적었다 — 자사 쪽은 낱말로 안 잡힌다"
+      "why": "「본인 및 직계가족 할인 항공권」은 자기 회사 항공권 할인인데 자사 낱말이 없어 잡히지 않는다"
     },
     {
       "comp": "hyundai_motor",

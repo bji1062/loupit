@@ -82,6 +82,8 @@ export const LABEL_OVERRIDE = {
   // 2026-10-02 R-3 묶음 6-A — lounge 는 2:2 동률 · work_tools 는 1회 이름뿐(find.py 같은 자리).
   lounge: '직원 휴게실·휴식 공간',
   work_tools: '업무 장비·도구 지원',
+  // 2026-10-04 R-3 묶음 7 — uniform 은 11행 이름이 전부 1회라 한 회사 표기가 대표가 된다(find.py 같은 자리).
+  uniform: '근무복·유니폼 지원',
 };
 
 export const MODES = ['and', 'or'];
