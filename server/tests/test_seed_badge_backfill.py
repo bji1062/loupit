@@ -212,6 +212,8 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "eo_technics", "jusung", "techwing", "duksan_neolux", "bh", "genome_company", "classys", "rainbow_robotics",
         # 재수집 R-3 묶음 7(2026-10-04, 9) — 실 URL 헤더 9사. 케어젠 · 리노공업 · 리메드는 기준 39(검색 AI 요약 · URL 없음)라 ai_parse 로 남아 여기 없다
         "voronoi", "oscotec", "hanmi_pharm", "telechips", "amorepacific", "ibk", "hyosung_heavy", "korean_air", "neowiz",
+        # 재수집 R-3 묶음 6-B(2026-10-04) — DB손해보험 자기 도메인 페이지(URL 헤더)
+        "db_insurance",
         # 재수집 R-3 묶음 3 후속(2026-10-01, 1) — yuhan 은 2026-10-01 후속 PR(사용자 붙여넣기 원문)
         "yuhan",
     }
