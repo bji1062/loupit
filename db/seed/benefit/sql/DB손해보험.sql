@@ -50,7 +50,7 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 경제적 부가혜택 (perks) — 선택적 복리후생제 · 주택구입/전세자금 대출 · 소액신용대출 · 연고지 왕래 교통비 · 기타 ──
-  (@comp_id, 'transport', '연고지 왕래 교통비·차량 유지비', NULL, 'perks',
+  (@comp_id, 'transport', '연고지 왕래 교통비·P직급 이상 차량 유지비', NULL, 'perks',
    'est', NULL, TRUE, '비연고지에 발령받아 가족과 떨어져 근무 중인 직원에게 매주 해당 연고지(배우자 및 직계자녀 거주지로 제한) 왕복 교통비를 거리별 차등 지급 (공식 홈페이지 급여 및 복리후생 연고지 왕래 교통비 지원 항목), P직급(5년차 이상 수석) 이상 차량 유지비 지원 (같은 페이지 기타 항목) — 교통비·차량 유지비 지급액 미기재', 10),
   (@comp_id, 'welfare_point', '선택적 복리후생제(복지포인트)', 200, 'perks',
    'est', '전 직원 대상으로 개인의 필요 내지 기호에 따라 복지 항목 및 수혜수준을 스스로 선택하여 사용할 수 있는 제도 (공식 홈페이지 급여 및 복리후생 선택적 복리후생 제도 항목) — 포인트 금액·지급 주기 미기재 (추정)', FALSE, NULL, 11),
@@ -103,7 +103,7 @@ VALUES
 
   -- ── 보상·금전 (compensation) — 사업보고서 · 반기보고서 보수 산정기준 ──
   (@comp_id, 'incentive', '생산성향상격려금', NULL, 'compensation',
-   'est', NULL, TRUE, '전 임직원을 대상으로 전년도 경영목표 달성에 대한 격려와 당해 연도 경영목표 달성을 위한 동기부여 차원에서 생산성향상격려금 지급 (2025 사업보고서 · 2026 반기보고서 보수 산정기준 항목) — 지급 기준·지급률 미기재', 90)
+   'est', NULL, TRUE, '전 임직원을 대상으로 2025년도 경영목표 달성에 대한 격려 및 2026년 경영목표 달성을 위한 동기부여 차원에서 생산성향상격려금 지급 (2026 반기보고서 · 2025 사업보고서 임원 개인별 보수 산정기준 항목) — 지급 기준·지급률 미기재', 90)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),
