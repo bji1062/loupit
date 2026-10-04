@@ -131,6 +131,13 @@ def test_memo_no_longer_turns_gaon_into_interest_support():
     assert out["rows"][0]["facets"] == {"buy", "lease"}
 
 
+def test_lease_facet_reads_monthly_rent_too():
+    """「전/월세」 · 「월세」도 임차 자금이다 — 「전세」 낱말만 보면 「전/월세」가 끊겨 안 걸린다(현대글로비스 2026-10-02)."""
+    cfg = _housing_cfg()
+    out = br.classify(cfg, [{"comp": "x", "desc": "주택구입(전/월세 포함) 및 결혼준비자금 지원", "note": None}])
+    assert {"buy", "lease"} <= out["rows"][0]["facets"]
+
+
 # ── ② 예외(override) — 원문 해시에 묶인다 ────────────────────────────────────
 
 
@@ -547,7 +554,7 @@ def test_gc10_covers_item_pages_through_the_release_gate(fake_now):
 
 def test_estimated_existence_row_is_not_counted_as_fact():
     """금액 없는 행의 「(추정)」 = 이 복지가 있다는 것 자체가 수집자 추정(`format.benefit_desc` 와 같은
-    해석). 그 원문 속 「대출」「저금리」를 사실로 세면 공개 숫자에 추정이 섞인다(DB손해보험 구본)."""
+    해석). 그 원문 속 「대출」「저금리」를 사실로 세면 공개 숫자에 추정이 섞인다(DB손해보험 구본 — 2026-10-04 재수집 뒤 실데이터 0, 이 표본이 갈래를 지킨다)."""
     cfg = _housing_cfg()
     rows = [{"comp": "db_insurance", "desc": "저금리 주택자금 대출 지원 (추정)", "note": None, "unverified": True}]
     r = br.classify(cfg, rows)["rows"][0]

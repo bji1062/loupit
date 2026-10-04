@@ -6,7 +6,7 @@
 --
 -- 참고:
 --   정본은 자기 도메인(genomecom.co.kr) 헤더 Careers 메뉴가 가리키는 채용소개 페이지의 복리후생 절이다.
---   정적 HTML(그누보드) — 헤드리스 렌더 없음. 항목명 15칸(두 칸은 두 줄 라벨)뿐이고 설명 문장 · 금액 · 대상이 없다.
+--   정적 HTML(그누보드) — 헤드리스 렌더 없음. 항목명 15칸(세 칸은 두 줄 라벨)뿐이고 설명 문장 · 금액 · 대상이 없다.
 --   HTTPS 는 호스팅 기본 자체서명 인증서라 http 주소를 정본으로 골랐다.
 --   보조 = 자기 도메인 보도자료(2023-12-08 우리사주조합 무상 출연) · OpenDART 2025 사업보고서(주식 소유현황 우리사주조합).
 --   헤더 메뉴 주석 속 옛 ATS(genomecom.recruiter.co.kr)는 링크가 주석 처리돼 있고 호스트도 없다 — 근거 아님.
@@ -72,7 +72,7 @@ VALUES
   (@comp_id, 'holiday_gift', '명절선물', 20, 'compensation',
    'est', '명절선물 (공식 홈페이지 Careers 채용소개 복리후생 항목) — 선물 종류·금액·횟수 미기재 (추정)', FALSE, NULL, 60),
   (@comp_id, 'stock_option', '우리사주조합', NULL, 'compensation',
-   'est', NULL, TRUE, '우리사주조합 운영 (2025 사업보고서 주식 소유현황 · 공식 홈페이지 보도자료) — 2023년 12월 대표이사 보유 주식 일부를 우리사주조합에 무상 출연, 조합 규정에 따라 조합원에게 배정 · 가입 조건·회사 지원 방식 미기재', 61)
+   'est', NULL, TRUE, '우리사주조합 운영 (2025 사업보고서 주식 소유현황 · 공식 홈페이지 보도자료), 2023년 12월 대표이사 보유 주식 일부를 우리사주조합에 무상 출연, 조합 규정에 따라 조합원에게 배정 — 가입 조건·회사 지원 방식 미기재', 61)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

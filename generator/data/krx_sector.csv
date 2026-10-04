@@ -7,13 +7,11 @@ stock_cd,corp_nm,sector_nm,market
 000660,SK하이닉스,전기·전자,KOSPI
 000880,한화,화학,KOSPI
 003490,대한항공,운송·창고,KOSPI
-003550,LG,기타금융,KOSPI
 004020,현대제철,금속,KOSPI
 005380,현대자동차,운송장비·부품,KOSPI
 005830,DB손해보험,보험,KOSPI
 005930,삼성전자,전기·전자,KOSPI
 005940,NH투자증권,증권,KOSPI
-006260,LS,기타금융,KOSPI
 006400,삼성SDI,전기·전자,KOSPI
 009150,삼성전기,전기·전자,KOSPI
 010950,S-Oil,화학,KOSPI
@@ -97,7 +95,6 @@ stock_cd,corp_nm,sector_nm,market
 357780,솔브레인,화학,KOSDAQ
 373220,LG에너지솔루션,전기·전자,KOSPI
 377300,카카오페이,기타금융,KOSPI
-403870,HPSP,기계·장비,KOSDAQ
 010130,고려아연,금속,KOSPI
 000720,현대건설,건설,KOSPI
 010120,LS ELECTRIC,전기·전자,KOSPI

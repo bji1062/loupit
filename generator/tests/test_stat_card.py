@@ -719,7 +719,7 @@ def test_desc_drops_the_estimate_tail_because_the_amount_axis_already_says_it():
 
 
 def test_desc_never_touches_a_qualitative_row_marked_estimate():
-    """🚨 금액이 없는데 `(추정)` 이 붙은 행은 **통째로 건드리지 않는다**(DB손해보험 9행).
+    """🚨 금액이 없는데 `(추정)` 이 붙은 행은 **통째로 건드리지 않는다**(DB손해보험 구본 9행 — 2026-10-04 재수집 뒤 실데이터 0).
 
     금액이 없으니 「금액이 추정」일 수가 없고, 수집자가 「이 복지가 있다는 것 자체가 불확실하다」는
     뜻으로 적은 것이다. 걷어내면 그 유일한 표시가 사라진다 — 배지(`official`)와의 모순은

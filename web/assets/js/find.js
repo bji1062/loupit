@@ -25,9 +25,9 @@ export { CATEGORY_ORDER, CATEGORY_LABEL };
 export const DEFAULT_CATEGORY = 'perks';
 
 // 손으로 못 박는 표시명(`generator/pages/find.py::LABEL_OVERRIDE` 와 같은 줄). 세 갈래다:
-// ① 같은 대표 명칭을 쓰는 코드를 사람이 읽는 이름으로 갈라 준다(앞 다섯 줄). 실데이터에 두 뭉치가 있다:
+// ① 같은 대표 명칭을 쓰는 코드를 사람이 읽는 이름으로 갈라 준다(앞 네 줄). 실데이터에 두 뭉치가 있다:
 //   · 「통근버스」 = transport(24곳) · commute_subsidy(44곳)
-//   · 「장기근속 포상」 = long_service_leave(54) · long_service_bonus(21) · long_service(1, 구 코드)
+//   · 「장기근속 포상」 = long_service_leave(54) · long_service_bonus(21)
 //   자동 별칭 병기(아래 `disambiguate`)만으로는 "통근버스 · 교통비" / "통근버스 · 야간 교통비" 처럼
 //   둘 다 헷갈리는 이름이 나와서 손으로 못 박는다. 그 밖의 중복은 별칭이 붙는다.
 // ② 빈도 1순위가 한 그룹의 표기(CJ 7개사 공통 문구)라 항목 전체의 이름이 되는 코드를 일반명으로(뒤 다섯 줄,
@@ -38,7 +38,6 @@ export const LABEL_OVERRIDE = {
   commute_subsidy: '통근버스·출퇴근 지원',
   long_service_leave: '장기근속 휴가',
   long_service_bonus: '장기근속 포상금',
-  long_service: '장기근속 포상 (구 코드)',
   discount: '계열사·제휴 할인',
   satellite_office: '거점·공유 오피스',
   leisure_ticket: '여가·문화 이용권(티빙·CGV 이용권)',
@@ -214,7 +213,7 @@ export function disambiguate(codes) {
       info.label = `${info.baseLabel} · ${alias || info.code}`;
     }
   }
-  // 손으로 못 박은 이름은 중복이 아니어도 존중한다(구 코드 표시 등).
+  // 손으로 못 박은 이름은 중복이 아니어도 존중한다(일반명 고정 등).
   for (const [cd, label] of Object.entries(LABEL_OVERRIDE)) if (codes[cd]) codes[cd].label = label;
   return codes;
 }

@@ -53,7 +53,7 @@ VALUES
   (@comp_id, 'work_tools', 'AI 도구·개인별 AI API 크레딧·업무 장비', NULL, 'work_env',
    'est', NULL, TRUE, '사내 AI Assistant 상시 운영, Claude·ChatGPT·Gemini 등 원하는 AI 도구를 쓸 수 있도록 개인별 AI API Credit 지급, 업무에 필요한 신규 AI Tool 추가 도입 지원 (공식 채용 사이트 복리후생 AI-BASED ENVIRONMENT 항목), 최고급 장비와 소프트웨어 제공 (같은 페이지 EFFICIENT WORKING ENVIRONMENT 항목) — 크레딧 금액·장비 사양 미기재', 10),
   (@comp_id, 'office_furniture', '허먼밀러 의자', NULL, 'work_env',
-   'est', NULL, TRUE, '업계 최고 수준의 장비 및 소프트웨어 제공 — 허먼밀러 의자를 비롯한 최고급 장비 (공식 채용 사이트 복리후생 EFFICIENT WORKING ENVIRONMENT 항목) — 지급 대상·다른 가구 미기재', 11),
+   'est', NULL, TRUE, '업계 최고 수준의 장비 및 소프트웨어 제공, 허먼밀러 의자를 비롯한 최고급 장비 (공식 채용 사이트 복리후생 EFFICIENT WORKING ENVIRONMENT 항목) — 지급 대상·다른 가구 미기재', 11),
   (@comp_id, 'dormitory', '역세권 사택', NULL, 'work_env',
    'est', NULL, TRUE, '역세권 인근 거주를 위한 사택 지원 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목), 사택(기숙사) 지원 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 항목) — 위치·입주 대상·본인 부담 미기재', 12),
   (@comp_id, 'nap_room', '캡슐 수면실·안마의자', NULL, 'work_env',
@@ -69,7 +69,7 @@ VALUES
 
   -- ── 근무 유연성 (flexibility) — 채용 사이트 EFFICIENT WORKING · 사업보고서 ──
   (@comp_id, 'flex_work', '완전 선택적 근로시간제', NULL, 'flexibility',
-   'est', NULL, TRUE, '완전 선택적 근로시간제 — 자유로운 출퇴근 시간 (공식 채용 사이트 복리후생 EFFICIENT WORKING ENVIRONMENT 항목), 전 직원 선택근무제 시행 (2025 사업보고서 유연근무제도 사용 현황 주석) — 정산 기간·의무 근무시간대 미기재', 30),
+   'est', NULL, TRUE, '완전 선택적 근로시간제(자유로운 출퇴근 시간) (공식 채용 사이트 복리후생 EFFICIENT WORKING ENVIRONMENT 항목), 전 직원 선택근무제 시행 (2025 사업보고서 유연근무제도 사용 현황 주석) — 정산 기간·의무 근무시간대 미기재', 30),
   (@comp_id, 'remote_work', '재택근무 (필요 시)', NULL, 'flexibility',
    'est', NULL, TRUE, '필요에 따라 재택근무 운영 (2025 사업보고서·2026 반기보고서 유연근무제도 사용 현황 주석) — 적용 대상·사용 횟수 미기재', 31),
 

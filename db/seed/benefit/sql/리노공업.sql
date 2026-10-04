@@ -36,31 +36,31 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 건강·의료 (health) — 요약본 지원금/보험 ──
   (@comp_id, 'health_check', '건강검진', NULL, 'health',
-   'est', NULL, TRUE, '건강검진 (지원금/보험 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 10),
+   'est', NULL, TRUE, '건강검진 — 지원금/보험 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 10),
 
   -- ── 가족·돌봄 (family) — 요약본 지원금/보험 ──
   (@comp_id, 'event', '각종 경조사 지원', NULL, 'family',
-   'est', NULL, TRUE, '각종 경조사 지원 (지원금/보험 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 20),
+   'est', NULL, TRUE, '각종 경조사 지원 — 지원금/보험 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 20),
   (@comp_id, 'child_edu', '자녀학자금', NULL, 'family',
-   'est', NULL, TRUE, '자녀학자금 (지원금/보험 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 21),
+   'est', NULL, TRUE, '자녀학자금 — 지원금/보험 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 21),
 
   -- ── 보상 (compensation) — 요약본 급여제도 ──
   (@comp_id, 'bonus', '상여금', NULL, 'compensation',
-   'est', NULL, TRUE, '상여금 (급여제도 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 30),
+   'est', NULL, TRUE, '상여금 — 급여제도 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 30),
 
   -- ── 경제적 부가혜택 (perks) — 요약본 교육/생활 ──
   (@comp_id, 'meal', '구내식당(사원식당)', NULL, 'perks',
-   'est', NULL, TRUE, '구내식당(사원식당) (교육/생활 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 40),
+   'est', NULL, TRUE, '구내식당(사원식당) — 교육/생활 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 40),
   (@comp_id, 'commute_subsidy', '통근버스 운행', NULL, 'perks',
-   'est', NULL, TRUE, '통근버스 운행 (출퇴근 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 41),
+   'est', NULL, TRUE, '통근버스 운행 — 출퇴근 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 41),
 
   -- ── 휴가 (time_off) — 요약본 리프레시 ──
   (@comp_id, 'leave_general', '경조휴가제', NULL, 'time_off',
-   'est', NULL, TRUE, '경조휴가제 (리프레시 항목) (공식 원문 미확인 · 검색 AI 요약 기준)', 50),
+   'est', NULL, TRUE, '경조휴가제 — 리프레시 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 50),
 
   -- ── 근무환경 (work_env) — 요약본 사내 식당 및 편의 시설 ──
   (@comp_id, 'lounge', '휴식 공간', NULL, 'work_env',
-   'est', NULL, TRUE, '휴식 공간 (사내 식당 및 편의 시설 문장) (공식 원문 미확인 · 검색 AI 요약 기준)', 60)
+   'est', NULL, TRUE, '휴식 공간 — 사내 식당 및 편의 시설 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 60)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

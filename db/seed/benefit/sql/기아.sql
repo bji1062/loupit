@@ -61,7 +61,7 @@ VALUES
 
   -- ── 여가·라이프 (leisure) ── 보고서 p.74 · 일생활 균형 우수기업 · 가족친화인증
   (@comp_id, 'summer_vacation_subsidy', '3주 휴가 독려 여가포인트', NULL, 'leisure',
-   'est', NULL, TRUE, '3주 휴가 사용 독려 제도 — 휴가 5일 사용 시 여가포인트 제공, 포인트 금액 미기재', 30),
+   'est', NULL, TRUE, '3주 휴가 사용 독려 제도, 휴가 5일 사용 시 여가포인트 제공 — 포인트 금액 미기재', 30),
   (@comp_id, 'resort', '사계절 휴양소', NULL, 'leisure',
    'est', NULL, TRUE, '8개 호텔 및 리조트 회원가 숙박 혜택을 주는 사계절 휴양소 운영, 가족 휴양시설 제공', 31),
   (@comp_id, 'company_event', '가족초청행사·가족캠프', NULL, 'leisure',

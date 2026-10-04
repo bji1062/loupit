@@ -50,7 +50,7 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 시간·휴가 (time_off) — 라이프 & 컬처 휴가 제도 ──
   (@comp_id, 'refresh_leave', 'Refresh · Happy Vacation', NULL, 'time_off',
-   'est', NULL, TRUE, '기본 휴가 외에도 Refresh, Happy Vacation 사용 가능 — 건강한 여가 문화와 휴식으로 재충전할 수 있도록 운영하는 휴가 제도 (공식 채용 사이트 라이프 & 컬처 휴가 제도 항목) — 휴가 일수·부여 조건·유급 여부 미기재', 10),
+   'est', NULL, TRUE, '기본 휴가 외에도 Refresh, Happy Vacation 사용 가능, 건강한 여가 문화와 휴식으로 재충전할 수 있도록 운영하는 휴가 제도 (공식 채용 사이트 라이프 & 컬처 휴가 제도 항목) — 휴가 일수·부여 조건·유급 여부 미기재', 10),
 
   -- ── 여가·라이프 (leisure) — 라이프 & 컬처 휴가 제도 ──
   (@comp_id, 'resort', '임직원 전용 휴양지·콘도', 50, 'leisure',
@@ -80,7 +80,7 @@ VALUES
   (@comp_id, 'commute_subsidy', '통근버스', NULL, 'perks',
    'est', NULL, TRUE, '편리한 출퇴근 환경을 위한 통근버스 운영(용인 · 오산 · 대전 사업장) (공식 채용 사이트 라이프 & 컬처 기숙사/통근버스 항목) — 노선·운행 횟수 미기재', 46),
   (@comp_id, 'meal', '사내 식당 (조식·중식·석식)', NULL, 'perks',
-   'est', NULL, TRUE, '조식/중식/석식 매일 제공 — 비건, 저염식, 테이크아웃 등 다양한 메뉴를 저렴한 가격에 이용 (공식 채용 사이트 라이프 & 컬처 식당/카페테리아 항목) — 회사 부담액·식대 미기재', 47),
+   'est', NULL, TRUE, '조식/중식/석식 매일 제공(비건, 저염식, 테이크아웃 등 다양한 메뉴를 저렴한 가격에 이용) (공식 채용 사이트 라이프 & 컬처 식당/카페테리아 항목) — 회사 부담액·식대 미기재', 47),
 
   -- ── 근무환경 (work_env) — 라이프 & 컬처 휴게시설 · 기숙사/통근버스 / 2025 보고서 수유 시설 ──
   (@comp_id, 'lounge', '휴게시설', NULL, 'work_env',

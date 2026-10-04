@@ -7,7 +7,7 @@
 -- 참고:
 --   정본은 테크윙 공식 홈페이지 www.techwing.co.kr 헤더 메뉴 인재채용 → 복리후생(/kor/recruit/recruit04.asp)이다.
 --   본문은 이미지 1장(/kor/images/recruit/recruit04.jpg, 850x598)에 4칸 라벨 31개(Health 7 · Education 6 · Family 7 ·
---   Office Life 11)로 실려 있어 내려받아 판독했다. 같은 사이트 영문판 Recruit → Welfare 이미지가 같은 목록을 영문으로 싣는다
+--   Office Life 11)로 실려 있어 내려받아 판독했다. 같은 사이트 영문판 Careers → Benefits 이미지가 같은 목록을 영문으로 싣는다
 --   (리조트 숙박료 20% 지원은 영문판에만 있다).
 --   보조 출처: 같은 사이트 인재채용 → 인사제도(/kor/recruit/recruit03.asp 이미지) 보상제도 문장 ·
 --     ESG → 사회 → 구성원 안전/보건(/kor/esg/esg0402.asp 본문) · 구성원 삶의질 향상(/kor/esg/esg0403.asp 이미지).
