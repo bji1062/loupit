@@ -9,6 +9,7 @@
   시간 초과 / 다른 호스트·루트로 리다이렉트 / robots 금지.
 - 예절 — 정직한 UA 하나(막혀도 바꿔 재시도 안 함), 요청 사이 3초·같은 호스트 10초, robots 를 먼저, 받는 양 상한.
 - robots.txt 는 RFC 9309 로 판정한다 — 표준 파서가 실제 대상(SK하이닉스·가온전선)에서 틀린 모양을 못박는다.
+  묶음 밖 규칙(첫 `User-agent` 줄 앞)만 일부러 `*` 묶음(과 우리 토큰 묶음)으로 읽는다(DB손해보험 idbins, 결정 2026-10-04 — SRC-2j~2p).
   5xx 는 전면 금지, 전송 실패는 요청하지 않고 error, 리다이렉트 목적지마다 다시 묻는다(2026-09-27 검토 MED-1·2).
 - 내부 주소(SSRF) — 시드·리다이렉트·`//host`·robots.txt 리다이렉트·IPv6·옛 IPv4 표기·DNS 해석 전부 연결 전에 막는다
   (검토 BLOCK-1). 가짜 해석기와 **로컬 서버 두 대**(루프백)로 재현표를 그대로 돌린다 — 외부 네트워크는 쓰지 않는다.
@@ -334,8 +335,7 @@ def test_SRC2d_우리를_부르는_묶음이_있으면_그것만_없으면_별�
     assert sc.parse_robots(coway).allows("https://www.coway.com/recruit") is False
 
 
-def test_SRC2e_묶음_밖_규칙_빈_Disallow_동률_주석():
-    assert sc.parse_robots("Disallow: /\nUser-agent: *\nAllow: /x\n").allows("https://x.com/a") is True
+def test_SRC2e_빈_Disallow_동률_주석_BOM_HTML():
     assert sc.parse_robots("User-agent: *\nDisallow:\n").allows("https://x.com/a") is True
     assert sc.parse_robots("User-agent: *\nDisallow: /a # 관리\nAllow: /a\n").allows("https://x.com/a") is True
     assert sc.parse_robots("﻿User-agent : *\nDisallow : /a\n").allows("https://x.com/a/b") is False
@@ -809,3 +809,91 @@ def test_SRC15_콘솔_조회는_점검기를_불러오지_않고_점검기는_TL
     out = subprocess.run([sys.executable, "-c", probe], cwd=ROOT, capture_output=True, text=True, timeout=60)
     assert out.returncode == 0, out.stderr[-2000:]
     assert out.stdout.split() == ["False", "0"], out.stdout
+
+
+# ── SRC-2j~2p: 묶음 밖 규칙은 `*` 묶음으로 본다(사용자 결정 2026-10-04, PR-3 안건 4a — RFC 9309 와 일부러 다름) ────────
+
+#: DB손해보험 `www.idbins.com/robots.txt` 2026-10-02 사본 그대로(CRLF · 끝 줄바꿈 없음 · `User-agent` 줄 없음).
+IDBINS = ("Allow: /$\r\nAllow: /Index.jsp$\r\nAllow: /FMCLAV5412.do\r\nAllow: /pc/bizxpress/pdc/drv/FWMALV0551.shtm\r\n"
+          "Allow: /FWLOAV0969.do\r\nAllow: /FWMALV5472.do\r\nAllow: /FWMYCV0084.do\r\nAllow: /FWMYCV0365.do\r\n"
+          "Allow: /FWBENV6050.do\r\nAllow: /FWBENV6054.do\r\nAllow: /FWBENV6053.do\r\nDisallow: /*.css$\r\n"
+          "Disallow: /*.js$\r\nDisallow: /")
+IDBINS_U = "https://www.idbins.com/pc/bizxpress/cmy/adp/FWCOMV1732.shtm"
+
+
+def test_SRC2j_묶음_밖_규칙만_있는_파일은_별표_묶음으로_읽는다__idbins_모양():
+    """`User-agent` 줄이 하나도 없는 파일. RFC 9309·표준 라이브러리는 규칙 0개(전부 허용)로 읽지만, 사이트의 뜻은
+    `Disallow: /` 다 — 같은 규칙을 `User-agent: *` 아래에 쓴 `m.idbins.com` 은 금지다. 우리는 덜 두드리는 쪽을 고른다."""
+    rules = sc.parse_robots(IDBINS)
+    assert len(rules.rules) == 14
+    assert rules == sc.parse_robots("User-agent: *\r\n" + IDBINS), "앞에 `User-agent: *` 를 붙인 것과 같아야 한다"
+    assert rules.allows(IDBINS_U) is False
+    assert rules.allows("https://www.idbins.com/") is True, "`Allow: /$`(2자)가 `Disallow: /`(1자)보다 길다"
+    assert rules.allows("https://www.idbins.com/pc/bizxpress/pdc/drv/FWMALV0551.shtm") is True
+    std = urllib.robotparser.RobotFileParser()
+    std.parse(IDBINS.splitlines())
+    assert std.can_fetch(sc.ROBOTS_AGENT, IDBINS_U) is True, "표준 라이브러리가 바뀌었다면 이 모듈의 설명을 다시 보라"
+
+
+def test_SRC2k_묶음_밖_규칙만_있는_robots_면_요청하지_않고_robots_로_남긴다():
+    robots = "https://www.idbins.com/robots.txt"
+    r, web = _one(IDBINS_U, {robots: (200, {"Content-Type": "text/plain"}, IDBINS.encode())})
+    assert (r.result_cd, r.http_status) == ("robots", None)
+    assert r.detail == "robots.txt 가 이 경로를 막는다 — 요청하지 않았다"
+    assert web.urls() == [robots], "robots 가 막은 주소를 두드렸다"
+
+
+def test_SRC2l_묶음_밖_규칙과_별표_묶음은_합쳐_가장_긴_규칙이_이긴다():
+    # 옛 SRC-2e 첫 단언(묶음 밖 `Disallow: /` 무시 → 허용)을 뒤집은 것 — 이제 금지다.
+    rules = sc.parse_robots("Disallow: /\nUser-agent: *\nAllow: /x\n")
+    assert rules.allows("https://x.com/a") is False and rules.allows("https://x.com/x1") is True
+    text = "Disallow: /recruit/\nUser-agent: *\nAllow: /recruit/welfare\nDisallow: /a\n"
+    rules = sc.parse_robots(text)
+    assert rules.allows("https://x.com/recruit/welfare") is True, "별표 묶음의 더 긴 Allow 가 이긴다"
+    assert rules.allows("https://x.com/recruit/apply") is False, "묶음 밖 Disallow 가 별표 묶음과 함께 선다"
+    # 반대 방향 — 묶음 밖 Allow 가 별표 묶음의 짧은 Disallow 를 이긴다(합친다는 것은 풀어 주는 쪽도 포함한다).
+    rules = sc.parse_robots("Allow: /a/b\nUser-agent: *\nDisallow: /a\n")
+    assert rules.allows("https://x.com/a/b/c") is True and rules.allows("https://x.com/a/x") is False
+    # 길이가 같으면 허용(RFC 9309 §2.2.2) — 어느 묶음에서 왔든 같다.
+    assert sc.parse_robots("Disallow: /x\nUser-agent: *\nAllow: /x\n").allows("https://x.com/x1") is True
+    # 별표 묶음이 없고 남의 이름 묶음만 있어도 묶음 밖 규칙은 우리(=별표)에게 선다.
+    assert sc.parse_robots("Disallow: /\nUser-agent: Googlebot\nAllow: /\n").allows("https://x.com/a") is False
+    # 별표 묶음이 여럿이어도 묶음 밖 규칙은 한 번 더해질 뿐이다(SRC-2f 와 같이 합친다).
+    rules = sc.parse_robots("Disallow: /c\nUser-agent: *\nDisallow: /a\n\nUser-agent: *\nDisallow: /b\n")
+    assert [rules.allows(f"https://x.com/{p}1") for p in "abcd"] == [False, False, False, True]
+
+
+def test_SRC2m_우리_토큰_묶음이_있어도_묶음_밖_규칙은_함께_선다():
+    """리드 판정 2026-10-04 ⚖13: 묶음 밖 규칙은 우리 토큰 묶음에도 붙는다(보수적). 우리 묶음의 규칙은 그대로 더해진다."""
+    text = ("Disallow: /\n"
+            "User-agent: *\nDisallow: /\n\n"
+            "User-agent: LOUPIT-Source-Check/1.0\nAllow: /careers\nDisallow: /private\n")
+    rules = sc.parse_robots(text)
+    assert rules.allows("https://x.com/careers") is True, "우리 묶음의 더 긴 Allow 가 묶음 밖 `Disallow: /` 를 이긴다"
+    assert rules.allows("https://x.com/private/a") is False
+    assert rules.allows("https://x.com/other") is False, "묶음 밖 `Disallow: /` 가 우리 묶음에도 선다"
+    assert sc.parse_robots("Disallow: /x\nUser-agent: LOUPIT-Source-Check\nAllow: /\n").allows("https://x.com/a") is True
+
+
+def test_SRC2n_묶음_밖_Allow_만_있으면_전부_허용이다():
+    rules = sc.parse_robots("Allow: /a\nAllow: /b\n")
+    assert len(rules.rules) == 2
+    assert rules.allows("https://x.com/zzz") is True and rules.allows("https://x.com/a") is True
+
+
+def test_SRC2o_묶음_밖_빈_Disallow_는_규칙이_아니고_첫_묶음을_흐트러뜨리지_않는다():
+    assert sc.parse_robots("Disallow:\n").rules == ()
+    rules = sc.parse_robots("Disallow:\nUser-agent: *\nUser-agent: Yeti\nDisallow: /x\n")
+    assert rules.rules == ((False, "/x"),), "빈 Disallow 뒤의 User-agent 두 줄은 한 묶음이다"
+    assert rules.allows("https://x.com/a") is True and rules.allows("https://x.com/x1") is False
+
+
+def test_SRC2p_HTML_본문은_규칙을_만들지_않는다__오류_페이지를_200_으로_주는_사이트():
+    """robots.txt 자리에 오류 HTML 을 200 으로 주는 곳이 있다(실측: S-OIL · 동국제약 302→오류 HTML · NH투자증권 gabia 오류
+    페이지). 묶음 밖 규칙을 읽게 되면서 HTML 의 한 줄이 규칙으로 읽히지 않는지 본다 — 키는 줄 맨 앞 낱말 그대로여야 한다."""
+    html = ("\ufeff<!DOCTYPE html>\r\n<html lang=\"ko\">\r\n<head>\r\n"
+            "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=UTF-8\" />\r\n"
+            "<link rel=\"canonical\" href=\"https://x.com/\" />\r\n<style>body{color:#333;}</style>\r\n"
+            "<script>var allow = {disallow: true}; location.href='https://x.com/404';</script>\r\n"
+            "</head><body><p>요청하신 페이지를 찾을 수 없습니다: /robots.txt</p></body></html>\r\n")
+    assert sc.parse_robots(html).rules == ()
