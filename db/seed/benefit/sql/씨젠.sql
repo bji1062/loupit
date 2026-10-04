@@ -18,8 +18,8 @@
 --         JSON 은 프로브 사본과 바이트 동일, 샘플 템플릿 표지 0건(KAI 오염 선례 점검).
 --       ⚠ 공식 사이트(kr.seegene.com)에서 채용 서브도메인으로 가는 링크는 없다. 귀속 근거는
 --         채용사이트 메타·기업소개 사실값(설립 2000.09·코스닥 2010.09)과 헤더의 공식 홈 링크.
---       S1 20 라벨 → 법정 1개(산전후휴가/육아휴직) 제외 · E-Learning 1개 제외(학습 플랫폼 제공,
---         비용 지원 문구 없음) → 18 라벨. 장기근속자 포상/포상휴가 1라벨 → 2행 분리(+1).
+--       S1 20 라벨 → 법정 1개(산전후휴가/육아휴직) 제외 · E-Learning 1개(학습 플랫폼 제공)는
+--         2026-10-04 규칙 8 개정으로 edu_support 행(SORT 80)으로 되살림 → 19 라벨. 장기근속자 포상/포상휴가 1라벨 → 2행 분리(+1).
 --         독감 예방접종은 S2 가 부속의원을 통해 지원한다고 밝혀 clinic 행에 합침(-1).
 --         Nursing Room 은 휴식공간과 같은 lounge 행에 합침(-1) → 17행.
 --         S2 에만 있는 씨젠 어린이집 운영(childcare)·온마음 프로그램(mental) 2행 추가 → 19행.
@@ -28,6 +28,7 @@
 --         (leisure 10 · perks 20 · compensation 30 · time_off 40 · health 50 · work_env 60 · family 70).
 --       ⚠ 검증·감사 판정 반영(2026-09-15): 행 수 19 그대로. SORT 41 힐링데이·돌봄데이는 원문에 휴가 부여 문구가 없어
 --       refresh_leave 에서 leave_general 로 재코딩했다.
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(edu_support) — 최종 20행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 72 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
@@ -102,7 +103,11 @@ VALUES
   (@comp_id, 'event', '경조금·경조휴가', NULL, 'family',
    'est', NULL, TRUE, '경조금/경조휴가 (공식 채용 페이지 복리후생 항목). ESG 사회 페이지 복리후생 프로그램 가족 영역: 경조사 지원 — 경조 유형별 금액·휴가 일수 미기재', 71),
   (@comp_id, 'childcare', '씨젠 어린이집', NULL, 'family',
-   'est', NULL, TRUE, '씨젠 어린이집 운영 (ESG 사회 페이지 복리후생 프로그램 가족 영역 — 정원·대상 연령·운영 사업장 미기재)', 72)
+   'est', NULL, TRUE, '씨젠 어린이집 운영 (ESG 사회 페이지 복리후생 프로그램 가족 영역 — 정원·대상 연령·운영 사업장 미기재)', 72),
+
+  -- ── 성장·커리어 (growth) ──
+  (@comp_id, 'edu_support', 'E-Learning', NULL, 'growth',
+   'est', NULL, TRUE, 'E-Learning (공식 채용 페이지 복리후생 항목) — 학습 과정 구성·수강 대상·이용 방식 미기재', 80)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

@@ -114,14 +114,6 @@
   },
   "overrides": [
     {
-      "comp": "hyundai_steel",
-      "h": "3e2799ab60",
-      "facets_remove": [
-        "frequency"
-      ],
-      "why": "「매년」은 단체교섭 주기다 — 성과급을 한 해 몇 번 주는지는 원문에 없다"
-    },
-    {
       "comp": "hyosung_heavy",
       "h": "ef7e4a18e4",
       "mode": "company",

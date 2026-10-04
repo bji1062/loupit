@@ -43,6 +43,7 @@ export const LABEL_OVERRIDE = {
   leisure_ticket: '여가·문화 이용권(티빙·CGV 이용권)',
   birthday_leave: '생일 휴가·조기퇴근',
   birthday_gift: '생일·기념일 선물',
+  welfare_fund_loan: '사내 대출·생활안정자금 지원',
   // 2026-09-26: 6행 이름이 전부 달라 최단 이름(LIG 「정년 퇴임식·기념품」)이 6곳의 이름이 되던 것을 일반명으로.
   retirement_support: '정년퇴직·퇴직 준비 지원',
   // ③ 2026-09-27 표본 재생성과 그 검토가 드러낸 같은 결함 — 길이 규칙으로 한 회사의 서비스명·브랜드·건물명이

@@ -17,6 +17,7 @@
 --       구본(2026-04)의 앵커 추정치를 유지한 것(금액정책 (a)).
 --       구본 incentive 의 100만원 앵커는 **승계하지 않았다** — 새 출처의
 --       "최대 600% 특별 성과급"과 자릿수가 어긋나 오염으로 판단(evidence 참조).
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 재코딩 1(incentive → profit_sharing) — 최종 12행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (없는 경우)
@@ -41,7 +42,7 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ──
-  (@comp_id, 'incentive', '특별 성과급', NULL, 'compensation',
+  (@comp_id, 'profit_sharing', '특별 성과급', NULL, 'compensation',
    'est', NULL, TRUE, '경영성과에 따라 최대 600%의 특별 성과급 지급(매년 경영 성과에 따른 Profit Sharing)', 10),
   (@comp_id, 'excellence_award', '우수사원 표창/포상', NULL, 'compensation',
    'est', NULL, TRUE, '우수사원 표창/포상제도 운영', 11),

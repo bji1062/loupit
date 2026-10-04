@@ -21,6 +21,7 @@
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3): family_day 삭제(정시퇴근은 조기퇴근이 아님) · 정년퇴직 위로 휴가를 retirement_support 로 분리 · incentive 정성 행 추가(보고서 p.72 차등 인센티브) · self_development 서술에서 60세 이상 자격증 문구 제거 — 최종 29행
 -- 리드 판정(2026-09-28, 독립 검토 MED-2): 구본 추정치 3행(resort 50 · insurance 30 · child_edu 200)은 구본이 다른 법인 데이터라 R6 ② 로 승계하지 않는다 — 금액을 비우고 정성 행으로 둔다
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) — 최종 30행
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -110,6 +111,8 @@ VALUES
    'est', NULL, TRUE, '경력개발 플랫폼 Career Move로 사내 Job Posting을 통한 타 본부 이동(OJM), 사내FA, 사내인턴(OXM) 운영, 글로벌 구성원 간 업무교류 프로그램 Global OXM', 82),
   (@comp_id, 'retirement_support', '정년퇴직 위로 휴가', NULL, 'growth',
    'est', NULL, TRUE, '근속 20년 이상 정년퇴직자 유급휴가 30일 제공', 83),
+  (@comp_id, 'lang', '어학교육', NULL, 'growth',
+   'est', NULL, TRUE, '구성원 주도 학습 항목의 어학교육 (공식 조직문화/인재경영 페이지 교육 프로그램 표 기타 항목 · Kia Sustainability Report 2026 72쪽 — 대상 언어·운영 방식·비용 부담 미기재)', 84),
 
   -- ── 보상·금전 (compensation) ── 보고서 p.72 · 75
   (@comp_id, 'stock_option', '우리사주제도', NULL, 'compensation',

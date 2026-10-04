@@ -186,14 +186,15 @@ def _companies_from_label_cases(cases: dict) -> list[dict]:
 
 
 def test_real_bundle_labels_match_the_shared_fixture():
-    """실데이터 88종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
-    흡수돼 wedding 을 쓰는 회사가 0 → 90 → 89종 · 2026-10-04 R-3 묶음 7 효성중공업 long_service 재코딩으로 88종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
+    """실데이터 89종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
+    흡수돼 wedding 을 쓰는 회사가 0 → 90 → 89종 · 2026-10-04 R-3 묶음 7 효성중공업 long_service 재코딩으로 88종 ·
+    2026-10-04 R-3 후속 정리 2 퇴직금 누진제 새 코드 severance_plus 로 89종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
 
     같은 파일을 `web/assets/js/find.test.js` 도 읽어 같은 기대값을 검사한다 — 표(파이썬)와
     칩(JS)이 **같은 이름을 부른다**는 약속을 실데이터로 재는 자리다. 규칙을 손대면 여기가 먼저 빨개진다.
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
-    assert len(cases["codes"]) == 88, "픽스처가 실데이터 88종이 아니다"  # 2026-10-04 R-3 묶음 7: 효성중공업 long_service → long_service_leave 재코딩으로 long_service 코드 사용 0
+    assert len(cases["codes"]) == 89, "픽스처가 실데이터 89종이 아니다"  # 2026-10-04 R-3 묶음 7: 효성중공업 long_service → long_service_leave 재코딩으로 long_service 코드 사용 0 · R-3 후속 정리 2: severance_plus 신설 +1
     codes = find.derive_codes(_companies_from_label_cases(cases))
     assert sorted(codes) == sorted(cases["codes"])
     for code, want in cases["codes"].items():

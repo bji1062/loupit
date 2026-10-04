@@ -14,9 +14,10 @@
 --     재취업지원 의무 대상(직원 1,200)이나 원문에 재취업지원 문구 없음.
 --   금액: 원문 금액 0 · 구본 추정 승계 5(health_check 100 · child_edu 200 · resort 50 · commute_subsidy 120 · holiday_gift 20) ·
 --     미승계(welfare_point 40 은 원문에 숫자 없음 · meal 432 는 원문 중식·석식 두 끼 · event 50 은 경조금).
---   재코딩 0 · 신규 코드 0. 구본에서 뺀 행 3(nap_room · fitness · edu_support). 구 leave_general 의 휴가 사용 촉진 제도는 빼고 같은 코드를 2시간 단위 휴가로 쓴다.
+--   재코딩 0 · 신규 코드 0. 구본에서 뺀 행 3(nap_room · fitness · edu_support — edu_support 는 2026-10-04 규칙 8 개정으로 E-learning · 독서 토론 · 교양 강좌 행으로 되살림). 구 leave_general 의 휴가 사용 촉진 제도는 빼고 같은 코드를 2시간 단위 휴가로 쓴다.
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-2): 23행 전부 원문 확인 · 시드 조치 없음 · 법정 등록 2행 해제(birthday_leave 는 회사가 주는 반일 유급 휴가 · leave_general 은 휴가 사용 촉진 제도가 원문에 없고 같은 코드가 2시간 단위 휴가로 바뀜) — 최종 23행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(edu_support) · 서술 · 이름 수정 1(lang) — 최종 24행
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -94,8 +95,10 @@ VALUES
    'est', NULL, TRUE, '사내 공감 부서에서 스트레스·번아웃·심리적 어려움 상담과 케어 제공 (ESG 리포트 2025-26 마음건강 증진 항목)', 72),
 
   -- ── 성장·커리어 (growth) ── 신나는 여가생활 자기개발 지원
-  (@comp_id, 'lang', '사외 어학 수강료 지원', NULL, 'growth',
-   'est', NULL, TRUE, '사외 어학 수강료 지원 (공식 채용 페이지 복리후생 자기개발 지원 항목) — 지원 한도 미기재', 80),
+  (@comp_id, 'lang', '어학 수강료 지원·어학강좌', NULL, 'growth',
+   'est', NULL, TRUE, '사외 어학 수강료 지원 (공식 채용 페이지 복리후생 자기개발 지원 항목), 어학강좌와 해외어학 연수 (복리후생 교육 지원 Global 인재 육성 항목), 사내어학집합교육 · 전화외국어/화상영어 · 국내/외 영어캠프 (공식 채용 페이지 인재양성 글로벌 인재 육성 교육 항목) — 지원 한도·참여 대상 미기재', 80),
+  (@comp_id, 'edu_support', 'E-learning 교육·교양 강좌', NULL, 'growth',
+   'est', NULL, TRUE, 'E-learning 교육 제공 (공식 채용 페이지 복리후생 자기개발 지원 항목), 독서몰입캠프 · 쉼 캠프와 미혼 직원 결혼예비학교 · 자녀를 둔 부모 대상 아버지학교 (공식 채용 페이지 인재양성 nepes way 교육 항목 · ESG 리포트 2025-26 20쪽) — 과정 분야·참여 대상 미기재', 81),
 
   -- ── 시간·휴가 (time_off) ── 신나는 여가생활 생일 휴가 · ESG 리포트 기타 제도
   (@comp_id, 'birthday_leave', '생일 휴가', NULL, 'time_off',

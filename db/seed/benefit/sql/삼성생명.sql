@@ -15,7 +15,7 @@
 --   법인 자기 도메인 www.samsunglife.com 은 Vue SPA 다. 헤더 메뉴 API(/gw/api/display/menu/all)와 sitemap.xml 의
 --     채용정보 3쪽(인재상 · 직무소개 · 채용지원 안내)에는 복지 절이 없다. 번들에만 있는 인사제도 라우트(PDK-HRCAI026170M)는
 --     헤더 메뉴 · 사이트맵 어디에도 없어 근거로 쓰지 않았다(행을 세우는 데도, 비우는 데도 쓰지 않음).
---   원문 26항목 → 학습 플랫폼 1 제외(회사 주도 교육) · 복합 라벨 2 분해(사내 피트니스·병원·식당 3행 · 모성보호 2행) ·
+--   원문 26항목 → 학습 플랫폼 1(Grow Campus)은 2026-10-04 규칙 8 개정으로 edu_support 행으로 되살림 · 복합 라벨 2 분해(사내 피트니스·병원·식당 3행 · 모성보호 2행) ·
 --     파견형 4항목을 mba 1행에 흡수 → 24행. 재코딩 1(edu_support → self_development) · 신규 코드 0.
 --   법정 제도 제외: 육아휴직 · 임신기 단축근무(모성보호 항목 안) 문구는 행에도 서술에도 넣지 않았다. 재취업지원 문구는 원문에 없다.
 --   금액: 원문에 원 단위 금액이 0건(정량 표현은 보험료 절반 · 연 25매 · PC 시각뿐). 구본 추정 승계 5(health_check 100 ·
@@ -23,6 +23,7 @@
 --     원문에 숫자가 없어 승계하지 않았다. parenting 50 · event 50 · meal 288 은 승계 조건 미달이라 NULL.
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-2): 자기 도메인 헤더 메뉴의 영문 Human Resource Management 쪽에서 incentive(개인·조직 성과급) · leave_general(PlusWeek 연속 휴가) 정성 행 2 추가 — 최종 26행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(edu_support) · 서술 · 이름 수정 1(lang) — 최종 27행
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -82,12 +83,14 @@ VALUES
   -- ── 성장·커리어 (growth) ── 자기 개발 지원
   (@comp_id, 'self_development', '자격 취득 지원', NULL, 'growth',
    'est', NULL, TRUE, '90여 개 자격증의 응시료 및 교육비 지원 (공식 채용 페이지 자기 개발 지원 항목 — 지원 한도·대상 자격증 목록 미기재)', 40),
-  (@comp_id, 'lang', '외국어 시험 응시료 지원', NULL, 'growth',
-   'est', NULL, TRUE, '어종별 외국어 시험 응시료 지원 (공식 채용 페이지 자기 개발 지원 외국어교육 지원 항목 — 지원 한도·대상 시험 미기재)', 41),
+  (@comp_id, 'lang', '외국어교육·시험 응시료 지원', NULL, 'growth',
+   'est', NULL, TRUE, '다양한 어학교육 과정 운영과 어종별 외국어 시험 응시료 지원 (공식 채용 페이지 자기 개발 지원 외국어교육 지원 항목), 전화영어(중국어) 지원 (공식 홈페이지 영문 인사제도 Opportunities 항목 — 지원 한도·대상 시험 미기재)', 41),
   (@comp_id, 'books', '독서 지원', NULL, 'growth',
    'est', NULL, TRUE, '도서구입비 혹은 독서플랫폼 구독료 지원 (공식 채용 페이지 자기 개발 지원 항목 — 지원 한도 미기재)', 42),
   (@comp_id, 'mba', '해외MBA·금융석사과정', NULL, 'growth',
    'est', NULL, TRUE, '미국, 영국 등 주요 대학 해외MBA 과정과 차세대 리더급 금융전문가 양성 금융석사과정 지원, 다양한 국가에 파견하는 지역전문가, 선진사 업무체험 글로벌 직무연수, 비학위 국내 학술연수 지원 (공식 채용 페이지 자기 개발 지원 항목 — 선발 기준·인원 미기재)', 43),
+  (@comp_id, 'edu_support', 'Grow Campus 학습 플랫폼', NULL, 'growth',
+   'est', NULL, TRUE, 'PC/모바일 기반 학습 플랫폼 Grow Campus 로 언제 어디서나 학습 (공식 채용 페이지 자기 개발 지원 Grow Campus 항목 — 과정 분야·이용 조건 미기재)', 44),
 
   -- ── 근무유연성 (flexibility) ── 사내 문화 및 편의
   (@comp_id, 'pc_off', 'PC ON/OFF 시스템', NULL, 'flexibility',

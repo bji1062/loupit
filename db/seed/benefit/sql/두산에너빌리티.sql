@@ -17,16 +17,17 @@
 --   금액: 월액 환산 2(parenting 보육지원금 월 20만원 → 240 · disability_family_support 월 20만원 → 240, NOTE 에 환산) ·
 --     구본 추정 승계 5(health_check 100 · medical 100 · insurance 30 · child_edu 300 · resort 50 — 전부 틀 값, NOTE 끝에 (추정)).
 --     medical 은 원문 한도 2,000만원 · 500만원을 NOTE 에 적고 틀 값을 승계했다. 경조금 추정치는 승계하지 않았다.
---   제외: 리프레시 휴가 항목(일수 · 유급 여부 · 추가 낱말 없음, 권장 기간은 본인 휴가 사용) · 교육 연수 시설(회사 주도 교육) ·
+--   제외: 하계 연차휴가 · 연말 집중휴가 권장 기간(본인 연차 사용 — 「연중 상시 리프레시 휴가」는 2026-10-04 기준 23 개정으로 refresh_leave 행으로 되살림, SORT 92) · 교육 연수 시설(회사 주도 교육) ·
 --     자격수당(급여성 수당) · 해외 파견 예정자 어학 지원(특정 대상 교육) · 재취업 교육 · 알선(1,000인 이상 법정) ·
 --     법정 모성보호 · 가족돌봄 · 난임치료휴가.
---   구본에서 뺀 행: refresh_leave(남는 제도 없음 — 하계 휴가비 · 문화체험은 새 행으로) · edu_support(연수원 · 교육 시설).
+--   구본에서 뺀 행: refresh_leave(2026-10-04 연중 상시 리프레시 휴가로 되살림 — 하계 휴가비 · 문화체험은 새 행으로) · edu_support(연수원 · 교육 시설).
 --   재코딩: 없음. 구본 한 행에 묶였던 제도는 어휘표 뜻대로 새 행으로 나눴다(company_event · travel_support · library ·
 --     dormitory · relocation · retirement_support · fertility_support).
 --   SORT 섹션 순서 = 복리후생 페이지에서 카테고리가 처음 나온 순서, 보고서 근거 행은 해당 섹션 끝
 --     (leisure 10 · compensation 20 · family 30 · flexibility 40 · work_env 50 · health 60 · perks 70 · growth 80 · time_off 90).
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-5): 34행 전부 원문 확인 · 시드 조치 없음 · 리프레시 휴가 권장 문장 제외 유지 · 장기근속 표는 칸 배치 그대로 · 월 20만원 2행 연 240 환산 유지 · 구본 refresh_leave · edu_support 표적 삭제 — 최종 34행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(edu_support · refresh_leave) — 최종 36행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -129,12 +130,16 @@ VALUES
    'est', NULL, TRUE, '석·박사 학위 과정 지원 제도 운영 (2026 통합보고서 54쪽 리더십 및 직무 역량 강화 프로그램) — 지원 대상·범위 미기재', 81),
   (@comp_id, 'self_development', '자격증 취득 지원·취득 장려금', NULL, 'growth',
    'est', NULL, TRUE, '직무 관련 자격증 취득을 지원하는 제도 운영, 회사가 지정한 고급 기술 자격증을 신규 취득한 경우 계약직을 포함한 모든 임직원에게 축하금(취득 장려금, 정액·일시불) 지급 (2026 통합보고서 54·56·57쪽) — 장려금 액수 미기재', 82),
+  (@comp_id, 'edu_support', '상시학습 온라인 콘텐츠·특강', NULL, 'growth',
+   'est', NULL, TRUE, '정규·계약·파견직 전 직원 대상 리더십·경영·어학 관련 상시학습 온라인 콘텐츠로 자기주도학습 및 자기개발 지원 (2026 통합보고서 55쪽 Online 리더십 과정), 온라인 오디오북·특강 등 상시 학습 콘텐츠 전 임직원 제공 (2026 통합보고서 56쪽) — 과정 수·비용 부담 미기재', 83),
 
   -- ── 시간·휴가 (time_off) — 2026 보고서 47 · 57쪽 ──
   (@comp_id, 'leave_general', '독감 유급휴가 2일', NULL, 'time_off',
    'est', NULL, TRUE, '독감 감염 시 2일간의 유급 휴가 부여 (2026 통합보고서 47쪽 임직원 보건 증진 프로그램)', 90),
   (@comp_id, 'long_service_leave', '근속 35년 해외여행 경비·유급휴가 5일', NULL, 'time_off',
-   'est', NULL, TRUE, '근속 35년인 직원 대상 해외여행 시 여행경비 300만 원 및 유급휴가 5일 지원 (2026 통합보고서 57쪽 장기근속포상)', 91)
+   'est', NULL, TRUE, '근속 35년인 직원 대상 해외여행 시 여행경비 300만 원 및 유급휴가 5일 지원 (2026 통합보고서 57쪽 장기근속포상)', 91),
+  (@comp_id, 'refresh_leave', '연중 상시 리프레시 휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '충분한 휴식과 재충전 시간을 보장하기 위한 연중 상시 리프레시 휴가 운영 (공식 홈페이지 채용 복리후생 리프레시 휴가 항목) — 휴가 일수·유급 여부·사용 조건 미기재', 92)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

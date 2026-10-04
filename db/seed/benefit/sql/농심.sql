@@ -34,6 +34,7 @@
 --       ⚠ 갱신 감지는 div.benefits-container 영역 해시로 볼 것(title·canonical 이 공통이다).
 --       ⚠ 검증·감사 판정 반영(2026-09-19): 16행 그대로. 복합 라벨을 쪼갠 SORT 41·42·51·52 가 서로의 내용을
 --       되풀이하던 것을 각 행의 몫만 말하도록 고쳤고, 9개 필드의 전사 방식 서술을 걷어냈다.
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(edu_support · lang) — 최종 18행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 60 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
@@ -100,7 +101,13 @@ VALUES
   (@comp_id, 'long_service_bonus', '장기근속 기념품', NULL, 'compensation',
    'est', NULL, TRUE, '장기근속기념품 지급 (공식 채용 페이지 복리후생 「안정적인 삶」 항목 — 근속 연수 기준·기념품 내용 미기재)', 60),
   (@comp_id, 'holiday_gift', '기념일 기념품', NULL, 'compensation',
-   'est', NULL, TRUE, '노동절, 창립기념일 기념품 지급 (공식 채용 페이지 복리후생 「안정적인 삶」 항목 — 기념품 내용·금액 미기재)', 61)
+   'est', NULL, TRUE, '노동절, 창립기념일 기념품 지급 (공식 채용 페이지 복리후생 「안정적인 삶」 항목 — 기념품 내용·금액 미기재)', 61),
+
+  -- ── 성장·커리어 (growth) ──
+  (@comp_id, 'edu_support', '자율학습(독서대학·사이버강의)', NULL, 'growth',
+   'est', NULL, TRUE, '자율학습 과정으로 독서대학, 사이버강의 운영 (공식 채용 페이지 인재육성 자율학습 단계 — 과정 내용·수강 대상·비용 부담 미기재)', 70),
+  (@comp_id, 'lang', '외국어 교육', NULL, 'growth',
+   'est', NULL, TRUE, '외국어 교육 (공식 채용 페이지 인재육성 글로벌교육 단계 — 대상 언어·수강 방식·비용 부담 미기재)', 71)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

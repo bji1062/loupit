@@ -16,13 +16,14 @@
 --   금액: 구본 추정 승계 6(health_check 100 · insurance 30 · welfare_point 200 · commute_subsidy 120 · child_edu 200 ·
 --     resort 50 — 전부 틀 값, NOTE 끝에 (추정)). event 50 은 경조금이라, excellence_award 50 은 회사 고유값인데 전제가
 --     원문에 없어 승계하지 않았다.
---   제외 항목: 온라인 어학강좌 운영 · 신입사원/승진자 교육 · 전사 조직활성화 교육 · 직급별 역량 강화 교육(회사 주도 교육 과정) ·
---     직원 대출제도 운영(용도 미기재) · 가족수당 · 사업장 수당(급여성 수당) · 성과에 기반한 연봉제(급여 체계).
---   구본에서 뺀 행: edu_support(회사 주도 교육 과정) · housing_loan(용도 미기재 대출). 재코딩 long_service_leave → long_service_bonus.
+--   제외 항목: 신입사원/승진자 교육 · 전사 조직활성화 교육 · 직급별 역량 강화 교육(회사 주도 업무 교육 과정) ·
+--     가족수당 · 사업장 수당(급여성 수당) · 성과에 기반한 연봉제(급여 체계).
+--   구본에서 뺀 행: edu_support(신입 · 직급별 교육 등 회사 주도 업무 교육 과정). housing_loan(용도 미기재 대출)은 2026-10-04 기준 13 폐기로 welfare_fund_loan 새 행(SORT 26)으로, 온라인 어학강좌 운영은 같은 날 lang 서술로 되살렸다. 재코딩 long_service_leave → long_service_bonus.
 --   SORT 섹션 순서 = 복리후생 이미지에서 카테고리가 처음 나온 순서
 --     (health 10 · perks 20 · growth 30 · family 40 · leisure 50 · compensation 60 · work_env 70).
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-6): resort NOTE 와 club 서술의 영문 출처 페이지명을 실제 메뉴 이름 Benefits 로 고침 — 최종 21행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(welfare_fund_loan) · 서술 · 이름 수정 1(lang) — 최종 22행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -71,10 +72,12 @@ VALUES
    'est', '통근버스 운행 (공식 채용 페이지 복리후생 Office Life 항목) — 노선·운행 사업장 미기재 (추정)', FALSE, NULL, 24),
   (@comp_id, 'transport', '교통비 지원', NULL, 'perks',
    'est', NULL, TRUE, '교통비 지원 (공식 채용 페이지 복리후생 Office Life 항목) — 지원 대상·금액 미기재', 25),
+  (@comp_id, 'welfare_fund_loan', '직원 대출제도', NULL, 'perks',
+   'est', NULL, TRUE, '직원 대출제도 운영 (공식 채용 페이지 복리후생 Family 항목) — 대출 용도·한도·금리 미기재', 26),
 
   -- ── 성장·교육 (growth) — 복리후생 Education 칸 ──
-  (@comp_id, 'lang', '어학 자기계발비', NULL, 'growth',
-   'est', NULL, TRUE, '어학 자기계발비 지원 (공식 채용 페이지 복리후생 Education 항목) — 지원 한도·대상 과정 미기재', 30),
+  (@comp_id, 'lang', '어학 자기계발비·온라인 어학강좌', NULL, 'growth',
+   'est', NULL, TRUE, '어학 자기계발비 지원, 온라인 어학강좌 운영 (공식 채용 페이지 복리후생 Education 항목) — 지원 한도·대상 과정 미기재', 30),
 
   -- ── 가족·돌봄 (family) — 복리후생 Education · Family 칸 / ESG 구성원 삶의질 향상 ──
   (@comp_id, 'child_edu', '자녀 학자금 지원', 200, 'family',

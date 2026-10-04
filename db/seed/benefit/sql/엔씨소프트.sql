@@ -21,13 +21,14 @@
 --     구본 추정치 meal 432 는 승계하지 않았다(원문에 3식 표기 없음 — NULL).
 --   재코딩 1: leisure_ticket → sports_ticket(구단 경기 관람 지원).
 --   제외: 법정 제도(출산 휴가 · 가족돌봄 휴직/휴가 · 난임치료 휴가 · 유사산 휴가 · 육아기 단축 · 육아 시간 ·
---     퇴직연금) · 회사 주도 교육(온보딩 · 리더십 · Learn+ 셀프스터디 · 직무 교육) · 임금 체계(비포괄 임금제 ·
+--     퇴직연금) · 회사 주도 교육(온보딩 · 리더십 · 직무 교육 — Learn+ 셀프스터디는 2026-10-04 규칙 8 개정으로 edu_support 행으로 되살림) · 임금 체계(비포괄 임금제 ·
 --     시작연봉제 · 핵심인재 처우 · D-PI 조직 한정) · 우편실 · 자전거 미케닉샵(대응 어휘 없음).
 --   SORT 섹션 순서 = 정본 페이지에서 카테고리가 처음 나온 순서
 --     (perks 10 · family 20 · health 30 · leisure 40 · compensation 50 · time_off 60 · growth 70 ·
 --      work_env 80 · flexibility 90).
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3 레인 3): 28행 전부 원문 재확인, 시드 수정 0 — 운영 표적 DELETE 722 remote_work · 732 transport, 재코딩 728 leisure_ticket → sports_ticket — 최종 28행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(edu_support) — 최종 29행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -115,6 +116,8 @@ VALUES
    'est', NULL, TRUE, '임직원이 사내공모에 지원해 NC 안에서 새로운 경력 개발과 직무 이동 기회 선택 (NC ESG PLAYBOOK 2025 내부 경력 개발 사내공모 INCAREER · 공식 채용 페이지 복지혜택 INCAREER 항목)', 72),
   (@comp_id, 'self_development', 'Post-Scholarship (학자금 대출 상환 지원)', NULL, 'growth',
    'est', NULL, TRUE, '대학·대학원 학자금 대출 상환을 최대 1,500만원까지 지원, 신입 정규직 입사자 중 경력 2년 미만 대상 (NC ESG PLAYBOOK 2025 복리후생 제도 Post-Scholarship 항목)', 73),
+  (@comp_id, 'edu_support', 'Learn+ 셀프스터디', NULL, 'growth',
+   'est', NULL, TRUE, '외부 교육 플랫폼과 연계해 임직원이 매월 필요한 역량 개발 과정을 자기주도적으로 선택·학습하는 Learn+ 셀프스터디 (NC ESG PLAYBOOK 2025 39쪽 교육 프로그램 항목 — 과정 범위·이용 한도 미기재)', 74),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'nap_room', '여성 휴게 공간', NULL, 'work_env',

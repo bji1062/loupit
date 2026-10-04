@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 3097(3093 − 15 + 19 묶음 6-B DB손해보험 재수집, 2026-10-04), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 3174(3097 + 77 R-3 후속 정리 2 — 복지 범위 규칙 개정 되살림 · 퇴직금 누진제, 2026-10-04), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -122,9 +122,14 @@ def test_SD4_benefit_total_row_count(seeded_db):
           + 재수집 R-3 묶음 6-B DB손해보험 15 → 19행 (자기 도메인 복리후생 페이지 붙여넣기 원문)
           3093 − 15 + 19 = 3097 (R-3 묶음 6-B DB손해보험) — 운영은 표적 삭제 4 뒤 멱등 적재
           (db/migrations/20261004_recollect_3_batch6b.sql) — loupit-evidence/2026-10-02-recollect-3-6/
+          + R-3 후속 정리 2 — 복지 범위 규칙 개정(회사가 여는 어학 강좌도 복지 · 사내 대출은 용도 몰라도 복지 · 리프레시 휴가는 이름만 있어도 연차 외 휴가)으로
+            예전에 뺀 행을 저장된 원문 사본으로 되살림 새 행 71 · 서술 합침 50 · 한미약품 연차 총량 분리 1 · 생활안정 대출 분리 2(삼성카드 · 대덕전자)
+            · 퇴직금 누진제 새 코드 severance_plus 3(S-Oil · ㈜에코프로 · 에코프로비엠)
+          3097 + 71 + 1 + 2 + 3 = 3174 (R-3 후속 정리 2) — 운영은 코드 바꾸기 7 뒤 멱등 적재
+          (db/migrations/20261004_r3_followup_2.sql) — loupit-evidence/2026-10-04-r3-followup/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 3097, f"복지 총행 불일치: {count} (기대 3097 = 3093 − 15 + 19 묶음 6-B DB손해보험 재수집)"
+    assert count == 3174, f"복지 총행 불일치: {count} (기대 3174 = 3097 + 77 R-3 후속 정리 2)"
     assert count >= 1200
 
 

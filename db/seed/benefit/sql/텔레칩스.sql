@@ -26,6 +26,7 @@
 -- 붙여넣기 반영(2026-10-04): 공식 채용 사이트 복리후생 본문으로 정본을 옮기고 10행을 그 문장으로 고침 · 새 행 7 — 최종 26행
 -- 증분 검증(2026-10-04, RV-3-7): refresh_leave 서술에 홈페이지 LABOR and HUMAN RIGHTS 페이지의 정기 유급휴가 문장을 되살리고 유급 미기재 표기를 걷음 — 최종 26행
 -- 주 출처: 사용자 붙여넣기 careers.telechips.com 사본(2026-10-04 · sha256 21365fc0…ae8d) — 점검기 429 헛경보로 정본 URL 은 esg02
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 2(edu_support · housing_loan) — 최종 27행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -62,10 +63,12 @@ VALUES
   -- ── 성장·교육 (growth) — 채용 사이트 AI-BASED · CAREER DEVELOPMENT ──
   (@comp_id, 'conference', '외부 교육·세미나·AI 컨퍼런스 참가 지원', NULL, 'growth',
    'est', NULL, TRUE, '외부 교육 및 세미나 참가 비용 전액 지원 (공식 채용 사이트 복리후생 CAREER DEVELOPMENT 항목), 최신 AI 트렌드를 배울 수 있는 AI 컨퍼런스 참가 지원 (같은 페이지 AI-BASED ENVIRONMENT 항목) — 연간 한도·대상 과정 미기재', 20),
-  (@comp_id, 'edu_support', '직무교육 이러닝 전액 지원', NULL, 'growth',
-   'est', NULL, TRUE, '직무 역량 강화를 위한 이러닝 비용 전액 지원 (공식 채용 사이트 복리후생 CAREER DEVELOPMENT 항목) — 대상 과정·연간 한도 미기재', 21),
+  (@comp_id, 'edu_support', '직무교육 이러닝 전액 지원·이러닝/북러닝 교육', NULL, 'growth',
+   'est', NULL, TRUE, '직무 역량 강화를 위한 이러닝 비용 전액 지원 (공식 채용 사이트 복리후생 CAREER DEVELOPMENT 항목), 기존 재직자 대상 이러닝/북러닝 교육 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 인재육성 항목) — 대상 과정·연간 한도 미기재', 21),
   (@comp_id, 'books', '사내 도서관', NULL, 'growth',
    'est', NULL, TRUE, '임직원 자기계발을 위한 사내 도서관 운영 (공식 채용 사이트 복리후생 CAREER DEVELOPMENT 항목) — 장서 규모·도서 구입비 지원 여부 미기재', 22),
+  (@comp_id, 'lang', '전화 외국어 교육', NULL, 'growth',
+   'est', NULL, TRUE, '기존 재직자 대상 전화 외국어 교육 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 인재육성 항목) — 대상 언어·비용 부담·수강 조건 미기재', 23),
 
   -- ── 근무 유연성 (flexibility) — 채용 사이트 EFFICIENT WORKING · 사업보고서 ──
   (@comp_id, 'flex_work', '완전 선택적 근로시간제', NULL, 'flexibility',
@@ -91,7 +94,7 @@ VALUES
   (@comp_id, 'commute_subsidy', '서울·수도권 거점 셔틀버스', NULL, 'perks',
    'est', NULL, TRUE, '서울 및 수도권 주요 거점 출퇴근 셔틀버스 운영 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목) — 노선·운행 횟수 미기재', 60),
   (@comp_id, 'housing_loan', '무이자 주택 취득 자금 대출 (최대 3천만원)', NULL, 'perks',
-   'est', NULL, TRUE, '무이자/저금리 사내대출 제도 운영, 최대 3천만원까지 무이자로 주택 취득 자금 지원 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목) — 상환 기간·대상 조건·저금리 대출 용도 미기재', 61),
+   'est', NULL, TRUE, '무이자/저금리 사내대출 제도 운영, 최대 3천만원까지 무이자로 주택 취득 자금 지원 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목), 사원대여금 제도 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 financial aid 항목) — 상환 기간·대상 조건·저금리 대출 용도 미기재', 61),
   (@comp_id, 'meal', '구내식당 조식·중식·석식 무료', NULL, 'perks',
    'est', NULL, TRUE, '구내식당 조식/중식/석식 무료 제공, 삼시세끼 무료 지원 (공식 채용 사이트 복리후생 FUN OFFICE LIFE 항목) — 사업장 범위·운영 시간 미기재', 62),
   (@comp_id, 'snack_bar', '사내 카페 (바리스타 상주)·임직원 혜택가', NULL, 'perks',

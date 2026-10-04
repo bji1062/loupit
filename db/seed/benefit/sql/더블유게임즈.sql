@@ -17,13 +17,14 @@
 --   금액: 명시값 0행. 승계 추정치 3행(meal 432 · welfare_point 250 · resort 50 — NOTE 끝에 (추정)).
 --     구본 공식 수치(holiday_gift 40 · long_service_leave 1000 · birthday_leave 30)는 공식 원문에 숫자가 없어 NULL.
 --   재코딩 4: fitness → massage(헬스키퍼 = 사내 안마사) · long_service_leave → long_service_bonus(원문 장기근속 포상금, 휴가 없음) ·
---     lang → self_development(원문 자기계발비 지원) · housing_loan → welfare_fund_loan(원문 사내 대출, 주택 용도 미기재).
+--     lang → self_development(원문 자기계발비 지원 — 사내 어학 수업은 2026-10-04 규칙 8 개정으로 lang 새 행으로 다시 분리) · housing_loan → welfare_fund_loan(원문 사내 대출, 주택 용도 미기재).
 --   제외: 재택근무(주석 블록) · 수면실/리프레쉬존 · 출산 경조금 · 도서/사내 도서관(원문 없음) ·
 --     개인 프로필 촬영(대응 어휘 없음 — 신규 코드 후보로 근거표에 기재) · 직무교육 · 사내 세미나(회사 주도 교육).
 --   SORT 섹션 순서 = 정본 페이지에서 카테고리가 처음 나온 순서
 --     (perks 10 · growth 20 · leisure 30 · time_off 40 · compensation 50 · family 60 · health 70 · flexibility 80).
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3 레인 3): 18행 전부 원문 재확인, 시드 수정 0 — 운영 표적 DELETE 393 · 394 · 399 · 402(official 이라 시드 DELETE 로 안 지워짐), 재코딩 395 · 398 · 401 · 408 — 최종 18행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 1(self_development) — 최종 19행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -61,7 +62,9 @@ VALUES
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'self_development', '자기계발비 지원', NULL, 'growth',
-   'est', NULL, TRUE, '구성원들의 자기계발을 위한 교육 지원, 사내 어학 수업 등 (공식 채용 페이지 근무환경 복지제도 항목 — 지원 한도·대상 교육 범위 미기재)', 20),
+   'est', NULL, TRUE, '구성원들의 자기계발을 위한 교육 지원 (공식 채용 페이지 근무환경 복지제도 항목 — 지원 한도·대상 교육 범위 미기재)', 20),
+  (@comp_id, 'lang', '사내 어학 수업', NULL, 'growth',
+   'est', NULL, TRUE, '구성원들의 자기계발을 위한 사내 어학 수업 등 교육 지원 (공식 채용 페이지 근무환경 복지제도 자기계발비 지원 항목 — 대상 언어·수업 방식 미기재)', 21),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'company_event', '전사 송년회·체육대회·워크샵', NULL, 'leisure',

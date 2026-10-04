@@ -17,13 +17,14 @@
 --   금액: 원문 명시 0 · 구본 추정 승계 4(health_check 100 · medical 100 · child_edu 200 · resort 50 —
 --     전부 틀 값, NOTE 끝에 (추정)). welfare_point 는 구본 추정치가 없어 NULL.
 --   구본에서 뺀 행: incentive (업적급 · 성과급 — 현행 원문에 없음) · edu_support (교육 프로그램 — 현행 원문에 없음) ·
---     refresh_leave (휴가제도 — 리프레시 휴가 및 장기휴가 지원, 일수 · 대상 · 유급 여부 미기재).
+--     refresh_leave 는 2026-10-04 기준 23 개정(이름만 있어도 연차 외 휴가)으로 되살렸다(SORT 70).
 --   주택자금 지원 항목의 지방 근무자 사택은 dormitory 행으로 나눴다.
 --   재코딩: 없음.
 --   SORT 섹션 순서 = 원문에서 카테고리가 처음 나온 순서, 사업보고서 근거 행은 마지막 섹션
 --     (perks 10 · work_env 20 · family 30 · health 40 · leisure 50 · flexibility 60).
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-4): 12행 전부 붙여넣기 원문 · 2025 사업보고서(OpenDART)와 글자 대조 · 휴가제도는 일수·추가 부여 미기재로 미수록 · 최종 12행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(refresh_leave) — 최종 13행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -81,7 +82,11 @@ VALUES
   (@comp_id, 'flex_work', '시차출퇴근제·선택근무제', NULL, 'flexibility',
    'est', NULL, TRUE, '시차출퇴근제·선택근무제 활용 (2025 사업보고서 직원 등 현황 유연근무제도 사용 현황) — 코어시간·대상 직무 미기재', 60),
   (@comp_id, 'remote_work', '원격근무제 (재택근무 포함)', NULL, 'flexibility',
-   'est', NULL, TRUE, '원격근무제(재택근무 포함) 활용 (2025 사업보고서 직원 등 현황 유연근무제도 사용 현황) — 대상 직무·사용 조건 미기재', 61)
+   'est', NULL, TRUE, '원격근무제(재택근무 포함) 활용 (2025 사업보고서 직원 등 현황 유연근무제도 사용 현황) — 대상 직무·사용 조건 미기재', 61),
+
+  -- ── 시간·휴가 (time_off) ──
+  (@comp_id, 'refresh_leave', '리프레시 휴가·장기휴가', NULL, 'time_off',
+   'est', NULL, TRUE, '리프레시 휴가 및 장기휴가 지원 (공식 채용 사이트 복리후생 휴가제도 항목) — 휴가 일수·유급 여부·사용 조건 미기재', 70)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

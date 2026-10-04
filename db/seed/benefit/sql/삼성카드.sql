@@ -17,6 +17,7 @@
 --       "창립기념 쌀", "단체보험", "임직원몰"은 삼성카드 공식 문서 어디에도 없다.
 --       → 기존 앵커 6건(100/30/30/200/50/200만원)을 **전부 승계하지 않았다**.
 --       현재 두 공식 출처 모두 금액을 일절 공개하지 않으므로 23행 전부 정성 항목이다.
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(welfare_fund_loan) · 서술 · 이름 수정 1(housing_loan) — 최종 24행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -84,15 +85,17 @@ VALUES
    'est', NULL, TRUE, '매년 복지포인트 지급, 복지몰에서 재화·서비스 구매', 70),
   (@comp_id, 'birthday_gift', '기념일 선물 지원', NULL, 'perks',
    'est', NULL, TRUE, '생일·결혼기념일 등 기념일에 임직원이 직접 선택한 선물 지급', 71),
-  (@comp_id, 'housing_loan', '주택·생활안정자금 대출', NULL, 'perks',
-   'est', NULL, TRUE, '주택구입/전세자금 대출 및 생활안정자금 대출', 72),
+  (@comp_id, 'housing_loan', '주택구입·전세자금 대출', NULL, 'perks',
+   'est', NULL, TRUE, '주택구입/전세자금 대출', 72),
   (@comp_id, 'housing_support', '임차사택·주거안정지원', NULL, 'perks',
    'est', NULL, TRUE, '임차사택 제공 및 주거안정자금 지원', 73),
   (@comp_id, 'pension_support', '개인연금 지원', NULL, 'perks',
    'est', NULL, TRUE, '국민연금 외 개인연금 제도 운영 및 회사 지원', 74),
   -- 2026-09-22 재코딩 lounge(work_env, 30) → snack_bar(perks, 75) — 휴게실이 아니라 사내 카페: db/migrations/20260922_recode_benefit_rows.sql
   (@comp_id, 'snack_bar', '사내카페', NULL, 'perks',
-   'est', NULL, TRUE, '임직원 전용 사내 카페 운영', 75)
+   'est', NULL, TRUE, '임직원 전용 사내 카페 운영', 75),
+  (@comp_id, 'welfare_fund_loan', '생활안정자금 대출', NULL, 'perks',
+   'est', NULL, TRUE, '생활안정자금 대출 (공식 채용 페이지 인사제도 복리후생 탭 주거/생활안정 항목 — 대출 한도·이율·자격 미기재)', 76)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

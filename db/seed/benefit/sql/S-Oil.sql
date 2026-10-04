@@ -25,16 +25,17 @@
 --   빠진 공식 항목을 채웠다: 직장 어린이집 · 체력단련실 · 건강관리센터 · 출산 축하금·산후조리원 ·
 --     중식 · Refreshment Point · 장기근속 기념품·기념여행 · PC-OFF · 부임준비금·이사비.
 --   재코딩 1: dormitory → housing_support (원문 라벨이 주거지원·주거비용 지원이고 사택·기숙사 시설 언급이 없다).
---   구본에서 뺀 행 4: family_day(원문 없음) · edu_support·lang(사내 교육 과정 운영 — 비용 지원 아님) ·
+--   구본에서 뺀 행 4: family_day(원문 없음) · edu_support(직무·리더십 교육 과정) · lang(2026-10-04 규칙 8 개정으로 되살림 SORT 82) ·
 --     career(Job Rotation 은 인사제도, 멘토링은 신입 적응 과정).
 --   금액: 원문 명시 금액 0건. 구본 추정치 4건 승계(incentive 500 · medical 100 · child_edu 300 · resort 50, NOTE 끝 추정 표기).
 --     구본 health_check 100 은 추정 표기 없는 수치라 승계하지 않았다. event·transport·pension_support 추정치는
 --     1회성·주기 가정·구조 불일치라 버렸다.
---   제외: 기본급·제수당·수당 지원·T&I수당(급여성) · 퇴직금 누진율(퇴직급여) · 무재해기념금·무재해 기념품(대응 어휘 없음) ·
+--   제외: 기본급·제수당·수당 지원·T&I수당(급여성) · 무재해기념금·무재해 기념품(대응 어휘 없음) ·
 --     탄력적 근로시간제(부서 상황·업무량에 따른 회사 운영 제도) · 난임치료휴가·수유실·육아휴직 대체인력 ·
 --     비자발적 퇴직자 전직 지원 · CEO 표창제도 · S-OIL AI Assistant · 사내 익명게시판 · 신입 집합교육·OJT·멘토링·Dynamic Rookies.
 --   SORT 섹션 순서는 ① 페이지에서 카테고리가 처음 나온 순서다
 --     (compensation 10 · health 20 · perks 30 · family 40 · leisure 50 · time_off 60 · flexibility 70 · growth 80).
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(severance_plus · lang) — 최종 31행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -67,6 +68,8 @@ VALUES
    'est', NULL, TRUE, '장기근속 기념품 및 기념여행 (2025 ESG 보고서 기타 복지 프로그램 항목 — 근속 연수 기준·여행 내용 미기재)', 12),
   (@comp_id, 'excellence_award', 'CEO 표창제도', NULL, 'compensation',
    'est', NULL, TRUE, '핵심가치에 기반한 CEO 표창제도 운영 (2025 ESG 보고서 핵심가치 내재화 항목 — 포상 내용·선정 기준 미기재)', 13),
+  (@comp_id, 'severance_plus', '퇴직금 누진율 (업계 최고수준)', NULL, 'compensation',
+   'est', NULL, TRUE, '퇴직금 누진율 업계 최고수준으로 기재 (공식 채용 페이지 인사정보 복리후생 급여제도 항목 — 누진율·적용 조건 미기재)', 14),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'medical', '의료비 지원', 100, 'health',
@@ -130,7 +133,9 @@ VALUES
   (@comp_id, 'conference', '외부 세미나·컨퍼런스 참여 지원', NULL, 'growth',
    'est', NULL, TRUE, '직무와 관련한 외부 세미나 또는 컨퍼런스 참여를 적극 지원 (공식 채용 페이지 인사정보 인재육성 Global 인재 육성 항목 — 지원 비용 범위 미기재)', 80),
   (@comp_id, 'mba', '국내외 MBA·IFP School 석사과정', NULL, 'growth',
-   'est', NULL, TRUE, '우수직원을 대상으로 국내외 MBA 유학과 프랑스 IFP School 이공계 석사과정 지원 (공식 채용 페이지 인사정보 인재육성 Global 인재 육성 항목 — 선발 인원·비용 부담 범위 미기재)', 81)
+   'est', NULL, TRUE, '우수직원을 대상으로 국내외 MBA 유학과 프랑스 IFP School 이공계 석사과정 지원 (공식 채용 페이지 인사정보 인재육성 Global 인재 육성 항목 — 선발 인원·비용 부담 범위 미기재)', 81),
+  (@comp_id, 'lang', '사내 어학과정 (영작문·영어협상·일본어·중국어)', NULL, 'growth',
+   'est', NULL, TRUE, '글로벌 인재 육성을 위한 다양한 과정의 외국어 교육 실시, 직원 외국어 능력 향상을 위한 영작문·영어협상·일본어·중국어 과정 등 사내 어학과정 운영 (공식 채용 페이지 인사정보 인재육성 Global 인재 육성 외국어 교육 지원 항목 — 수강 대상·비용 부담 미기재)', 82)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

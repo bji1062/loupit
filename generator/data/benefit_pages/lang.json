@@ -39,8 +39,17 @@
   ],
   "overrides": [
     {"comp": "lunit", "h": "18f4475e61", "mode": "both", "why": "사내 영어 강사 수업(사내 무료 어학 프로그램)과 외국인 임직원 한국어 수업 비용 지원을 함께 적었다"},
-    {"comp": "psk", "h": "6001f72ae7", "mode": "both", "why": "사내 어학강좌 운영과 어학 시험 응시료 지원을 함께 적었다"},
+    {"comp": "psk", "h": "e7ef7b7eef", "mode": "both", "why": "사내 어학강좌 운영과 어학 시험 응시료 지원을 함께 적었다"},
     {"comp": "samsung_ena", "h": "1d5e96b7b5", "mode": "both", "why": "OPIc 응시료 지원과 언어별·단계별 교육 프로그램 운영을 함께 적었다"},
-    {"comp": "samsung_sec", "h": "61784527e3", "mode": "both", "why": "어학교육 과정 운영과 어학 학습·등급 취득 비용 지원을 함께 적었다"}
+    {"comp": "samsung_sec", "h": "61784527e3", "mode": "both", "why": "어학교육 과정 운영과 어학 학습·등급 취득 비용 지원을 함께 적었다"},
+    {"comp": "hanwha", "h": "ec9ceddaa6", "mode": "both", "why": "어학 교육 · 시험 비용 지원과 사내/외 어학 과정 지원을 함께 적었다"},
+    {"comp": "hanwha_systems", "h": "ffee2fae0a", "mode": "both", "why": "사외 어학 학습 비용 지원과 전화/화상 어학 · 이러닝 교육을 함께 적었다"},
+    {"comp": "hyundai_autoever", "h": "28d6bfd4a0", "mode": "both", "why": "어학교육비 지원과 이러닝/전화화상 교육 운영을 함께 적었다"},
+    {"comp": "lg_display", "h": "bdd56f9eb1", "mode": "both", "why": "YBM 어학 할인 지원과 사내 어학 교육을 함께 적었다"},
+    {"comp": "samsung_bio", "h": "726bcd26ea", "mode": "both", "why": "사내 어학과정 · 전화영어 운영과 오픽 응시료 지원을 함께 적었다"},
+    {"comp": "samsung_electro", "h": "1ecce66e93", "mode": "both", "why": "사내 어학 과정 운영과 외부 어학원 수강료 지원을 함께 적었다"},
+    {"comp": "samsung_heavy", "h": "31eb5fee95", "mode": "both", "why": "오픽 응시료 지원과 외국어 인텐시브 과정 운영을 함께 적었다"},
+    {"comp": "samsung_life", "h": "2aafbc4526", "mode": "both", "why": "어학교육 과정 운영과 외국어 시험 응시료 지원을 함께 적었다"},
+    {"comp": "techwing", "h": "5eb9887666", "mode": "both", "why": "어학 자기계발비 지원과 온라인 어학강좌 운영을 함께 적었다"}
   ]
 }
