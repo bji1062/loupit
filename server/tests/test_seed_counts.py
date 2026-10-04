@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 3174(3097 + 77 R-3 후속 정리 2 — 복지 범위 규칙 개정 되살림 · 퇴직금 누진제, 2026-10-04), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 3175(3097 + 77 R-3 후속 정리 2 + 1 R-3 후속 정리 3 월말휴무, 2026-10-04), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -127,9 +127,11 @@ def test_SD4_benefit_total_row_count(seeded_db):
             · 퇴직금 누진제 새 코드 severance_plus 3(S-Oil · ㈜에코프로 · 에코프로비엠)
           3097 + 71 + 1 + 2 + 3 = 3174 (R-3 후속 정리 2) — 운영은 코드 바꾸기 7 뒤 멱등 적재
           (db/migrations/20261004_r3_followup_2.sql) — loupit-evidence/2026-10-04-r3-followup/
+          + R-3 후속 정리 3 — LG에너지솔루션 leave_general 「월말휴무」 1행(사용자 결정 8a, 2026-10-01 검증 삭제를 되돌림 · 새 키 INSERT 라 마이그레이션 없음)
+          3174 + 1 = 3175 (R-3 후속 정리 3)
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 3174, f"복지 총행 불일치: {count} (기대 3174 = 3097 + 77 R-3 후속 정리 2)"
+    assert count == 3175, f"복지 총행 불일치: {count} (기대 3175 = 3097 + 77 R-3 후속 정리 2 + 1 후속 정리 3)"
     assert count >= 1200
 
 

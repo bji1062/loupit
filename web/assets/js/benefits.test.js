@@ -76,7 +76,7 @@ const ben = (cd, over = {}) => ({
 describe('SP-CMP-4 categoryStats — corpus.build 와 같은 셈', () => {
   test('픽스처가 세 케이스를 싣고 있다', () => {
     assert.deepEqual(STATS.cases.map((c) => c.name),
-      ['mixed_three', 'eight_companies_quarter_avg', 'one_twenty_companies_fake_tie', 'empty_bundle']);
+      ['mixed_three', 'eight_companies_quarter_avg', 'one_twenty_companies_fake_tie', 'marked_rows_excluded', 'empty_bundle']);
     assert.deepEqual(STATS.category_order, CATEGORY_ORDER);
   });
 
