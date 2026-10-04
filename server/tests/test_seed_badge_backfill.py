@@ -210,6 +210,8 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "ecopro", "ecopro_bm", "olix", "soulbrain",
         # 재수집 R-3 묶음 6-A(2026-10-02, 8) — hpsp 는 공식 원문이 없어 넣지 않았고 같은 날 회사 등록을 해제했다
         "eo_technics", "jusung", "techwing", "duksan_neolux", "bh", "genome_company", "classys", "rainbow_robotics",
+        # 재수집 R-3 묶음 7(2026-10-04, 9) — 실 URL 헤더 9사. 케어젠 · 리노공업 · 리메드는 기준 39(검색 AI 요약 · URL 없음)라 ai_parse 로 남아 여기 없다
+        "voronoi", "oscotec", "hanmi_pharm", "telechips", "amorepacific", "ibk", "hyosung_heavy", "korean_air", "neowiz",
         # 재수집 R-3 묶음 3 후속(2026-10-01, 1) — yuhan 은 2026-10-01 후속 PR(사용자 붙여넣기 원문)
         "yuhan",
     }

@@ -35,6 +35,7 @@
     {"text": "먼저 받아서 쓰나요, 쓰고 나서 영수증으로 돌려받나요?", "answered_by": ["facet:settle"]}
   ],
   "overrides": [
-    {"comp": "rainbow_robotics", "h": "6facafe12d", "mode": "allowance", "why": "원문 표기가 「자기개발비 지원」 — 같은 제도인데 규칙 정규식은 「계발」만 본다"}
+    {"comp": "rainbow_robotics", "h": "6facafe12d", "mode": "allowance", "why": "원문 표기가 「자기개발비 지원」 — 같은 제도인데 규칙 정규식은 「계발」만 본다"},
+    {"comp": "ibk", "h": "4977c2816b", "mode": "allowance", "why": "원문 표기가 「자기개발 비용」 — 같은 제도인데 규칙 정규식은 「계발」만 본다"}
   ]
 }

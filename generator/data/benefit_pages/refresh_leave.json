@@ -114,14 +114,6 @@
   },
   "overrides": [
     {
-      "comp": "hanmi_pharm",
-      "h": "0db553251d",
-      "facets_remove": [
-        "days"
-      ],
-      "why": "「연차 22일」은 연차 일수다 — 리프레시 휴가의 일수는 적혀 있지 않다"
-    },
-    {
       "comp": "emart",
       "h": "bac98f12cf",
       "facets_remove": [

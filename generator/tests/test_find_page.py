@@ -186,14 +186,14 @@ def _companies_from_label_cases(cases: dict) -> list[dict]:
 
 
 def test_real_bundle_labels_match_the_shared_fixture():
-    """실데이터 89종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
-    흡수돼 wedding 을 쓰는 회사가 0 → 90 → 89종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
+    """실데이터 88종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
+    흡수돼 wedding 을 쓰는 회사가 0 → 90 → 89종 · 2026-10-04 R-3 묶음 7 효성중공업 long_service 재코딩으로 88종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
 
     같은 파일을 `web/assets/js/find.test.js` 도 읽어 같은 기대값을 검사한다 — 표(파이썬)와
     칩(JS)이 **같은 이름을 부른다**는 약속을 실데이터로 재는 자리다. 규칙을 손대면 여기가 먼저 빨개진다.
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
-    assert len(cases["codes"]) == 89, "픽스처가 실데이터 89종이 아니다"
+    assert len(cases["codes"]) == 88, "픽스처가 실데이터 88종이 아니다"  # 2026-10-04 R-3 묶음 7: 효성중공업 long_service → long_service_leave 재코딩으로 long_service 코드 사용 0
     codes = find.derive_codes(_companies_from_label_cases(cases))
     assert sorted(codes) == sorted(cases["codes"])
     for code, want in cases["codes"].items():
@@ -237,8 +237,11 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-10-02 R-3 묶음 4-A: summer_vacation_subsidy 는 「하계 휴가비」가 2회가 돼 동률이 풀렸다 → 지금 동률인 uniform(피복 지원)으로 바꿨다.
     # 2026-10-02 R-3 묶음 6-A: work_tools 의 「노트북 지원」이 시드에서 사라져 → 지금 동률인 lounge(휴게실)로 바꿨다.
     # 2026-10-02 R-3 묶음 6-A: smoking_cessation 은 「금연수당」이 2회가 돼 동률이 풀렸다 → 지금 8:8 동률인 resort(휴양시설)로 바꿨다.
-    for code, expect in (("foundation_day_leave", "창립기념 휴가"), ("uniform", "피복 지원"),
-                         ("lounge", "휴게실"), ("parking", "주차 지원"),
+    # 2026-10-04 R-3 묶음 7: foundation_day_leave 는 「창립기념일 휴무」가 2회가 돼 동률이 풀렸다 → 지금 동률인 family_day(가정의 날)로 바꿨다 ·
+    #   uniform 은 아직 11:1 동률이지만 대표가 「유니폼지급」(보로노이 · 케어젠 신규 표기)으로 바뀌어 기대 문자열만 고쳤다.
+    #   lounge(휴게실 3회) · parking(주차 지원 3회)도 단독 최다가 돼 동률이 풀렸다 → 지금 동률인 car_wash(세차 서비스) · promotion_gift(승진자 축하선물)로 바꿨다.
+    for code, expect in (("family_day", "가정의 날"), ("uniform", "유니폼지급"),
+                         ("car_wash", "세차 서비스"), ("promotion_gift", "승진자 축하선물"),
                          ("massage", "안마의자"), ("resort", "휴양시설")):
         names = cases["codes"][code]["names"]
         assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
