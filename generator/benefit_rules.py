@@ -269,7 +269,9 @@ def classify(cfg: dict, rows: list[dict]) -> dict:
     out_rows, excluded = [], []
     for r in rows:
         # 금액 없는 행에 「(추정)」이 붙은 원문은 **이 복지가 있다는 것 자체가 수집자 추정**이다
-        # (`format.benefit_desc` 와 같은 해석 — DB손해보험 구본). 그 원문의 낱말을 사실로 세지 않는다.
+        # (`format.benefit_desc` 와 같은 해석). 그 원문의 낱말을 사실로 세지 않는다.
+        # ⓘ 이력: DB손해보험 구본 9행이 이 모양이었고 2026-10-04 R-3 묶음 6-B 재수집 뒤 실데이터 0행이다 —
+        #   지금은 합성 픽스처(test_benefit_pages.py)만 이 갈래를 지난다.
         t = "" if r.get("unverified") else match_text(r.get("desc"), r.get("note"))
         mode = None
         if modes_cfg:

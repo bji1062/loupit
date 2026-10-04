@@ -81,7 +81,7 @@ def test_SI3_mobis_duplicate_removed(seeded_db):
     assert "모비스" in alias_names
 
 
-# ── SI-4: eng↔복지 정합 — 고아 0, eng-상이 14건도 복지 정상 연결 ──
+# ── SI-4: eng↔복지 정합 — 고아 0, eng-상이 12건(SP-SEED-2.2 표 전부)도 복지 정상 연결 ──
 def test_SI4_no_orphan_benefit_rows(seeded_db):
     bad = _scalar(
         seeded_db,
@@ -94,11 +94,15 @@ def test_SI4_no_orphan_benefit_rows(seeded_db):
     assert bad == 0
 
 
-def test_SI4_eng_mismatch_14_companies_have_benefits(seeded_db):
-    """SP-SEED-2.2 eng-상이 14건 표본 — 복지 정상 연결 확인.
+def test_SI4_eng_mismatch_companies_have_benefits(seeded_db):
+    """SP-SEED-2.2 eng-상이 12건 전부 — 복지 정상 연결 확인(정식명 조인 경로).
 
-    lg(LG 지주) · ls(LS 지주)는 2026-10-01 등록 해제됐다(공식 복지 원문 없음 · 구본은 LG유플러스 사본 · KLT 데이터) — 표본에서 뺐다."""
-    sample_engs = ["wgames", "doosan_enerbility", "lino", "bh", "samsung_ct"]
+    lg(LG 지주) · ls(LS 지주)는 2026-10-01 등록 해제됐다(공식 복지 원문 없음 · 구본은 LG유플러스 사본 · KLT 데이터) — 표에서 뺐다(14 → 12).
+    표본을 고르지 않고 표 전부를 본다 — 등록 해제 때마다 표본만 줄어 검사가 약해지던 것을 막는다(LS 검토 LOW-1)."""
+    sample_engs = [
+        "wgames", "doosan_enerbility", "lino", "bh", "samsung_ct", "isens",
+        "ifamilysc", "ecopro_bm", "eugenetech", "jusung", "hanwha", "hanwha_aerospace",
+    ]
     for eng in sample_engs:
         count = _scalar(
             seeded_db,
@@ -365,3 +369,36 @@ def test_SI10_unlimited_pto_real_companies(seeded_db):
          WHERE COMP_ENG_NM IN ('nh_invest', 'apr', 'kakao_pay')"""))
     got = {eng: (json.loads(v) if isinstance(v, str) else v).get("unlimitedPTO") for eng, v in rows.items()}
     assert got == {"nh_invest": False, "apr": False, "kakao_pay": False}, got
+
+
+# ── SI-11: 「 — 」 꼬리 — 매칭 사본(benefit_rules.core_text)이 첫 「 — 」 뒤 원문 내용을 걷지 않는다 ──
+def test_SI11_dash_tail_strips_only_the_collector_memo(seeded_db):
+    """항목 페이지는 수집자 메모를 걷은 사본으로 센다. 꼬리는 **첫** 「 — 」부터 끝까지 걷히므로
+    메모 꼬리는 맨 끝 「 — 」 하나여야 한다. 「 — 」가 둘 이상이면 그 사이 원문까지 걷혀 페이지가
+    「원문에 안 나옴」으로 센다(R-3 묶음 7 검토 M1 · N-6 — 2026-10-04 29행 정리)."""
+    import re
+
+    from generator import benefit_rules as br
+
+    sep = re.compile(r"\s+[—–]\s+")
+    bad = []
+    for comp, code, desc, note in _rows(
+        seeded_db,
+        """
+        SELECT c.COMP_ENG_NM, b.BENEFIT_CD, b.QUAL_DESC_CTNT, b.NOTE_CTNT FROM TCOMPANY_BENEFIT b
+        JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID WHERE b.BADGE_CD <> 'verified'
+        """,
+    ):
+        for text in (desc, note):
+            if not text:
+                continue
+            s = text
+            while True:  # core_text 의 괄호 단계만 — 꼬리 단계 직전 모양
+                t = br._PAREN.sub(br._drop_or_keep, s)
+                if t == s:
+                    break
+                s = t
+            m = br._TAIL.search(s)
+            if m and br._META_TAIL.search(m.group(1)) and sep.search(m.group(1)):
+                bad.append(f"{comp}/{code}: {text[:50]}")
+    assert bad == [], f"「 — 」가 둘 이상이라 원문이 매칭 사본에서 걷히는 행 {len(bad)}: {bad[:5]}"

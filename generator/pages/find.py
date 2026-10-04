@@ -26,7 +26,7 @@ from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
 
 # 손으로 못 박는 표시명. **`web/assets/js/find.js::LABEL_OVERRIDE` 와 같은 줄이어야 한다**
 # (표는 여기서, 칩은 거기서 이름을 얻는다). test_find_page.py 가 강제한다. 세 갈래다:
-#   ① 같은 대표 이름을 쓰는 코드를 갈라 준다(앞 다섯 줄 — 통근버스·장기근속 뭉치).
+#   ① 같은 대표 이름을 쓰는 코드를 갈라 준다(앞 네 줄 — 통근버스·장기근속 뭉치).
 #   ② 빈도 1순위가 **한 그룹·한 회사의 표기**라 항목 전체의 이름이 되는 코드를 일반명으로 못 박는다
 #      (뒤 다섯 줄, 2026-09-18). CJ 7개사가 같은 문구를 쓰니 「CJ 계열사 할인」이 할인 45곳 전체의 이름이
 #      됐다. `leisure_ticket` 은 일반명 뒤에 대표 예시를 괄호로 둔다(사용자 지정 문자열).
@@ -37,7 +37,6 @@ LABEL_OVERRIDE = {
     "commute_subsidy": "통근버스·출퇴근 지원",
     "long_service_leave": "장기근속 휴가",
     "long_service_bonus": "장기근속 포상금",
-    "long_service": "장기근속 포상 (구 코드)",
     "discount": "계열사·제휴 할인",
     "satellite_office": "거점·공유 오피스",
     "leisure_ticket": "여가·문화 이용권(티빙·CGV 이용권)",

@@ -166,6 +166,20 @@ def test_FN1_mapping_rows_outside_csv_are_removed(seeded_db, clean_tx):
     assert stats["removed"] == 1
 
 
+def test_FN1_orphan_corporation_is_announced_not_deleted(seeded_db, clean_tx):
+    """회사 연결이 없는 법인(등록 해제 뒤 남은 TCORP)은 지우지 않고 **말한다** — DART 수집기가 계속 부르기 때문이다."""
+    conn = clean_tx
+    lines: list[str] = []
+    with conn.cursor() as cur:
+        cur.execute("INSERT INTO TCORP (CORP_CODE, CORP_NM, STOCK_CD, ACCT_SET_CD, FS_DIV_CD) "
+                    "VALUES ('99999999', '고아법인', NULL, 'general', 'CFS')")
+        stats = load_corp.apply(cur, load_corp.read_map(), out=lines.append)
+        cur.execute("SELECT COUNT(*) FROM TCORP WHERE CORP_CODE = '99999999'")
+        assert cur.fetchone()[0] == 1
+    assert stats["orphan_corps"] == ["99999999"]
+    assert any("고아법인" in ln and "99999999" in ln for ln in lines)
+
+
 # ── FN-4: 생성기 로더 실 경로 ────────────────────────────────────────────────
 
 def _aiomysql_conn():

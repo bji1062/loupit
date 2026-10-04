@@ -118,7 +118,7 @@ VALUES
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'mba', '학위 파견 (국내·해외)', NULL, 'growth',
-   'est', NULL, TRUE, '학위 파견 (국내/해외) — 인재육성 Process 의 Training-Job 단계 (공식 인재육성 페이지·지속가능경영보고서 53쪽). 같은 페이지 교육체계 표에는 사업가/핵심인재 과정에 MBA 로 기재 — 선발 기준·인원·비용 부담 범위 미기재', 80)
+   'est', NULL, TRUE, '학위 파견 (국내/해외), 인재육성 Process 의 Training-Job 단계 (공식 인재육성 페이지·지속가능경영보고서 53쪽). 같은 페이지 교육체계 표에는 사업가/핵심인재 과정에 MBA 로 기재 — 선발 기준·인원·비용 부담 범위 미기재', 80)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

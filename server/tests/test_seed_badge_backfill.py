@@ -244,3 +244,26 @@ def test_SB10_ai_parse_has_no_url(seeded_db):
         "SELECT COUNT(*) FROM TCOMPANY_BENEFIT WHERE BADGE_SRC_CD='ai_parse' AND BADGE_SRC_URL_CTNT IS NOT NULL",
     )
     assert count == 0
+
+
+# ── SB-11: 머리말 확인일 파싱 — 근거 URL 없는 회사(기준 39)도 머리말 날짜를 읽는다 (R-3 묶음 7 검토 N-1) ──
+def test_SB11_every_seed_header_carries_a_parseable_date():
+    """머리말 「-- 출처: AI 파싱 (YYYY-MM-DD)」 줄이 없으면 확인일이 조용히 기본값(2026-07-10)으로 떨어진다.
+    머리말 출처 줄을 「출처: 사용자 제공 …」처럼 바꾸면 여기서 걸린다 — 날짜 줄은 그 모양 그대로 둔다."""
+    from db.seed import backfill_dec2 as bf
+
+    missing = [f.name for f in sorted(bf.BENEFIT_SQL_DIR.glob("*.sql"))
+               if not bf._DATE_RE.search(f.read_text(encoding="utf-8"))]
+    assert missing == [], f"머리말 날짜 줄이 없는 시드: {missing}"
+
+
+def test_SB11_url_less_companies_take_the_header_date():
+    """근거 URL 없는 회사(기준 39 — 검색 AI 요약) 셋은 ai_parse 이고 확인일은 머리말 날짜다(리드 판정 (51))."""
+    from db.seed import backfill_dec2 as bf
+
+    prov = bf._parse_provenance(bf.BENEFIT_SQL_DIR)
+    assert {eng: p for eng, p in prov.items() if p["url"] is None} == {
+        "caregen": {"scraped_at": "2026-10-04", "url": None},
+        "lino": {"scraped_at": "2026-10-04", "url": None},
+        "remed": {"scraped_at": "2026-10-04", "url": None},
+    }

@@ -36,31 +36,31 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 건강·의료 (health) — 요약본 지원금/보험 ──
   (@comp_id, 'health_check', '건강검진', NULL, 'health',
-   'est', NULL, TRUE, '건강검진 (공식 원문 미확인 · 검색 AI 요약 기준)', 10),
+   'est', NULL, TRUE, '건강검진 — 지원금/보험 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 10),
 
   -- ── 가족·돌봄 (family) — 2025 사업보고서 이사회 의안 + 요약본 지원금/보험 ──
   (@comp_id, 'event', '경조사비 지원', NULL, 'family',
-   'est', NULL, TRUE, '경조사비 지원 규정 운영 (2025 사업보고서 이사회 중요의결사항 경조사비지원 규정 개정 승인 항목) — 경조 범위·지원 금액 미기재, 각종 경조사 지원 (공식 원문 미확인 · 검색 AI 요약 기준)', 20),
+   'est', NULL, TRUE, '경조사비 지원 규정 운영 (2025 사업보고서 이사회 중요의결사항 경조사비지원 규정 개정 승인 항목), 각종 경조사 지원 — 지원금/보험 항목, 경조 범위·지원 금액 미기재 (공식 원문 미확인 · 검색 AI 요약 기준)', 20),
 
   -- ── 보상 (compensation) — 요약본 급여제도 · 선물 ──
   (@comp_id, 'incentive', '인센티브제', NULL, 'compensation',
-   'est', NULL, TRUE, '인센티브제 (공식 원문 미확인 · 검색 AI 요약 기준)', 30),
+   'est', NULL, TRUE, '인센티브제 — 급여제도 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 30),
   (@comp_id, 'holiday_gift', '명절선물/귀향비', NULL, 'compensation',
-   'est', NULL, TRUE, '명절선물/귀향비 (공식 원문 미확인 · 검색 AI 요약 기준)', 31),
+   'est', NULL, TRUE, '명절선물/귀향비 — 선물 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 31),
 
   -- ── 여가·라이프 (leisure) — 요약본 교육/생활 ──
   (@comp_id, 'company_event', '워크샵', NULL, 'leisure',
-   'est', NULL, TRUE, '워크샵 (공식 원문 미확인 · 검색 AI 요약 기준)', 40),
+   'est', NULL, TRUE, '워크샵 — 교육/생활 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 40),
 
   -- ── 경제적 부가혜택 (perks) — 요약본 교육/생활 ──
   (@comp_id, 'meal', '구내식당(사원식당) · 저녁식사 제공', NULL, 'perks',
-   'est', NULL, TRUE, '구내식당(사원식당), 저녁식사 제공 (공식 원문 미확인 · 검색 AI 요약 기준)', 50),
+   'est', NULL, TRUE, '구내식당(사원식당), 저녁식사 제공 — 교육/생활 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 50),
   (@comp_id, 'snack_bar', '음료제공(차, 커피)', NULL, 'perks',
-   'est', NULL, TRUE, '음료제공(차, 커피) (공식 원문 미확인 · 검색 AI 요약 기준)', 51),
+   'est', NULL, TRUE, '음료제공(차, 커피) — 교육/생활 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 51),
 
   -- ── 근무환경 (work_env) — 요약본 출퇴근 ──
   (@comp_id, 'dormitory', '기숙사 운영', NULL, 'work_env',
-   'est', NULL, TRUE, '기숙사 운영 (공식 원문 미확인 · 검색 AI 요약 기준)', 60)
+   'est', NULL, TRUE, '기숙사 운영 — 출퇴근 항목 (공식 원문 미확인 · 검색 AI 요약 기준)', 60)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

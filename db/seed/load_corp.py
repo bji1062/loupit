@@ -72,13 +72,15 @@ def apply(cur, rows: list[dict], *, out=print) -> dict:
     """CSV 행을 TCORP·TCOMPANY_CORP 에 upsert 한다(커밋은 호출자 몫). 반환 = 통계.
 
     통계 키: corps(법인 upsert 수) · mapped(매핑 행 수) · skipped_unmapped[이름] · unmatched[이름]
-    (DB 에 없는 회사 — 적재 안 함) · id_drift[(이름, csv_id, db_id)] · removed(CSV 밖 잔존 행 삭제 수).
+    (DB 에 없는 회사 — 적재 안 함) · id_drift[(이름, csv_id, db_id)] · removed(CSV 밖 잔존 행 삭제 수) ·
+    orphan_corps[회사 연결 없는 법인 코드 — 지우지 않고 알린다].
     `out` 으로 건너뜀·경고를 남긴다 — 조용한 누락 금지.
     """
     cur.execute("SELECT COMP_ID, COMP_NM FROM TCOMPANY")
     by_name = {nm: int(cid) for cid, nm in cur.fetchall()}
 
-    stats: dict = {"corps": 0, "mapped": 0, "skipped_unmapped": [], "unmatched": [], "id_drift": [], "removed": 0}
+    stats: dict = {"corps": 0, "mapped": 0, "skipped_unmapped": [], "unmatched": [], "id_drift": [], "removed": 0,
+             "orphan_corps": []}
     corps: dict[str, tuple] = {}
     links: list[tuple] = []
     for r in rows:
@@ -120,6 +122,18 @@ def apply(cur, rows: list[dict], *, out=print) -> dict:
         stats["removed"] = cur.rowcount or 0
         if stats["removed"]:
             out(f"[load_corp] CSV 밖 잔존 매핑 {stats['removed']}행 제거")
+
+    # 회사 연결이 없는 법인 — 등록 해제 뒤 남은 행이다. 지우지는 않는다(모듈 머리말 — 재무가 매달려 있다).
+    # 다만 DART 수집기(dart_finance · dart_employ)는 TCORP 전량을 돌아 계속 부르므로 말해서 정리 마이그레이션을 쓰게 한다.
+    cur.execute(
+        "SELECT t.CORP_CODE, t.CORP_NM FROM TCORP t "
+        "WHERE NOT EXISTS (SELECT 1 FROM TCOMPANY_CORP cc WHERE cc.CORP_CODE = t.CORP_CODE) ORDER BY t.CORP_CODE"
+    )
+    orphans = list(cur.fetchall())
+    stats["orphan_corps"] = [code for code, _ in orphans]
+    if orphans:
+        out(f"[load_corp] ⚠ 회사 연결 없는 법인 {len(orphans)}곳: " + ", ".join(f"{nm}({code})" for code, nm in orphans)
+            + " — 등록 해제 뒤 남은 행이면 정리 마이그레이션으로 지운다(선례 db/migrations/20261004_drop_orphan_tcorp.sql)")
     return stats
 
 
@@ -139,7 +153,7 @@ def main() -> int:
         conn.close()
     print(f"load_corp done: corps={stats['corps']} mapped={stats['mapped']} "
           f"unmapped={len(stats['skipped_unmapped'])} unmatched={len(stats['unmatched'])} "
-          f"id_drift={len(stats['id_drift'])} removed={stats['removed']}")
+          f"id_drift={len(stats['id_drift'])} removed={stats['removed']} orphans={len(stats['orphan_corps'])}")
     return 1 if stats["unmatched"] else 0
 
 
