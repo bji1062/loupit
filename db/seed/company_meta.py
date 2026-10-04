@@ -232,8 +232,8 @@ def _row_chunks(sql_text: str) -> list[str]:
     return [c for c in chunks if c.strip().startswith("(@comp_id,")]
 
 
-def _row_info(chunk: str) -> tuple[str | None, bool, str | None, str | None]:
-    """청크 → (BENEFIT_CD, QUAL_YN 여부, 설명텍스트[NOTE 또는 QUAL_DESC], BENEFIT_CTGR_CD)."""
+def _row_info(chunk: str) -> tuple[str | None, bool, str | None, str | None, str | None]:
+    """청크 → (BENEFIT_CD, QUAL_YN 여부, 설명텍스트[NOTE 또는 QUAL_DESC], BENEFIT_CTGR_CD, BENEFIT_NM)."""
     code_m = re.match(r"\(@comp_id,\s*'([a-zA-Z0-9_]+)'", chunk)
     code = code_m.group(1) if code_m else None
     is_qual = bool(re.search(r",\s*TRUE\s*,", chunk))
@@ -244,16 +244,69 @@ def _row_info(chunk: str) -> tuple[str | None, bool, str | None, str | None]:
     # 쪽만 콤마당 1개 추가되므로, 마지막 원소가 그 설명 텍스트다(존재 시).
     desc = quoted[-1] if len(quoted) > 4 else None
     ctgr = quoted[2] if len(quoted) > 2 else None
-    return code, is_qual, desc, ctgr
+    name = quoted[1] if len(quoted) > 1 else None
+    return code, is_qual, desc, ctgr, name
+
+
+# ── 근무형태 칩의 조건(SP-SEED-6.2, 사용자 결정 6c 2026-10-04) — **이름만** 읽는다 ─────────────────────────
+# 서술에는 「대상 · 부문 · 필요시 · 일부」가 걸리는 행이 50행을 넘고 대부분 오탐이다(수집 메모 「적용 대상 미기재」 ·
+# 삼성바이오 · 휴젤 「필요시」 신청형 · ㈜한화 flex 서술의 두 부문 공통). 그래서 수집 계약이 정한 이름 꼴만 본다 —
+# 계약 문안: 「근무형태 칩 이름 규칙」(`_COLLECT-CONTRACT.md`). 이 꼴 밖의 괄호(「(주 1회)」 · 「(WFA)」 · 「(재택근무 포함)」)는
+# 한정으로 읽지 않는다.
+_COND_TARGET_HEAD = re.compile(r"^(육아기|자녀돌봄|부서별)\s")        # 대상 — 앞 「육아기 」·「자녀돌봄 」·「부서별 」
+_COND_TARGET_TAIL = re.compile(r"\((자녀를\s*둔[^()]*)\)\s*$")       # 대상 — 끝 「(자녀를 둔 …)」
+_COND_REASON = re.compile(r"\(\s*필요\s*시\s*\)\s*$")              # 사유 — 끝 「(필요 시)」 → 「필요 시」
+_COND_CONDITIONAL = re.compile(r"\(\s*조건부\s*\)\s*$")             # 사유 — 끝 「(조건부)」 → 「조건부」
+_COND_SECTOR = re.compile(r"\(([^()]*부문)\)\s*$")                  # 부문 — 끝 「(○○부문)」
+_COND_TOPIC = re.compile(r"^.*[은는]\s+")                            # 「휴가는 건설부문」 → 「건설부문」
+
+# 파생 대상 코드 → 칩 키
+_WS_CODE_KEY = {
+    "remote_work": "remote", "telecommute": "remote", "wfh": "remote",
+    "flex_work": "flex",
+    "refresh_leave": "refreshLeave", "long_service_leave": "refreshLeave",
+}
+
+
+def ws_conditions(name: str | None) -> list[str]:
+    """근무형태 행 이름 → 조건 라벨 목록(없으면 `[]` = 조건 없는 행).
+
+    앞 대상 · 끝 대상 · 끝 사유 · 끝 부문을 각각 보고, 해당하는 것을 이 순서로 모은다.
+    """
+    nm = (name or "").strip()
+    out: list[str] = []
+    m = _COND_TARGET_HEAD.match(nm)
+    if m:
+        out.append(m.group(1))
+    m = _COND_TARGET_TAIL.search(nm)
+    if m:
+        out.append(re.sub(r"\s+", " ", m.group(1).strip()))
+    elif _COND_REASON.search(nm):
+        out.append("필요 시")
+    elif _COND_CONDITIONAL.search(nm):
+        out.append("조건부")
+    else:
+        m = _COND_SECTOR.search(nm)
+        if m:
+            inner = _COND_TOPIC.sub("", m.group(1).strip())
+            out.append(inner)
+    return out
 
 
 def derive_work_style(sql_text: str) -> dict:
-    """복지 코드 존재 스캔으로 근무형태 파생(SP-SEED-6.2, 보수적 기본값)."""
+    """복지 코드 존재 스캔으로 근무형태 파생(SP-SEED-6.2, 보수적 기본값).
+
+    칩은 **조건 없는 단정**만이다(6c): 같은 키에 조건 없는 행이 하나라도 있으면 맨 칩(`remote: true`), 조건 있는 행뿐이면
+    그 키는 false 로 두고 `cond` 맵에 조건 라벨을 쓴다(불변식 `k ∈ cond ⇒ !ws[k]`). 조건이 하나도 없으면 `cond` 키를
+    쓰지 않는다(139사 JSON 바이트 그대로). `unlimitedPTO` 는 조건 사례가 없어 대상 밖이다.
+    """
     codes: set[str] = set()
     unlimited_hit = False
-    refresh_desc: str | None = None
+    plain: dict[str, bool] = {}               # 키 → 조건 없는 행이 있는가
+    cond: dict[str, list[str]] = {}           # 키 → 조건 라벨(행 순서, 중복 제거)
+    refresh_desc: str | None = None           # 조건 없는 행 가운데 파일상 마지막 행 서술 [:60]
     for chunk in _row_chunks(sql_text):
-        code, is_qual, desc, ctgr = _row_info(chunk)
+        code, is_qual, desc, ctgr, name = _row_info(chunk)
         if code:
             codes.add(code)
         # 휴가 카테고리 행만 본다(2026-09-28) — 「음료 무제한」(에이피알) · 「도서 구매 무제한」(카카오페이)이
@@ -261,15 +314,29 @@ def derive_work_style(sql_text: str) -> dict:
         # 걸릴 참이었다.
         if is_qual and desc and ctgr == "time_off" and ("무제한" in desc or "자율 휴가" in desc):
             unlimited_hit = True
-        if code in ("refresh_leave", "long_service_leave") and desc:
-            refresh_desc = desc[:60]
-    return {
-        "remote": bool(codes & {"remote_work", "telecommute", "wfh"}),
-        "flex": "flex_work" in codes,
+        key = _WS_CODE_KEY.get(code)
+        if key:
+            conds = ws_conditions(name)
+            if conds:
+                for lb in conds:
+                    if lb not in cond.setdefault(key, []):
+                        cond[key].append(lb)
+            else:
+                plain[key] = True
+                if key == "refreshLeave" and desc:
+                    refresh_desc = desc[:60]
+    ws = {
+        "remote": bool(plain.get("remote")),
+        "flex": bool(plain.get("flex")),
         "unlimitedPTO": ("unlimited_pto" in codes) or unlimited_hit,
-        "refreshLeave": refresh_desc,
+        "refreshLeave": refresh_desc if plain.get("refreshLeave") else None,
         "overtime": None,
     }
+    # 조건 있는 행뿐인 키만 cond 에 싣는다 — 맨 행이 하나라도 있으면 맨 칩이 이기고 조건은 적지 않는다.
+    cond_only = {k: v for k, v in cond.items() if not plain.get(k)}
+    if cond_only:
+        ws["cond"] = cond_only
+    return ws
 
 
 def build_company_meta() -> dict:

@@ -314,6 +314,25 @@ describe('SP-CMP-3 근무형태 — true 만 사실이다', () => {
   });
 });
 
+describe('SP-CMP-3 근무형태 — 문구형 refreshLeave · 조건 칩(6c)', () => {
+  test('문구형 refreshLeave(문자열)는 「제공」이다 — 예전엔 === true 라 147사 전부 「표기 없음」이었다', () => {
+    const rows = workStyleRows({ refreshLeave: '연말 재충전 휴가' }, { refreshLeave: null });
+    const r = rows.find((x) => x.key === 'refreshLeave');
+    assert.deepEqual([r.a, r.b], [true, false]);
+    assert.equal(workStyleRows({ refreshLeave: '' }, {}).find((x) => x.key === 'refreshLeave').a, false, '빈 문자열은 사실이 아니다');
+  });
+
+  test('cond 맵 — 조건 있는 키는 false 이고 셀이 「제공 · 육아기」로 읽힌다', () => {
+    const a = { remote: false, flex: true, cond: { remote: ['육아기'], refreshLeave: ['건설·리조트부문', '패션부문'] } };
+    const rows = workStyleRows(a, {});
+    const by = Object.fromEntries(rows.map((r) => [r.key, r]));
+    assert.deepEqual([by.remote.a, by.remote.aCond], [false, '육아기']);
+    assert.deepEqual([by.flex.a, by.flex.aCond], [true, '']);
+    assert.equal(by.refreshLeave.aCond, '건설·리조트부문, 패션부문');
+    assert.equal(by.remote.bCond, '');
+  });
+});
+
 describe('SP-CMP-3 값 표기', () => {
   test('0 은 어디서나 「등록 없음」이다', () => {
     assert.equal(fmt(0), NONE);

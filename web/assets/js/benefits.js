@@ -295,15 +295,24 @@ export function trustSentence(items, nm) {
   return `${head} 금액이 적힌 항목은 ${amt.length}개이며 그중 공식 수치는 ${stated}개, 추정치는 ${est}개입니다.`;
 }
 
-/** 근무형태 5축 대조. `true` 만 「제공」이고 나머지는 전부 「표기 없음」이다(허위 표기 금지). */
+/**
+ * 근무형태 5축 대조. 「제공」은 조건 없는 단정만이다 — `true` 이거나(문구형 `refreshLeave` 는 비지 않은 문자열) 그렇지 않으면
+ * 「표기 없음」(허위 표기 금지). 조건이 붙은 칩(`cond` 맵, 6c)은 `aCond`/`bCond` 에 라벨을 싣고 셀이 「제공 · 육아기」로 읽힌다.
+ *
+ * ⚠ 예전엔 `=== true` 만 봐서 `refreshLeave`(문자열 · 85사)가 147사 전부 「표기 없음」이었다(정적 회사 페이지 · /vs/ 는 「제공」) — 같이 고쳤다.
+ */
+const wsOn = (v) => v === true || (typeof v === 'string' && v !== '');
+const wsCond = (ws, k) => ((ws && ws.cond && Array.isArray(ws.cond[k])) ? ws.cond[k].filter(Boolean).join(', ') : '');
 export function workStyleRows(wsA, wsB) {
   const a = wsA || {};
   const b = wsB || {};
   return WS_KEYS.map((k) => ({
     key: k,
     label: WS_LABEL[k],
-    a: a[k] === true,
-    b: b[k] === true,
+    a: wsOn(a[k]),
+    b: wsOn(b[k]),
+    aCond: wsOn(a[k]) ? '' : wsCond(a, k),
+    bCond: wsOn(b[k]) ? '' : wsCond(b, k),
   }));
 }
 
@@ -717,7 +726,8 @@ function renderWorkStyle(vm) {
     const tr = el('tr');
     tr.append(el('td', { text: w.label }));
     for (const slot of ['a', 'b']) {
-      tr.append(el('td', { ...cls(!w[slot], 'cmp-none'), text: w[slot] ? WS_YES : WS_UNKNOWN }));
+      const cond = w[`${slot}Cond`];
+      tr.append(el('td', { ...cls(!w[slot] && !cond, 'cmp-none'), text: w[slot] ? WS_YES : (cond ? `${WS_YES} · ${cond}` : WS_UNKNOWN) }));
     }
     return tr;
   });

@@ -58,8 +58,8 @@
       {% for key, label, va, vb in work_style_compare %}
         <tr>
           <td>{{ label }}</td>
-          <td>{% if va %}제공{% endif %}</td>
-          <td>{% if vb %}제공{% endif %}</td>
+          <td>{{ va }}</td>
+          <td>{{ vb }}</td>
         </tr>
       {% endfor %}
       </tbody>

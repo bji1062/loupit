@@ -18,7 +18,7 @@ import { dirname, join } from 'node:path';
 import { JSDOM } from 'jsdom';
 
 import {
-  mountUI, renderInputView, ensureInputScaffold, parseNum, currentSalary, effectiveRate, remoteHint,
+  mountUI, renderInputView, ensureInputScaffold, parseNum, currentSalary, effectiveRate, remoteHint, condHints,
   bindSearchView, bindInputView, bindReportNav, reflectSearchUI, reflectSlotLabel, maybeAdvance,
   missingMessage, notePrefill, clearSearchGoHint, readNum,
 } from './ui.js';
@@ -261,6 +261,28 @@ describe('UI-3 입력 뷰(이직 계산기 개편 2026-09-23, SP-FE-14)', () => 
     renderInputView(state, {});
     assert.match(document.getElementById('calc-fill-a').textContent, /원격 근무를 고를 수 있다고 되어 있습니다/);
     assert.equal(document.querySelector('#calc-fill-b .calc-fill-note'), null, '조건 미충족이면 줄을 만들지 않는다');
+  });
+
+  test('조건 칩(cond 맵, 6c) — 미리 체크하지 않고 안내하며, 원문 힌트와 겹치지 않는다', () => {
+    const state = stateWithMatches();
+    state.matched.a = { ...state.matched.a, work_style_val: { remote: false, flex: true, cond: { remote: ['육아기'] } } };
+    state.benS.a.push({ benefit_cd: 'remote_work', benefit_nm: '육아기 재택근무', qual_yn: true, qual_desc_ctnt: '육아기 직원은 재택근무를 쓸 수 있음(원격 근무)', checked: true });
+    state.wsState.a = { ot: null, wage: null, remote: null, flex: true };
+    assert.deepEqual(condHints(state, 'a'), [{ key: 'remote', label: '재택근무', cond: '육아기' }]);
+    assert.deepEqual(condHints(state, 'b'), []);
+    assert.equal(remoteHint(state, 'a'), null, '같은 행을 「원문 힌트」로 두 번 말하지 않는다');
+    renderInputView(state, {});
+    assert.match(document.querySelector('#calc-fill-a summary').textContent, /유연근무 있음 · 재택 조건부\(육아기\)/);
+    const note = document.getElementById('ws-remote-a-cond');
+    assert.match(note.textContent, /재택근무는 「육아기」 조건이 붙어 있어 체크하지 않았습니다\. 해당되면 체크해 주세요\./);
+    assert.equal(document.getElementById('ws-remote-a').checked, false);
+    assert.equal(note.hidden, false);
+    const cb = document.getElementById('ws-remote-a');
+    cb.checked = true; cb.dispatchEvent(new window.Event('change', { bubbles: true }));
+    assert.equal(state.wsState.a.remote, true);
+    assert.equal(note.hidden, true, '체크하면 안내를 접는다');
+    assert.match(document.querySelector('#calc-fill-a summary').textContent, /재택 있음/);
+    assert.equal(document.getElementById('ws-remote-b-cond'), null);
   });
 
   test('근속 조건 복지가 있으면 보조문에 개수(회사 이름으로)', () => {

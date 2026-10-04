@@ -830,3 +830,19 @@ describe('후속 소문구(2026-09-23) — 「모두」는 둘 이상일 때만 
     assert.match(all, /±452/);
   });
 });
+
+describe('RC-COND 조건 칩(6c) 각주 — 미리 체크하지 않은 재택 · 유연', () => {
+  test('조건이 붙은 재택은 「계산에 넣지 않았습니다」 각주, 사용자가 체크했으면 생략', () => {
+    const st = verifyState('KT', '네패스');
+    const hints = { a: [{ key: 'remote', label: '재택근무', cond: '육아기' }], b: [] };
+    const { mount } = render(st, 'wlb', { condHints: hints });
+    const t = allText(mount);
+    assert.match(t, /※ KT의 재택근무는 「육아기」 조건이 붙어 있어 계산에 넣지 않았습니다\. 해당되면 조건을 고쳐 주세요\./);
+    const st2 = verifyState('KT', '네패스');
+    st2.wsState = { ...st2.wsState, a: { ...(st2.wsState && st2.wsState.a), remote: true } };
+    const { mount: m2 } = render(st2, 'wlb', { condHints: hints });
+    assert.doesNotMatch(allText(m2), /조건이 붙어 있어 계산에 넣지 않았습니다/);
+    const { mount: m3 } = render(verifyState('KT', '네패스'), 'wlb', {});
+    assert.doesNotMatch(allText(m3), /조건이 붙어 있어 계산에 넣지 않았습니다/, '조건 힌트가 없으면 각주도 없다');
+  });
+});

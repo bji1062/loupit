@@ -121,9 +121,45 @@ WS_LABELS = {
 }
 
 
+WS_KEYS = tuple(WS_LABELS)  # 화면 순서 = 라벨 표 순서
+
+
 def work_style_label(key: str) -> str:
     """근무형태 키 → 한국어 라벨. 미상 키는 원문 그대로 반환."""
     return WS_LABELS.get(key, key)
+
+
+def _ws_cond(ws: dict, key: str) -> str:
+    """조건 라벨(`cond` 맵, 6c)을 「, 」로 이은 글. 없으면 ''. 「·」는 「건설·리조트부문」 안에 있어 섞이므로 쓰지 않는다."""
+    conds = (ws.get("cond") or {}).get(key) or []
+    return ", ".join(c for c in conds if c)
+
+
+def work_style_items(ws: dict | None) -> list[dict]:
+    """근무형태 칩 목록 `[{key, label, cond}]` — 칩은 조건 없는 단정(truthy)이거나 조건 칩(`cond`)이다(SP-SEED-6.2).
+
+    값이 문구형인 `refreshLeave`(문자열)도 truthy 라 맨 칩이다. 조건 있는 키는 값이 false 이고 `cond` 에 라벨이 있다
+    (불변식 `k ∈ cond ⇒ !ws[k]`) — 그 칩은 「재택근무 · 육아기」 꼴로 읽힌다. 맨 칩의 `cond` 는 ''.
+    """
+    ws = ws or {}
+    out = []
+    for k in WS_KEYS:
+        if ws.get(k):
+            out.append({"key": k, "label": WS_LABELS[k], "cond": ""})
+        else:
+            cond = _ws_cond(ws, k)
+            if cond:
+                out.append({"key": k, "label": WS_LABELS[k], "cond": cond})
+    return out
+
+
+def work_style_cell(ws: dict | None, key: str) -> str:
+    """조합 페이지 근무형태 셀 — '' | '제공' | '제공 · 육아기'. 허위 표기 금지(조건 없는 단정만 맨 「제공」)."""
+    ws = ws or {}
+    if ws.get(key):
+        return "제공"
+    cond = _ws_cond(ws, key)
+    return f"제공 · {cond}" if cond else ""
 
 
 # ── 재무 표시(SP-FIN-5, 2026-08-27) ──────────────────────────────────────────

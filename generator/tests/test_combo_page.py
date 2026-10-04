@@ -231,3 +231,20 @@ def test_marked_rows_leave_category_counts_and_top_of_combo(fake_now):
     assert r["top_a"]["name"] == "교육비 지원"
     assert combo._per_category(__import__("generator.marks", fromlist=["x"]).countable({"comp_eng_nm": "alteogen", "benefits": a}))[
         combo.CATEGORY_ORDER.index("growth")] == 1
+
+
+def test_work_style_cells_three_states(fake_bundle, fake_now, fake_combinations_path):
+    """근무형태 셀 — 맨 「제공」 · 조건 칩 「제공 · 패션부문」 · 빈칸(허위 표기 금지, 6c)."""
+    import copy
+    b = copy.deepcopy(fake_bundle)
+    for c in b["companies"]:
+        if c["comp_eng_nm"] == "samsung_elec":
+            c["work_style_val"] = {"remote": True, "flex": False, "cond": {"flex": ["패션부문"]}}
+        if c["comp_eng_nm"] == "sk_hynix":
+            c["work_style_val"] = {"remote": False, "flex": False}
+    pages = _render(b, fake_now)
+    p = next(p for p in pages if p.path == "vs/samsung-elec-sk-hynix.html")
+    sec = re.search(r'<section class="combo-work-style".*?</section>', p.html, re.S).group(0)
+    rows = {m.group(1): re.findall(r"<td>(.*?)</td>", m.group(2)) for m in re.finditer(r"<tr>\s*<td>(.*?)</td>(.*?)</tr>", sec, re.S)}
+    assert rows["재택근무"] == ["제공", ""]
+    assert rows["유연근무"] == ["제공 · 패션부문", ""]

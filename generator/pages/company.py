@@ -14,7 +14,7 @@ from generator.context import Page
 from generator.employ import company_metrics
 from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
-from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon
+from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon, work_style_items
 from generator.radar import fmt, radar_svg
 from generator.slug import combo_slug
 
@@ -367,11 +367,7 @@ def _company_view(c: dict, ctx, now, corpus, benefit_index: dict | None = None) 
         "comp_nm": c["comp_nm"],
         "industry_nm": c.get("industry_nm"),
         "comp_tp_nm": t.get("comp_tp_nm"),
-        "work_style": [
-            (k, ws[k])
-            for k in ("remote", "flex", "unlimitedPTO", "refreshLeave", "overtime")
-            if ws.get(k)
-        ],
+        "work_style": work_style_items(ws),
         "benefit_groups": groups,
         "compare_href": f"{CFG.compare_path}?a={c['comp_eng_nm']}",
         "finance": _finance_view(c, ctx),

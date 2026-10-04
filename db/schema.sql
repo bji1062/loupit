@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS TCOMPANY (
   COMP_TP_ID           INT          NOT NULL COMMENT '기업유형 FK (TCOMPANY_TYPE.COMP_TP_ID)',
   INDUSTRY_NM          VARCHAR(50)  COMMENT '산업 분류 (전자/반도체, 핀테크 등)',
   LOGO_NM              VARCHAR(10)  COMMENT '로고 약어 (S, CJ, T 등)',
-  WORK_STYLE_VAL       JSON         COMMENT '근무 형태 {remote, flex, unlimitedPTO, refreshLeave, overtime}',
+  WORK_STYLE_VAL       JSON         COMMENT '근무 형태 {remote, flex, unlimitedPTO, refreshLeave, overtime, cond?}',
   CAREERS_BENEFIT_URL  VARCHAR(500) COMMENT '공식 채용/복지 페이지 URL (출처 아웃링크)',
   INS_ID  INT COMMENT '입력자 ID',
   INS_DTM TIMESTAMP DEFAULT CURRENT_TIMESTAMP COMMENT '입력 일시',

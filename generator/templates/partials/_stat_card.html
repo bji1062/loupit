@@ -113,7 +113,7 @@
     <div class="sc-block">
       <h2>근무형태</h2>
       <ul class="sc-ws">
-      {% for k, v in work_style %}<li>{{ k | ws_label }} 제공</li>{% endfor %}
+      {% for w in work_style %}<li>{% if w.cond %}{{ w.label }} · {{ w.cond }}{% else %}{{ w.label }} 제공{% endif %}</li>{% endfor %}
       </ul>
     </div>
     {% endif %}

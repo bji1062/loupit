@@ -486,6 +486,15 @@ function autonomyLine(X) {
   } else {
     p.append(nm.a + '에는 ' + (join(a.perksA) || '등록 없음') + ', ' + nm.b + '에는 ' + (join(a.perksB) || '등록 없음') + ' — ', b('우열을 가릴 수 없습니다.'));
   }
+  // 조건이 붙은 재택 · 유연(6c)은 미리 체크하지 않았다 — 사용자가 체크했으면(계산에 넣었으면) 각주를 생략한다.
+  const cond = (ctx.condHints) || {};
+  const wsIn = (ctx.input && ctx.input.ws) || {};
+  for (const s of ['a', 'b']) {
+    for (const h of cond[s] || []) {
+      if (wsIn[s] && wsIn[s][h.key]) continue;
+      p.append(' ', el('span', { class: 'calc-muted calc-small', text: '※ ' + nm[s] + '의 ' + h.label + '는 「' + h.cond + '」 조건이 붙어 있어 계산에 넣지 않았습니다. 해당되면 조건을 고쳐 주세요.' }));
+    }
+  }
   const hints = (ctx.remoteHints) || {};
   for (const s of ['a', 'b']) {
     const hint = hints[s];

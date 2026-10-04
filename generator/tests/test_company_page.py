@@ -443,3 +443,26 @@ def test_gc16_every_page_declares_favicon(fake_bundle, fake_now):
     for p in pages:
         assert 'rel="icon"' in p.html and "favicon.svg" in p.html, f"{p.path}: SVG 아이콘 선언 없음"
         assert "/favicon.ico" in p.html, f"{p.path}: .ico 폴백 선언 없음"
+
+
+# ── GC-12b: 근무형태 조건 칩(6c) — 「재택근무 · 육아기」, 맨 칩은 그대로 ──────────────────────
+
+
+def test_gc12b_conditional_work_style_chip_reads_with_its_condition(fake_bundle, fake_now):
+    import copy
+    b = copy.deepcopy(fake_bundle)
+    sam = next(c for c in b["companies"] if c["comp_eng_nm"] == "samsung_elec")
+    sam["work_style_val"] = {"remote": False, "flex": True, "unlimitedPTO": False, "refreshLeave": None, "overtime": None,
+                             "cond": {"remote": ["육아기"]}}
+    p = _samsung(b, fake_now)
+    assert "<li>재택근무 · 육아기</li>" in p.html
+    assert "재택근무 제공" not in p.html, "조건 칩은 「제공」 단정이 아니다"
+    assert "<li>유연근무 제공</li>" in p.html
+
+
+def test_gc12b_conditional_only_chip_still_opens_the_block(fake_bundle, fake_now):
+    import copy
+    b = copy.deepcopy(fake_bundle)
+    sam = next(c for c in b["companies"] if c["comp_eng_nm"] == "samsung_elec")
+    sam["work_style_val"] = {"remote": False, "flex": False, "cond": {"flex": ["패션부문"]}}
+    assert "<li>유연근무 · 패션부문</li>" in _samsung(b, fake_now).html

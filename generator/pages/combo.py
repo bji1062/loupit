@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 from generator import corpus as corpus_mod, marks
+from generator.format import WS_KEYS, WS_LABELS, work_style_cell
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, _group_benefits, _truncate
@@ -22,14 +23,6 @@ log = logging.getLogger(__name__)
 # monkeypatch해 소형 fake 목록으로 교체한다(conftest.py `fake_combinations_path`).
 COMBINATIONS_PATH = Path(__file__).resolve().parents[1] / "data" / "combinations.json"
 
-_WS_KEYS = ("remote", "flex", "unlimitedPTO", "refreshLeave", "overtime")
-_WS_LABEL_MAP = {
-    "remote": "재택근무",
-    "flex": "유연근무",
-    "unlimitedPTO": "무제한 휴가",
-    "refreshLeave": "리프레시 휴가",
-    "overtime": "야근 있음(고지)",
-}
 
 
 def _company_summary(c: dict, t: dict) -> dict:
@@ -42,10 +35,10 @@ def _company_summary(c: dict, t: dict) -> dict:
     }
 
 
-def _work_style_compare(ws_a: dict, ws_b: dict) -> list[tuple[str, str, bool, bool]]:
-    """M2 근무형태 5축 나란히 대조 — true만 "제공"(허위 표기 금지)."""
+def _work_style_compare(ws_a: dict, ws_b: dict) -> list[tuple[str, str, str, str]]:
+    """M2 근무형태 5축 나란히 대조 — 셀은 '' | '제공' | '제공 · 패션부문'(허위 표기 금지, 조건은 `cond` 에서). 판정은 format 하나."""
     return [
-        (k, _WS_LABEL_MAP[k], bool(ws_a.get(k)), bool(ws_b.get(k))) for k in _WS_KEYS
+        (k, WS_LABELS[k], work_style_cell(ws_a, k), work_style_cell(ws_b, k)) for k in WS_KEYS
     ]
 
 

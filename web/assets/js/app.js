@@ -6,7 +6,7 @@ import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReference } from './boot.js';
 import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, syncExclusionNote, clearExclusions } from './ui.js';
+import { mountUI, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, condHints, syncExclusionNote, clearExclusions } from './ui.js';
 import { rowMark } from './marks.js'; // 표시 행(법정 · 업무 교육) — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5 · SP-MARK)
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
@@ -893,6 +893,8 @@ export function runReport(hooks = {}) {
       },
       // 재택 플래그가 원문과 어긋날 때 원문을 보여 주는 재료(입력 화면과 같은 판정 — ui.js remoteHint)
       remoteHints: { a: remoteHint(state, 'a'), b: remoteHint(state, 'b') },
+      // 조건이 붙은 재택 · 유연(cond 맵, 6c) — 계산기가 미리 체크하지 않은 근무형태(결과 각주 재료)
+      condHints: { a: condHints(state, 'a'), b: condHints(state, 'b') },
       onAxis: (axis) => {
         const label = Object.keys(PRI_KEY).find((k) => PRI_KEY[k] === axis);
         if (label) state.curPri = label;

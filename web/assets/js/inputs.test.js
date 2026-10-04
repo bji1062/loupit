@@ -164,6 +164,14 @@ describe('T-06.8.3 initWsState (UT-WS-1)', () => {
     assert.equal(state.wsState.a.flex, null);
   });
 
+  test('UT-WS-2: 조건 칩(cond 맵, 6c)은 false 라 미리 체크하지 않는다 — 데이터만으로 바로잡힌다', () => {
+    const state = freshState();
+    state.matched.a = normalizeCompany({ comp_id: 1, comp_nm: 'A', work_style_val: { remote: false, flex: true, cond: { remote: ['육아기'] } } });
+    initWsState(state, 'a');
+    assert.equal(state.wsState.a.remote, null, '조건 있는 재택은 제안하지 않는다');
+    assert.equal(state.wsState.a.flex, true, '맨 유연근무는 그대로 제안한다');
+  });
+
   test('matched 없음(직접입력) → 전부 null(제안 없음)', () => {
     const state = freshState();
     initWsState(state, 'a');
