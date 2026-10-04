@@ -23,7 +23,8 @@
 -- 순서 (반드시): 이 파일 → python3 db/seed/load.py → release.
 --   적재를 먼저 돌리면 새 코드 행이 먼저 생겨 UPDATE 가 uq_comp_benefit 중복 키로 실패하고 옛 행이 남는다.
 --
--- web/assets 변경 없음 — git pull 만으로 라이브가 바뀌지 않는다.
+-- 🚨 web/assets/js/find.js 가 바뀐다(LABEL_OVERRIDE welfare_fund_loan 1줄 · 무해). web/assets 는 라이브 docroot 라 git pull 하는 순간 바로 라이브가 된다 —
+--   아래 pull → 백업 → 마이그레이션 → load.py → release 를 끊지 않고 잇는다.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다):
 --   0) 머지 → git pull
