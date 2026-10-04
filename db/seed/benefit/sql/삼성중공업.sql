@@ -104,7 +104,7 @@ VALUES
   (@comp_id, 'mba', 'MBA·EMBA 지원', NULL, 'growth',
    'est', NULL, TRUE, '전문 경영인 양성을 위한 MBA·EMBA 교육 지원 (선발 기준·학비 지원 범위 미기재)', 63),
   (@comp_id, 'lang', '회화시험 응시료·외국어 인텐시브 과정', NULL, 'growth',
-   'est', NULL, TRUE, 'Opic 응시료 지원, 외국어 인텐시브 과정 — 10주간 집중 교육으로 글로벌 비즈니스 역량 강화 (연간 응시 횟수·지원 한도·과정 선발 기준 미기재)', 64),
+   'est', NULL, TRUE, 'Opic 응시료 지원, 외국어 인텐시브 과정 — 10주간 집중 교육으로 글로벌 비즈니스 역량 강화 (연간 응시 횟수·지원 한도·수강 대상 미기재)', 64),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'lounge', '엔지니어 라운지', NULL, 'work_env',

@@ -141,7 +141,7 @@ VALUES
   (@comp_id, 'lang', '사내 어학 프로그램', NULL, 'growth',
    'est', NULL, TRUE, '사내 어학 프로그램 등 자기계발 지원, 사내외 집합·온라인 어학교육 (2025 지속가능경영보고서 67쪽 임직원 교육 자기계발 항목, 2025년 기준 — 대상 언어·수강 대상·비용 부담 미기재)', 92),
   (@comp_id, 'edu_support', '독서통신교육·교양강좌', NULL, 'growth',
-   'est', NULL, TRUE, '독서통신교육, 명사특강·교양강좌로 운영하는 의식소양 과정 (2025 지속가능경영보고서 67쪽 임직원 교육 체계 자기계발·공통교육 항목, 2025년 기준 — 과정 수·강좌 주제·비용 부담 미기재) — #21 을 빼면 「독서통신교육 (… 자기계발 항목, 2025년 기준 — 과정 수·수강 한도·비용 부담 미기재)', 93)
+   'est', NULL, TRUE, '독서통신교육, 명사특강·교양강좌로 운영하는 의식소양 과정 (2025 지속가능경영보고서 67쪽 임직원 교육 체계 자기계발·공통교육 항목, 2025년 기준 — 과정 수·강좌 주제·비용 부담 미기재)', 93)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

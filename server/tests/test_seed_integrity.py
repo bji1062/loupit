@@ -402,3 +402,25 @@ def test_SI11_dash_tail_strips_only_the_collector_memo(seeded_db):
             if m and br._META_TAIL.search(m.group(1)) and sep.search(m.group(1)):
                 bad.append(f"{comp}/{code}: {text[:50]}")
     assert bad == [], f"「 — 」가 둘 이상이라 원문이 매칭 사본에서 걷히는 행 {len(bad)}: {bad[:5]}"
+
+
+# ── SI-12: 레인 메모 낱말이 사용자 노출 칸에 새지 않는다 ──
+def test_SI12_no_lane_memo_words_in_user_facing_fields(seeded_db):
+    """수집 레인 보고서의 「제안 서술」 칸에는 통합자용 메모(「덧붙인 전문:」 · 「27~29 를 합친」 ·
+    「#21 을 빼면」 · 「#숫자」)가 섞여 있다. 그대로 옮기면 회사 페이지 · 항목 페이지 · `/find` · API 로
+    나간다(R-3 후속 정리 2 독립 검토 H1 — 4칸). SI-11 은 「 — 」 꼬리만 보므로 이 모양을 못 잡는다."""
+    import re
+
+    memo = re.compile(r"전문: |을 합친|를 합친|한 번에 합친|덧붙인|덧붙일|을 빼면|를 빼면|#\d+")
+    bad = []
+    for comp, code, nm, desc, note in _rows(
+        seeded_db,
+        """
+        SELECT c.COMP_ENG_NM, b.BENEFIT_CD, b.BENEFIT_NM, b.QUAL_DESC_CTNT, b.NOTE_CTNT FROM TCOMPANY_BENEFIT b
+        JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID WHERE b.BADGE_CD <> 'verified'
+        """,
+    ):
+        for text in (nm, desc, note):
+            if text and memo.search(text):
+                bad.append(f"{comp}/{code}: {text[:50]}")
+    assert bad == [], f"레인 메모 낱말이 사용자 노출 칸에 있는 행 {len(bad)}: {bad[:5]}"

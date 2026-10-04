@@ -112,7 +112,7 @@ VALUES
   (@comp_id, 'retirement_support', '정년퇴직 위로 휴가', NULL, 'growth',
    'est', NULL, TRUE, '근속 20년 이상 정년퇴직자 유급휴가 30일 제공', 83),
   (@comp_id, 'lang', '어학교육', NULL, 'growth',
-   'est', NULL, TRUE, '자발적 모임을 통한 구성원 주도 학습 — 러닝랩과 함께 어학교육 운영 (공식 조직문화/인재경영 페이지 교육 프로그램 표 기타 항목 · Kia Sustainability Report 2026 72쪽 — 대상 언어·운영 방식·비용 부담 미기재)', 84),
+   'est', NULL, TRUE, '구성원 주도 학습 항목의 어학교육 (공식 조직문화/인재경영 페이지 교육 프로그램 표 기타 항목 · Kia Sustainability Report 2026 72쪽 — 대상 언어·운영 방식·비용 부담 미기재)', 84),
 
   -- ── 보상·금전 (compensation) ── 보고서 p.72 · 75
   (@comp_id, 'stock_option', '우리사주제도', NULL, 'compensation',
