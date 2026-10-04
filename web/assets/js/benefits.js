@@ -29,7 +29,7 @@ import { pairVerdict } from './calc.js';
 import { companyHref } from './directory.js';
 import { MARK, SUMMARY, rowMark, countable, isSummary } from './marks.js';
 
-// 근무형태 5축 — 정본은 `generator/pages/combo.py::_WS_KEYS`. `true` 만 사실이고 `false`·`null` 은
+// 근무형태 5축 — 정본은 `generator/format.py::WS_KEYS`. 조건 없는 단정(`true` · 문구형 `refreshLeave`)만 사실이고 `false`·`null` 은
 // 「표기 없음」이다(overtime 은 126사 전부 null — 「야근 없음」이라고 쓰면 126번 거짓말이 된다).
 export const WS_KEYS = ['remote', 'flex', 'unlimitedPTO', 'refreshLeave', 'overtime'];
 export const WS_LABEL = {

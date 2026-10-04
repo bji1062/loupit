@@ -330,6 +330,20 @@ describe('RC-5 상호작용 — 축 전환 · 행별 「빼고 다시 계산」(
   }
   const run = (s) => runReport({ state: s, save: false, compareFn: (st) => compare(st, NOW) });
 
+  test('조건 칩(6c) — app.js 배선(runReport → condHints)을 거쳐 각주가 나오고, 체크하면 사라진다', () => {
+    const s = appState();
+    s.matched.a = normalizeCompany({ ...G.naver, comp_nm: '한미약품', work_style_val: { remote: false, flex: true, cond: { remote: ['육아기'] } } });
+    fillBenefits(s, 'a');
+    run(s);
+    document.getElementById('calc-out-wlb').click(); // 근무 자율성 줄은 워라밸 축에 있다
+    const t = document.getElementById('report-body').textContent;
+    assert.match(t, /※ 한미약품의 재택근무는 「육아기」 조건이 붙어 있어 계산에 넣지 않았습니다\. 해당되면 조건을 고쳐 주세요\./);
+    s.wsState.a.remote = true;
+    run(s);
+    document.getElementById('calc-out-wlb').click();
+    assert.doesNotMatch(document.getElementById('report-body').textContent, /조건이 붙어 있어 계산에 넣지 않았습니다/, '사용자가 체크했으면 각주를 생략한다');
+  });
+
   test('세그먼트 → 재계산 없이 축 전환 · curPri 동기 · 낭독 줄은 결론 한 줄', () => {
     const s = appState();
     let calls = 0;

@@ -298,7 +298,7 @@ def derive_work_style(sql_text: str) -> dict:
 
     칩은 **조건 없는 단정**만이다(6c): 같은 키에 조건 없는 행이 하나라도 있으면 맨 칩(`remote: true`), 조건 있는 행뿐이면
     그 키는 false 로 두고 `cond` 맵에 조건 라벨을 쓴다(불변식 `k ∈ cond ⇒ !ws[k]`). 조건이 하나도 없으면 `cond` 키를
-    쓰지 않는다(139사 JSON 바이트 그대로). `unlimitedPTO` 는 조건 사례가 없어 대상 밖이다.
+    쓰지 않는다(137사 JSON 바이트 그대로). `unlimitedPTO` 는 조건 사례가 없어 대상 밖이다.
     """
     codes: set[str] = set()
     unlimited_hit = False

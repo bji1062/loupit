@@ -99,15 +99,19 @@ def test_badge_state_summary_priority():
 def test_SM_G1_ai_parse_companies_are_exactly_url_less_search_summary_seeds():
     """근거 URL 없는 새 회사가 조용히 「검색 요약」이 되는 것을 막는다.
 
-    `-- URL: 없음` 머리말(= 백필이 `ai_parse` 를 찍는 회사)은 반드시 머리말 「출처 상세」에 「검색 AI 요약」이
-    있어야 하고, 거꾸로 「검색 AI 요약」 출처 상세는 URL 없음이어야 한다.
+    백필이 `ai_parse` 를 찍는 **실제 규칙**(`backfill_dec2._parse_provenance` — 머리말 `^-- URL: (http\\S+)` 이 없으면 url=None)을
+    그대로 쓴다. 그 회사는 머리말 「출처 상세」에 「검색 AI 요약」이 있어야 하고, 거꾸로 그 출처 상세는 URL 없는 회사에만 있어야 한다.
+    (`-- URL:` 줄을 빼먹거나 「미확인」으로 적은 새 시드도 잡힌다.)
     """
-    url_less, summary_detail = set(), set()
+    from db.seed.backfill_dec2 import _parse_provenance
+    from db.seed.company_meta import parse_header_insert
+
+    prov = _parse_provenance(SEED_DIR)
+    url_less = {eng for eng, p in prov.items() if p["url"] is None}
+    summary_detail = set()
     for path in SEED_DIR.glob("*.sql"):
-        head = "\n".join(path.read_text(encoding="utf-8").splitlines()[:40])
-        if re.search(r"^-- URL:\s*없음", head, re.M):
-            url_less.add(path.name)
-        if re.search(r"^--\s+출처 상세:.*검색 AI 요약", head, re.M):
-            summary_detail.add(path.name)
-    assert url_less, "머리말 규약이 바뀌었나 — URL 없음 회사가 0"
+        text = path.read_text(encoding="utf-8")
+        if re.search(r"^--\s+출처 상세:.*검색 AI 요약", "\n".join(text.splitlines()[:40]), re.M):
+            summary_detail.add(parse_header_insert(text)[0])
+    assert url_less, "머리말 규약이 바뀌었나 — URL 없는 회사가 0"
     assert url_less == summary_detail, (url_less ^ summary_detail)

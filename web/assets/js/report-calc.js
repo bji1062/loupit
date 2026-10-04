@@ -15,7 +15,7 @@ import { el } from './dom.js';
 import { withJosa, fmt, fmt1, fmtSigned, fmtPct } from './josa.js';
 import { badgeKind, badgeClassBem, BADGE_LABEL_SHORT } from './badge.js';
 import { CATEGORY_LABEL } from './categories.js';
-import { MARK, SUMMARY, isSummary } from './marks.js';
+import { MARK, SUMMARY, isSummary, rowMark } from './marks.js';
 
 const AXES = [['salary', '연봉'], ['wlb', '워라밸'], ['benefits', '복지']];
 const AXIS_LABEL = Object.fromEntries(AXES);
@@ -1696,7 +1696,8 @@ function basisBlock(X) {
     if (n) ul.append(li(el('span', { class: 'calc-bd calc-bd-mark', text: MARK[kind].label }), ' ' + MARK[kind].phrase + ' ' + n + '개는 표시만 하고 비교에서 뺐습니다.'));
   }
   // 검색 요약 — 집계에는 들지만 근거가 다르다(SP-MARK). 비교에 쓴(표시 행 제외) 행만 센다.
-  const sumN = (slot) => (X.benS[slot] || []).filter((it) => it && !it.mark_cd && isSummary(it)).length;
+  // `X.benS` 는 App.state 원본이라 `mark_cd` 가 없다(복사본에만 단다) — 표시 행은 등록표로 직접 가른다.
+  const sumN = (slot) => (X.benS[slot] || []).filter((it) => it && !rowMark(X.ctx.matched && X.ctx.matched[slot] && X.ctx.matched[slot].comp_eng_nm, it) && isSummary(it)).length;
   const sa = sumN('a'), sb = sumN('b');
   if (sa + sb) ul.append(li(el('span', { class: badgeClassBem('summary'), text: SUMMARY.label }), ' 회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목(' + [sa ? nm.a + ' ' + sa : '', sb ? nm.b + ' ' + sb : ''].filter(Boolean).join(' · ') + ')'));
   ul.append(li('복지 금액에는 대출 한도나 한 번만 주는 포상처럼 1년 단위가 아닌 값이 섞여 있을 수 있어서, 위에서 여러 경우로 나눠 다시 계산해 보였습니다. 또 복지는 연봉과 세금 방식이 달라, 실제로 손에 쥐는 금액은 이보다 작을 수 있습니다.'));

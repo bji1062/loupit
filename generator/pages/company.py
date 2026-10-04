@@ -121,7 +121,7 @@ def lens_keys(kind: str, qual: bool, badge_code: str) -> list[str]:
     한 행이 두 통에 드는 것은 정상이다(예: 추정치이면서 만료). 통이 겹치니 칩의 합은 전체보다
     클 수 있고, 그래서 **칩은 필터가 아니라 강조**다 — 어느 칩에서도 행이 사라지지 않는다.
 
-    ⚠ `badge_code` 는 `badge_state()["code"]`(`official`/`est`/`edited`/`member`/`stale`)이지
+    ⚠ `badge_code` 는 `badge_state()["code"]`(`official`/`est`/`edited`/`member`/`summary`/`stale`)이지
       DB 의 `BADGE_CD`(`official`/`est`)가 **아니다.** DB 값을 넘기면 예외 없이 `edited`·`expired`
       가 영원히 0 이 된다 — 이 저장소에서 가장 비싼 고장은 언제나 조용한 고장이었다.
     ⚠ 만료된 재직자 수정 행은 `expired` 에만 든다. `badge_state` 가 신선도를 최우선으로 두는

@@ -14,6 +14,7 @@
 // ⚠ 행 클릭 = 전체 페이지 이동이라 비교 입력이 날아갈 수 있다 → app.js 입력 초안(inputDraft)이
 //   그 손실을 막는다. 초안 배선을 걷어내면 이 목록이 사용자 입력을 지우게 된다.
 import { el } from './dom.js';
+import { countable } from './marks.js'; // 표시 행(법정 · 업무 교육)은 「복지 N개」에서 뺀다(SP-MARK)
 
 // ── 순수: 한국어 가나다순 정렬(사본 — 원본 REF 불변) ────────────────────────
 export function sortCompanies(companies) {
@@ -47,7 +48,7 @@ export function companyHref(compEngNm) {
 // ── 순수: 행 보조 정보("반도체 · 복지 12개") — 찾을 때 실제로 쓸모 있는 값만 ──
 // 복지 수는 세어서 나오는 사실이라 과장이 없다(금액 합계 같은 추정치를 여기 넣지 마라).
 export function rowMeta(company) {
-  const n = Array.isArray(company && company.benefits) ? company.benefits.length : 0;
+  const n = countable(company).length;
   return [company && company.industry_nm, n > 0 ? '복지 ' + n + '개' : '']
     .filter(Boolean).join(' · ');
 }

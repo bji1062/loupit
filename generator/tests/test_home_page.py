@@ -244,7 +244,7 @@ def test_trust_paragraph_names_sources_and_marked_rows(fake_bundle, fake_now, fa
     html = _render(_trust_bundle(fake_bundle), fake_now)[0].html
     assert "회사 공식 페이지·공시를 근거로 하고, <strong>1건</strong>은" in html
     assert "공식 원문을 찾지 못한 <strong>1개</strong> 회사의 검색 AI 요약을 근거로 합니다(「검색 요약」 표시)" in html
-    assert "재직자가 고친 항목은 <strong>1건</strong>입니다." in html
+    assert "재직자가 등록하거나 고친 항목은 <strong>1건</strong>입니다." in html
     assert "(검색 요약 항목에는 확인일 대신 요약 기준일을 적었습니다)" in html
     assert "회사가 업무를 맡기려고 여는 교육만 적힌 1건은 「업무 교육」 표시만 달고 복지 항목 수에서 뺍니다." in html
     assert "모두 회사 공식 페이지를 근거로" not in html
@@ -252,7 +252,7 @@ def test_trust_paragraph_names_sources_and_marked_rows(fake_bundle, fake_now, fa
 
 def test_trust_paragraph_omits_zero_clauses(fake_bundle, fake_now, fake_combinations_path):
     html = _render(fake_bundle, fake_now)[0].html
-    assert "검색 AI 요약" not in html and "재직자가 고친 항목은" not in html and "표시만 달고" not in html
+    assert "검색 AI 요약" not in html and "재직자가 등록하거나 고친 항목은" not in html and "표시만 달고" not in html
     assert "회사 공식 페이지·공시를 근거로 합니다." in html
 
 
@@ -264,6 +264,12 @@ def test_summary_rows_stay_out_of_latest_and_rank_sort_follows_corpus(fake_bundl
             c["benefits"][0]["verified_dtm"] = "2030-01-01"
     t = home._trust(build_context(b, now=fake_now))
     assert t["latest"] != "2030-01-01"
+    # 순위 정렬 키 = corpus 항목 수(표시 행 제외) — 행 수로 정렬하면 표시 행 1개 때문에 순서가 갈린다
+    ctx = build_context(b, now=fake_now)
+    corp = home.corpus_mod.build(ctx.companies, home.CATEGORY_ORDER)
+    rows = next(ax for ax in home._numbers(ctx)["axes"] if ax["title"] == "복지 항목 수")["rows"]
+    want = [c["comp_nm"] for c in sorted(ctx.companies, key=lambda c: (-corp.items[c["comp_id"]], c["comp_nm"]))][:len(rows)]
+    assert [r["name"] for r in rows] == want
 
 
 def test_output_is_deterministic_no_build_time(fake_bundle, fake_combinations_path):

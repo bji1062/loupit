@@ -25,7 +25,7 @@ export function normalizeCompany(raw) {
     comp_tp_cd: raw.comp_tp_cd || null,
     industry_nm: raw.industry_nm || null,
     logo_nm: raw.logo_nm || null,
-    work_style_val: raw.work_style_val || null, // {remote,flex,unlimitedPTO,refreshLeave,overtime}
+    work_style_val: raw.work_style_val || null, // {remote,flex,unlimitedPTO,refreshLeave,overtime,cond?}
     aliases: Array.isArray(raw.aliases) ? raw.aliases : [],
     benefits: (Array.isArray(raw.benefits) ? raw.benefits : []).map(normalizeBenefit),
   };

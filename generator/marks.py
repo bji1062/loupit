@@ -18,11 +18,13 @@ KINDS = {  # 순서 = 화면 순서(표 끝에 붙는 순서)
     "legal": {"label": "법정",
               "title": "근로기준법 등이 모든 회사에 강제하는 제도입니다. 복지 항목 수에서 제외됩니다.",
               "phrase": "법으로 모든 회사에 정해진 제도만 적힌 항목",
-              "sub": "법정 제도만 적은 회사"},
+              "sub": "법정 제도만 적은 회사",
+              "note": ""},  # 법정은 행 설명 글 없음(이름 옆 칩 · 툴팁이 말한다)
     "work_edu": {"label": "업무 교육",
                  "title": "회사가 업무를 맡기려고 여는 교육(신입 입문·직무 필수·승진자 리더십)만 적힌 항목입니다. 복지 항목 수에서 제외됩니다.",
                  "phrase": "회사가 업무를 맡기려고 여는 교육만 적힌 항목",
-                 "sub": "업무 교육만 적은 회사"},
+                 "sub": "업무 교육만 적은 회사",
+                 "note": "회사가 일을 맡기려고 여는 교육이라 복지 항목 수에서 뺐어요"},  # 행 서술 아래 작은 글(툴팁은 모바일에서 안 보인다)
 }
 SUMMARY_SRC_CD = "ai_parse"
 SUMMARY = {"label": "검색 요약",
@@ -55,7 +57,7 @@ def mark_view(kind) -> dict | None:
     if not kind:
         return None
     k = KINDS[kind]
-    return {"kind": kind, "label": k["label"], "title": k["title"]}
+    return {"kind": kind, "label": k["label"], "title": k["title"], "note": k["note"]}
 
 
 def countable(company: dict) -> list[dict]:

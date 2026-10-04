@@ -33,9 +33,15 @@ def test_client_copy_has_no_duplicates():
 def test_client_labels_titles_and_phrases_equal_kinds():
     """라벨 · 문구는 두 언어가 같은 글자여야 한다(한쪽만 고치면 화면마다 다른 말을 한다)."""
     for kind, spec in marks.KINDS.items():
-        m = re.search(kind + r": Object\.freeze\(\{\s*label: '([^']*)',\s*title: '([^']*)',\s*phrase: '([^']*)',", SRC)
+        m = re.search(kind + r": Object\.freeze\(\{\s*label: '([^']*)',\s*title: '([^']*)',\s*phrase: '([^']*)',\s*note: '([^']*)',", SRC)
         assert m, f"marks.js MARK.{kind} 를 못 찾았다"
-        assert m.groups() == (spec["label"], spec["title"], spec["phrase"])
+        assert m.groups() == (spec["label"], spec["title"], spec["phrase"], spec["note"])
     s = re.search(r"SUMMARY = Object\.freeze\(\{\s*label: '([^']*)',\s*title: '([^']*)',", SRC)
     assert s and s.groups() == (marks.SUMMARY["label"], marks.SUMMARY["title"])
     assert f"SUMMARY_SRC_CD = '{marks.SUMMARY_SRC_CD}'" in SRC
+
+
+def test_benefit_page_template_summary_title_equals_registry():
+    """benefit.html 의 「검색 요약」 배지 title 은 템플릿 리터럴이라 셋째 사본이다 — 등록표(marks.SUMMARY)와 같은 글자여야 한다."""
+    tpl = (ROOT / "generator" / "templates" / "benefit.html").read_text(encoding="utf-8")
+    assert f'title="{marks.SUMMARY["title"]}">{marks.SUMMARY["label"]}</span>' in tpl

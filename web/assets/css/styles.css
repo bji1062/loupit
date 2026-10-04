@@ -2077,3 +2077,6 @@ main p.calc-exnote { margin:0; }
   .calc-ct-vc > span { display:block; margin-bottom:var(--sp-1); }
   .calc-waffle { grid-template-columns:repeat(2, minmax(0,1fr)); }
 }
+
+/* 업무 교육 행 설명 글(SP-MARK) — 회사 상세(SPA) 행에서 한 줄 아래로 */
+.cp-ben-row .benefit-mark-note { display:block; flex-basis:100%; }

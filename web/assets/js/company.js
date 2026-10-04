@@ -95,7 +95,11 @@ function renderDetail(company, mountEl, deps, now = Date.now()) {
         const li = el('li', { class: 'cp-ben-row' });
         li.append(el('span', { class: 'cp-ben-nm', text: benefitLine(b) })); // "이름 — 연 N만원"/정성은 이름만
         const mk = rowMark(company.comp_eng_nm, b);
-        if (mk) li.append(el('span', { class: 'benefit-mark', title: MARK[mk].title, text: MARK[mk].label }));
+        if (mk) {
+          li.append(el('span', { class: 'benefit-mark', title: MARK[mk].title, text: MARK[mk].label }));
+          // 화면 글(툴팁은 모바일에서 안 보인다) — 정적 원장의 행 서술 아래 글과 같은 말
+          if (MARK[mk].note) li.append(el('span', { class: 'benefit-note benefit-mark-note', text: MARK[mk].note }));
+        }
         li.append(badgeFor(b, now));
         ul.append(li);
       }
