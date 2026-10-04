@@ -212,6 +212,60 @@ def test_trust_counts_close_to_total(fake_bundle, fake_now):
     assert sum(int(p.replace(",", "")) for p in parts) == int(t["total"].replace(",", ""))
 
 
+def _n(x) -> int:
+    return int(x.replace(",", "")) if x else 0
+
+
+def _trust_bundle(fake_bundle):
+    """samsung_elec 에 업무 교육 표시 행 1개(+이름 바꿔 등록표에 걸림) · sk_hynix 첫 행 검색 요약 · naver 첫 행 재직자."""
+    import copy
+    b = copy.deepcopy(fake_bundle)
+    sam = next(c for c in b["companies"] if c["comp_eng_nm"] == "samsung_elec")
+    sam["comp_eng_nm"] = "alteogen"
+    sam["benefits"].append(dict(sam["benefits"][0], benefit_cd="edu_support", benefit_nm="신입사원 교육", sort_order_no=999))
+    next(c for c in b["companies"] if c["comp_eng_nm"] == "sk_hynix")["benefits"][0]["badge_src_cd"] = "ai_parse"
+    next(c for c in b["companies"] if c["comp_eng_nm"] == "naver")["benefits"][0]["badge_src_cd"] = "user_report"
+    return b
+
+
+def test_trust_sources_close_to_total_and_dates_exclude_summary(fake_bundle, fake_now):
+    """근거 셋(공식·공시 + 검색 요약 + 재직자) = 전체 · 날짜 셋 + 검색 요약 = 전체(SP-MARK)."""
+    for bundle in (fake_bundle, _trust_bundle(fake_bundle)):
+        t = home._trust(build_context(bundle, now=fake_now))
+        total = _n(t["total"])
+        assert _n(t["official"]) + _n(t["summary"]) + _n(t["member"]) == total
+        assert _n(t["on_pivot"]) + _n(t["after"]) + _n(t["before"]) + _n(t["undated"]) + _n(t["summary"]) == total
+    t = home._trust(build_context(_trust_bundle(fake_bundle), now=fake_now))
+    assert _n(t["summary"]) == 1 and _n(t["summary_companies"]) == 1 and _n(t["member"]) == 1
+    assert t["marked_work_edu"] == "1" and t["marked_legal"] == ""
+
+
+def test_trust_paragraph_names_sources_and_marked_rows(fake_bundle, fake_now, fake_combinations_path):
+    html = _render(_trust_bundle(fake_bundle), fake_now)[0].html
+    assert "회사 공식 페이지·공시를 근거로 하고, <strong>1건</strong>은" in html
+    assert "공식 원문을 찾지 못한 <strong>1개</strong> 회사의 검색 AI 요약을 근거로 합니다(「검색 요약」 표시)" in html
+    assert "재직자가 고친 항목은 <strong>1건</strong>입니다." in html
+    assert "(검색 요약 항목에는 확인일 대신 요약 기준일을 적었습니다)" in html
+    assert "회사가 업무를 맡기려고 여는 교육만 적힌 1건은 「업무 교육」 표시만 달고 복지 항목 수에서 뺍니다." in html
+    assert "모두 회사 공식 페이지를 근거로" not in html
+
+
+def test_trust_paragraph_omits_zero_clauses(fake_bundle, fake_now, fake_combinations_path):
+    html = _render(fake_bundle, fake_now)[0].html
+    assert "검색 AI 요약" not in html and "재직자가 고친 항목은" not in html and "표시만 달고" not in html
+    assert "회사 공식 페이지·공시를 근거로 합니다." in html
+
+
+def test_summary_rows_stay_out_of_latest_and_rank_sort_follows_corpus(fake_bundle, fake_now):
+    """최근 확인 = 공식 근거 행의 날짜. 순위 정렬 키 = corpus 항목 수(표시 행 제외)."""
+    b = _trust_bundle(fake_bundle)
+    for c in b["companies"]:
+        if c["comp_eng_nm"] == "sk_hynix":
+            c["benefits"][0]["verified_dtm"] = "2030-01-01"
+    t = home._trust(build_context(b, now=fake_now))
+    assert t["latest"] != "2030-01-01"
+
+
 def test_output_is_deterministic_no_build_time(fake_bundle, fake_combinations_path):
     """lastmod 는 내용 지문이다 — 빌드 시각이 들어가면 매 빌드가 「바뀐 페이지」가 된다."""
     from datetime import datetime

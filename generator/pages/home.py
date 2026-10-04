@@ -226,11 +226,24 @@ def _trust(ctx) -> dict:
 
     확인일 기준점은 가장 많은 행이 확인된 날(최빈값, 동률이면 늦은 날)이다 — 1단계는 2026-04-15 를
     손으로 적었다. 기준점을 데이터가 정해야 웨이브가 들어와도 문장이 참으로 남는다.
+
+    근거(SP-MARK)도 전체 행 수로 닫힌다: 공식 페이지·공시(`official`) + 검색 요약(`summary`, 근거 URL 없는 회사) +
+    재직자(`member`, `user_report`) = 전체. 확인일 집계(기준점 · 그 뒤 · 그 전 · 최근 확인)는 **검색 요약 행을 뺀**
+    행으로 센다 — 요약 행의 날짜는 확인일이 아니라 요약 기준일이다. 법정 · 업무 교육 표시 행은 전체 수 안에
+    그대로 두고 따로 밝힌다.
     """
     stated = estimated = qual = no_amount = 0
+    summary = member = 0
+    summary_comps: set = set()
+    marked: Counter = Counter()
     dates: Counter = Counter()
     for c in ctx.companies:
+        eng = c.get("comp_eng_nm") or ""
         for b in _benefits(c):
+            kind = marks.row_mark(eng, b.get("benefit_cd"), b.get("benefit_nm") or "")
+            if kind:
+                marked[kind] += 1
+            src = b.get("badge_src_cd")
             if b.get("qual_yn"):
                 qual += 1
             elif b.get("benefit_amt") is None:
@@ -239,12 +252,24 @@ def _trust(ctx) -> dict:
                 stated += 1
             else:
                 estimated += 1
+            if marks.is_summary(b):
+                summary += 1
+                summary_comps.add(c["comp_id"])
+                continue  # 요약 기준일은 확인일 집계에 넣지 않는다
+            if src == "user_report":
+                member += 1
             dates[iso_date(b.get("verified_dtm"))] += 1
     total = stated + estimated + qual + no_amount
     dated = {d: n for d, n in dates.items() if d}
     pivot = max(dated.items(), key=lambda kv: (kv[1], kv[0]))[0] if dated else None
     return {
         "total": f"{total:,}",
+        "official": f"{total - summary - member:,}",
+        "summary": f"{summary:,}" if summary else "",
+        "summary_companies": f"{len(summary_comps):,}",
+        "member": f"{member:,}" if member else "",
+        "marked_legal": f"{marked['legal']:,}" if marked["legal"] else "",
+        "marked_work_edu": f"{marked['work_edu']:,}" if marked["work_edu"] else "",
         "stated": f"{stated:,}",
         "stated_pct": f"{(stated / total * 100) if total else 0:.1f}",
         "estimated": f"{estimated:,}",
@@ -307,7 +332,7 @@ def render(env, ctx, cfg=CFG, pairs=None) -> Page:
     url = f"{cfg.site_origin}/"
     n, rows, codes = view["total_companies"], view["total_rows"], view["total_codes"]
     desc = (f"잡초위키는 {n}곳 회사의 복지 {rows}건을 로그인 없이 열람하고 두 회사를 비교합니다. "
-            f"복지는 회사 공식 페이지에서 수집해 표준 항목 {codes}종으로 분류합니다.")
+            f"복지는 회사 공식 페이지·공시에서 수집해 표준 항목 {codes}종으로 분류합니다.")
     og_desc = f"회사 {n}곳의 복지 {rows}건을 로그인 없이 열람하고 두 회사를 비교합니다."
     jsonld = {
         "@context": "https://schema.org", "@type": "WebSite", "name": "잡초위키",
