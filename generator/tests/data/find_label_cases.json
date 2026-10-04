@@ -25,8 +25,8 @@
    "dormitory",
    "lounge",
    "nap_room",
-   "work_tools",
    "uniform",
+   "work_tools",
    "parking",
    "office_furniture",
    "free_seating",
@@ -4583,7 +4583,7 @@
     "현장 근무복 (건설부문)": 1
    },
    "ctgr": "work_env",
-   "label": "유니폼지급",
+   "label": "근무복·유니폼 지원",
    "aliases": [
     "유니폼지급",
     "피복 지원",
