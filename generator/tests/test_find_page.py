@@ -238,7 +238,7 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-10-02 R-3 묶음 6-A: work_tools 의 「노트북 지원」이 시드에서 사라져 → 지금 동률인 lounge(휴게실)로 바꿨다.
     # 2026-10-02 R-3 묶음 6-A: smoking_cessation 은 「금연수당」이 2회가 돼 동률이 풀렸다 → 지금 8:8 동률인 resort(휴양시설)로 바꿨다.
     # 2026-10-04 R-3 묶음 7: foundation_day_leave 는 「창립기념일 휴무」가 2회가 돼 동률이 풀렸다 → 지금 동률인 family_day(가정의 날)로 바꿨다 ·
-    #   uniform 은 아직 11:1 동률이지만 대표가 「유니폼지급」(보로노이 · 케어젠 신규 표기)으로 바뀌어 기대 문자열만 고쳤다.
+    #   uniform 은 아직 동률이지만 대표가 「유니폼지급」(케어젠 신규 표기 — 11개 이름 모두 1회, 길이 5 동률을 코드포인트로 이김)으로 바뀌어 기대 문자열만 고쳤다.
     #   lounge(휴게실 3회) · parking(주차 지원 3회)도 단독 최다가 돼 동률이 풀렸다 → 지금 동률인 car_wash(세차 서비스) · promotion_gift(승진자 축하선물)로 바꿨다.
     for code, expect in (("family_day", "가정의 날"), ("uniform", "유니폼지급"),
                          ("car_wash", "세차 서비스"), ("promotion_gift", "승진자 축하선물"),

@@ -7,7 +7,7 @@
 -- 참고:
 --   정본은 법인 자기 도메인(oscotec.co.kr, Rhymix 서버 렌더) 헤더 메뉴 회사소개 > 공지사항의
 --     2025 ESG FACT Book 발간 게시글(2026-09-28, 작성 전략기획팀)이다. 행 근거는 그 글의 첨부
---     오스코텍 ESG FactBook_2025_260930-2.pdf(27쪽, 회사 자기 발행 보고서) 15쪽 · 20쪽.
+--     오스코텍 ESG FactBook_2025_260930-2.pdf(27쪽, 회사 자기 발행 보고서) 15쪽 · 20쪽 · 22쪽.
 --   인재채용 상시 페이지(/Careers)는 연구원 모집 공고 표뿐이고 복리후생 문구가 없다. 외부 ATS 없음(지원은 자기 도메인 게시판).
 --   보조: OpenDART 2025 사업보고서(접수 20260319001005) · 2026 반기보고서(접수 20260814003016)
 --     직원 등 현황 57명 · 유연근무제 활용 · 시차출퇴근제 사용자 수 — flex_work 보조 근거.
@@ -62,7 +62,7 @@ VALUES
 
   -- ── 보상 (compensation) — Fact Book 22쪽 협력사 경영지원 활동 ──
   (@comp_id, 'holiday_gift', '추석 명절 선물', NULL, 'compensation',
-   'est', NULL, TRUE, '2026년 추석 명절 선물을 사내 임직원 외 협력사 임직원에게도 지급 (2025 ESG Fact Book 협력사 경영지원 활동 항목) — 품목·금액·설 명절 지급 여부 미기재', 50)
+   'est', NULL, TRUE, '사내 임직원 외 협력사 임직원에게 추석 명절 선물을 지급(2026년) (2025 ESG Fact Book 협력사 경영지원 활동 항목) — 사내 지급은 문맥상 · 상시 여부·품목·금액 미기재', 50)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

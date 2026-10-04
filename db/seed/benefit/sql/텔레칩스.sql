@@ -8,7 +8,7 @@
 --   주 근거는 법인 공식 채용 사이트(careers.telechips.com — 자기 도메인 www.telechips.com 헤더 메뉴 CAREERS 링크)의
 --     Culture and Life 복리후생 본문이다. 자동 수집기는 robots.txt 부터 Vercel 보안 확인 화면이라 읽지 못했고(우회 안 함),
 --     브라우저로 페이지를 열어 붙여 넣은 화면 본문을 근거로 썼다
---     (사본 telechips/user_paste_careers_2026-10-04.txt · sha256 21365fc0…ae8d). 5구역 22항목.
+--     (사본 telechips/user_paste_careers_2026-10-04.txt · sha256 21365fc0…ae8d). 5구역 21항목.
 --   보조: 자기 도메인 SUSTAINABILITY 의 LABOR and HUMAN RIGHTS 페이지(/view/sustainability/esg02/, Nuxt SPA — 헤드리스 렌더로
 --     가시 텍스트 확인) 조직문화 슬라이드 3개 — 장기근속 포상 · 동호회 · Hof Day · 경조사 · 입학 선물 · 명절 선물 · 생일 선물 · 독감 예방주사.
 --     같은 사이트 SUSTAINABILITY MANAGEMENT 페이지 UN SDGs 카드 — 임직원 및 가족 대상 건강검진.
@@ -77,7 +77,7 @@ VALUES
   (@comp_id, 'refresh_leave', '정기휴가 5일 추가', NULL, 'time_off',
    'est', NULL, TRUE, '1년마다 자유롭게 사용 가능한 5일의 정기휴가 추가 지급 (공식 채용 사이트 복리후생 EFFICIENT WORKING ENVIRONMENT 항목), 정기 유급휴가 5일 추가 제공 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 항목) — 이월 여부 미기재', 40),
   (@comp_id, 'long_service_leave', '장기근속 포상 (휴가·휴가비·포상금·순금 명함)', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속 포상 — 휴가, 휴가비, 포상금, 순금 명함 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 WORK-LIFE BALANCE 항목) — 근속 연수 기준·휴가 일수·포상금 금액 미기재', 41),
+   'est', NULL, TRUE, '장기근속 포상 (휴가, 휴가비, 포상금, 순금 명함) (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 WORK-LIFE BALANCE 항목) — 근속 연수 기준·휴가 일수·포상금 금액 미기재', 41),
 
   -- ── 여가·라이프 (leisure) — 채용 사이트 EFFICIENT WORKING · LABOR & HUMAN RIGHTS ──
   (@comp_id, 'resort', '프리미엄 콘도·호텔 지원', NULL, 'leisure',
@@ -102,8 +102,8 @@ VALUES
   -- ── 건강·의료 (health) — 채용 사이트 FINANCIAL AID · FUN OFFICE LIFE ──
   (@comp_id, 'insurance', '임직원 단체보험', 30, 'health',
    'est', '사고에 대한 경제적 손실 최소화를 위한 임직원 단체보험 지원 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목) — 보장 범위·가족 포함 여부 미기재 (추정)', FALSE, NULL, 70),
-  (@comp_id, 'health_check', '임직원·가족 종합검진·독감 예방접종', 100, 'health',
-   'est', '최고의 시설에서 받는 구성원 종합검진 지원 (공식 채용 사이트 복리후생 항목), 독감 예방주사 지원 (홈페이지 LABOR & HUMAN RIGHTS 페이지), 임직원 및 가족 대상 건강검진 (SUSTAINABILITY MANAGEMENT 페이지) — 비용 한도 미기재 (추정)', FALSE, NULL, 71),
+  (@comp_id, 'health_check', '임직원 종합검진·가족 건강검진·독감 예방접종', 100, 'health',
+   'est', '종합검진 지원, 최고의 시설에서 받는 구성원 건강검진 지원 (공식 채용 사이트 복리후생 항목), 독감 예방주사 지원 (홈페이지 LABOR & HUMAN RIGHTS 페이지), 임직원 및 가족 대상 건강검진 (SUSTAINABILITY MANAGEMENT 페이지) — 비용 한도 미기재 (추정)', FALSE, NULL, 71),
   (@comp_id, 'fitness', '사내 헬스장·무료 PT 클래스', NULL, 'health',
    'est', NULL, TRUE, '사내 헬스장 자유 이용 및 무료 PT 클래스 운영 (공식 채용 사이트 복리후생 FUN OFFICE LIFE 항목) — 운영 시간·PT 횟수 미기재', 72),
 
