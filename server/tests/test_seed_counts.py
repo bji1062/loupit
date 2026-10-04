@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 3093(2989 − 125 + 229 묶음 7 12사 재수집, 2026-10-04), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 3097(3093 − 15 + 19 묶음 6-B DB손해보험 재수집, 2026-10-04), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -119,9 +119,12 @@ def test_SD4_benefit_total_row_count(seeded_db):
             · 케어젠 · 리노공업 · 리메드 3사는 공식 출처가 없어 사용자 제공 검색 AI 요약 기준(기준 39)
           2989 − 125 + 229 = 3093 (R-3 묶음 7 12사) — 운영은 표적 삭제 19 · 재코딩 7 뒤 멱등 적재
           (db/migrations/20261004_recollect_3_batch7.sql) — loupit-evidence/2026-10-02-recollect-3-7/
+          + 재수집 R-3 묶음 6-B DB손해보험 15 → 19행 (자기 도메인 복리후생 페이지 붙여넣기 원문)
+          3093 − 15 + 19 = 3097 (R-3 묶음 6-B DB손해보험) — 운영은 표적 삭제 4 뒤 멱등 적재
+          (db/migrations/20261004_recollect_3_batch6b.sql) — loupit-evidence/2026-10-02-recollect-3-6/
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 3093, f"복지 총행 불일치: {count} (기대 3093 = 2989 − 125 + 229 묶음 7 12사 재수집)"
+    assert count == 3097, f"복지 총행 불일치: {count} (기대 3097 = 3093 − 15 + 19 묶음 6-B DB손해보험 재수집)"
     assert count >= 1200
 
 
