@@ -18,12 +18,13 @@
 --     telecom 30 · pension_support 50 · resort 50 · insurance 30 · health_check 100 — 전부 틀 값,
 --     NOTE 끝에 (추정)). transport 30 은 회사 고유값이라, event 50 은 경조금이라, parenting 10 은 1회성이라
 --     승계하지 않았다. 원문에 원 단위 금액은 유아교육비 월 10만원 하나다.
---   구본에서 뺀 행: lang (어학교육은 회사 주도 교육 과정 — 비용 지원 문장 없음).
+--   구본에서 뺀 행: lang 은 2026-10-04 되살렸다(회사가 여는 어학교육 — 규칙 8 개정으로 SORT 72).
 --   재코딩: edu_support → self_development (남는 제도가 전문자격 취득 지원제도 하나).
 --   SORT 섹션 순서 = 정본 페이지에서 카테고리가 처음 나온 순서, 인사제도 페이지 항목은 끝
 --     (perks 10 · leisure 20 · family 30 · health 40 · work_env 50 · time_off 60 · growth 70).
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-3): 유아교육비(월 10만원 · 연 120 환산)를 parenting 에서 child_edu 로 옮김(유치원 · 유아교육비 = 자녀 학자금 축) · parenting 은 출산축하 아기용품 정성 행 — 최종 22행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) — 최종 23행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -103,7 +104,9 @@ VALUES
   (@comp_id, 'career', '주재원 제도', NULL, 'growth',
    'est', NULL, TRUE, '영업, 관리 전 직무를 대상으로 전세계 20여개 법인과 60여개 지점 및 사무소에 근무할 주재원 매년 선발 (공식 채용 사이트 인사제도 주재원 제도 항목)', 70),
   (@comp_id, 'self_development', '전문자격 취득 지원', NULL, 'growth',
-   'est', NULL, TRUE, '전문자격 취득 지원제도 운영 (공식 채용 사이트 인사제도 교육 훈련 제도 직무 역량 항목) — 지원 대상 자격·지원 금액 미기재', 71)
+   'est', NULL, TRUE, '전문자격 취득 지원제도 운영 (공식 채용 사이트 인사제도 교육 훈련 제도 직무 역량 항목) — 지원 대상 자격·지원 금액 미기재', 71),
+  (@comp_id, 'lang', '어학교육 (전화·온라인 · BIZ English Workshop)', NULL, 'growth',
+   'est', NULL, TRUE, '전화·온라인 어학교육과 BIZ English Workshop 운영 (공식 채용 사이트 인사제도 교육 훈련 제도 글로벌 역량 항목) — 참여 대상·비용 부담 미기재', 72)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

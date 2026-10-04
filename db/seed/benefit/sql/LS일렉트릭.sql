@@ -14,6 +14,7 @@
 --       7개 항목 중 4개가 서로 다른 축을 한 문장에 묶고 있어 코드 단위로 분리했다:
 --       주택지원=주택자금+기숙사/사택, 건강진단/의료비=검진+가족의료비,
 --       경조사=경조금/화환+경조휴가, 장기근속상=포상금/여행+휴가.
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) — 최종 13행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -69,7 +70,11 @@ VALUES
   (@comp_id, 'housing_loan', '주택자금 지원', NULL, 'perks',
    'est', NULL, TRUE, '주택지원 제도 — 주택마련 자금 및 전세 자금 지원', 70),
   (@comp_id, 'welfare_point', '사원복지카드', NULL, 'perks',
-   'est', NULL, TRUE, '기념일(생일 혹은 결혼기념일) 및 명절(설/추석) 맞이 복지포인트 지급', 71)
+   'est', NULL, TRUE, '기념일(생일 혹은 결혼기념일) 및 명절(설/추석) 맞이 복지포인트 지급', 71),
+
+  -- ── 성장·커리어 (growth) ──
+  (@comp_id, 'lang', 'Global교육 과정(어학 과정)', NULL, 'growth',
+   'est', NULL, TRUE, 'Global교육 과정 — LS ELECTRIC 연수원 및 LS 미래원을 통해 임직원이 필요로 하는 다양한 어학 과정 운영 (공식 채용 페이지 인재육성 항목 — 개설 언어·수강 대상·비용 부담 미기재)', 80)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

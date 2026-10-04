@@ -12,12 +12,13 @@
 --   보조 2 = 자기 도메인 ESG Social 페이지 개인 건강관리 절 · 영문 헤더 메뉴 Work Environment 페이지(캔틴 다과).
 --   국문 자기 도메인 careers 메뉴는 HTML 주석 처리돼 있고 해당 경로가 404 라 근거로 쓰지 않았다.
 --   귀속: 법인 단독 채용 사이트 — 그룹 각주 없음. 직원 76명(DART 2025) — 1,000인 미만.
---   법정 제도: 스톡옵션은 복지가 아니라 싣지 않았다. 사내 어학강좌는 회사 주도 교육 과정이라 싣지 않았다.
+--   법정 제도: 스톡옵션은 복지가 아니라 싣지 않았다. 사내 어학강좌는 2026-10-04 규칙 8 개정으로 lang 행(SORT 32)으로 싣는다.
 --   금액: 원문 금액 0 · 구본 추정 승계 5(holiday_gift 20 · health_check 100 · insurance 30 · resort 50 · snack_bar 20 — 모두 틀 값, NOTE 끝에 (추정)).
---   구본에서 뺀 행: fitness · event · lang · books · club · housing_support · parking.
---   재코딩 1: leave_general → refresh_leave. 신규 코드 0.
+--   구본에서 뺀 행: fitness · event · books · club · housing_support · parking(lang 은 2026-10-04 되살림).
+--   재코딩 1: leave_general → refresh_leave(2026-10-04 연간 휴가 총 20일은 연차 일수라 leave_general 로 되돌림 — 기준 18 개정). 신규 코드 0.
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-5): refresh_leave 이름과 서술을 연간 휴가 총 20일로 바꿈(일수는 총량이지 추가분이 아님) — 최종 13행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 재코딩 1(refresh_leave → leave_general) — 최종 14행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -42,7 +43,7 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 시간·휴가 (time_off) — 근무 환경 Work & Life Balance · 채용 공고 ──
-  (@comp_id, 'refresh_leave', '연간 휴가 총 20일', NULL, 'time_off',
+  (@comp_id, 'leave_general', '연간 휴가 총 20일', NULL, 'time_off',
    'est', NULL, TRUE, '휴식을 통해 업무에 더욱 몰입할 수 있도록 연간 휴가 총 20일 부여 (공식 채용 사이트 근무 환경 Work & Life Balance 항목 · 채용 공고 보상 및 복리후생 항목) — 근속에 따른 일수 변동·사용 방식 미기재', 10),
   (@comp_id, 'long_service_leave', '장기근무 리프레시 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '장기근무 시 리프레시 휴가 부여 (공식 채용 공고 보상 및 복리후생 항목) — 근속 기준·휴가 일수 미기재', 11),
@@ -56,6 +57,8 @@ VALUES
    'est', NULL, TRUE, '지속적인 자기개발을 위한 사외 직무교육·국내외 세미나 참여 기회 제공, 연구성과 우수자의 국외 학회 참석 기회 부여 (공식 채용 사이트 근무 환경 Work & Life Balance 항목 · 채용 공고 보상 및 복리후생 항목) — 비용 지원 범위·횟수 미기재', 30),
   (@comp_id, 'mba', '학위과정·해외연수', NULL, 'growth',
    'est', NULL, TRUE, '역량개발을 위한 학위과정 기회 제공, 연구성과 우수자의 해외연수(미국법인 및 해외 협력기관) 기회 부여 (공식 채용 사이트 근무 환경 Work & Life Balance 항목 · 채용 공고 보상 및 복리후생 항목) — 학비 지원 여부·선발 기준 미기재', 31),
+  (@comp_id, 'lang', '사내 어학강좌', NULL, 'growth',
+   'est', NULL, TRUE, '지속적인 자기개발을 위한 사내 어학강좌 운영 (공식 채용 사이트 근무 환경 Work & Life Balance 항목), 어학능력 향상을 위한 학습 기회 (같은 사이트 FAQ) — 강좌 언어·수강 방식·비용 부담 미기재', 32),
 
   -- ── 보상·금전 (compensation) — 채용 공고 보상 및 복리후생 ──
   (@comp_id, 'incentive', '성과급', NULL, 'compensation',

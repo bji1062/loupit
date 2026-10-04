@@ -21,6 +21,7 @@
 --     (flexibility 10 · time_off 20 · work_env 30 · health 40 · perks 50 · family 60 · leisure 70).
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-2): 수집 12행 원문 확인 · 하이브 2025 지속가능경영보고서(hybecorp.com 지속가능경영보고서 게시판 첨부 PDF p.65~67) 복리후생 제도 현황에서 누락 11행 추가(long_service_leave · leave_general · parking · clinic · snack_bar · transport · team_dinner · event · resort · company_event · summer_vacation_subsidy) · mental · insurance · parenting 서술 보강 — 최종 23행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(welfare_fund_loan) — 최종 24행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -87,6 +88,8 @@ VALUES
    'est', NULL, TRUE, '야근 및 휴일 출근 시 교통비 지원 (공식 지속가능경영보고서 2025 복리후생 제도 현황 야근·휴일 교통비 항목 — 지원 한도 미기재)', 53),
   (@comp_id, 'team_dinner', '회식비·팀 워크숍 지원', NULL, 'perks',
    'est', NULL, TRUE, '팀원 2/3 이상 참여 시 월 1회 회식비 지원, 반기 1회 팀 워크숍 비용 지원 (공식 지속가능경영보고서 2025 복리후생 제도 현황 회식비 · 팀 워크숍 지원 항목 — 1인당 금액 미기재)', 54),
+  (@comp_id, 'welfare_fund_loan', '대출이자 지원', NULL, 'perks',
+   'est', NULL, TRUE, '최대 3천만 원 대출금의 이자 지원 (공식 지속가능경영보고서 2025 복리후생 제도 현황 대출이자 지원 항목 — 대출 용도·지원 이자율 미기재)', 55),
 
   -- ── 가족·돌봄 (family) — 복리후생 8번째 항목 ──
   (@comp_id, 'parenting', '출산휴가 최대 180일·급여 100%', NULL, 'family',

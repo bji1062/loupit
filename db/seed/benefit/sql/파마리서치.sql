@@ -14,9 +14,10 @@
 --   그룹 통합 채용 사이트 없음(법인 자기 페이지라 각주 없음). 직원 526명(DART 2025) — 1,000인 미만.
 --   법정 제도: 하계 및 연말 단체 휴가 사용 · 남성 육아휴직 신청 · 자녀 12세 이하 부모 선택적 단축근로는 싣지 않았다.
 --   금액: 원문 연액 1(welfare_point 100) · 월액 환산 1(parenting 120) · 구본 추정 승계 8 · 미승계(excellence_award 1회성 · child_edu · event · edu_support).
---   재코딩 1: massage → lounge. 신규 코드 0.
+--   재코딩 2: massage → lounge · incentive → profit_sharing(2026-10-04 경영성과급 단독 제도). 신규 코드 0.
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-2): 하계 및 연말 단체 휴가를 leave_general 정성 행으로 되살림(부여 조건이 불명한 집중휴가 · 구본 refresh_leave 재코딩 · 법정 등록 해제) — 최종 25행
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(edu_support · lang) · 재코딩 1(incentive → profit_sharing) — 최종 27행
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -40,7 +41,7 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 보상·금전 (compensation) ── 인사제도 성과보상 · 복리후생 블록 1
-  (@comp_id, 'incentive', '경영성과급', 100, 'compensation',
+  (@comp_id, 'profit_sharing', '경영성과급', 100, 'compensation',
    'est', '회사의 연간 경영실적 목표 달성 시 내부 지급기준에 따라 경영성과급 지급 (공식 홈페이지 인사제도 성과보상 항목 — 지급률·금액 미기재) (추정)', FALSE, NULL, 10),
   (@comp_id, 'excellence_award', 'POP 어워즈·기타 포상', NULL, 'compensation',
    'est', NULL, TRUE, '분기 또는 연간 POP 성과관리 결과에 따른 포상금 지급, 성공 사례 또는 우수 사원 선정 시 소정의 포상금 지급 (공식 홈페이지 인사제도 성과보상 항목 — 금액 미기재)', 11),
@@ -100,6 +101,10 @@ VALUES
   -- ── 성장·커리어 (growth) ── 복리후생 블록 6 · 지속가능경영보고서
   (@comp_id, 'self_development', '자격증 응시료 지원', NULL, 'growth',
    'est', NULL, TRUE, '자격증 취득 교육 수강 뒤 자격시험 응시료를 전액 또는 기준에 따라 지원 (2025 지속가능경영보고서 구성원 성장 항목 — 연간 한도 미기재)', 80),
+  (@comp_id, 'edu_support', '자기개발 교육 지원·소양 함양 클래스', NULL, 'growth',
+   'est', NULL, TRUE, '직무, 자기개발 등 다양한 교육 지원 (공식 홈페이지 복리후생 자율과 책임으로 똑똑하게 항목), 소양 함양과 취미·흥미를 위한 온라인 수업 뭉치는 클래스와 밤도깨비 엑셀 랜선 클래스 운영 (2025 지속가능경영보고서 47쪽 소양 함양 프로그램) — 지원 방식·참여 대상 미기재', 81),
+  (@comp_id, 'lang', '비즈니스 기본 어학 과정', NULL, 'growth',
+   'est', NULL, TRUE, '비즈니스 기본 어학 과정 운영 (2025 지속가능경영보고서 39쪽 교육 체계 글로벌 역량 강화 축 — 참여 대상·비용 부담 미기재)', 82),
 
   -- ── 시간·휴가 (time_off) ── 채용 사이트
   (@comp_id, 'long_service_leave', '장기근속 휴가·포상', NULL, 'time_off',

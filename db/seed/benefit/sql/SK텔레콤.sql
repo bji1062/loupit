@@ -21,12 +21,13 @@
 --   코드: 구본 discount(자사 서비스 할인) → sports_ticket + car_rental 분리 재코딩 ·
 --     구본 long_service_leave 의 포인트 선택분 → long_service_bonus 분리 · 신규 코드 0.
 --   구본에서 뺀 행: excellence_award(IDEATHON) · refresh_leave(체력단련 휴가) · club(소모임) ·
---     edu_support(사내 교육 과정 — 비용 지원 아님) · snack_bar(더 라운지와 같은 시설 — lounge 로 합침).
+--     edu_support(사내 직무 · 리더십 교육 과정) · snack_bar(더 라운지와 같은 시설 — lounge 로 합침).
 --   SORT 섹션 순서는 정본 페이지에서 그 카테고리가 처음 나온 순서다
 --     (flexibility 10 · time_off 20 · perks 30 · health 40 · leisure 50 · family 60 · work_env 70 ·
 --      growth 80 · compensation 90).
 -- 재수집(2026-09-26): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다 — 대조 보고서 2026-09-25-official-compare
 -- 감사(RA-1 2026-09-26) 반영: 더 라운지 카페 snack_bar 분리(추정 50 승계) · 사내공모제도 career · 성과급 incentive · SUPEX 추구상 excellence_award 추가 · 정년퇴직 지원에서 법정 재취업지원 프로그램 문구 제거
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) — 최종 33행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op, 3) 의 UPDATE 가 URL 을 채운다)
@@ -123,6 +124,8 @@ VALUES
    'est', NULL, TRUE, '정년퇴직 예정 구성원에게 퇴직일 3개월 전부터 쓰는 1개월 유급 정년퇴직 특별휴가, 3년간 이동전화 요금·경조사 물품·협약가 건강검진 지원. 25년 이상 장기근속자 또는 만 50세 이상 구성원 대상 유급 Next Career 휴직과 창업 지원 프로그램 (2025 지속가능경영보고서 정년퇴직 구성원 지원)', 82),
   (@comp_id, 'career', '사내공모제도', NULL, 'growth',
    'est', NULL, TRUE, '구성원이 전문성과 역량, 커리어 비전에 따라 하고 싶은 일에 스스로 도전하는 사내공모제도 (2025 지속가능경영보고서 행복한 조직문화 형성 — 공모 주기·지원 자격 미기재)', 83),
+  (@comp_id, 'lang', 'AI 기반 영어회화 학습 지원', NULL, 'growth',
+   'est', NULL, TRUE, 'AI 기반 글로벌 사업 확대에 대응한 구성원 Global 역량 강화 — AI 기반 영어회화 학습 지원 등 전사 차원의 지원 체계 운영 (2025 지속가능경영보고서 76쪽 — 대상·이용 방식·비용 부담 미기재)', 84),
 
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'long_service_bonus', 'Refresh 복리후생 포인트 (근속 5년마다)', NULL, 'compensation',

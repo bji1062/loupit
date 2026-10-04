@@ -26,6 +26,7 @@
 --       신규 코드 0. 법정 제도 서술은 두 출처에 없다.
 --       ⚠ 검증·감사 판정 반영(2026-09-15): 18 → 17행. SORT 41 복지몰 운영(discount)은 영문판이 같은 칸을
 --       Selective welfare system 으로 옮겨 SORT 43 선택적 복지(welfare_point)에 병합 · SORT 70 미기재 사항 보강.
+-- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 재코딩 1(housing_loan → welfare_fund_loan) — 최종 17행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
@@ -78,7 +79,7 @@ VALUES
    'est', NULL, TRUE, '통근버스 운영 (동아쏘시오그룹 채용사이트 에스티팜 페이지 LIFE 항목에만 기재) — 운행 노선·대상 사업장·본인 부담 미기재', 42),
   (@comp_id, 'welfare_point', '선택적 복지·복지몰', NULL, 'perks',
    'est', NULL, TRUE, '선택적 복지 (동아쏘시오그룹 채용사이트 에스티팜 페이지 LIFE 항목) · 복지몰 운영 (에스티팜 홈페이지 Careers 페이지 Others 항목) — 연간 포인트 금액·사용처 미기재', 43),
-  (@comp_id, 'housing_loan', '임직원 대출', NULL, 'perks',
+  (@comp_id, 'welfare_fund_loan', '임직원 대출', NULL, 'perks',
    'est', NULL, TRUE, '임직원 대출 (동아쏘시오그룹 채용사이트 에스티팜 페이지 LIFE 항목에만 기재) — 대출 용도·한도·이율 미기재', 44),
 
   -- ── 근무환경 (work_env) — S1 Office · S2 LIFE ──
