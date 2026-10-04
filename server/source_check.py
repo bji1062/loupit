@@ -52,6 +52,14 @@ HTTP·최종 주소·시각) 붙이는 쪽은 이 표를 읽기만 하면 된다
 두드린다.** 와일드카드(`*`·`$`)도 모른다. 그래서 RFC 9309 의 묶음 선택·최장 일치만 여기서 구현한다
 (`parse_robots`).
 
+### RFC 9309 와 일부러 다른 한 곳 — 묶음 밖 규칙
+
+첫 `User-agent` 줄보다 앞에 놓인 `Allow`·`Disallow`(묶음 밖 규칙)를 RFC 9309·표준 라이브러리는 버리지만, 여기서는 `*`
+묶음의 규칙으로 읽는다(사용자 결정 2026-10-04). 버리면 DB손해보험 `www.idbins.com` 처럼 `User-agent` 줄 없이
+`Disallow: /` 로 끝나는 파일이 「전부 허용」이 되는데, 사이트의 뜻은 금지다(같은 규칙을 `User-agent: *` 아래 둔
+`m.idbins.com` 은 금지) — 수집 레인 규칙 ㉞ 과도 같은 읽기다. 남의 서버라 애매하면 덜 두드리는 쪽을 고른다. 우리 토큰
+묶음이 따로 있으면 묶음 밖 규칙을 거기에도 붙인다(보수적 — 리드 판정 2026-10-04).
+
 ## 헛경보를 내지 않는다
 
 감시 도구가 거짓 경보를 내면 사람은 곧 경보를 보지 않는다. 그래서:
@@ -369,8 +377,12 @@ def parse_robots(text: str, agent: str = ROBOTS_AGENT) -> RobotsRules:
     """robots.txt → 우리 제품 토큰에 적용되는 규칙(RFC 9309 §2.1·2.2.1).
 
     묶음 = `User-agent` 줄 하나 이상 + 뒤따르는 규칙. 우리 토큰(대소문자 무시)을 부르는 묶음이 있으면 그것들을,
-    없으면 `*` 묶음들을 합쳐 쓴다. 빈 줄은 묶음을 끊지 않는다. 빈 `Disallow:` 는 규칙이 아니다."""
+    없으면 `*` 묶음들을 합쳐 쓴다. 빈 줄은 묶음을 끊지 않는다. 빈 `Disallow:` 는 규칙이 아니다.
+
+    **RFC 9309 와 일부러 다른 곳**: 첫 `User-agent` 줄 앞의 규칙(묶음 밖)은 `*` 묶음의 규칙으로 보고, 우리 토큰 묶음이
+    따로 있으면 거기에도 붙인다(모듈 머리말 참고)."""
     groups: list[tuple[list[str], list[tuple[bool, str]]]] = []
+    preamble: list[tuple[bool, str]] = []  # 첫 `User-agent` 줄 앞의 규칙
     current = None
     in_rules = False
     for raw in text.lstrip("﻿").splitlines():
@@ -385,13 +397,15 @@ def parse_robots(text: str, agent: str = ROBOTS_AGENT) -> RobotsRules:
                 groups.append(current)
                 in_rules = False
             current[0].append(value.split("/", 1)[0].strip().lower())
-        elif key in ("allow", "disallow") and current is not None:  # 묶음 밖 규칙은 무시한다
-            in_rules = True
+        elif key in ("allow", "disallow"):
+            if current is not None:
+                in_rules = True
             if value:
-                current[1].append((key == "allow", _norm_pct(value)))
+                (preamble if current is None else current[1]).append((key == "allow", _norm_pct(value)))
     token = agent.lower()
     chosen = [g for g in groups if token in g[0]] or [g for g in groups if "*" in g[0]]
-    return RobotsRules(tuple(rule for g in chosen for rule in g[1]))
+    # 묶음 밖 규칙은 `*` 묶음의 것이다 — `*` 묶음이 없어도, 우리 토큰 묶음이 있어도 함께 선다(보수적).
+    return RobotsRules(tuple(preamble) + tuple(rule for g in chosen for rule in g[1]))
 
 
 # ── 전송 — 요청 한 번(리다이렉트 안 따라감) ────────────────────────────────────────
