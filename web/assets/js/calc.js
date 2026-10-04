@@ -29,6 +29,7 @@
  *   amt_source:   'stated'|'estimated'|'none',  // 밴드 기준(금액 신뢰도)
  *   checked:      boolean,               // 체크 안 하면 전 합산 제외
  *   qual_yn:      boolean,               // true=정성(금액 없음)
+ *   mark_cd?:     'legal'|'work_edu',    // 표시 행(SP-MARK) — 계산기 입력 복사본에만. 비교·집계에서 뺀다
  *   expires_dtm:  string|null,           // ISO8601. 경과 시 밴드 +0.15
  *   qual_desc?:   string,                // 정성 설명(렌더 계층이 이스케이프)
  *   note_ctnt?:   string
@@ -650,7 +651,7 @@ function amtOf(it) {
 function effAmt(it) { return it && it.checked && !it.qual_yn ? (Number(it.benefit_amt) || 0) : 0; }
 function descOf(it) { return [it && it.qual_desc_ctnt, it && it.note_ctnt].filter(Boolean).join(' '); }
 const sumBy = (arr, f) => (arr || []).reduce((acc, x) => acc + f(x), 0);
-const live = (list) => (list || []).filter((it) => it && !it.legal_yn); // 법정 행은 표시만, 비교·집계에서 뺀다(SP-LEGAL-5)
+const live = (list) => (list || []).filter((it) => it && !it.mark_cd); // 표시 행(법정 · 업무 교육)은 표시만, 비교·집계에서 뺀다(SP-LEGAL-5 · SP-MARK)
 
 /** 차이의 흔들림 폭 = 두 회사 폭의 **합**(구간 산술 — 제곱합 금지: 추정 금액은 독립 오차가 아니다). */
 export function deltaBand(a, b) { return (Number(a && a.sumBand) || 0) + (Number(b && b.sumBand) || 0); }
@@ -687,7 +688,7 @@ export function unsureCause(d, band, guardD = null) {
 }
 
 /**
- * benefit_cd 1:1 짝짓기 — 통 5개는 **배타**다(한 항목은 정확히 한 통). 법정 행(`legal_yn`)은 `legal` 로 빠진다.
+ * benefit_cd 1:1 짝짓기 — 통 5개는 **배타**다(한 항목은 정확히 한 통). 표시 행(`mark_cd`)은 `marked` 로 빠진다.
  * 분류는 **등록** 기준(금액 유무)이라 행별 「빼고 다시 계산」으로 checked 가 바뀌어도 목록은 흔들리지 않는다.
  * 같은 회사에 같은 코드가 둘 이상이면 뒤의 것은 `cd#2` 로 따로 센다(현 데이터 0건, 방어).
  */
@@ -703,7 +704,7 @@ export function classifyPairs(listA, listB) {
   };
   const out = {
     bothAmt: [], mixed: [], bothQual: [], onlyA: [], onlyB: [],
-    legal: { a: (listA || []).filter((it) => it && it.legal_yn), b: (listB || []).filter((it) => it && it.legal_yn) },
+    marked: { a: (listA || []).filter((it) => it && it.mark_cd), b: (listB || []).filter((it) => it && it.mark_cd) },
   };
   const B = new Map(keyed(listB));
   const used = new Set();
@@ -721,7 +722,7 @@ export function classifyPairs(listA, listB) {
 }
 
 /**
- * 복지 환산 가치 차이(B − A)의 4분해 — 항등식 `onlyA + onlyB + sameBoth + mixed (+ legal) === benDiff`.
+ * 복지 환산 가치 차이(B − A)의 4분해 — 항등식 `onlyA + onlyB + sameBoth + mixed (+ marked) === benDiff`.
  * onlyA 는 음수(이직 후보에 등록 없음), onlyB 는 양수(새로 생김), mixed 는 「한쪽만 금액 등록」의 몫.
  */
 export function benDiffParts(listA, listB, pairs = classifyPairs(listA, listB)) {
@@ -729,8 +730,8 @@ export function benDiffParts(listA, listB, pairs = classifyPairs(listA, listB)) 
   const onlyB = sumBy(pairs.onlyB, effAmt);
   const sameBoth = sumBy(pairs.bothAmt, (r) => effAmt(r.b) - effAmt(r.a));
   const mixed = sumBy(pairs.mixed, (r) => effAmt(r.b) - effAmt(r.a));
-  const legal = sumBy(pairs.legal.b, effAmt) - sumBy(pairs.legal.a, effAmt); // 법정 행은 정성이라 현재 0
-  return { onlyA, onlyB, sameBoth, mixed, legal, total: onlyA + onlyB + sameBoth + mixed + legal };
+  const marked = sumBy(pairs.marked.b, effAmt) - sumBy(pairs.marked.a, effAmt); // 표시 행은 정성이라 현재 0
+  return { onlyA, onlyB, sameBoth, mixed, marked, total: onlyA + onlyB + sameBoth + mixed + marked };
 }
 
 /** 설명에 「최대·한도·상한」이 적힌 금액 행 — 실제로 받는 돈은 더 적을 수 있다(감도 ③). */
@@ -1185,7 +1186,10 @@ function basisOf(listA, listB, now) {
       estimated: amt.filter((it) => it.amt_source !== 'stated').length,
       capped: cappedRows(L).map((it) => ({ nm: it.benefit_nm, amt: amtOf(it) })),
       expired: amt.filter((it) => it.expires_dtm != null && Date.parse(it.expires_dtm) < now).length,
-      legal: (list || []).filter((it) => it && it.legal_yn).length,
+      marked: {
+        legal: (list || []).filter((it) => it && it.mark_cd === 'legal').length,
+        work_edu: (list || []).filter((it) => it && it.mark_cd === 'work_edu').length,
+      },
     };
   };
   const all = [...live(listA), ...live(listB)].filter((it) => amtOf(it) != null && it.expires_dtm);

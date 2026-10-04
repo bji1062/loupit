@@ -17,8 +17,9 @@
 //      회사가 쓴 자유 문장이다. 유일한 예외는 9각형 SVG 인데, 그쪽은 `radar.js` 가 값마다
 //      파이썬과 **같은 이스케이프**를 걸어 문자열을 만든다(바이트 일치가 그 파일의 계약이다).
 //
-// 배지 계보(`badge.js`)는 이 화면에 없다 — 2,032행이 전부 official 이라 모든 쌍이 같은 결과다.
-// 금액 옆 칩은 **금액 출처**(`amt_source`)이지 출처 계보가 아니다. 두 축을 한 낱말로 섞지 않는다.
+// 배지 계보(`badge.js`)는 이 화면에 없다. 다만 근거 URL 없는 회사의 행은 「검색 요약」 작은 칩을 달고(SP-MARK),
+// 신뢰도 문장이 그 사실을 말한다. 금액 옆 칩은 **금액 출처**(`amt_source`)이지 출처 계보가 아니다. 두 축을 한 낱말로 섞지 않는다.
+// 표시 행(법정 · 업무 교육)은 9각형 · 평균 · 타일 · 대조표 · 나비 · 맞대결에서 빼고 「비교에서 뺀 항목」 각주에 둔다.
 
 import { el } from './dom.js';
 import { CATEGORY_ORDER, CATEGORY_LABEL } from './categories.js';
@@ -26,6 +27,7 @@ import { fmt, radarPairSvg } from './radar.js';
 import { matchBenefitRows } from './report.js';
 import { pairVerdict } from './calc.js';
 import { companyHref } from './directory.js';
+import { MARK, SUMMARY, rowMark, countable, isSummary } from './marks.js';
 
 // 근무형태 5축 — 정본은 `generator/pages/combo.py::_WS_KEYS`. `true` 만 사실이고 `false`·`null` 은
 // 「표기 없음」이다(overtime 은 126사 전부 null — 「야근 없음」이라고 쓰면 126번 거짓말이 된다).
@@ -120,7 +122,8 @@ export function categoryStats(companies, order = CATEGORY_ORDER) {
   for (const k of order) sums[k] = 0;
   let rmax = 0;
   for (const c of list) {
-    const per = perCategory(c && c.benefits, order);
+    // 표시 행(법정 · 업무 교육)은 뺀다 — corpus.build 와 같은 정의(SP-MARK). 안 빼면 가족 평균이 정적(3.04)과 어긋난다.
+    const per = perCategory(countable(c), order);
     for (const k of order) {
       sums[k] += per[k];
       if (per[k] > rmax) rmax = per[k];
@@ -272,10 +275,22 @@ export function trustSentence(items, nm) {
   const amt = list.filter(hasAmount);
   const stated = amt.filter((b) => b.amt_source === 'stated').length;
   const est = amt.length - stated;
-  const when = verifiedText(list);
-  const head = when
-    ? `${nm} 의 ${list.length}개 항목은 회사 공식 페이지에서 수집했고 ${when}에 확인했습니다.`
-    : `${nm} 의 ${list.length}개 항목은 회사 공식 페이지에서 수집했습니다.`;
+  // 검색 요약 행(근거 URL 없는 회사) — 확인일은 요약이 아닌 행에서만 센다(요약 행은 「요약 기준일」).
+  const sum = list.filter(isSummary);
+  const s = sum.length;
+  const n = list.length;
+  const when = verifiedText(list.filter((b) => !isSummary(b)));
+  let head;
+  if (s && s === n) {
+    const sumWhen = verifiedText(sum);
+    head = `${nm} 의 ${n}개 항목은 회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 했습니다${sumWhen ? `(${sumWhen} 기준 요약)` : ''}.`;
+  } else if (s) {
+    head = `${nm} 의 ${n}개 항목 가운데 ${n - s}개는 회사 공식 페이지·공시에서 수집해 ${when ? `${when}에 ` : ''}확인했고, ${s}개는 검색 AI 요약을 근거로 했습니다.`;
+  } else {
+    head = when
+      ? `${nm} 의 ${n}개 항목은 회사 공식 페이지·공시에서 수집했고 ${when}에 확인했습니다.`
+      : `${nm} 의 ${n}개 항목은 회사 공식 페이지·공시에서 수집했습니다.`;
+  }
   if (!amt.length) return `${head} 금액이 적힌 항목은 없습니다.`;
   return `${head} 금액이 적힌 항목은 ${amt.length}개이며 그중 공식 수치는 ${stated}개, 추정치는 ${est}개입니다.`;
 }
@@ -338,6 +353,11 @@ function sourceChip(item) {
   return el('span', { class: `cmp-chip${item.amt_source === 'estimated' ? ' est' : ''}`, text: label });
 }
 
+/** 「검색 요약」 작은 칩 — 근거 URL 없는 회사의 행(SP-MARK). 금액 출처 칩과 다른 축이라 모양도 다르다(점선). */
+function summaryTag() {
+  return el('span', { class: 'cmp-tag-sum', title: SUMMARY.title, text: SUMMARY.label });
+}
+
 /** 조건부 클래스. `el()` 은 `class` 를 className 에 그대로 넣어서 null 이 문자열 "null" 이 된다. */
 function cls(on, name) {
   return on ? { class: name } : {};
@@ -355,6 +375,7 @@ function valueCell(item) {
   } else {
     td.append(el('span', { text: valueText(item) }));
   }
+  if (isSummary(item)) td.append(summaryTag());
   return td;
 }
 
@@ -498,6 +519,7 @@ function categoryPanel(vm, cat, label) {
       for (const it of items) {
         const li = el('li');
         li.append(el('b', { text: it.benefit_nm }));
+        if (isSummary(it)) li.append(summaryTag());
         const amt = amountText(it);
         if (amt) {
           li.append(el('span', { class: 'cmp-amt num', text: amt }));
@@ -712,6 +734,14 @@ function renderTrust(vm) {
   const sec = section('이 비교를 얼마나 믿을 수 있나', 'cmp-trust');
   sec.append(el('p', { class: 'cmp-say', text: trustSentence(vm.ben.a, vm.aNm) }));
   sec.append(el('p', { class: 'cmp-say', text: trustSentence(vm.ben.b, vm.bNm) }));
+  if (vm.marked && vm.marked.length) {
+    const p = el('p', { class: 'cmp-say cmp-marked' }, '복지로 세지 않아 비교에서 뺀 항목: ');
+    vm.marked.forEach((m, i) => {
+      if (i) p.append(' · ');
+      p.append(el('span', { class: 'cmp-mark', title: MARK[m.kind].title, text: MARK[m.kind].label }), ` ${m.nm}(${m.who})`);
+    });
+    sec.append(p);
+  }
   return sec;
 }
 
@@ -738,10 +768,24 @@ function renderNext(vm, deps) {
  */
 export function buildViewModel(state, { now = Date.now(), order = CATEGORY_ORDER } = {}) {
   const company = { a: state.matched.a, b: state.matched.b };
-  const ben = {
+  const all = {
     a: (state.benS && state.benS.a && state.benS.a.length ? state.benS.a : (company.a.benefits || [])),
     b: (state.benS && state.benS.b && state.benS.b.length ? state.benS.b : (company.b.benefits || [])),
   };
+  // 표시 행(법정 · 업무 교육, SP-MARK)은 비교에서 빼고(`ben` = 남는 행) 각주에만 둔다(`marked`).
+  const split = (slot) => {
+    const eng = company[slot] && company[slot].comp_eng_nm;
+    const keep = [], marked = [];
+    for (const b of all[slot]) {
+      const kind = rowMark(eng, b);
+      if (kind) marked.push({ kind, nm: b.benefit_nm, who: company[slot].comp_nm });
+      else keep.push(b);
+    }
+    return { keep, marked };
+  };
+  const sa = split('a'), sb = split('b');
+  const ben = { a: sa.keep, b: sb.keep };
+  const marked = [...sa.marked, ...sb.marked];
   const stats = categoryStats((state.REF && state.REF.companies) || [], order);
   const perA = perCategory(ben.a, order);
   const perB = perCategory(ben.b, order);
@@ -757,6 +801,7 @@ export function buildViewModel(state, { now = Date.now(), order = CATEGORY_ORDER
     labels: order.map((k) => CATEGORY_LABEL[k]),
     company,
     ben,
+    marked,
     aNm,
     bNm,
     countsA,

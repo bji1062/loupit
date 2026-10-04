@@ -11,14 +11,14 @@
 //      시간·통근을 넣지 않은 사용자(워라밸 축이 3·4순위까지 내려가는 경우)에서 문턱별 「등록 수로 결론」 비율.
 //   2) nearBandMult · nearTotalPct — 대표 입력 시나리오 5개에서 연봉 축·복지 축의 티어 분포
 //      (말할 수 없음 / 거의 같음 / 방향)를 후보 값마다.
-// 엔진은 calc.js 그대로 쓴다(공식을 여기 다시 적지 않는다). 법정 행은 앱과 같이 legal.js 로 표시한다.
+// 엔진은 calc.js 그대로 쓴다(공식을 여기 다시 적지 않는다). 표시 행(법정 · 업무 교육)은 앱과 같이 marks.js 로 표시한다.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const calc = await import(join(ROOT, 'web', 'assets', 'js', 'calc.js'));
-const { isLegalRow } = await import(join(ROOT, 'web', 'assets', 'js', 'legal.js'));
+const { rowMark } = await import(join(ROOT, 'web', 'assets', 'js', 'marks.js'));
 const { compare, verdictTier, AXIS_THRESHOLDS } = calc;
 
 const bundlePath = process.argv[2];
@@ -29,8 +29,8 @@ const bundle = JSON.parse(readFileSync(bundlePath, 'utf8'));
 const companies = bundle.companies;
 
 const items = (c) => c.benefits.map((b) => {
-  const legal = isLegalRow(c.comp_eng_nm, b.benefit_cd, b.benefit_nm);
-  return { ...b, checked: !legal, legal_yn: legal || undefined };
+  const mark = rowMark(c.comp_eng_nm, b);
+  return { ...b, checked: !mark, mark_cd: mark || undefined };
 });
 const LIST = new Map(companies.map((c) => [c.comp_id, items(c)]));
 
@@ -38,7 +38,7 @@ const pct = (n, d) => (d ? (100 * n / d).toFixed(1) + '%' : '-');
 const quant = (arr, q) => { const s = [...arr].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
 
 // ── 1) wlbQualCount ──────────────────────────────────────────────────────────
-const wlbCnt = (list) => list.filter((it) => !it.legal_yn && (it.benefit_ctgr_cd === 'time_off' || it.benefit_ctgr_cd === 'flexibility')).length;
+const wlbCnt = (list) => list.filter((it) => !it.mark_cd && (it.benefit_ctgr_cd === 'time_off' || it.benefit_ctgr_cd === 'flexibility')).length;
 const perCo = companies.map((c) => wlbCnt(LIST.get(c.comp_id)));
 const hist = {};
 for (const n of perCo) hist[n] = (hist[n] || 0) + 1;

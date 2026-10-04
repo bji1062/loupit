@@ -1091,3 +1091,31 @@ describe('UT-FIND-CSS — 접힘·고정 계약', () => {
     assert.ok(!beforeBreakpoint.includes('.find-deckwrap.collapsed'), '모바일 기본형에 접힘 규칙이 새어 들어갔다');
   });
 });
+
+describe('SP-MARK 표시 행(법정 · 업무 교육)은 칩 수 · 매칭 · 「복지 N개」에서 빠진다', () => {
+  const ref = {
+    companies: [
+      { comp_id: 1, comp_eng_nm: 'alteogen', comp_nm: '알테오젠', comp_tp_cd: 'mid', industry_nm: '바이오', benefits: [
+        { benefit_cd: 'edu_support', benefit_nm: '신입사원 교육', benefit_ctgr_cd: 'growth', qual_yn: true },
+        { benefit_cd: 'health', benefit_nm: '건강검진', benefit_ctgr_cd: 'health', qual_yn: true, badge_src_cd: 'ai_parse' },
+      ] },
+      { comp_id: 2, comp_eng_nm: 'x_co', comp_nm: 'X', comp_tp_cd: 'mid', industry_nm: '바이오', benefits: [
+        { benefit_cd: 'edu_support', benefit_nm: '교육비 지원', benefit_ctgr_cd: 'growth', qual_yn: true },
+      ] },
+    ],
+  };
+
+  test('deriveCodes — 업무 교육 행의 회사는 edu_support 보유로 세지 않고, 검색 요약 행은 센다', () => {
+    const codes = deriveCodes(ref);
+    assert.equal(codes.edu_support.count, 1);
+    assert.equal(codes.health.count, 1);
+  });
+
+  test('matchCompanies — total 과 매칭에서도 빠진다', () => {
+    const rows = matchCompanies(ref, ['edu_support'], {});
+    assert.deepEqual(rows.map((r) => r.company.comp_id), [2]);
+    const all = matchCompanies(ref, [], {});
+    assert.equal(all.find((r) => r.company.comp_id === 1).total, 1);
+    assert.equal(benefitsByCode(ref.companies[0]).edu_support, undefined);
+  });
+});

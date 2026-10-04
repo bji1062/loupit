@@ -7,6 +7,7 @@
 import { el } from './dom.js';
 import { benefitLine } from './directory.js';
 import { badgeKind, badgeClass, BADGE_LABEL_FULL } from './badge.js';
+import { MARK, rowMark } from './marks.js'; // 표시 행(법정 · 업무 교육)은 이름 옆에 표시를 단다(SP-MARK) — 목록에는 남는다
 
 // 9카테고리 표시 라벨 — report.js CATEGORY_LABEL과 동일 어휘(화면 간 용어 일관성).
 const CATEGORY_LABEL = {
@@ -93,6 +94,8 @@ function renderDetail(company, mountEl, deps, now = Date.now()) {
       for (const b of g.items) {
         const li = el('li', { class: 'cp-ben-row' });
         li.append(el('span', { class: 'cp-ben-nm', text: benefitLine(b) })); // "이름 — 연 N만원"/정성은 이름만
+        const mk = rowMark(company.comp_eng_nm, b);
+        if (mk) li.append(el('span', { class: 'benefit-mark', title: MARK[mk].title, text: MARK[mk].label }));
         li.append(badgeFor(b, now));
         ul.append(li);
       }

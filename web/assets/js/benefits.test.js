@@ -257,7 +257,7 @@ describe('SP-CMP-7 신뢰도 문장', () => {
     ];
     assert.equal(
       trustSentence(items, 'NAVER'),
-      'NAVER 의 3개 항목은 회사 공식 페이지에서 수집했고 2026년 4월 15일에 확인했습니다. '
+      'NAVER 의 3개 항목은 회사 공식 페이지·공시에서 수집했고 2026년 4월 15일에 확인했습니다. '
       + '금액이 적힌 항목은 2개이며 그중 공식 수치는 1개, 추정치는 1개입니다.',
     );
   });
@@ -764,5 +764,53 @@ describe('UT-CMP-CSS — 덱·색 계약', () => {
   test('겹침 채움은 각 14% 다 — 겹친 곳이 저절로 26% 로 진해진다', () => {
     assert.match(CSS, /--slot-a-fill:rgb\(47 125 67 \/ \.14\)/);
     assert.match(CSS, /--radar-fill:rgb\(47 125 67 \/ \.18\)/, '단일 레이더는 18% 그대로여야 한다');
+  });
+});
+
+// ── 행 표시(SP-MARK) — 표시 행 제외 · 검색 요약 문장 ─────────────────────────────
+
+describe('SP-MARK categoryStats · buildViewModel — 표시 행은 집계에서 빠진다', () => {
+  const alteogen = (extra = []) => ({
+    comp_id: 1, comp_eng_nm: 'alteogen', comp_nm: '알테오젠',
+    benefits: [ben('edu_support', { nm: '신입사원 교육', cat: 'growth' }), ben('x', { cat: 'growth' }), ...extra],
+  });
+
+  test('categoryStats 가 표시 행(업무 교육)을 세지 않는다 — 정적 corpus 와 같은 정의', () => {
+    const s = categoryStats([alteogen()], CATEGORY_ORDER);
+    assert.equal(s.avgs.growth, 1, '신입사원 교육(업무 교육)은 빠지고 x 만 센다');
+    assert.equal(s.rmax, 1);
+  });
+
+  test('검색 요약 행은 센다(2a)', () => {
+    const s = categoryStats([alteogen([{ ...ben('y', { cat: 'growth' }), badge_src_cd: 'ai_parse' }])], CATEGORY_ORDER);
+    assert.equal(s.avgs.growth, 2);
+  });
+
+  test('buildViewModel — ben 에서 표시 행을 빼고 marked 에 남긴다', () => {
+    const kt = { comp_id: 2, comp_eng_nm: 'kt', comp_nm: 'KT', benefits: [ben('parenting', { nm: '출산/육아 지원', cat: 'family' }), ben('z', { cat: 'perks' })] };
+    const a = alteogen();
+    const vm = buildViewModel({ matched: { a, b: kt }, benS: { a: [], b: [] }, REF: { companies: [a, kt] } });
+    assert.deepEqual(vm.ben.a.map((b) => b.benefit_cd), ['x']);
+    assert.deepEqual(vm.ben.b.map((b) => b.benefit_cd), ['z']);
+    assert.deepEqual(vm.marked.map((m) => [m.kind, m.nm, m.who]), [['work_edu', '신입사원 교육', '알테오젠'], ['legal', '출산/육아 지원', 'KT']]);
+  });
+});
+
+describe('SP-MARK trustSentence — 검색 요약 세 문형', () => {
+  const sum = (cd, over = {}) => ({ ...ben(cd, over), badge_src_cd: 'ai_parse' });
+
+  test('전부 검색 요약(s === n)', () => {
+    assert.equal(trustSentence([sum('a'), sum('b')], '케어젠'),
+      '케어젠 의 2개 항목은 회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 했습니다(2026년 4월 15일 기준 요약). 금액이 적힌 항목은 없습니다.');
+  });
+
+  test('일부만(0 < s < n) — 확인일은 요약이 아닌 행에서', () => {
+    const items = [ben('a', { verified: '2026-03-01T00:00:00' }), sum('b'), sum('c')];
+    assert.equal(trustSentence(items, 'X'),
+      'X 의 3개 항목 가운데 1개는 회사 공식 페이지·공시에서 수집해 2026년 3월 1일에 확인했고, 2개는 검색 AI 요약을 근거로 했습니다. 금액이 적힌 항목은 없습니다.');
+  });
+
+  test('요약이 없으면(s === 0) 「공식 페이지·공시에서」', () => {
+    assert.match(trustSentence([ben('a')], 'X'), /^X 의 1개 항목은 회사 공식 페이지·공시에서 수집했고 /);
   });
 });
