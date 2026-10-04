@@ -135,14 +135,14 @@
   </section>
 
   <section class="bn-sec" aria-labelledby="bn-cos">
-    <h2 id="bn-cos">이 복지가 있는 회사 {{ view.count }}곳{% if view.legal_rows %} <span class="h2-sub">+ 법정 제도만 적은 회사 {{ view.legal_rows }}곳</span>{% endif %}</h2>
+    <h2 id="bn-cos">이 복지가 있는 회사 {{ view.count }}곳{% for m in view.marked %} <span class="h2-sub">+ {{ m.sub }} {{ m.count }}곳</span>{% endfor %}</h2>
     {% if view.notes.companies %}<p class="bn-note">{{ view.notes.companies }}</p>{% endif %}
     {% macro company_rows(rows) -%}
     {% for r in rows %}
-      <tr{% if r.legal %} class="bn-legal-row"{% endif %}>
+      <tr{% if r.mark %} class="bn-mark-row"{% endif %}>
         <th scope="row"><a href="{{ r.href }}">{{ r.comp_nm }}</a></th>
-        {% if view.modes %}<td>{% if r.legal %}<span class="benefit-legal" title="근로기준법 등이 모든 회사에 강제하는 제도 · 복지 집계 제외">법정</span>{% else %}<span class="bn-chip {{ r.mode.cls }}">{{ r.mode.label }}</span>{% endif %}</td>{% endif %}
-        <td class="bn-src">{% if not view.modes and r.legal %}<span class="benefit-legal" title="근로기준법 등이 모든 회사에 강제하는 제도 · 복지 집계 제외">법정</span> {% endif %}{% if r.desc %}<p>{{ r.desc }}</p>{% endif %}{% if r.note %}<p>{{ r.note }}</p>{% endif %}{% if not r.desc and not r.note %}<p>{{ r.name }}</p>{% endif %}</td>
+        {% if view.modes %}<td>{% if r.mark %}<span class="benefit-mark" title="{{ r.mark.title }}">{{ r.mark.label }}</span>{% else %}<span class="bn-chip {{ r.mode.cls }}">{{ r.mode.label }}</span>{% endif %}</td>{% endif %}
+        <td class="bn-src">{% if not view.modes and r.mark %}<span class="benefit-mark" title="{{ r.mark.title }}">{{ r.mark.label }}</span> {% endif %}{% if r.summary %}<span class="badge badge-summary" title="회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목입니다. 복지 항목 수에는 셉니다.">검색 요약</span> {% endif %}{% if r.desc %}<p>{{ r.desc }}</p>{% endif %}{% if r.note %}<p>{{ r.note }}</p>{% endif %}{% if not r.desc and not r.note %}<p>{{ r.name }}</p>{% endif %}</td>
         {#- 금액 칸 — 판정은 `company.amount_view` 하나다(회사 카드와 같은 함수). 정성과 「금액 미기재」는 다른 사실이다. -#}
         <td class="bn-amt">{% if r.no_amt_label %}<span class="bn-amt-none">{{ r.no_amt_label }}</span>{% else %}{% if r.est %}<i class="bn-est">추정</i> {% endif %}<span class="bn-amt-v">{{ r.amount }}</span>{% endif %}</td>
       </tr>

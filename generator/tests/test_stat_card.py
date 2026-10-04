@@ -843,3 +843,47 @@ def test_desc_is_empty_safe():
     assert benefit_desc(None) == ""
     assert benefit_desc("   ") == ""
     assert benefit_desc("(추정)", "estimated") == ""
+
+
+# ── 행 표시 장치(SP-MARK) — 업무 교육 · 검색 요약 ────────────────────────────────
+
+
+def _with_marked_and_summary(fake_bundle):
+    """samsung_elec 에 업무 교육 표시 행 1개를, sk_hynix 의 첫 행에 검색 요약 출처를 붙인다."""
+    import copy
+    b = copy.deepcopy(fake_bundle)
+    sam = next(c for c in b["companies"] if c["comp_eng_nm"] == "samsung_elec")
+    sam["comp_eng_nm"] = "alteogen"  # 등록표(alteogen/edu_support/신입사원 교육)에 걸리게 이름만 바꾼다
+    row = dict(sam["benefits"][0], benefit_cd="edu_support", benefit_nm="신입사원 교육",
+               qual_yn=True, benefit_amt=None, sort_order_no=999)
+    sam["benefits"].append(row)
+    hyn = next(c for c in b["companies"] if c["comp_eng_nm"] == "sk_hynix")
+    hyn["benefits"][0]["badge_src_cd"] = "ai_parse"
+    return b
+
+
+def test_work_edu_row_is_marked_in_ledger_and_left_out_of_counts(fake_bundle, fake_now):
+    base = _render(fake_bundle, fake_now)["company/samsung-elec.html"].html
+    pages = _render(_with_marked_and_summary(fake_bundle), fake_now)
+    html = next(p.html for path, p in pages.items() if path.startswith("company/") and "신입사원 교육" in p.html)
+    assert 'class="benefit-mark"' in html and ">업무 교육</span>" in html
+    assert 'class="sc-mark">업무 교육' in html
+    assert 'data-mark="work_edu"' in html
+    n_base = re.search(r'<dt>금액 환산</dt>', base) is not None
+    assert n_base
+    # 메타 설명 「복지 N개 항목」 에 표시 행이 안 든다
+    def n_meta(h):
+        return int(re.search(r"복지 (\d+)개 항목", h).group(1))
+    assert n_meta(html) == n_meta(base)
+
+
+def test_summary_row_gets_badge_and_summary_date_label_and_tally_line(fake_bundle, fake_now):
+    pages = _render(_with_marked_and_summary(fake_bundle), fake_now)
+    html = pages["company/sk-hynix.html"].html
+    assert 'class="badge badge-summary"' in html or "badge-summary" in html
+    assert "요약 기준일" in html
+    assert "<dt>검색 요약<span>공식 원문 미확인</span></dt><dd>1</dd>" in html
+    assert "행마다 「검색 요약」을 달았습니다." in html
+    # 요약 행이 없는 회사에는 줄도 안내도 없다
+    other = next(p.html for path, p in pages.items() if path.startswith("company/") and path != "company/sk-hynix.html")
+    assert "공식 원문 미확인" not in other and "요약 기준일" not in other

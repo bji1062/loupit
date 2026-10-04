@@ -21,8 +21,9 @@ import json
 import os
 from functools import lru_cache
 
+from generator import marks
+
 _PATH = os.path.join(os.path.dirname(__file__), "data", "legal_baseline.json")
-_ROWS_PATH = os.path.join(os.path.dirname(__file__), "data", "legal_rows.json")
 
 # calc.js MONTHLY_STD_HRS 와 같은 값. 정본이 아니라 **기본값**이다 —
 # 호출자가 넘기면 그쪽이 이긴다(테스트가 두 값의 일치를 강제한다).
@@ -129,21 +130,9 @@ def annual_leave_value(company_days: float | None,
 # ── 법정 제도만 담은 복지 행 (SP-LEGAL-5) ───────────────────────────────────
 
 
-@lru_cache(maxsize=1)
-def _rows_raw() -> dict:
-    with open(_ROWS_PATH, encoding="utf-8") as f:
-        return json.load(f)
-
-
-@lru_cache(maxsize=1)
-def _rows_index() -> frozenset:
-    return frozenset((r["comp_eng_nm"], r["benefit_cd"], r["benefit_nm"])
-                     for r in _rows_raw()["rows"])
-
-
 def legal_rows() -> list[dict]:
     """법정 제도만 담고 있어 복지로 셀 수 없는 행 목록(전수)."""
-    return _rows_raw()["rows"]
+    return [r for r in marks.rows() if r["kind"] == "legal"]
 
 
 def is_legal_row(comp_eng_nm: str, benefit_cd: str | None, benefit_nm: str) -> bool:
@@ -156,4 +145,4 @@ def is_legal_row(comp_eng_nm: str, benefit_cd: str | None, benefit_nm: str) -> b
     `leave_general`)에 법정 행과 진짜 복지 행이 섞여 있기 때문이다 — 코드만 보면 멀쩡한 복지가
     통째로 빠진다.
     """
-    return (comp_eng_nm, benefit_cd, benefit_nm) in _rows_index()
+    return marks.row_mark(comp_eng_nm, benefit_cd, benefit_nm) == "legal"

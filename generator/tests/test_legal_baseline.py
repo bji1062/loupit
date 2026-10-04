@@ -291,7 +291,8 @@ def test_ledger_keeps_the_legal_row_but_flags_it(fake_now):
     groups = _group_benefits(c["benefits"], fake_now, comp_eng_nm="kt")
     items = [i for _, _, its in groups for i in its]
     assert len(items) == 2, "원장에서 행을 지우지 않는다"
-    assert [i["legal"] for i in items].count(True) == 1
+    assert [bool(i["mark"]) for i in items].count(True) == 1
+    assert [i["mark"]["kind"] for i in items if i["mark"]] == ["legal"]
 
 
 def test_group_benefits_without_company_name_flags_nothing(fake_now):
@@ -300,4 +301,4 @@ def test_group_benefits_without_company_name_flags_nothing(fake_now):
 
     c = _fake_company("kt", ["출산/육아 지원"], ctgr="parenting")
     groups = _group_benefits(c["benefits"], fake_now)
-    assert all(not i["legal"] for _, _, its in groups for i in its)
+    assert all(not i["mark"] for _, _, its in groups for i in its)

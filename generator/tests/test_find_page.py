@@ -352,3 +352,14 @@ def test_find_compare_prefill_points_at_compare_route():
     for rel in ("web/assets/js/find.js", "web/assets/js/find.test.js"):
         src = (REPO_ROOT / rel).read_text(encoding="utf-8").replace("\\", "")
         assert "/compare/?a=" in src, f"{rel}: 비교 프리필이 도구가 없는 곳을 가리킨다"
+
+
+def test_derive_codes_skips_marked_rows():
+    """표시 행(SP-MARK)은 /find 칩의 회사 수 · 매칭에서 빠진다 — 항목 페이지의 N 과 같은 분모."""
+    from generator.pages.find import derive_codes
+
+    def co(i, eng, nm):
+        return {"comp_id": i, "comp_eng_nm": eng, "benefits": [
+            {"benefit_cd": "edu_support", "benefit_nm": nm, "benefit_ctgr_cd": "growth", "qual_yn": True, "benefit_amt": None}]}
+    codes = derive_codes([co(1, "alteogen", "신입사원 교육"), co(2, "x_co", "교육비 지원")])
+    assert codes["edu_support"]["count"] == 1

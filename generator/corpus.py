@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from generator import legal
+from generator import marks
 
 
 def _amount(benefits) -> int:
@@ -70,11 +70,10 @@ def build(companies: list[dict], category_order: list[str]) -> Corpus:
     rmax = 0
     items, amounts = {}, {}
     for c in companies:
-        # 법정 제도만 담은 행은 **집계에서 뺀다**(SP-LEGAL-5). 근로기준법을 지키는 것이 복지로
+        # 표시 행(SP-MARK: 법정 · 업무 교육)은 **집계에서 뺀다**(SP-LEGAL-5). 근로기준법을 지키는 것이 복지로
         # 세어지면 순위가 그만큼 부풀고(SK이노베이션 6→9번째), 화면의 「N개사 중 몇 번째」가 거짓이 된다.
-        # 행 자체는 지우지 않는다 — 원장에는 「법정」 배지를 달아 남는다.
-        countable = [b for b in c["benefits"]
-                     if not legal.is_legal_row(c.get("comp_eng_nm") or "", b.get("benefit_cd"), b.get("benefit_nm") or "")]
+        # 행 자체는 지우지 않는다 — 원장에는 표시를 달아 남는다. 검색 요약 행은 센다(2a).
+        countable = marks.countable(c)
         per: dict[str, int] = {k: 0 for k in category_order}
         for b in countable:
             cat = b["benefit_ctgr_cd"]

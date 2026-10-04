@@ -24,16 +24,18 @@
   <section class="benefit-group" id="cat-{{ key }}" data-category="{{ key }}">
     <h3>{{ label }}</h3>
     {% for item in items %}
-    {#- `legal` = 근로기준법 등이 모든 회사에 강제하는 제도만 담은 행(SP-LEGAL-5). **지우지 않고**
-        배지를 달아 남긴다 — 「이 회사가 연차·육아휴직을 준다」는 사실은 정보이기 때문이다.
-        다만 복지 항목 수·렌즈·레이더의 분모에서는 빠진다(집계는 `_card_view` 가 이미 걸렀다). -#}
-    <article class="led-row{% if item.legal %} led-legal{% endif %}" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}" data-lens="{{ item.lens }}"{% if item.legal %} data-legal="1"{% endif %}>
+    {#- `mark` = 표시 행(SP-MARK) — 「법정」(근로기준법 등이 모든 회사에 강제하는 제도만 담은 행, SP-LEGAL-5) ·
+        「업무 교육」(회사가 업무를 맡기려고 여는 교육만 담은 행). **지우지 않고** 표시를 달아 남긴다 —
+        「이 회사가 연차·육아휴직을 준다」는 사실은 정보이기 때문이다. 다만 복지 항목 수·렌즈·레이더의
+        분모에서는 빠진다(집계는 `_card_view` 가 이미 걸렀다). `summary` = 검색 요약 행(계보 배지가
+        「검색 요약」 — 확인일 칸은 「요약 기준일」). 집계에는 든다. -#}
+    <article class="led-row{% if item.mark %} led-mark{% endif %}" id="{{ item.anchor }}" data-amt="{{ item.amt_kind }}" data-lens="{{ item.lens }}"{% if item.mark %} data-mark="{{ item.mark.kind }}"{% endif %}>
       <div class="led-head">
         <h4 class="benefit-name">{{ item.name }}</h4>
-        {% if item.legal %}<span class="benefit-legal" title="근로기준법 등이 모든 회사에 강제하는 제도입니다. 복지 항목 수에서 제외됩니다.">법정</span>{% endif %}
+        {% if item.mark %}<span class="benefit-mark" title="{{ item.mark.title }}">{{ item.mark.label }}</span>{% endif %}
         {% if item.amount %}<span class="benefit-amount{% if item.est %} est{% endif %}">{{ item.amount }}</span>{% endif %}
         <span class="led-src">{{ item.src_text }}</span>
-        <span class="led-badges">{{ badge(item.badge) }}{% if item.verified %}<span class="benefit-verified">확인일 {{ item.verified }}</span>{% endif %}{% if item.expires %}<span class="benefit-expires">만료 {{ item.expires }}</span>{% endif %}</span>
+        <span class="led-badges">{{ badge(item.badge) }}{% if item.verified %}<span class="benefit-verified">{% if item.summary %}요약 기준일{% else %}확인일{% endif %} {{ item.verified }}</span>{% endif %}{% if item.expires %}<span class="benefit-expires">만료 {{ item.expires }}</span>{% endif %}</span>
       </div>
       {#- 정성 설명과 비고는 **다른 필드**다 — `or` 로 묶으면 둘 다 있는 행에서 비고가 사라진다
           (실측 6행: 케어젠 '휴가비 지원', 텔레칩스 'Productivity Incentive: 최대 연봉의 30%' 등). -#}

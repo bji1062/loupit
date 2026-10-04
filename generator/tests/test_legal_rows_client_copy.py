@@ -28,4 +28,4 @@ def test_client_copy_matches_canonical_rows():
 def test_client_copy_has_no_duplicates():
     src = (ROOT / "web" / "assets" / "js" / "legal.js").read_text(encoding="utf-8")
     rows = re.findall(r"\['([^']*)',\s*'([^']*)',\s*'([^']*)'\]", src)
-    assert len(rows) == len(set(rows)) == len(json.loads((ROOT / "generator" / "data" / "legal_rows.json").read_text(encoding="utf-8"))["rows"])
+    assert len(rows) == len(set(rows)) == len(legal.legal_rows())

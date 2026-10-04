@@ -20,7 +20,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from generator import corpus as corpus_mod
+from generator import corpus as corpus_mod, marks
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -114,15 +114,15 @@ def _sector_groups(ctx) -> list[dict]:
     return [{
         "name": name,
         "total": len(members),
-        "top": [dict(_link(c, ctx), n=len(_benefits(c)))
-                for c in sorted(members, key=lambda c: (-len(_benefits(c)), c["comp_nm"]))[:SECTOR_TOP]],
+        "top": [dict(_link(c, ctx), n=len(marks.countable(c)))
+                for c in sorted(members, key=lambda c: (-len(marks.countable(c)), c["comp_nm"]))[:SECTOR_TOP]],
     } for name, members in groups]
 
 
 def _category_chips(ctx) -> list[dict]:
     out = []
     for key in CATEGORY_ORDER:
-        n = len({c["comp_id"] for c in ctx.companies for b in _benefits(c) if b.get("benefit_ctgr_cd") == key})
+        n = len({c["comp_id"] for c in ctx.companies for b in marks.countable(c) if b.get("benefit_ctgr_cd") == key})
         if n:
             out.append({"key": key, "label": CATEGORY_LABEL[key], "n": n})
     return out
@@ -204,7 +204,7 @@ def _numbers(ctx) -> dict:
         ]
     corp = corpus_mod.build(ctx.companies, CATEGORY_ORDER)
     items = []
-    for c in sorted(ctx.companies, key=lambda c: (-len(_benefits(c)), c["comp_nm"])):
+    for c in sorted(ctx.companies, key=lambda c: (-corp.items[c["comp_id"]], c["comp_nm"])):
         r = corp.rank_of(c["comp_id"])
         if r["items_rank"] > RANK_TOP:
             break

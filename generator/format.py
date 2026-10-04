@@ -9,6 +9,8 @@ import json
 import re
 from datetime import date, datetime
 
+from generator.marks import SUMMARY_SRC_CD
+
 
 def krw_manwon(amt) -> str:
     """만원 정수 → 한국어 "N억 M,MMM만원"/"N억원"/"M,MMM만원" (FR-04).
@@ -64,8 +66,10 @@ def badge_state(benefit: dict, now: datetime) -> dict:
                   오래된 값이고, 그게 사용자에게 가장 급한 정보다.
       2. 재직자 등록 — 편집 이력에 `create`. 원래 데이터에 없던 항목을 재직자가 더한 것.
       3. 공식·재직자 수정 — 편집 이력에 `update`. 공식 값을 재직자가 고친 것.
-      4. 공식   — 편집 이력 없음 = 시드 원본(회사 공식 페이지 기준).
-      5. 추정   — 그 외.
+      4. 검색 요약 — 근거 URL 없는 회사(기준 39, `BADGE_SRC_CD='ai_parse'`). 「공식」이라 쓰면 행 꼬리
+                  「(공식 원문 미확인 …)」과 한 줄 안에서 어긋난다(묶음 7 검토 L2).
+      5. 공식   — 편집 이력 없음 = 시드 원본(회사 공식 페이지 기준).
+      6. 추정   — 그 외.
 
     ⚠ 2·3 의 '재직자'는 수사가 아니다 — 복지 편집은 `require_employment` 게이트 뒤라
       **그 회사 재직 인증을 통과한 사람만** 쓸 수 있다(2026-07-31 문구 결정).
@@ -81,6 +85,8 @@ def badge_state(benefit: dict, now: datetime) -> dict:
         return {"code": "member", "label": "재직자 등록"}
     if origin == "edited":
         return {"code": "edited", "label": "공식·재직자 수정"}
+    if benefit.get("badge_src_cd") == SUMMARY_SRC_CD:
+        return {"code": "summary", "label": "검색 요약"}
     if benefit.get("badge_cd") == "official":
         return {"code": "official", "label": "공식"}
     return {"code": "est", "label": "추정"}
