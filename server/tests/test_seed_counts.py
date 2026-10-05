@@ -35,7 +35,7 @@ def test_SD3_company_count_is_102(seeded_db):
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
 
 
-# ── SD-4: 복지 총행 3186(3097 + 77 R-3 후속 정리 2 + 1 R-3 후속 정리 3 월말휴무 + 11 후속 정리 5, 2026-10-05), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 3179(3097 + 77 R-3 후속 정리 2 + 1 R-3 후속 정리 3 월말휴무 + 11 후속 정리 5 − 7 엘앤에프 출처 이전, 2026-10-05), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -131,9 +131,12 @@ def test_SD4_benefit_total_row_count(seeded_db):
           3174 + 1 = 3175 (R-3 후속 정리 3)
           + R-3 후속 정리 5 — 보류 넣기 · 그림 · 붙여넣기: 새 행 11(기아 1 · 한미 1 · 보로노이 1 · 동진쎄미켐 1 · 심텍 2 · 대한항공 3 · 현대글로비스 2) · 삭제 0 · 마이그레이션 없음
           3175 + 11 = 3186 (R-3 후속 정리 5)
+          + R-3 후속 6 — 엘앤에프 출처 이전 20 → 13(−11 + 4) — 운영은 표적 삭제 11 뒤 멱등 적재
+          (db/migrations/20261005_landf_recollect.sql) — loupit-evidence/2026-10-05-hold-recollect/
+          3186 − 11 + 4 = 3179 (R-3 후속 6)
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 3186, f"복지 총행 불일치: {count} (기대 3186 = 3097 + 77 R-3 후속 정리 2 + 1 후속 정리 3 + 11 후속 정리 5)"
+    assert count == 3179, f"복지 총행 불일치: {count} (기대 3179 = 3097 + 77 R-3 후속 정리 2 + 1 후속 정리 3 + 11 후속 정리 5 − 11 + 4 엘앤에프 출처 이전)"
     assert count >= 1200
 
 
