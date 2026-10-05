@@ -17,6 +17,7 @@
 --   구본에서 뺀 행 1(excellence_award) · 재코딩 0 · 신규 코드 0. 새 행 3(birthday_gift · company_event · stock_option).
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-6): welcome_kit 이름과 서술을 원문 칸 표기 그대로 사무용품 Welcome Kit 제공으로 바꿈(두 항목이 아니라 한 칸) — 최종 11행
+-- 후속 정리 5(2026-10-05, 보류 · 붙여넣기): 보류에서 넣기로 정한 줄(사용자 결정 2026-10-05) — stock_option 서술에 2025 사업보고서 채무보증 현황 · 주석 사용제한 금융자산의 우리사주조합대출 담보 제공 보탬 — 최종 11행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -72,7 +73,7 @@ VALUES
   (@comp_id, 'holiday_gift', '명절선물', 20, 'compensation',
    'est', '명절선물 (공식 홈페이지 Careers 채용소개 복리후생 항목) — 선물 종류·금액·횟수 미기재 (추정)', FALSE, NULL, 60),
   (@comp_id, 'stock_option', '우리사주조합', NULL, 'compensation',
-   'est', NULL, TRUE, '우리사주조합 운영 (2025 사업보고서 주식 소유현황 · 공식 홈페이지 보도자료), 2023년 12월 대표이사 보유 주식 일부를 우리사주조합에 무상 출연, 조합 규정에 따라 조합원에게 배정 — 가입 조건·회사 지원 방식 미기재', 61)
+   'est', NULL, TRUE, '우리사주조합 운영 (2025 사업보고서 주식 소유현황 · 공식 홈페이지 보도자료), 2023년 12월 대표이사 보유 주식 일부를 우리사주조합에 무상 출연, 조합 규정에 따라 조합원에게 배정, 임직원의 우리사주조합 대출(KB국민은행)에 회사 단기금융상품(정기예적금) 담보 제공 (2025 사업보고서 채무보증 현황 · 재무제표 주석 사용제한 금융자산 항목) — 가입 조건·회사 지원 방식·대출 한도·금리 미기재', 61)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

@@ -19,6 +19,7 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 10 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
+-- 후속 정리 5(2026-10-05, 보류 · 붙여넣기): 인재육성 페이지(www.simmtech.com/recruit/edu_system.aspx) 전사 교육체계 그림(carees_edu_001_002_20240612.png) 자기계발 칸 — 새 행 2(edu_support 직무 이러닝 · 북러닝 · lang 어학 이러닝 · 화상어학) · 리더십 · 직무역량 · 조직문화 칸과 학점 이수제는 넣지 않음 — 최종 19행
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('simmtech', '심텍',
@@ -61,6 +62,12 @@ VALUES
    'est', NULL, TRUE, '자녀대학교 학자금, 자녀입학축하금 (공식 페이지 가족 항목명 그대로 — 지원 한도·자녀 수 제한·대상 학교급·금액 미기재)', 51),
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
    'est', NULL, TRUE, '경조사 지원 (공식 페이지 가족 항목명 그대로 — 경조금·경조휴가 구분 미기재)', 52),
+
+  -- ── 성장·커리어 (growth) — 인재육성 페이지 전사 교육체계 그림 자기계발 칸 ──
+  (@comp_id, 'edu_support', '직무 이러닝·북러닝', NULL, 'growth',
+   'est', NULL, TRUE, '자기계발 교육 과정의 직무 이러닝, 북러닝 (공식 채용 페이지 인재육성 전사 교육체계 그림 자기계발 항목) — 과정 내용·수강 대상·비용 부담 미기재', 60),
+  (@comp_id, 'lang', '어학 이러닝·화상어학', NULL, 'growth',
+   'est', NULL, TRUE, '자기계발 교육 과정의 어학 이러닝, 화상어학 (공식 채용 페이지 인재육성 전사 교육체계 그림 자기계발 항목) — 대상 언어·수강 대상·비용 부담 미기재', 61),
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'club', '동호회', NULL, 'leisure',
