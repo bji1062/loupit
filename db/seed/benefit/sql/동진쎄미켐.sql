@@ -33,6 +33,7 @@
 --       재번호하지 않았다(구멍 허용). 사용자 노출 3필드의 편집 주석도 걷어냈다.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- 후속 정리 5(2026-10-05, 보류 · 붙여넣기): 본사 도메인 인사제도 교육체계 그림(www.dongjin.com/recruit/hr02.php pNum=2 · img_hr02_03.jpg) — 새 행 1(lang Globalization 교육 칸) · edu_support 서술에 직무교육 칸의 사내외 직무교육 지원 · 온라인 직무교육 보탬 · 공통 · 리더십 · 직무 필수 교육은 업무 교육이라 넣지 않음 — 최종 20행
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -97,7 +98,9 @@ VALUES
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '직무 교육비 지원', NULL, 'growth',
-   'est', NULL, TRUE, '직무 역량 강화를 위한 교육비 지원 — 지원 한도·대상 과정 미기재', 60),
+   'est', NULL, TRUE, '직무 역량 강화를 위한 교육비 지원, 사내외 직무교육 지원·온라인 직무교육 (본사 인사제도 페이지 2019 교육체계 그림 직무교육 항목) — 지원 한도·대상 과정 미기재', 60),
+  (@comp_id, 'lang', '사내어학강좌·온라인·전화 어학교육', NULL, 'growth',
+   'est', NULL, TRUE, '전 임직원 대상 영어·중국어·일본어 어학교육, 사내어학강좌·온라인 어학교육·전화 어학교육 (본사 인사제도 페이지 2019 교육체계 그림 Globalization 교육 항목) — 수강 조건·비용 부담 미기재', 61),
 
   -- ── 근무환경 (work_env) ──
   (@comp_id, 'dormitory', '기숙사', NULL, 'work_env',
