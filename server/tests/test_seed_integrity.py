@@ -496,6 +496,7 @@ def test_SI13c_real_companies_cond_is_pinned():
         "doosan_enerbility": {"remote": ["필요 시"]},
         "telechips": {"remote": ["필요 시"]},
         "hanwha": {"remote": ["글로벌부문"]},
+        "hanwha_systems": {"remote": ["ICT부문"]},
         "samsung_ct": {"flex": ["패션부문"], "refreshLeave": ["건설·리조트부문"]},
         "pharma_research": {"flex": ["자녀를 둔 부·모"]},
         "rainbow_robotics": {"flex": ["조건부"]},
@@ -503,7 +504,6 @@ def test_SI13c_real_companies_cond_is_pinned():
     }
     for eng in ("db_insurance", "hyundai_glovis"):
         assert ws[eng]["remote"] is True and "cond" not in ws[eng], f"{eng}: 「재택근무 포함」 · 신청형은 맨 칩 유지"
-    assert ws["hanwha_systems"]["remote"] is True
     assert ws["hanwha"]["flex"] is True and ws["hanwha"]["refreshLeave"] is not None, "㈜한화 flex · refreshLeave 는 맨 칩 유지"
     for eng, v in ws.items():
         for k in v.get("cond", {}):
