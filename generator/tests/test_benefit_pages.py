@@ -702,3 +702,20 @@ def test_edu_support_facets_talk_study_edges():
     for d in ("E-Learning", "Udemy 플랫폼을 통한 강의"):
         assert "online" in facets(d), d
     assert "limit" in facets("이러닝 비용 전액 지원")
+
+
+def test_lang_both_rule_is_inhouse_and_cost_patterns_joined():
+    cfg = br.load_pages()["lang"]
+    rules = cfg["modes"]["rules"]
+    assert [r["key"] for r in rules][:3] == ["both", "inhouse", "cost"]
+    inh = next(r["pattern"] for r in rules if r["key"] == "inhouse")
+    cost = next(r["pattern"] for r in rules if r["key"] == "cost")
+    assert rules[0]["pattern"] == "^(?=.*(" + inh + "))(?=.*(" + cost + "))"
+
+    def mode(desc):
+        return br.classify(cfg, [{"comp": "x", "desc": desc, "note": None}])["rows"][0]["mode"]
+
+    assert mode("사내 어학강좌 운영과 어학 시험 응시료 지원") == "both"
+    assert mode("사내 어학 과정 운영") == "inhouse"
+    assert mode("어학 학습비 지원") == "cost"
+    assert mode("어학 지원") == "unknown"
