@@ -56,7 +56,8 @@ LABEL_OVERRIDE = {
     #   그 제목에 맞춘다. mental 은 6:6 같은 길이의 코드포인트 동전 던지기라 행 하나에 뒤집히지 않게 박는다.
     "car_rental": "차량 대여 지원",
     "office_furniture": "사무용 가구·의자 지원",
-    "edu_support": "직무 교육·교육비 지원",
+    #   2026-10-05: edu_support 항목 페이지 제목을 「교육·학습 지원」으로 바꿔(업무 교육을 내세우던 이름) 여기도 맞춘다.
+    "edu_support": "교육·학습 지원",
     "mba": "MBA·대학원 학위 지원",
     "leave_general": "휴가 제도",
     "stock_option": "우리사주·스톡옵션",
