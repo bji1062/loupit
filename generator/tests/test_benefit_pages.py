@@ -696,3 +696,9 @@ def test_edu_support_facets_talk_study_edges():
     for d in ("사내 스터디그룹 지원", "학습동아리의 활동비", "자발적인 학습조직(Learning Crew)"):
         assert "study" in facets(d), d
     assert "study" not in facets("Learn+ 셀프스터디")
+    for d in ("외부 전문가를 초빙한 전사 세미나 운영", "구성원이 직접 강사로 나서는 사내 강의"):
+        assert "talk" in facets(d), d
+    assert "study" not in facets("셀프 스터디")
+    for d in ("E-Learning", "Udemy 플랫폼을 통한 강의"):
+        assert "online" in facets(d), d
+    assert "limit" in facets("이러닝 비용 전액 지원")
