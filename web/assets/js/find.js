@@ -51,7 +51,7 @@ export const LABEL_OVERRIDE = {
   // 항목 전체의 이름이 되거나 옆 코드와 구분이 안 되던 코드(자세한 근거는 find.py 같은 자리). 항목 페이지 제목에 맞춘다.
   car_rental: '차량 대여 지원',
   office_furniture: '사무용 가구·의자 지원',
-  edu_support: '직무 교육·교육비 지원',
+  edu_support: '교육·학습 지원',
   mba: 'MBA·대학원 학위 지원',
   leave_general: '휴가 제도',
   stock_option: '우리사주·스톡옵션',

@@ -1,6 +1,6 @@
 {
  "note": "실서빙 번들에서 뽑은 코드→이름 빈도표와 그때 나오는 대표 이름·별칭 순서. 파이썬(정적 표)과 JS(칩)가 코드 사전을 각자 만들기 때문에 **같은 픽스처로 양쪽을 재는 것**이 이 파일의 목적이다. generator/tests/test_find_page.py 와 web/assets/js/find.test.js 가 함께 읽는다. 번들이 크게 바뀌면 generator/tests/data/make_find_label_cases.py 로 다시 뽑아라 — 손으로 고치지 마라. `category_order` 는 카테고리 안 표시 순서(보유 회사 수 내림차순 → 라벨) — 정적 표와 칩 줄이 **같은 순서**여야 한다는 약속이다. ⚠ `label` 칸 중 `LABEL_OVERRIDE` 에 있는 코드는 override 값이다 — override 를 더하거나 고치면 이 스크립트로 다시 뽑는다(대표 이름이 바뀐 코드는 git diff 로 확인).",
- "source": "reference/all 2026-10-04 · 회사 147 · 복지 3175행 · 코드 89종",
+ "source": "reference/all 2026-10-05 · 회사 147 · 복지 3175행 · 코드 89종",
  "category_order": {
   "compensation": [
    "incentive",
@@ -1195,7 +1195,7 @@
     "학자금 이자 지원": 1
    },
    "ctgr": "growth",
-   "label": "직무 교육·교육비 지원",
+   "label": "교육·학습 지원",
    "aliases": [
     "자기계발 지원",
     "인문학 특강",

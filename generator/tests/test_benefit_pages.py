@@ -679,3 +679,26 @@ def test_summary_row_stays_counted_and_gets_search_summary_badge():
     assert sorted(r["summary"] for r in table) == [False, True]
     pages, *_ = _render(rows, {"edu_support": _EDU_CFG})
     assert "badge badge-summary" in pages[0].html and ">검색 요약</span>" in pages[0].html
+
+
+def test_edu_support_facets_talk_study_edges():
+    cfg = br.load_pages()["edu_support"]
+    keys = {f["key"] for f in cfg["facets"]}
+    assert not keys & {"onboarding", "leadership", "degree"}
+
+    def facets(desc):
+        return br.classify(cfg, [{"comp": "x", "desc": desc, "note": None}])["rows"][0]["facets"]
+
+    for d in ("인문학특강 제공", "임직원 문화/교양 강좌 운영", "개인 역량 개발 교양 교육 제공"):
+        assert "talk" in facets(d), d
+    for d in ("연간 직무·교양 교육비 지원", "어학·경영·인문·교양·자기계발 등 콘텐츠"):
+        assert "talk" not in facets(d), d
+    for d in ("사내 스터디그룹 지원", "학습동아리의 활동비", "자발적인 학습조직(Learning Crew)"):
+        assert "study" in facets(d), d
+    assert "study" not in facets("Learn+ 셀프스터디")
+    for d in ("외부 전문가를 초빙한 전사 세미나 운영", "구성원이 직접 강사로 나서는 사내 강의"):
+        assert "talk" in facets(d), d
+    assert "study" not in facets("셀프 스터디")
+    for d in ("E-Learning", "Udemy 플랫폼을 통한 강의"):
+        assert "online" in facets(d), d
+    assert "limit" in facets("이러닝 비용 전액 지원")
