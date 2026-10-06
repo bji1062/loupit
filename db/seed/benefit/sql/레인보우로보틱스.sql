@@ -24,6 +24,7 @@
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-6): 2026 반기보고서 근거 snack_bar · flex_work 행과 생산 · 품질 공고 급여수준 근거 incentive 행을 더함 — 최종 11행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -47,8 +48,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 경제적 부가혜택 (perks) — 채용 공고 복리후생 · 인재채용 Work Environments ──
-  (@comp_id, 'meal', '중식 제공', NULL, 'perks',
-   'est', NULL, TRUE, '중식 제공 (공식 채용 공고 복리후생 항목), 구내 식당 (공식 홈페이지 인재채용 Work Environments 항목) — 조식·석식 제공 여부·본인 부담 미기재', 10),
+  (@comp_id, 'meal', '중식 제공', 288, 'perks',
+   'est', '중식 제공 (공식 채용 공고 복리후생 항목), 구내 식당 (공식 홈페이지 인재채용 Work Environments 항목) — 조식·석식 제공 여부·본인 부담 미기재 (하루 1끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 10),
   (@comp_id, 'welfare_point', '복지카드 (1년 이상 근속 시)', NULL, 'perks',
    'est', NULL, TRUE, '1년 이상 근속 시 복지카드 지급 (공식 채용 공고 복리후생 항목) — 배정 금액·사용처 미기재', 11),
   (@comp_id, 'snack_bar', '사내 카페', NULL, 'perks',

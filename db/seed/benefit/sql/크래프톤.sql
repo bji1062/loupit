@@ -20,6 +20,7 @@
 --   재코딩 1(leave_general 명절 반차 → holiday_gift 명절 선물) · 구본 삭제 2(satellite_office · books) · 신규 코드 0.
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3): 조치 없음 — parenting 500 은 ESG p.37 연 500만 원 지급 + 보도자료 미사용액 현금 환급으로 지급액 확인 · 956 leave_general → holiday_gift 재코딩 · 958 · 970 표적 삭제 — 최종 27행
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -45,8 +46,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ── 라이프 일하기 즐거운 1·2 · 함께 성장하는 3 · 생활이 편리한 4·5 · ESG p.26·38
   (@comp_id, 'snack_bar', '사내 카페', NULL, 'perks',
    'est', NULL, TRUE, '합리적인 가격의 구성원 전용 사내 카페 운영 (공식 채용 페이지 라이프 지원제도 사내 카페 항목)', 10),
-  (@comp_id, 'meal', '사내 식당 (조식·중식·석식)', 432, 'perks',
-   'est', '조식, 중식, 석식을 모두 제공하는 사내 식당 운영 (추정)', FALSE, NULL, 11),
+  (@comp_id, 'meal', '사내 식당 (조식·중식·석식)', 864, 'perks',
+   'est', '조식, 중식, 석식을 모두 제공하는 사내 식당 운영 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 11),
   (@comp_id, 'team_dinner', '워크샵 지원', NULL, 'perks',
    'est', NULL, TRUE, '외부 활동으로 팀워크를 다지고 동료와 소통하도록 워크샵 지원 (공식 채용 페이지 워크샵 항목) — 지원 금액·횟수 미기재', 12),
   (@comp_id, 'housing_loan', '주택자금대출', NULL, 'perks',

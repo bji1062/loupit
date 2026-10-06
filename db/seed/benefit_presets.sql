@@ -15,7 +15,7 @@ INSERT INTO TBENEFIT_PRESET
   (COMP_TP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, BENEFIT_CTGR_CD, BADGE_CD, DEFAULT_CHECKED_YN, SORT_ORDER_NO)
 VALUES
   -- ── large (대기업) 8행 ──
-  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='large'), 'meal',      '식대 지원 (3식)',        360, 'perks',        'est', TRUE,  0),
+  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='large'), 'meal',      '식대 지원 (3식)',        864, 'perks',        'est', TRUE,  0),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='large'), 'transport', '교통비/주차비',           120, 'perks',        'est', TRUE,  1),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='large'), 'welfare',   '복지포인트/선택복지',     200, 'perks',        'est', TRUE,  2),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='large'), 'bonus',     '성과급/인센티브',         300, 'compensation', 'est', FALSE, 3),
@@ -25,13 +25,13 @@ VALUES
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='large'), 'event',     '경조사 지원',             50,  'family',       'est', TRUE,  7),
 
   -- ── mid (중견기업) 4행 ──
-  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='mid'), 'meal',      '식대 지원',   300, 'perks',  'est', TRUE, 0),
+  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='mid'), 'meal',      '식대 지원 (1식)', 288, 'perks',  'est', TRUE, 0),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='mid'), 'transport', '교통비',      60,  'perks',  'est', TRUE, 1),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='mid'), 'health',    '건강검진',    50,  'health', 'est', TRUE, 2),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='mid'), 'event',     '경조사 지원', 30,  'family', 'est', TRUE, 3),
 
   -- ── public (공기업) 8행 ──
-  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='public'), 'meal',      '식대 지원 (3식)',     360, 'perks',  'est', TRUE,  0),
+  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='public'), 'meal',      '식대 지원 (3식)',     864, 'perks',  'est', TRUE,  0),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='public'), 'transport', '교통비',              120, 'perks',  'est', TRUE,  1),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='public'), 'welfare',   '복지포인트/선택복지', 250, 'perks',  'est', TRUE,  2),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='public'), 'health',    '건강검진',            80,  'health', 'est', TRUE,  3),
@@ -41,11 +41,11 @@ VALUES
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='public'), 'event',     '경조사 지원',         50,  'family', 'est', TRUE,  7),
 
   -- ── startup (스타트업) 2행 ──
-  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='startup'), 'meal',  '식대 지원 (3식)',       360, 'perks',        'est', TRUE,  0),
+  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='startup'), 'meal',  '식대 지원 (3식)',       864, 'perks',        'est', TRUE,  0),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='startup'), 'stock', '스톡옵션/RSU 기대값',   500, 'compensation', 'est', FALSE, 1),
 
   -- ── foreign (외국계) 6행 ──
-  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='foreign'), 'meal',      '식대 지원 (3식)',      360, 'perks',        'est', TRUE,  0),
+  ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='foreign'), 'meal',      '식대 지원 (3식)',      864, 'perks',        'est', TRUE,  0),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='foreign'), 'transport', '교통비',               100, 'perks',        'est', TRUE,  1),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='foreign'), 'welfare',   '복지포인트',           150, 'perks',        'est', TRUE,  2),
   ((SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD='foreign'), 'bonus',     '성과급/인센티브',      500, 'compensation', 'est', FALSE, 3),

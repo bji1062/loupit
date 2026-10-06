@@ -28,6 +28,7 @@
 -- 주 출처: 사용자 붙여넣기 careers.telechips.com 사본(2026-10-04 · sha256 21365fc0…ae8d) — 점검기 429 헛경보로 정본 URL 은 esg02
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 2(edu_support · housing_loan) — 최종 27행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -95,8 +96,8 @@ VALUES
    'est', NULL, TRUE, '서울 및 수도권 주요 거점 출퇴근 셔틀버스 운영 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목) — 노선·운행 횟수 미기재', 60),
   (@comp_id, 'housing_loan', '무이자 주택 취득 자금 대출 (최대 3천만원)', NULL, 'perks',
    'est', NULL, TRUE, '무이자/저금리 사내대출 제도 운영, 최대 3천만원까지 무이자로 주택 취득 자금 지원 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목), 사원대여금 제도 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 financial aid 항목) — 상환 기간·대상 조건·저금리 대출 용도 미기재', 61),
-  (@comp_id, 'meal', '구내식당 조식·중식·석식 무료', NULL, 'perks',
-   'est', NULL, TRUE, '구내식당 조식/중식/석식 무료 제공, 삼시세끼 무료 지원 (공식 채용 사이트 복리후생 FUN OFFICE LIFE 항목) — 사업장 범위·운영 시간 미기재', 62),
+  (@comp_id, 'meal', '구내식당 조식·중식·석식 무료', 864, 'perks',
+   'est', '구내식당 조식/중식/석식 무료 제공, 삼시세끼 무료 지원 (공식 채용 사이트 복리후생 FUN OFFICE LIFE 항목) — 사업장 범위·운영 시간 미기재 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 62),
   (@comp_id, 'snack_bar', '사내 카페 (바리스타 상주)·임직원 혜택가', NULL, 'perks',
    'est', NULL, TRUE, '바리스타 상주 사내 카페 및 임직원 혜택가 운영 (공식 채용 사이트 복리후생 FUN OFFICE LIFE 항목) — 이용 요금·운영 시간 미기재', 63),
   (@comp_id, 'birthday_gift', '생일 선물', NULL, 'perks',

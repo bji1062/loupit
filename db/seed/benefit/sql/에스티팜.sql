@@ -28,6 +28,7 @@
 --       Selective welfare system 으로 옮겨 SORT 43 선택적 복지(welfare_point)에 병합 · SORT 70 미기재 사항 보강.
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 재코딩 1(housing_loan → welfare_fund_loan) — 최종 17행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -73,8 +74,8 @@ VALUES
    'est', NULL, TRUE, '직장 어린이집 (동아쏘시오그룹 채용사이트 에스티팜 페이지 FAMILY 항목에만 기재) — 설치 위치·정원·대상 연령 미기재', 32),
 
   -- ── 경제적 부가혜택 (perks) — S1 Office·Others · S2 LIFE ──
-  (@comp_id, 'meal', '중식 식대 제공', NULL, 'perks',
-   'est', NULL, TRUE, '식대 제공, 중식 (에스티팜 홈페이지 Careers 페이지 Office 항목에만 기재) — 제공 방식·식대 단가 미기재', 40),
+  (@comp_id, 'meal', '중식 식대 제공', 288, 'perks',
+   'est', '식대 제공, 중식 (에스티팜 홈페이지 Careers 페이지 Office 항목에만 기재) — 제공 방식·식대 단가 미기재 (하루 1끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 40),
   (@comp_id, 'commute_subsidy', '통근버스 운영', NULL, 'perks',
    'est', NULL, TRUE, '통근버스 운영 (동아쏘시오그룹 채용사이트 에스티팜 페이지 LIFE 항목에만 기재) — 운행 노선·대상 사업장·본인 부담 미기재', 42),
   (@comp_id, 'welfare_point', '선택적 복지·복지몰', NULL, 'perks',

@@ -15,6 +15,7 @@
 --       (work_tools 는 코퍼스 전부 IT 장비 의미라 오염).
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 1(edu_support) — 최종 17행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -72,8 +73,8 @@ VALUES
   (@comp_id, 'club', '사내 동호회', NULL, 'leisure',
    'est', NULL, TRUE, '동호회 운영(골프, 볼링, 배드민턴 등)', 60),
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'meal', '조식·중식·석식·야식 지원', 432, 'perks',
-   'est', '조식/중식/석식/야식 지원 (연 432만원 환산 추정)', FALSE, NULL, 70),
+  (@comp_id, 'meal', '조식·중식·석식·야식 지원', 864, 'perks',
+   'est', '조식/중식/석식/야식 지원 (하루 3끼 × 1끼 12,000원 × 연 240일 추정, 야식 제외)', FALSE, NULL, 70),
   (@comp_id, 'commute_subsidy', '통근버스', NULL, 'perks',
    'est', NULL, TRUE, '통근버스 지원', 71),
   (@comp_id, 'relocation', '초기 정착금', NULL, 'perks',

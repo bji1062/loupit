@@ -26,6 +26,7 @@
 -- 검증(2026-09-28, RV-3 레인 3): 18행 전부 원문 재확인, 시드 수정 0 — 운영 표적 DELETE 393 · 394 · 399 · 402(official 이라 시드 DELETE 로 안 지워짐), 재코딩 395 · 398 · 401 · 408 — 최종 18행
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 1(self_development) — 최종 19행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -49,8 +50,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'meal', '조·중·석식 무상 제공', 432, 'perks',
-   'est', '조, 중, 석식 무상 제공 — 삼시세끼 무상 제공 (공식 채용 페이지 근무환경 복지제도 항목 — 식대 단가·제공 방식 미기재) (추정)', FALSE, NULL, 10),
+  (@comp_id, 'meal', '조·중·석식 무상 제공', 864, 'perks',
+   'est', '조, 중, 석식 무상 제공 — 삼시세끼 무상 제공 (공식 채용 페이지 근무환경 복지제도 항목 — 식대 단가·제공 방식 미기재) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 10),
   (@comp_id, 'welfare_point', '선택적 복리후생제도 (복지포인트)', 250, 'perks',
    'est', '임직원 대상 복지포인트 매년 지급 (공식 채용 페이지 근무환경 복지제도 항목 — 연간 지급액·사용처 미기재) (추정)', FALSE, NULL, 11),
   (@comp_id, 'birthday_gift', '가족 생일 축하 선물·생일축하금', NULL, 'perks',
