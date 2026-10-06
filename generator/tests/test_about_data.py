@@ -282,8 +282,8 @@ def test_pipeline_emits_page_and_sitemap_entry(fake_bundle, fake_combinations_pa
 def test_estimate_definition_matches_the_data(synth, fake_bundle, fake_now):
     """추정치는 「조건으로 계산」만이 아니라 「같은 종류 제도의 기준 금액」도 포함하고 재직자 입력도 든다(7번)."""
     est = about_data.build_view(synth)["kinds"][1]["text"]
-    assert "어림값" in est and "조건(월액·횟수 등)이 있으면 그 조건으로 계산하고" in est
-    assert "없으면 같은 종류 제도에 쓰는 기준 금액을 씁니다" in est and "재직자가 넣은 금액도 여기에 들어갑니다" in est
+    assert "어림값" in est and "조건(월액·횟수 등)으로 금액을 셀 수 있으면 그 조건으로 계산하고" in est
+    assert "셀 수 없으면(한도나 비율만 있거나 조건이 없으면) 같은 종류 제도에 쓰는 기준 금액을 씁니다" in est and "재직자가 넣은 금액도 여기에 들어갑니다" in est
     assert "±20%" in est
 
 
@@ -331,10 +331,10 @@ def test_amount_marks_use_the_lens_chip_not_source_badges(fake_bundle, fake_now)
 def test_company_lens_and_home_say_the_same_estimate_definition(fake_bundle, fake_now):
     from generator.pages.company import LENS_BUCKETS
     est = dict((k, d) for k, _, d in LENS_BUCKETS)["est"]
-    assert "공개 정보로 환산" not in est and "잡초위키가 붙인 어림값" in est and "같은 종류 제도의 기준 금액" in est
+    assert "공개 정보로 환산" not in est and "잡초위키가 붙인 어림값" in est and "셀 수 없으면 같은 종류 제도의 기준 금액으로 셉니다" in est
     t = home._trust(build_context(fake_bundle, now=fake_now))
     html = (REPO_ROOT / "generator" / "templates" / "home.html").read_text(encoding="utf-8")
-    assert "잡초위키가 붙인 추정치입니다. 공개된 조건이 있으면 그 조건으로 계산하고, 없으면 같은 종류 제도의 기준 금액을 쓰며" in html
+    assert "잡초위키가 붙인 추정치입니다. 공개된 조건으로 금액을 셀 수 있으면 그 조건으로 계산하고, 셀 수 없으면 같은 종류 제도의 기준 금액을 쓰며" in html
     assert "공개된 조건을 바탕으로 계산한 추정치" not in html and t
 
 
@@ -347,7 +347,7 @@ def test_find_reading_guide_uses_the_same_estimate_definition(fake_bundle, fake_
     from generator.pages import find
     ctx = build_context(fake_bundle, now=fake_now)
     html = find.render(make_env(), ctx, CFG).html
-    assert "「추정」은 잡초위키가 붙인 어림값입니다(공개된 조건이 있으면 그 조건으로, 없으면 같은 종류 제도의 기준 금액으로 셉니다)." in html
+    assert "「추정」은 잡초위키가 붙인 어림값입니다(공개된 조건으로 셀 수 있으면 그 조건으로, 셀 수 없으면 같은 종류 제도의 기준 금액으로 셉니다)." in html
     assert "공개 정보로 환산" not in html
     for tpl in (REPO_ROOT / "generator" / "templates").rglob("*.html"):
         assert "공개 정보로 환산" not in tpl.read_text(encoding="utf-8"), tpl.name
