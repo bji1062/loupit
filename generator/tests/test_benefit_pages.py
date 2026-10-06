@@ -719,3 +719,18 @@ def test_lang_both_rule_is_inhouse_and_cost_patterns_joined():
     assert mode("사내 어학 과정 운영") == "inhouse"
     assert mode("어학 학습비 지원") == "cost"
     assert mode("어학 지원") == "unknown"
+
+
+def test_lang_cost_words_fee_phrases():
+    cfg = br.load_pages()["lang"]
+
+    def mode(desc):
+        return br.classify(cfg, [{"comp": "x", "desc": desc, "note": None}])["rows"][0]["mode"]
+
+    assert mode("영어/중국어/일본어 등 어학비 지원") == "cost"
+    assert mode("사외 어학 수강료 지원, 사내어학집합교육") == "both"
+    assert mode("사내 외국어 집합과정 운영, 외국어 시험 응시 지원") == "both"
+    assert mode("어학자격 취득 지원 및 어학교육 과정 운영") == "both"
+    assert mode("오픽(OPIc) 평가 지원 연 2회, 사내 어학 교육") == "both"
+    assert mode("이러닝 플랫폼에서 어학 과정 수강") == "inhouse"
+    assert mode("어학 수강 지원") == "unknown"
