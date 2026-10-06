@@ -340,3 +340,14 @@ def test_company_lens_and_home_say_the_same_estimate_definition(fake_bundle, fak
 
 def test_verified_dates_are_written_in_korean_form(synth):
     assert "2026년 3월 31일 ~ 2026년 10월 5일" in about_data.build_view(synth)["reverify"]
+
+
+def test_find_reading_guide_uses_the_same_estimate_definition(fake_bundle, fake_now):
+    """복지검색 「읽는 법」의 추정 설명도 같은 정의다 — 옛 문구는 어느 생성 페이지에도 없다."""
+    from generator.pages import find
+    ctx = build_context(fake_bundle, now=fake_now)
+    html = find.render(make_env(), ctx, CFG).html
+    assert "「추정」은 잡초위키가 붙인 어림값입니다(공개된 조건이 있으면 그 조건으로, 없으면 같은 종류 제도의 기준 금액으로 셉니다)." in html
+    assert "공개 정보로 환산" not in html
+    for tpl in (REPO_ROOT / "generator" / "templates").rglob("*.html"):
+        assert "공개 정보로 환산" not in tpl.read_text(encoding="utf-8"), tpl.name
