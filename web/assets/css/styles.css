@@ -1170,7 +1170,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* ══════════════════════════════════════════════════════ GUIDE(/about/data, SP-GUIDE, 2026-10-06) ══
    가이드 D편 「데이터 안내」. 새 색을 만들지 않는다 — 배지는 `.badge-*`(출처 계보 토큰) 그대로, 나머지는 면·선 토큰이다.
    ⚠ 분기는 `min-width:768px` 하나(UT-BP). 기본형이 모바일 단일 열이고 카드 3장은 768 에서만 가로로 선다. */
-.guide-page { max-width:760px; word-break:keep-all; overflow-wrap:break-word; }  /* 한국어는 낱말 단위로 접는다(.bn-page 선례) */
+.guide-page { max-width:760px; margin-inline:auto; word-break:keep-all; overflow-wrap:break-word; }  /* 한국어는 낱말 단위로 접는다(.bn-page 선례) */
 .guide-page h1 { text-wrap:balance; }
 .guide-crumb { margin:0 0 var(--sp-2); color:var(--t3); font-size:var(--fs-sm); }
 .guide-meta { margin:var(--sp-2) 0 0; color:var(--t3); font-size:var(--fs-sm); }
