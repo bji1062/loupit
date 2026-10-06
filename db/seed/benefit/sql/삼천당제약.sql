@@ -17,6 +17,7 @@
 --       쓴다 → 회사 고유값이 아니라 오염으로 판단, 금액 제거 후 정성행으로 강등.
 --       신규 코드 2개(allowance, five_day_week) — 정식 어휘에 대응 개념이 없다(사유는 evidence 참조).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -58,8 +59,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'birthday_gift', '생일자 문화생활 지원', 5, 'perks',
    'est', '생일자 문화 생활 지원 (연 5만원 추정)', FALSE, NULL, 80),
-  (@comp_id, 'meal', '중식비 제공', NULL, 'perks',
-   'est', NULL, TRUE, '중식비 제공 (금액 미공개)', 90)
+  (@comp_id, 'meal', '중식비 제공', 288, 'perks',
+   'est', '중식비 제공 (금액 미공개) (하루 1끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 90)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

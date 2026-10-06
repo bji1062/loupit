@@ -36,6 +36,7 @@
 -- 감사(RA-1 2026-09-26) 반영: medical_loan 을 welfare_fund_loan 으로 흡수(신규 코드 0) · Re-Fill 휴가를 leave_general 로 재코딩해 휴가 당겨쓰기·이월과 병합 · 정년 퇴임식에서 법정 재취업지원 생애설계교육 문구 제거
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(refresh_leave) · 서술 · 이름 수정 3(edu_support · lang · leave_general) — 최종 34행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -87,8 +88,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_fund_loan', '의료비 대출', NULL, 'perks',
    'est', NULL, TRUE, '본인/배우자/자녀 의료비 대출, 가족 의료비 대출 (공식 인사제도 페이지 복리후생 알아보기 건강 항목 — 대출 한도·이율·가족 범위 미기재)', 30),
-  (@comp_id, 'meal', '조·중·석식 제공', 432, 'perks',
-   'est', '조/중/석식 제공 (공식 인사제도 페이지 복리후생 알아보기 건강 항목 — 식대 단가·본인 부담 여부 미기재) (추정)', FALSE, NULL, 31),
+  (@comp_id, 'meal', '조·중·석식 제공', 864, 'perks',
+   'est', '조/중/석식 제공 (공식 인사제도 페이지 복리후생 알아보기 건강 항목 — 식대 단가·본인 부담 여부 미기재) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 31),
   (@comp_id, 'welfare_point', '복지포인트', 200, 'perks',
    'est', '복지포인트 (공식 인사제도 페이지 복리후생 알아보기 가족 항목 — 연간 지급액·사용처 미기재) (추정)', FALSE, NULL, 32),
   (@comp_id, 'housing_loan', '주택자금 대출', NULL, 'perks',

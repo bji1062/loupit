@@ -21,6 +21,7 @@
 --       회사 재량 상회분 아님) · Family Day(B 의 뉴스 카드라 제도 근거 아님).
 -- 신규 코드: car_wash (정식 어휘에 세차 서비스에 대응하는 코드가 없음).
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('hankook_tire', '한국타이어앤테크놀로지',
@@ -80,8 +81,8 @@ VALUES
   (@comp_id, 'library', '사내 도서공간 The Library', NULL, 'leisure',
    'est', NULL, TRUE, '사업장 시설 The Library 운영', 63),
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'meal', '사내식당 식사 제공', NULL, 'perks',
-   'est', NULL, TRUE, '사내식당에서 조식·중식·석식 제공(일부 사업장은 조식·중식 제공)', 70),
+  (@comp_id, 'meal', '사내식당 식사 제공', 864, 'perks',
+   'est', '사내식당에서 조식·중식·석식 제공(일부 사업장은 조식·중식 제공) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 70),
   (@comp_id, 'commute_subsidy', '통근버스', NULL, 'perks',
    'est', NULL, TRUE, '사업장별 다양한 셔틀 노선 운영', 71),
   (@comp_id, 'welfare_point', '복지포인트/복지카드', NULL, 'perks',

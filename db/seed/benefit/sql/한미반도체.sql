@@ -17,6 +17,7 @@
 --   재코딩 3: fertility_support → parenting · holiday_gift → birthday_gift · long_service_bonus → long_service_leave. 신규 코드 0.
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3 레인 5): 조치 없음 — 복지포인트 160 한 행 · resort 50 · health_check 100 추정 승계 · 재코딩 3 유지 — 최종 18행
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -48,8 +49,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ── 카드 2 · 카드 4 · 경조사 제도 3줄째
   (@comp_id, 'welfare_point', '복지포인트 (신한 제휴 복지카드)', 160, 'perks',
    'est', '한미반도체 신한 제휴카드로 연간 160만원 복지포인트 제공 — 설날·가정의 달·추석 각 20만원과 휴가비 지원 100만원', FALSE, NULL, 20),
-  (@comp_id, 'meal', '중식·석식 무료 제공', NULL, 'perks',
-   'est', NULL, TRUE, '삼성웰스토리 푸드 서비스로 중식·석식 무료 제공', 21),
+  (@comp_id, 'meal', '중식·석식 무료 제공', 576, 'perks',
+   'est', '삼성웰스토리 푸드 서비스로 중식·석식 무료 제공 (하루 2끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 21),
   (@comp_id, 'birthday_gift', '생일 상품권', NULL, 'perks',
    'est', NULL, TRUE, '생일 상품권 지급 (공식 복리후생 페이지 경조사 제도 항목)', 22),
 

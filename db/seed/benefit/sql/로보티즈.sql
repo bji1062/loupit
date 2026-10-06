@@ -27,6 +27,7 @@
 --       ⚠ 사이트 개설 2026-02-26 · 최종 수정 2026-09-09 — 편집 중인 사이트라 항목이 자주 바뀔 수 있다.
 --       ⚠ 검증·감사 판정 반영(2026-09-15): 행 조치 없음(9행 그대로). SORT 10 식대 AMT NULL · SORT 30 work_tools 유지.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -50,8 +51,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 경제적 부가혜택 (perks) — 원문 업무지원·생활지원 ──
-  (@comp_id, 'meal', '식대지원', NULL, 'perks',
-   'est', NULL, TRUE, '식대 지원 일 18,000원, 연장근로 시 10,000원 추가 (공식 채용 페이지 업무지원 항목 — 월·연 단위 지급액과 지급 방식 미기재)', 10),
+  (@comp_id, 'meal', '식대지원', 432, 'perks',
+   'est', '식대 지원 일 18,000원, 연장근로 시 10,000원 추가 (공식 채용 페이지 업무지원 항목 — 월·연 단위 지급액과 지급 방식 미기재) (하루 18,000원 × 연 240일 추정, 연장근로 추가분 제외)', FALSE, NULL, 10),
   (@comp_id, 'team_dinner', '회식비 지원', NULL, 'perks',
    'est', NULL, TRUE, '회식비 지원 — 팀 구성원의 선호를 반영한 자율적 회식 (공식 채용 페이지 업무지원 항목 — 지원 한도·주기 미기재)', 11),
   (@comp_id, 'relocation', '이사비용 지원', NULL, 'perks',

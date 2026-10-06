@@ -292,64 +292,78 @@ def test_SI_R1_url_slug_unchanged(seeded_db):
             f"slug {eng} 이 사라졌다 — /company/{eng} 색인이 통째로 깨진다"
 
 
-# ── SI-9: meal 432 앵커는 3식 이상 명시일 때만 (복지 배치1 확립 규칙 ②, 2026-09-18 강제) ──
+# ── SI-9: 식대 기준 금액 = 1끼 단가 x 하루 끼니 x 연 240일 (리드 판정 (82), 2026-10-06) ──
 #
-# 432 = 일 18,000원 x 240일. 회사가 밝힌 금액이 아니라 **환산 공식값**이다. 3식이 명시되지 않은
-# 행에 붙으면 근거 없는 432가 비교 합계에 그대로 들어간다 — 2026-09-18 전수 판정에서 43개사 중
-# 22행이 그랬다(db/migrations/20260918_meal_anchor_to_qual.sql 로 정성 강등).
-#
-# 판정은 **항목명과 설명을 함께** 본다. 설명만 보면 LIG 「조/중/석식 제공」처럼 항목명에 근거가
-# 있는 행을 위반으로 잘못 잡는다(초안이 실제로 그랬다). 「일 18,000원 x 240일」은 앵커 공식을
-# 적어 둔 것이라 근거로 세지 않는다.
+# 옛 규칙(meal 432 = 일 18,000원 x 240일 앵커 · 3식 명시일 때만)은 1끼 12,000원 규칙으로 바뀌었다.
+# 1끼 단가는 회사가 밝히면 그 값, 아니면 12,000원 -> 한 끼 288 · 두 끼 576 · 세 끼 864(만원).
+# 계산 근거는 메모 꼬리에 공개한다: 「(하루 N끼 x 1끼 U원 x 연 240일 추정 ...」 · 「(점심 1끼 U원 x 연 240일 추정 ...」 ·
+# 「(하루 U원 x 연 240일 추정 ...」. 이 테스트는 꼬리가 있는 행의 금액이 식 그대로인지 지킨다.
+# 이력: 2026-09-18 옛 규칙 강제(db/migrations/20260918_meal_anchor_to_qual.sql) -> 2026-10-06 새 규칙(db/migrations/20261006_meal_unit_12000.sql).
 
 import re as _re
 
-_THREE = _re.compile(r"삼시|세\s*끼|3\s*[식끼]|조\s*/\s*중\s*/\s*석|조·중·석")
-_MEAL_KINDS = (
-    _re.compile(r"조식|아침"),
-    _re.compile(r"중식|점심"),
-    _re.compile(r"석식|저녁"),
-    _re.compile(r"야식"),
-)
-_FORMULA = _re.compile(r"일\s*18,?000원?\s*[x×]\s*240일")
+_FORMULA_DAYS = _re.compile(r"\(하루 (\d)끼 × 1끼 ([\d,]+)원 × 연 240일 추정")
+_FORMULA_LUNCH = _re.compile(r"\(점심 1끼 ([\d,]+)원 × 연 240일 추정")
+_FORMULA_DAY = _re.compile(r"\(하루 ([\d,]+)원 × 연 240일 추정")
 
 
-def _meal_count(text: str) -> int:
-    t = _FORMULA.sub("", text or "")
-    if _THREE.search(t):
-        return 3
-    return sum(1 for p in _MEAL_KINDS if p.search(t))
+def _formula_amount(note: str):
+    """꼬리 식에서 기대 금액(만원). 꼬리가 없으면 None."""
+    m = _FORMULA_DAYS.search(note or "")
+    if m:
+        return int(m.group(1)) * int(m.group(2).replace(",", "")) * 240 // 10000
+    m = _FORMULA_LUNCH.search(note or "")
+    if m:
+        return int(m.group(1).replace(",", "")) * 240 // 10000
+    m = _FORMULA_DAY.search(note or "")
+    if m:
+        return int(m.group(1).replace(",", "")) * 240 // 10000
+    return None
 
 
-def test_SI9_meal_432_requires_three_meals(seeded_db):
+def test_SI9_meal_estimate_equals_its_formula_tail(seeded_db):
     rows = _rows(seeded_db, """
-        SELECT C.COMP_ENG_NM, B.BENEFIT_NM, COALESCE(B.NOTE_CTNT,''), COALESCE(B.QUAL_DESC_CTNT,'')
+        SELECT C.COMP_ENG_NM, B.BENEFIT_AMT, B.NOTE_CTNT
           FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
-         WHERE B.BENEFIT_CD = 'meal' AND B.BENEFIT_AMT = 432""")
-    assert rows, "meal 432 행이 하나도 없다 — 픽스처가 시드를 못 읽었거나 앵커가 전부 사라졌다"
-    bad = [f"{eng}/{nm}" for eng, nm, note, desc in rows
-           if _meal_count(f"{nm} {note} {desc}") < 3]
-    assert not bad, f"3식 명시 없이 meal 432 를 쓰는 행: {bad}"
+         WHERE B.BENEFIT_CD = 'meal' AND B.AMT_SOURCE_CD = 'estimated' AND B.NOTE_CTNT IS NOT NULL""")
+    with_tail = [(eng, amt, _formula_amount(note)) for eng, amt, note in rows if _formula_amount(note) is not None]
+    assert len(with_tail) >= 55, f"식 꼬리가 있는 meal 추정 행이 {len(with_tail)}개뿐이다(기대 55)"
+    bad = [f"{eng}: {amt} != {exp}" for eng, amt, exp in with_tail if amt != exp]
+    assert not bad, f"금액이 꼬리 식과 다른 meal 행: {bad}"
 
 
-def test_SI9_downgraded_rows_keep_the_meal_fact_as_qualitative(seeded_db):
-    """강등은 **금액만** 걷는다. 행은 남고 정성 항목이 된다 — 「이 회사가 식사를 준다」는 사실은 정보다."""
+def test_SI9_old_anchor_phrases_are_gone(seeded_db):
+    rows = _rows(seeded_db, """
+        SELECT C.COMP_ENG_NM FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+         WHERE B.BENEFIT_CD = 'meal'
+           AND (CONCAT(COALESCE(B.NOTE_CTNT,''), COALESCE(B.QUAL_DESC_CTNT,'')) REGEXP 'x 240일 환산|연 432만원 환산')""")
+    assert not rows, f"옛 앵커 문구가 남은 meal 행: {[r[0] for r in rows]}"
+
+
+def test_SI9_search_summary_rows_carry_no_amount(seeded_db):
+    rows = _rows(seeded_db, """
+        SELECT C.COMP_ENG_NM, B.BENEFIT_CD FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+         WHERE B.BADGE_SRC_CD = 'ai_parse' AND B.BENEFIT_AMT IS NOT NULL""")
+    assert not rows, f"검색 요약 행에 금액이 있다: {rows}"
+
+
+def test_SI9_rainbow_robotics_meal_row_kept_with_estimate(seeded_db):
+    """정성이던 행이 끼니 1(중식)로 288 추정이 됐다 — 행은 그대로 하나, 사실 서술은 남는다."""
     rows = _rows(seeded_db, """
         SELECT B.QUAL_YN, B.BENEFIT_AMT, B.NOTE_CTNT
           FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
          WHERE C.COMP_ENG_NM = 'rainbow_robotics' AND B.BENEFIT_CD = 'meal'""")
     assert len(rows) == 1, "행 자체를 지우면 안 된다"
     qual, amt, note = rows[0]
-    assert qual and amt is None and note is None
+    assert not qual and amt == 288 and note.startswith("중식 제공")
 
 
-def test_SI9_meal_count_reads_the_benefit_name_too():
-    """초안 오판 재발 방지 — 항목명의 근거를 놓치지 않는다."""
-    assert _meal_count("조/중/석식 제공 (추정)") == 3
-    assert _meal_count("사내 식당 3끼 무상 제공") == 3
-    assert _meal_count("구내식당 (중식/석식/야식)") == 3
-    assert _meal_count("점심/저녁식사 제공") == 2
-    assert _meal_count("구내식당 일 18,000원 x 240일") == 0
+def test_SI9_formula_amount_reads_the_three_tails():
+    assert _formula_amount("x (하루 3끼 × 1끼 12,000원 × 연 240일 추정)") == 864
+    assert _formula_amount("x (하루 2끼 × 1끼 12,000원 × 연 240일 추정, 야식 제외)") == 576
+    assert _formula_amount("x (점심 1끼 15,000원 × 연 240일 추정, 야근 시 저녁 제외)") == 360
+    assert _formula_amount("x (하루 18,000원 × 연 240일 추정, 연장근로 추가분 제외)") == 432
+    assert _formula_amount("구내식당 월 24만원 환산") is None
 
 
 # ── SI-10: 무제한 휴가 파생은 휴가 행만 본다(2026-09-28) ──

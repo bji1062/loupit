@@ -128,19 +128,19 @@
   "overrides": [
     {
       "comp": "celltrion",
-      "h": "3e37d4d26b",
+      "h": "93dd80e22b",
       "mode": "both",
       "why": "아침·점심·저녁 식사 지원과 「서울사무소는 식대 지원」을 함께 적었다"
     },
     {
       "comp": "dongjin_semichem",
-      "h": "d8eb5c4142",
+      "h": "b5e9bd5672",
       "mode": "both",
       "why": "구내식당에서 식사를 주고 구내식당이 없는 곳은 식대를 준다고 적었다"
     },
     {
       "comp": "isens",
-      "h": "c0af63e098",
+      "h": "e2b8875068",
       "mode": "both",
       "why": "서울은 중식비 포인트, 송도·원주는 구내식당 — 사업장에 따라 둘 다"
     },

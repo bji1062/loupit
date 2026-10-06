@@ -22,6 +22,7 @@
 -- 검증(2026-10-04, RV-3-7): 2025 지속가능경영보고서로 fertility_support · incentive 행 추가 · 건강검진 · 심리상담 · 단체보험 · 육아 · 주차 · 선택근무 서술 보강 — 최종 23행
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 1(parenting) — 최종 24행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -45,8 +46,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 경제적 부가혜택 (perks) — 네오위즈 혜택 카드 · 영문 Benefits ──
-  (@comp_id, 'meal', '구내식당 (하루 세 끼 무료)', 432, 'perks',
-   'est', '구내식당 하루 세 끼 모두 무료, Take Out 메뉴 포함 (공식 채용 페이지 네오위즈 혜택 항목 · 영문 채용 페이지 조식·중식·석식 무료 항목) — 1식 단가 미기재 (추정)', FALSE, NULL, 10),
+  (@comp_id, 'meal', '구내식당 (하루 세 끼 무료)', 864, 'perks',
+   'est', '구내식당 하루 세 끼 모두 무료, Take Out 메뉴 포함 (공식 채용 페이지 네오위즈 혜택 항목 · 영문 채용 페이지 조식·중식·석식 무료 항목) — 1식 단가 미기재 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 10),
   (@comp_id, 'snack_bar', '카페테리아', NULL, 'perks',
    'est', NULL, TRUE, '드립 커피부터 따끈한 빵·간식까지 제공하는 사내 카페테리아 (공식 채용 페이지 네오위즈 혜택 항목) — 이용 요금·운영 시간 미기재', 11),
   (@comp_id, 'car_wash', '카케어 (출장 세차)', NULL, 'perks',

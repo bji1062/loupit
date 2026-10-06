@@ -27,6 +27,7 @@
 -- 검증(2026-10-02, RV-3-4): 통신비 틀 값 30 (추정) 승계 — 원문 월 최대 6만원은 한도라 NOTE 에만 적음 · 최종 26행
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 서술 · 이름 수정 1(lang) — 최종 26행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -50,8 +51,8 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 경제적 부가혜택 (perks) — Life 직원식당 · 복지포인트 · 통신비 · 주거 지원금 · 차량구입지원금 / People 중식 · 심야귀가 ──
-  (@comp_id, 'meal', '직원식당·중식 제공', NULL, 'perks',
-   'est', NULL, TRUE, '직원식당 운영 (공식 채용 사이트 Life 직원식당 항목), 쾌적한 사내식당에서 맛있는 한 끼 중식 제공 — 사내식당 운영 또는 중식비 지원은 사업장별 상이 (같은 사이트 People 맛있고 든든한 중식 제공 항목)', 10),
+  (@comp_id, 'meal', '직원식당·중식 제공', 288, 'perks',
+   'est', '직원식당 운영 (공식 채용 사이트 Life 직원식당 항목), 쾌적한 사내식당에서 맛있는 한 끼 중식 제공 — 사내식당 운영 또는 중식비 지원은 사업장별 상이 (같은 사이트 People 맛있고 든든한 중식 제공 항목) (하루 1끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 10),
   (@comp_id, 'welfare_point', '복지포인트', 200, 'perks',
    'est', '여가 생활부터 자기 계발까지 폭넓게 사용 가능한 복지포인트 지급 (공식 채용 사이트 Life 복지포인트 항목) — 연간 배정액 미기재 (추정)', FALSE, NULL, 11),
   (@comp_id, 'telecom', '휴대전화 통신비 지원', 30, 'perks',

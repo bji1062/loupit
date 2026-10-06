@@ -37,6 +37,7 @@
 --     (compensation 10 · health 20 · perks 30 · family 40 · leisure 50 · time_off 60 · flexibility 70 · growth 80).
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(severance_plus · lang) — 최종 31행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -96,8 +97,8 @@ VALUES
    'est', NULL, TRUE, 'Refreshment Point 지급 (공식 채용 페이지 인사정보 복리후생 여가활동지원 항목, 2025 ESG 보고서 기타 복지 프로그램 항목 — 연간 포인트 금액·사용처 미기재)', 34),
   (@comp_id, 'relocation', '부임준비금·이사비', NULL, 'perks',
    'est', NULL, TRUE, '이동명령을 받은 임직원에게 부임준비금 및 이사비 지원 (2025 ESG 보고서 주거 및 생활안정지원 항목 — 지원 금액 미기재)', 35),
-  (@comp_id, 'meal', '중식 지원', NULL, 'perks',
-   'est', NULL, TRUE, '중식 지원 (2025 ESG 보고서 기타 복지 프로그램 항목 — 제공 방식·식대 단가 미기재)', 36),
+  (@comp_id, 'meal', '중식 지원', 288, 'perks',
+   'est', '중식 지원 (2025 ESG 보고서 기타 복지 프로그램 항목 — 제공 방식·식대 단가 미기재) (하루 1끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 36),
   (@comp_id, 'welfare_fund_loan', '긴급자금 융자', NULL, 'perks',
    'est', NULL, TRUE, '재해나 의료 등 긴급한 사유로 대출이 필요한 임직원에게 일정 한도 내 자금 융자 (2025 ESG 보고서 주거 및 생활안정지원 항목 — 융자 한도·이율 미기재)', 37),
 

@@ -13,6 +13,7 @@
 --       금액 2건(150·60)은 공고 명시값 → note 에 추정 표기 없음 = DG-2 가 stated 도출.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 53·54 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -87,8 +88,8 @@ VALUES
   (@comp_id, 'culture_day', '컬쳐데이', NULL, 'leisure',
    'est', NULL, TRUE, '연 1회 임직원 대상 컬쳐데이 실시(경영정보공유, 영화감상, 특강 등)', 73),
   -- ── 경제적 부가혜택 (perks) ──
-  (@comp_id, 'meal', '중식 지원', NULL, 'perks',
-   'est', NULL, TRUE, '중식비 포인트 지급(서울), 구내식당 운영(송도, 원주)', 80),
+  (@comp_id, 'meal', '중식 지원', 288, 'perks',
+   'est', '중식비 포인트 지급(서울), 구내식당 운영(송도, 원주) (하루 1끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 80),
   (@comp_id, 'snack_bar', '사내 카페테리아', NULL, 'perks',
    'est', NULL, TRUE, '커피, 음료, 쿠키 등 구비', 81),
   (@comp_id, 'transport', '업무용 교통비 지원', NULL, 'perks',

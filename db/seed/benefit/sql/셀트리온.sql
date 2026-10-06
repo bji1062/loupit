@@ -9,6 +9,7 @@
 --       금액은 기존 앵커 보존 → note 의 "추정" 표기로 DG-2 가 estimated 로 도출).
 --       페이지 섹션 3개(의료 지원 / 사내 문화 및 편의, 자기 개발 / 가족 및 소득 지원) 기준.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('celltrion', '셀트리온',
@@ -67,8 +68,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'commute_subsidy', '셔틀버스/콜택시', 120, 'perks',
    'est', '출퇴근 셔틀버스, 심야 퇴근 콜택시 지원 (연 120만원 추정)', FALSE, NULL, 60),
-  (@comp_id, 'meal', '삼시세끼 식사 지원', 432, 'perks',
-   'est', '아침·점심·저녁 식사 지원(서울사무소는 식대 지원) (연 432만원 환산 추정)', FALSE, NULL, 61),
+  (@comp_id, 'meal', '삼시세끼 식사 지원', 864, 'perks',
+   'est', '아침·점심·저녁 식사 지원(서울사무소는 식대 지원) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 61),
   (@comp_id, 'welfare_point', '복지포인트', 200, 'perks',
    'est', '복지포인트 지급 (연 200만원 추정)', FALSE, NULL, 62),
   (@comp_id, 'birthday_gift', '생일포인트', NULL, 'perks',

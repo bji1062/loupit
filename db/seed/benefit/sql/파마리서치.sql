@@ -18,6 +18,7 @@
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-2): 하계 및 연말 단체 휴가를 leave_general 정성 행으로 되살림(부여 조건이 불명한 집중휴가 · 구본 refresh_leave 재코딩 · 법정 등록 해제) — 최종 25행
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(edu_support · lang) · 재코딩 1(incentive → profit_sharing) — 최종 27행
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -57,8 +58,8 @@ VALUES
    'est', NULL, TRUE, '자사몰 지원할인 (공식 홈페이지 복리후생 항목 — 할인율 미기재)', 22),
   (@comp_id, 'snack_bar', '사내 카페·간식', 30, 'perks',
    'est', '사내 카페 운영 및 이용비 지원, 간식 및 음료 제공 — 이용비 금액 미기재 (추정)', FALSE, NULL, 23),
-  (@comp_id, 'meal', '조식·중식·석식 제공', 432, 'perks',
-   'est', '조식, 중식, 석식 제공 (공식 홈페이지 복리후생 항목 — 식대 단가 미기재) (추정)', FALSE, NULL, 24),
+  (@comp_id, 'meal', '조식·중식·석식 제공', 864, 'perks',
+   'est', '조식, 중식, 석식 제공 (공식 홈페이지 복리후생 항목 — 식대 단가 미기재) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 24),
   (@comp_id, 'housing_loan', '주택대출 지원', NULL, 'perks',
    'est', NULL, TRUE, '최대 7천만원 주택대출 지원 (공식 채용 사이트 복지 문화 항목 — 금리·자격 미기재)', 25),
   (@comp_id, 'welfare_fund_loan', '생계대출 지원', NULL, 'perks',

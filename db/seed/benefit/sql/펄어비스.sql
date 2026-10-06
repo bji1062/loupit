@@ -21,6 +21,7 @@
 --   신규 코드 0. 어휘에 없는 원문 항목 7개(미용 · 은행 출장 · 세무 · 법률 · 가사청소 · 자전거 정비 · 반려동물 보험)는 싣지 않았다.
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3): L6 한도 금액 3행 AMT NULL(medical 315 · child_edu 700 · parent_care 480) · birthday_leave 문안 반차 → 반일 — 최종 40행
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -52,8 +53,8 @@ VALUES
    'est', NULL, TRUE, '임직원의 기념일 축하 선물을 원하는 날짜에 원하는 곳으로 배송', 12),
   (@comp_id, 'welfare_point', '복지카드 지원', 204, 'perks',
    'est', '자기계발을 위해 업종 제한 없이 쓰는 복지카드를 매년 204만원(월 17만원) 한도 안에서 제공', FALSE, NULL, 13),
-  (@comp_id, 'meal', '먹거리 지원 (삼시세끼 무료)', 432, 'perks',
-   'est', '사내식당 조식·중식·석식 무료 제공 (추정)', FALSE, NULL, 14),
+  (@comp_id, 'meal', '먹거리 지원 (삼시세끼 무료)', 864, 'perks',
+   'est', '사내식당 조식·중식·석식 무료 제공 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 14),
   (@comp_id, 'snack_bar', '무료 카페테리아·캔틴', NULL, 'perks',
    'est', NULL, TRUE, '숙련된 바리스타가 만든 커피와 음료 무료 제공, 간식·비타민·신선한 과일을 비치한 업무 층별 캔틴과 간편식을 제한 없이 무료로 쓰는 메인 캔틴 운영', 15),
   (@comp_id, 'commute_subsidy', '셔틀버스 운행', NULL, 'perks',

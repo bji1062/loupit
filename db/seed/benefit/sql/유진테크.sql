@@ -19,6 +19,7 @@
 --       "최대 600% 특별 성과급"과 자릿수가 어긋나 오염으로 판단(evidence 참조).
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 재코딩 1(incentive → profit_sharing) — 최종 12행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+-- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -77,8 +78,8 @@ VALUES
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '복지포인트', 120, 'perks',
    'est', '현금처럼 사용할 수 있는 복지포인트 연 120만원 지원 (페이지 명시)', FALSE, NULL, 70),
-  (@comp_id, 'meal', '사내 식당 3끼 무상 제공', 432, 'perks',
-   'est', '사내 식당에서 3끼 무상 제공 (연 432만원 환산 추정)', FALSE, NULL, 71)
+  (@comp_id, 'meal', '사내 식당 3끼 무상 제공', 864, 'perks',
+   'est', '사내 식당에서 3끼 무상 제공 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 71)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),
