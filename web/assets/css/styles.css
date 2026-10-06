@@ -1170,7 +1170,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* ══════════════════════════════════════════════════════ GUIDE(/about/data, SP-GUIDE, 2026-10-06) ══
    가이드 D편 「데이터 안내」. 새 색을 만들지 않는다 — 배지는 `.badge-*`(출처 계보 토큰) 그대로, 나머지는 면·선 토큰이다.
    ⚠ 분기는 `min-width:768px` 하나(UT-BP). 기본형이 모바일 단일 열이고 카드 3장은 768 에서만 가로로 선다. */
-.guide-page { max-width:760px; }
+.guide-page { max-width:760px; word-break:keep-all; overflow-wrap:break-word; }  /* 한국어는 낱말 단위로 접는다(.bn-page 선례) */
+.guide-page h1 { text-wrap:balance; }
 .guide-crumb { margin:0 0 var(--sp-2); color:var(--t3); font-size:var(--fs-sm); }
 .guide-meta { margin:var(--sp-2) 0 0; color:var(--t3); font-size:var(--fs-sm); }
 .guide-lead { margin:var(--sp-4) 0 0; color:var(--t2); }
@@ -1179,6 +1180,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .guide-src { background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); padding:var(--sp-4); min-width:0; }
 .guide-src h3 { margin:0 0 var(--sp-2); font-size:var(--fs-base); }
 .guide-src p { margin:var(--sp-2) 0 0; font-size:var(--fs-sm); overflow-wrap:anywhere; }
+.guide-nots { list-style:disc; padding-left:var(--sp-5); margin:var(--sp-3) 0 0; }
+.guide-nots li + li { margin-top:var(--sp-2); }
 .guide-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin:var(--sp-3) 0; padding:0; list-style:none; }
 .guide-chips li { padding:var(--sp-1) var(--sp-3); font-size:var(--fs-xs); color:var(--t2); background:var(--bg-2); border:var(--bw) solid var(--border); border-radius:var(--r-pill); }
 .guide-kinds { display:flex; flex-direction:column; gap:var(--sp-2); margin:var(--sp-3) 0; padding:0; list-style:none; }
