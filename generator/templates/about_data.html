@@ -1,0 +1,68 @@
+{# about_data.html — 가이드 D편 「데이터 안내」(SP-GUIDE-1, 2026-10-06). 문장은 `content/about_data.py`, 숫자는
+   `pages/about_data.py::build_view` 가 만든 문자열을 **그대로** 싣는다(템플릿에 숫자·라벨을 적지 않는다).
+   page_type = policy → 광고 0(정책 문서와 같은 게이팅, SP-ADS-3.2). 본문은 JS 없이 완성. #}
+{% extends "base.html" %}
+{% set page_type = 'policy' %}
+{% from "partials/_badge.html" import badge %}
+{% macro para(segs) -%}
+{%- for seg in segs -%}{%- if seg is string -%}{{ seg }}{%- else -%}{{ badge(seg) }}{%- endif -%}{%- endfor -%}
+{%- endmacro %}
+{% block main %}
+<article class="guide-page">
+  <p class="guide-crumb">{{ view.crumb }}</p>
+  <h1>{{ view.h1 }}</h1>
+  <p class="guide-meta">{{ view.meta }}</p>
+  <p class="guide-lead">{{ view.lead }}</p>
+
+  <h2>{{ view.h.sources }}</h2>
+  <div class="guide-sources">
+  {% for s in view.sources %}
+    <section class="guide-src">
+      <h3>{{ s.h }}</h3>
+      {% for p in s.paras %}<p>{{ para(p) }}</p>{% endfor %}
+    </section>
+  {% endfor %}
+  </div>
+
+  <h2>{{ view.h.group }}</h2>
+  <p>{{ view.group_a }}</p>
+  {% if view.resort_chips %}
+  <ul class="guide-chips" aria-label="휴양시설 지원을 부르는 이름">
+  {% for nm in view.resort_chips %}<li>{{ nm }}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <p>{{ view.group_b }}</p>
+  <ul class="guide-chips guide-cats" aria-label="카테고리">
+  {% for c in view.cats %}<li>{{ c }}</li>{% endfor %}
+  </ul>
+  <p><a href="/find">{{ view.find_link }}</a></p>
+
+  <h2>{{ view.h.amount }}</h2>
+  <ul class="guide-kinds">
+  {% for k in view.kinds %}
+    <li>{{ badge(k.badge) }}<span>{{ k.text }}</span></li>
+  {% endfor %}
+  </ul>
+  {% if view.totals %}<p>{{ view.totals }}</p>{% endif %}
+
+  <h2>{{ view.h.reverify }}</h2>
+  <p>{{ view.reverify }}</p>
+  {% if view.weekly %}<p>{{ view.weekly }}</p>{% endif %}
+  <div class="guide-timeline" aria-hidden="true">
+    <span>{{ view.timeline.from }}</span><span class="guide-timeline-line"><span>{{ view.timeline.span }}</span></span>{{ badge(view.timeline.stale) }}
+  </div>
+
+  <h2>{{ view.h.who }}</h2>
+  <ul class="guide-kinds">
+  {% for k in view.who %}
+    <li>{{ badge(k.badge) }}<span>{{ k.text }}</span></li>
+  {% endfor %}
+  </ul>
+  <p>{{ view.who_note }}</p>
+
+  <h2>{{ view.h.nots }}</h2>
+  <ul>
+  {% for t in view.nots %}<li>{{ t }}</li>{% endfor %}
+  </ul>
+</article>
+{% endblock %}
