@@ -321,15 +321,58 @@ def _formula_amount(note: str):
     return None
 
 
+# 꼬리 없이 meal 추정 금액을 갖는 행은 회사가 월액 · 포인트를 밝힌 5사와 엠씨넥스(끼니 없이 288, 사용자 「그대로」)뿐이다.
+_MEAL_NO_TAIL_OK = {"voronoi", "apr", "kakao_games", "netmarble", "wemade", "mcnex"}
+_TAIL_START = _re.compile(r" \((?:하루|점심) [^()]*연 240일 추정")
+_M_BREAKFAST = _re.compile(r"조식|아침")
+_M_LUNCH = _re.compile(r"중식|점심")
+_M_DINNER = _re.compile(r"석식|저녁")
+_M_THREE = _re.compile(r"삼시\s*세?끼|세\s*끼|3\s*끼|3\s*식|조\s*[·/,]\s*중\s*[·/,]\s*석")
+_M_TWO = _re.compile(r"1일 2식|하루 두 끼|2\s*끼|2\s*식|중\s*[·/]?\s*석식|중석식")
+
+
+def _meals_in_text(name: str, note: str) -> int:
+    """이름 + 본문(끝의 계산 꼬리 제외)에서 센 끼니 수. 상한 3."""
+    m = _TAIL_START.search(note)
+    body = note[: m.start()] if m else note
+    t = f"{name} {body}"
+    kinds = sum(1 for p in (_M_BREAKFAST, _M_LUNCH, _M_DINNER) if p.search(t))
+    if _M_THREE.search(t):
+        kinds = max(kinds, 3)
+    elif _M_TWO.search(t):
+        kinds = max(kinds, 2)
+    return min(kinds, 3)
+
+
 def test_SI9_meal_estimate_equals_its_formula_tail(seeded_db):
     rows = _rows(seeded_db, """
-        SELECT C.COMP_ENG_NM, B.BENEFIT_AMT, B.NOTE_CTNT
+        SELECT C.COMP_ENG_NM, B.BENEFIT_NM, B.BENEFIT_AMT, B.NOTE_CTNT
           FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
-         WHERE B.BENEFIT_CD = 'meal' AND B.AMT_SOURCE_CD = 'estimated' AND B.NOTE_CTNT IS NOT NULL""")
-    with_tail = [(eng, amt, _formula_amount(note)) for eng, amt, note in rows if _formula_amount(note) is not None]
-    assert len(with_tail) >= 55, f"식 꼬리가 있는 meal 추정 행이 {len(with_tail)}개뿐이다(기대 55)"
-    bad = [f"{eng}: {amt} != {exp}" for eng, amt, exp in with_tail if amt != exp]
+         WHERE B.BENEFIT_CD = 'meal' AND B.AMT_SOURCE_CD = 'estimated' AND B.BENEFIT_AMT IS NOT NULL""")
+    with_tail = [(eng, nm, amt, note) for eng, nm, amt, note in rows if _formula_amount(note) is not None]
+    assert len(with_tail) >= 54, f"식 꼬리가 있는 meal 추정 행이 {len(with_tail)}개뿐이다(기대 54)"
+    # ① 금액 = 식 그대로
+    bad = [f"{eng}: {amt} != {_formula_amount(note)}" for eng, nm, amt, note in with_tail if amt != _formula_amount(note)]
     assert not bad, f"금액이 꼬리 식과 다른 meal 행: {bad}"
+    # ② 꼬리 없는 추정 금액은 허용 목록뿐
+    no_tail = {eng for eng, nm, amt, note in rows if _formula_amount(note) is None}
+    assert no_tail <= _MEAL_NO_TAIL_OK, f"꼬리 없이 meal 추정 금액을 가진 행: {sorted(no_tail - _MEAL_NO_TAIL_OK)}"
+    # ③ 「하루 N끼 x 1끼 U원」이면 U = 12,000(기준 단가)
+    bad = [eng for eng, nm, amt, note in with_tail
+           if (m := _FORMULA_DAYS.search(note)) and int(m.group(2).replace(",", "")) != 12000]
+    assert not bad, f"1끼 단가가 12,000원이 아닌 「하루 N끼」 꼬리: {bad}"
+    # ④ 꼬리의 N <= 이름 + 본문에서 센 끼니
+    bad = [f"{eng}: N={m.group(1)} > {_meals_in_text(nm, note)}" for eng, nm, amt, note in with_tail
+           if (m := _FORMULA_DAYS.search(note)) and int(m.group(1)) > _meals_in_text(nm, note)]
+    assert not bad, f"꼬리의 끼니 수가 이름·본문에서 센 끼니보다 많은 meal 행: {bad}"
+
+
+def test_SI9_meals_in_text_counts_the_name_and_body_only():
+    assert _meals_in_text("조·중·석식 제공", "조/중/석식 제공 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)") == 3
+    assert _meals_in_text("사내식당", "삼시세끼 무료 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)") == 3
+    assert _meals_in_text("구내식당 (중식·석식)", "구내식당 운영 (하루 2끼 × 1끼 12,000원 × 연 240일 추정)") == 2
+    assert _meals_in_text("사내식당", "점심 제공 (하루 1끼 × 1끼 12,000원 × 연 240일 추정)") == 1
+    assert _meals_in_text("사내식당", "식사 제공 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)") == 0
 
 
 def test_SI9_old_anchor_phrases_are_gone(seeded_db):

@@ -1,5 +1,5 @@
 -- ══════════════════════════════════════════════════════════════════════
--- 식대 기준 금액 재계산 — 1끼 12,000원 x 하루 끼니 x 연 240일 (식대 55행 · 리드 판정 (82))
+-- 식대 기준 금액 재계산 — 1끼 12,000원 x 하루 끼니 x 연 240일 (식대 54행 · 리드 판정 (82))
 -- 사용자 결정: 2026-10-06 (식사 단가는 식당에서 한 끼 사 먹을 때의 평균 단가 기준 · 끼니당 12,000원으로 개산 ·
 --   끼니가 적힌 행 전부 · 이직 계산기 기본값도 같이 바꾸기). 삼성전자 메모 단독 정정(판정 (81))은 이 안에 흡수됐다.
 -- 선례: db/migrations/20260925_official_amount_corrections.sql · 20261005_landf_recollect.sql
@@ -8,11 +8,11 @@
 --   한 끼 288 · 두 끼 576 · 세 끼 864. 옛 432 앵커(일 18,000원 x 240일 = 1끼 6,000원)는 폐기.
 --   야식 · 간식 · 편의식 · 음료 · 야근/초과근무 조건부 끼니 · 일부 보조 끼니는 세지 않는다. 검색 요약(ai_parse) 행은 금액 0.
 --   회사가 월액 · 포인트를 밝힌 행(보로노이 · 에이피알 · 카카오게임즈 · 넷마블 · 위메이드)과 엠씨넥스 288 은 건드리지 않는다.
---   표 = /home/ubuntu/loupit-evidence/2026-10-06-guide-d/samsung-meal/MEAL-TABLE.tsv (55행).
+--   표 = /home/ubuntu/loupit-evidence/2026-10-06-guide-d/samsung-meal/MEAL-TABLE.tsv (55행 중 SK하이닉스 317 은 제외 — 리드 판정 (84)).
 --
 -- 무엇을 바꾸나: 추정 19행(금액 · 메모 꼬리 — 옛 「(추정)」 · 「(연 432만원 환산 추정)」 꼬리를 걷고 새 꼬리 「(하루 N끼 x 1끼 U원 x 연 240일 추정 ...)」),
---   정성 36행 -> 추정(금액 · 금액출처 estimated · 정성 해제 · 설명을 메모로 옮기고 새 꼬리). 이름 · 배지 · 출처 · 확인일 · 정렬은 그대로.
---   HD현대 「끼니당 단가 미공개로 금액 미산정」 문장 삭제 · 동진쎄미켐 「식대 단가 미기재라 금액 환산 불가」 -> 「식대 단가 미기재」.
+--   정성 35행 -> 추정(금액 · 금액출처 estimated · 정성 해제 · 설명을 메모로 옮기고 새 꼬리). 이름 · 배지 · 출처 · 확인일 · 정렬은 그대로.
+--   HD현대 「끼니당 단가 미공개로 금액 미산정」에서 「로 금액 미산정」만 걷음(「끼니당 단가 미공개」는 남김) · 동진쎄미켐 「식대 단가 미기재라 금액 환산 불가」 -> 「식대 단가 미기재」.
 --   삼성전자 578 은 메모 본문도 원문 서술로 교체(원문 사본 samsung-meal/samsung-dxrecruit-benefit-20261006.html).
 --
 -- 가드: 문마다 BENEFIT_ID · 회사 영문명 · 항목 코드 · 이름 · 지금 금액(NULL 안전) · 지금 금액출처 · 지금 정성 여부 · 옛 글자 그대로 · BADGE_CD = official.
@@ -21,7 +21,7 @@
 -- 순서 (반드시): 이 파일 -> python3 db/seed/load.py -> release.
 --
 -- 적용 (운영 LOUPIT 만, 사용자 ! — 베타 DB 에는 적용하지 않는다): mysql -vv 로 적용.
--- 기대: 55문 각각 Rows matched: 1  Changed: 1 · 두 번째 실행은 전부 0 · 행 수는 변하지 않는다(3179).
+-- 기대: 54문 각각 Rows matched: 1  Changed: 1 · 두 번째 실행은 전부 0 · 행 수는 변하지 않는다(3179).
 -- ══════════════════════════════════════════════════════════════════════
 
 SET NAMES utf8mb4;
@@ -176,7 +176,7 @@ UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
 
 -- 7465 hd_hyundai 아침·점심·저녁 무료 제공 : NULL/none -> 864/estimated
 UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
-   SET b.BENEFIT_AMT = 864, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '직원 식당에서 아침·점심·저녁을 무료로 제공하며 매일 10개 메뉴(중식 기준) 중 자유 선택. (그룹 통합 채용 기준) 계열사 간 일부 상이 가능 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', b.QUAL_DESC_CTNT = NULL
+   SET b.BENEFIT_AMT = 864, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '직원 식당에서 아침·점심·저녁을 무료로 제공하며 매일 10개 메뉴(중식 기준) 중 자유 선택. 끼니당 단가 미공개 (그룹 통합 채용 기준) 계열사 간 일부 상이 가능 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', b.QUAL_DESC_CTNT = NULL
  WHERE b.BENEFIT_ID = 7465 AND c.COMP_ENG_NM = 'hd_hyundai' AND b.BENEFIT_CD = 'meal' AND b.BENEFIT_NM = '아침·점심·저녁 무료 제공'
    AND b.BENEFIT_AMT IS NULL AND b.AMT_SOURCE_CD = 'none' AND b.QUAL_YN = TRUE AND b.QUAL_DESC_CTNT = '직원 식당에서 아침·점심·저녁을 무료로 제공하며 매일 10개 메뉴(중식 기준) 중 자유 선택. 끼니당 단가 미공개로 금액 미산정 (그룹 통합 채용 기준) 계열사 간 일부 상이 가능' AND b.NOTE_CTNT IS NULL
    AND b.BADGE_CD = 'official';
@@ -190,7 +190,7 @@ UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
 
 -- 11813 douzone 사내 식사·간식 제공 : NULL/none -> 864/estimated
 UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
-   SET b.BENEFIT_AMT = 864, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '강촌 본사 및 을지타워에서 무료 사내식당(조·중·석식)과 간식 제공 (더존ICT그룹 채용공고 사내 식사/간식 제공 항목 · 복리후생제도 페이지 복리후생시설 항목 사내식당(조,중,석식 제공) — 그 밖의 사업장 제공 여부 미기재) (그룹 통합 채용 기준) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', b.QUAL_DESC_CTNT = NULL
+   SET b.BENEFIT_AMT = 864, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '강촌 본사 및 을지타워에서 무료 사내식당(조·중·석식)과 간식 제공 (더존ICT그룹 채용공고 사내 식사/간식 제공 항목 · 복리후생제도 페이지 복리후생시설 항목 사내식당(조,중,석식 제공) — 그 밖의 사업장 제공 여부 미기재) (그룹 통합 채용 기준) (하루 3끼 × 1끼 12,000원 × 연 240일 추정, 간식 제외)', b.QUAL_DESC_CTNT = NULL
  WHERE b.BENEFIT_ID = 11813 AND c.COMP_ENG_NM = 'douzone' AND b.BENEFIT_CD = 'meal' AND b.BENEFIT_NM = '사내 식사·간식 제공'
    AND b.BENEFIT_AMT IS NULL AND b.AMT_SOURCE_CD = 'none' AND b.QUAL_YN = TRUE AND b.QUAL_DESC_CTNT = '강촌 본사 및 을지타워에서 무료 사내식당(조·중·석식)과 간식 제공 (더존ICT그룹 채용공고 사내 식사/간식 제공 항목 · 복리후생제도 페이지 복리후생시설 항목 사내식당(조,중,석식 제공) — 그 밖의 사업장 제공 여부 미기재) (그룹 통합 채용 기준)' AND b.NOTE_CTNT IS NULL
    AND b.BADGE_CD = 'official';
@@ -207,13 +207,6 @@ UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
    SET b.BENEFIT_AMT = 864, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '조식·중식·석식 다양한 메뉴(Take-Out 포함) 무료 제공 (공식 채용 페이지 회사생활 사내 식당 항목 — 식대 단가 미기재) (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', b.QUAL_DESC_CTNT = NULL
  WHERE b.BENEFIT_ID = 40836 AND c.COMP_ENG_NM = 'samsung_electro' AND b.BENEFIT_CD = 'meal' AND b.BENEFIT_NM = '사내 식당'
    AND b.BENEFIT_AMT IS NULL AND b.AMT_SOURCE_CD = 'none' AND b.QUAL_YN = TRUE AND b.QUAL_DESC_CTNT = '조식·중식·석식 다양한 메뉴(Take-Out 포함) 무료 제공 (공식 채용 페이지 회사생활 사내 식당 항목 — 식대 단가 미기재)' AND b.NOTE_CTNT IS NULL
-   AND b.BADGE_CD = 'official';
-
--- 317 sk_hynix 사내식당 및 편의식 : NULL/none -> 864/estimated
-UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
-   SET b.BENEFIT_AMT = 864, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '조식부터 야식까지 모든 캠퍼스에서 식사 또는 편의식 제공, 균형 잡힌 영양 식단의 건강한 밥상 운영 (공식 채용 페이지 복지 제도 업무 항목 — 본인 부담 여부 미기재) (하루 3끼 × 1끼 12,000원 × 연 240일 추정, 야식·편의식 제외)', b.QUAL_DESC_CTNT = NULL
- WHERE b.BENEFIT_ID = 317 AND c.COMP_ENG_NM = 'sk_hynix' AND b.BENEFIT_CD = 'meal' AND b.BENEFIT_NM = '사내식당 및 편의식'
-   AND b.BENEFIT_AMT IS NULL AND b.AMT_SOURCE_CD = 'none' AND b.QUAL_YN = TRUE AND b.QUAL_DESC_CTNT = '조식부터 야식까지 모든 캠퍼스에서 식사 또는 편의식 제공, 균형 잡힌 영양 식단의 건강한 밥상 운영 (공식 채용 페이지 복지 제도 업무 항목 — 본인 부담 여부 미기재)' AND b.NOTE_CTNT IS NULL
    AND b.BADGE_CD = 'official';
 
 -- 502 bh 사내식당 조식·중식·석식·야식 무상 제공 : NULL/none -> 864/estimated
@@ -274,7 +267,7 @@ UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
 
 -- 8355 landf 사내 식당 (1일 2식 무상) : NULL/none -> 576/estimated
 UPDATE TCOMPANY_BENEFIT b JOIN TCOMPANY c ON c.COMP_ID = b.COMP_ID
-   SET b.BENEFIT_AMT = 576, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '「본우리집밥」 입점 사내 식당에서 균형 잡힌 식단 기반의 다양한 메뉴 제공, 1일 2식 무상 지원, 다이어트를 위한 간편식 별도 제공 (공식 채용 사이트 복리후생 제도 소개 사내 식당 항목) — 제공 끼니 구성 미기재 (하루 2끼 × 1끼 12,000원 × 연 240일 추정)', b.QUAL_DESC_CTNT = NULL
+   SET b.BENEFIT_AMT = 576, b.AMT_SOURCE_CD = 'estimated', b.QUAL_YN = FALSE, b.NOTE_CTNT = '「본우리집밥」 입점 사내 식당에서 균형 잡힌 식단 기반의 다양한 메뉴 제공, 1일 2식 무상 지원, 다이어트를 위한 간편식 별도 제공 (공식 채용 사이트 복리후생 제도 소개 사내 식당 항목) — 제공 끼니 구성 미기재 (하루 2끼 × 1끼 12,000원 × 연 240일 추정, 간편식 제외)', b.QUAL_DESC_CTNT = NULL
  WHERE b.BENEFIT_ID = 8355 AND c.COMP_ENG_NM = 'landf' AND b.BENEFIT_CD = 'meal' AND b.BENEFIT_NM = '사내 식당 (1일 2식 무상)'
    AND b.BENEFIT_AMT IS NULL AND b.AMT_SOURCE_CD = 'none' AND b.QUAL_YN = TRUE AND b.QUAL_DESC_CTNT = '「본우리집밥」 입점 사내 식당에서 균형 잡힌 식단 기반의 다양한 메뉴 제공, 1일 2식 무상 지원, 다이어트를 위한 간편식 별도 제공 (공식 채용 사이트 복리후생 제도 소개 사내 식당 항목) — 제공 끼니 구성 미기재' AND b.NOTE_CTNT IS NULL
    AND b.BADGE_CD = 'official';
