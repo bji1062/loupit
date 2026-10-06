@@ -5,7 +5,7 @@
 {% set page_type = 'policy' %}
 {% from "partials/_badge.html" import badge %}
 {% macro para(segs) -%}
-{%- for seg in segs -%}{%- if seg is string -%}{{ seg }}{%- else -%}{{ badge(seg) }}{%- endif -%}{%- endfor -%}
+{%- for seg in segs -%}{%- if seg is string -%}{{ seg }}{%- elif seg.get("href") -%}<a href="{{ seg.href }}">{{ seg.text }}</a>{%- else -%}{{ badge(seg) }}{%- endif -%}{%- endfor -%}
 {%- endmacro %}
 {% block main %}
 <article class="guide-page">
@@ -25,9 +25,9 @@
   </div>
 
   <h2>{{ view.h.group }}</h2>
-  <p>{{ view.group_a }}</p>
+  <p>{{ para(view.group_a) }}</p>
   {% if view.resort_chips %}
-  <ul class="guide-chips" aria-label="휴양시설 지원을 부르는 이름">
+  <ul class="guide-chips" aria-label="{{ view.resort_chips_label }}">
   {% for nm in view.resort_chips %}<li>{{ nm }}</li>{% endfor %}
   </ul>
   {% endif %}
@@ -40,7 +40,7 @@
   <h2>{{ view.h.amount }}</h2>
   <ul class="guide-kinds">
   {% for k in view.kinds %}
-    <li>{{ badge(k.badge) }}<span>{{ k.text }}</span></li>
+    <li><span class="sc-lens-chip guide-lens">{{ k.label }}</span><span class="sr-only">: </span><span>{{ k.text }}</span></li>
   {% endfor %}
   </ul>
   {% if view.totals %}<p>{{ view.totals }}</p>{% endif %}
@@ -55,7 +55,7 @@
   <h2>{{ view.h.who }}</h2>
   <ul class="guide-kinds">
   {% for k in view.who %}
-    <li>{{ badge(k.badge) }}<span>{{ k.text }}</span></li>
+    <li>{{ badge(k.badge) }}<span class="sr-only">: </span><span>{{ k.text }}</span></li>
   {% endfor %}
   </ul>
   <p>{{ view.who_note }}</p>

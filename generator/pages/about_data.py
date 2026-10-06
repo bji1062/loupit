@@ -1,6 +1,6 @@
 """generator/pages/about_data.py — 데이터 안내 `/about/data` (가이드 D편, SP-GUIDE, 2026-10-06).
 
-애드센스 2차 거절(「가치가 낮은 콘텐츠」 계열) 대응으로 쓰는 **고유 글** 한 편이다. 사이트가 데이터를 어디서
+애드센스 2차 거절(스팸 정책 3유형 — 빈약한 제휴 · 스크랩 · 도어웨이, 도어웨이 유력) 대응으로 쓰는 **고유 글** 한 편이다. 사이트가 데이터를 어디서
 가져오고 · 어떻게 나누고 · 금액을 어떻게 표시하고 · 언제 다시 확인하는지를 **그때그때의 실제 숫자**로 적는다.
 문장은 `generator/content/about_data.py`(사람이 쓴 정본) · 숫자는 이 모듈이 빌드 데이터에서 센다.
 
@@ -20,12 +20,13 @@ from __future__ import annotations
 from collections import Counter
 from datetime import datetime
 
-from generator import marks
+from generator import benefit_rules, marks
 from generator.config import CFG
 from generator.content import about_data as T
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.employ import company_metrics
+from generator.finance import _josa
 from generator.format import badge_state, iso_date
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, LENS_BUCKETS, _truncate
 from generator.pages.home import _korean_date
@@ -82,7 +83,6 @@ def counts(ctx) -> dict:
     rows = [(c, b) for c in ctx.companies for b in (c.get("benefits") or [])]
     t = welfare_totals(ctx)
 
-    verified = sorted(d for d in (iso_date(b.get("verified_dtm")) for _, b in rows) if d)
     dated = sorted(d for d in t["dates"] if d)  # 확인일 범위 — 검색 요약 행(요약 기준일)은 뺀다
 
     fin_comps = emp_comps = 0
@@ -98,7 +98,7 @@ def counts(ctx) -> dict:
                 emp_comps += 1
             for y in (fin or {}).get("years") or []:
                 if y.get("year") is not None and any(
-                        y.get(k) is not None for k in ("revenue", "assets", "op_income", "net_income")):
+                        y.get(k) is not None for k in ("revenue", "op_income", "net_income")):
                     years.add(int(y["year"]))
 
     resort_rows = [(c["comp_id"], b.get("benefit_nm") or "") for c, b in rows if b.get("benefit_cd") == RESORT_CD]
@@ -110,7 +110,7 @@ def counts(ctx) -> dict:
 
     summary_rows = [b for _, b in rows if marks.is_summary(b)]
     return {
-        "asof": verified[-1] if verified else "",
+        "asof": dated[-1] if dated else "",  # 확인일 범위(vmin~vmax)와 같은 집합 — 검색 요약 행의 요약 기준일은 뺀다
         "N": len(ctx.companies),
         "url_comp": sum(1 for c in ctx.companies if c.get("careers_benefit_url")),
         "summary_comp": len(t["summary_comps"]),
@@ -120,8 +120,8 @@ def counts(ctx) -> dict:
         "emp": emp_comps,
         "fy_min": min(years) if years else None,
         "fy_max": max(years) if years else None,
-        "names": len({_fold(b.get("benefit_nm")) for _, b in rows}),
-        "codes": len({b.get("benefit_cd") for _, b in rows}),
+        "names": len({_fold(b.get("benefit_nm")) for _, b in rows if _fold(b.get("benefit_nm"))}),
+        "codes": len({b.get("benefit_cd") for _, b in rows if b.get("benefit_cd")}),
         "resort_comp": len({cid for cid, _ in resort_rows}),
         "resort_names": len(resort_freq),
         "resort_chips": chips,
@@ -130,6 +130,8 @@ def counts(ctx) -> dict:
         "st": t["stated"],
         "es": t["estimated"],
         "no": t["none"],
+        "qual": t["qual"],  # 「금액 미등록」 안의 두 갈래 — 정성(환산 불가) · 금액 미기재(환산 가능, 값 모름)
+        "blank": t["no_amount"],
         "legal": t["marked"]["legal"],
         "work_edu": t["marked"]["work_edu"],
         "vmin": dated[0] if dated else "",
@@ -164,9 +166,31 @@ def _with_badge(template: str, badge: dict, **kw) -> list:
     return [before.format(**kw), badge, after.format(**kw)]
 
 
-def build_view(ctx) -> dict:
-    """뷰모델(순수). 문장은 content 모듈 · 숫자는 `counts` · 라벨은 각 정본에서 — 0이면 그 문장은 통째로 뺀다."""
+def _gwa(label: str) -> str:
+    return _josa(label, "과", "와")
+
+
+def _eul(label: str) -> str:
+    return _josa(label, "을", "를")
+
+
+def _ro(label: str) -> str:
+    """로/으로 — 받침이 없거나 ㄹ 받침이면 「로」."""
+    if label and 0xAC00 <= ord(label[-1]) <= 0xD7A3:
+        jong = (ord(label[-1]) - 0xAC00) % 28
+        return "로" if jong in (0, 8) else "으로"
+    return "로"
+
+
+def build_view(ctx, benefit_links: dict | None = None) -> dict:
+    """뷰모델(순수). 문장은 content 모듈 · 숫자는 `counts` · 라벨은 각 정본에서 — 0이면 그 문장은 통째로 뺀다.
+
+    `benefit_links` = `benefit.links(...)` 의 `{code: "/benefit/{slug}"}`. 휴양시설 항목 페이지가 실제로 생성됐을 때만 링크를 건다.
+    """
     n = counts(ctx)
+    if n["N"] and not n["url_comp"]:
+        # 실데이터에서 근거 주소 0곳은 있을 수 없다 — 번들에서 필드가 조용히 떨어진 것이다(Pydantic 화이트리스트 함정).
+        raise BuildError("about/data: 근거 주소가 있는 회사가 0곳 — 번들 필드 누락 의심(careers_benefit_url)")
     f = lambda v: f"{v:,}"  # noqa: E731 — 천 단위 쉼표(페이지 안의 모든 수가 같은 표기)
 
     # ── 어디서 가져오나 ──
@@ -186,18 +210,30 @@ def build_view(ctx) -> dict:
     sources = [{"h": T.SRC_WELFARE_H, "paras": welfare}]
 
     if n["fin"] or n["emp"]:
+        fin_parts = ([_sentence(T.SRC_FIN_COUNT_FIN, fin=f(n["fin"]))] if n["fin"] else []) + \
+                    ([_sentence(T.SRC_FIN_COUNT_EMP, emp=f(n["emp"]))] if n["emp"] else [])
+        fin_counts = "(" + " · ".join(fin_parts) + ")"  # 0인 절은 뺀다 — 둘 다 0이면 이 블록 자체가 없다
         metrics = (_sentence(T.SRC_FIN_METRICS, fy_min=n["fy_min"], fy_max=n["fy_max"])
                    if n["fy_min"] is not None else T.SRC_FIN_METRICS_NO_YEARS)
         sources.append({"h": T.SRC_FIN_H, "paras": [
             _para(T.SRC_FIN_ORIGIN, metrics),
-            _para(_sentence(T.SRC_FIN_AS_IS, fin=f(n["fin"]), emp=f(n["emp"]))),
+            _para(_sentence(T.SRC_FIN_AS_IS, counts=fin_counts)),
         ]})
     sources.append({"h": T.SRC_MEMBER_H, "paras": [_para(T.SRC_MEMBER_EDIT), _para(T.SRC_MEMBER_MARK)]})
 
     # ── 같은 제도는 같은 이름으로 ──
-    group_a = [_sentence(T.GROUP_NAMES, names=f(n["names"]))]
-    if n["resort_comp"]:
-        group_a.append(_sentence(T.GROUP_RESORT, resort_comp=f(n["resort_comp"]), resort_names=f(n["resort_names"])))
+    group_a: list = [_sentence(T.GROUP_NAMES, names=f(n["names"]))]
+    resort_title = (benefit_rules.load_pages().get(RESORT_CD) or {}).get("title") or ""
+    resort_href = (benefit_links or {}).get(RESORT_CD)
+    chips_label = ""
+    if n["resort_comp"] and resort_title:
+        before, _, after = T.GROUP_RESORT.partition("{resort_title}")
+        rest_txt = after.format(resort_comp=f(n["resort_comp"]), resort_names=f(n["resort_names"]))
+        # 제목은 항목 페이지 설정이 정본이다 — 페이지가 있으면 거기로 링크, 없으면 글자만.
+        group_a.append(" ")
+        group_a.append({"href": resort_href, "text": resort_title} if resort_href else resort_title)
+        group_a.append(rest_txt)
+        chips_label = _sentence(T.GROUP_CHIPS_LABEL, resort_title=resort_title, eul=_eul(resort_title))
     group_b = [_sentence(T.GROUP_CODES, codes=f(n["codes"]), cats_ko=native_count(n["cats"]))]
     clauses = [T.GROUP_MARK_CLAUSE.format(phrase=marks.KINDS[k]["phrase"], label=marks.KINDS[k]["label"])
                for k in ("legal", "work_edu") if n[k]]
@@ -208,19 +244,25 @@ def build_view(ctx) -> dict:
 
     # ── 금액 세 가지 ──
     lens = {k: label for k, label, _ in LENS_BUCKETS}
+    # 금액 갈래는 회사 페이지 금액 렌즈(`.sc-lens-chip`)와 같은 모양이다 — 출처 배지(`badge-*`)를 금액에 쓰지 않는다.
+    qual_l, blank_l = lens["qual"], lens["blank"]
     kinds = [
-        {"badge": {"code": "official", "label": lens["stated"]}, "text": _sentence(T.KIND_STATED, K_st=BAND_STATED_PCT)},
-        {"badge": {"code": "est", "label": lens["est"]}, "text": _sentence(T.KIND_ESTIMATED, K_es=BAND_ESTIMATED_PCT)},
-        {"badge": {"code": "none", "label": T.KIND_NONE_LABEL}, "text": T.KIND_NONE},
+        {"label": lens["stated"], "text": _sentence(T.KIND_STATED, K_st=BAND_STATED_PCT)},
+        {"label": lens["est"], "text": _sentence(T.KIND_ESTIMATED, K_es=BAND_ESTIMATED_PCT)},
+        {"label": T.KIND_NONE_LABEL, "text": T.KIND_NONE + " " + _sentence(
+            T.KIND_NONE_SPLIT, qual=qual_l, qual_gwa=_gwa(qual_l), blank=blank_l, blank_ro=_ro(blank_l))},
     ]
-    totals = (_sentence(T.AMOUNT_TOTALS, rows=f(n["rows"]), st=f(n["st"]), es=f(n["es"]), no=f(n["no"]))
+    detail_parts = [_sentence(T.AMOUNT_DETAIL_PART, label=lab, n=f(v))
+                    for lab, v in ((qual_l, n["qual"]), (blank_l, n["blank"])) if v]
+    detail = "(" + " · ".join(detail_parts) + ")" if detail_parts else ""
+    totals = (_sentence(T.AMOUNT_TOTALS, rows=f(n["rows"]), st=f(n["st"]), es=f(n["es"]), no=f(n["no"]), detail=detail)
               if n["rows"] else "")
 
     # ── 다시 확인 ──
     stale = _badge_view("stale")
     reverify = [_sentence(T.REVERIFY_RULE, exp_months=EXPIRE_MONTHS, stale=stale["label"], K_exp=BAND_EXPIRE_PP)]
     if n["vmin"]:
-        reverify.append(_sentence(T.REVERIFY_RANGE, vmin=n["vmin"], vmax=n["vmax"]))
+        reverify.append(_sentence(T.REVERIFY_RANGE, vmin=_korean_date(n["vmin"]), vmax=_korean_date(n["vmax"])))
 
     # ── 누가 고칠 수 있나 ──
     who = [
@@ -236,8 +278,9 @@ def build_view(ctx) -> dict:
                 _sentence(T.META_NO_ASOF, N=f(n["N"])),
         "lead": T.LEAD,
         "sources": sources,
-        "group_a": " ".join(group_a),
-        "resort_chips": n["resort_chips"] if n["resort_comp"] else [],
+        "group_a": group_a,
+        "resort_chips": n["resort_chips"] if (n["resort_comp"] and resort_title) else [],
+        "resort_chips_label": chips_label,
         "group_b": group_b_text,
         "cats": [CATEGORY_LABEL[k] for k in CATEGORY_ORDER],
         "find_link": T.GROUP_FIND_LINK,
@@ -254,8 +297,8 @@ def build_view(ctx) -> dict:
     }
 
 
-def render(env, ctx, cfg=CFG) -> Page:
-    view = build_view(ctx)
+def render(env, ctx, cfg=CFG, benefit_links: dict | None = None) -> Page:
+    view = build_view(ctx, benefit_links)
     url = f"{cfg.site_origin}{ROUTE}"
     title = f"{T.TITLE} | {cfg.site_name}"
     desc = _truncate(T.LEAD.split(". ")[0] + ". " + T.DESCRIPTION_TAIL, cfg.desc_max)

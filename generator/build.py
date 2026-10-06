@@ -81,7 +81,7 @@ def run(
     pages.append(home.render(env, ctx, CFG, pairs=combo_pairs))  # 대문 / (대문 재설계 2단계, 2026-09-13 — 수기 web/index.html 대체, 셸은 2026-09-15 삭제)
     pages += combo.render_all(env, ctx, CFG, pairs=combo_pairs)  # 조합 N (SP-GEN-7)
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
-    pages.append(about_data.render(env, ctx, CFG))  # 가이드 D편 데이터 안내 /about/data (SP-GUIDE, 2026-10-06) — 정책 옆, 무광고
+    pages.append(about_data.render(env, ctx, CFG, benefit_links=benefit.links(benefit_pages, benefit_cfgs)))  # 가이드 D편 데이터 안내 /about/data (SP-GUIDE, 2026-10-06) — 정책 옆, 무광고
     if only:  # 개발용 경로 접두 필터 — 대문은 예외로 항상 남긴다
         # `--only company` 같은 부분 빌드도 out_dir 를 원자적으로 통째 교체한다. 그 dist 역시
         # `/` 를 서빙해야 하고(수기 셸·nginx 폴백은 2026-09-15 에 걷었다), GC-28 이 대문을 요구한다.

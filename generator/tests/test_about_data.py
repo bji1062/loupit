@@ -81,7 +81,8 @@ def test_counts_follow_the_definitions(synth):
     # 빈도순(같으면 이름순) — 2회 · 2회(대소문자만 다른 PC-OFF 둘) · 1회. 칩은 처음 본 표기를 쓴다.
     assert n["resort_chips"] == ["PC-OFF", "휴양소 지원", "콘도"]
     assert n["cats"] == len(CATEGORY_ORDER) == 9
-    assert n["asof"] == "2030-01-01"  # 복지 확인일 최댓값(전 행) — 빌드 날짜가 아니다
+    assert n["asof"] == "2026-10-05"  # 확인일 범위와 같은 집합(검색 요약 행의 2030 요약 기준일은 뺀다)의 최댓값 — 빌드 날짜가 아니다
+    assert (n["qual"], n["blank"]) == (1, 3) and n["no"] == n["qual"] + n["blank"]
     assert (n["vmin"], n["vmax"]) == ("2026-03-31", "2026-10-05")  # 확인일 범위는 검색 요약 행의 요약 기준일을 뺀다
     assert (n["fin"], n["emp"]) == (0, 0) and n["fy_min"] is None
 
@@ -128,10 +129,28 @@ def test_zero_marks_drop_the_clause_or_the_sentence(fake_bundle, fake_now):
     assert "「법정」 표시를 달고" in v["group_b"] and "「업무 교육」" not in v["group_b"]
 
 
-def test_no_url_companies_drops_url_and_weekly_sentences(fake_bundle, fake_now):
+def test_url_floor_stops_the_build_when_the_bundle_field_vanished(fake_bundle, fake_now):
+    """회사가 있는데 근거 주소가 0곳이면 번들 필드가 조용히 떨어진 것이다(20번)."""
     b = _bundle(fake_bundle, [("aa", {"careers_benefit_url": None}, [_row()])])
-    s = _text(build_context(b, now=fake_now))
-    assert "근거로 삼은 페이지 주소" not in s and about_data.build_view(build_context(b, now=fake_now))["weekly"] == ""
+    with pytest.raises(BuildError, match="번들 필드 누락 의심"):
+        about_data.build_view(build_context(b, now=fake_now))
+
+
+def test_fin_emp_zero_clause_is_dropped_individually(fake_bundle, fake_now, fake_finance, fake_employ):
+    ctx = build_context(fake_bundle, now=fake_now, finance=fake_finance, employ=fake_employ)
+    assert "(재무 2곳 · 직원 2곳)" in _text(ctx)
+    only_fin = build_context(fake_bundle, now=fake_now, finance=fake_finance)
+    t = _text(only_fin)
+    assert "(재무 2곳)" in t and "직원 0곳" not in t
+    only_emp = _text(build_context(fake_bundle, now=fake_now, employ=fake_employ))
+    assert "(직원 2곳)" in only_emp and "재무 0곳" not in only_emp
+
+
+def test_names_and_codes_skip_empty(fake_bundle, fake_now):
+    b = _bundle(fake_bundle, [("aa", {"careers_benefit_url": "https://ex.com"},
+                               [_row("meal", "식대"), _row(None, "", None, "none"), _row("", None, None, "none")])])
+    n = about_data.counts(build_context(b, now=fake_now))
+    assert (n["names"], n["codes"]) == (1, 1)
 
 
 def test_summary_row_with_amount_stops_the_build(fake_bundle, fake_now):
@@ -162,10 +181,14 @@ def test_expire_months_match_the_expiry_rule():
 def test_labels_come_from_their_canonical_sources(fake_bundle, fake_now):
     v = about_data.build_view(build_context(fake_bundle, now=fake_now))
     lens = {k: label for k, label, _ in LENS_BUCKETS}
-    assert [k["badge"]["label"] for k in v["kinds"]] == [lens["stated"], lens["est"], T.KIND_NONE_LABEL]
+    assert [k["label"] for k in v["kinds"]] == [lens["stated"], lens["est"], T.KIND_NONE_LABEL]
+    calc_js = (REPO_ROOT / "web" / "assets" / "js" / "calc.js").read_text(encoding="utf-8")
+    assert T.KIND_NONE_LABEL in calc_js, "「금액 미등록」은 이직 계산기 낱말이라 남긴 것이다 — calc.js 에서 사라지면 이 라벨의 근거가 없다"
     # 문안 속에 직접 적힌 라벨(합계 문장)이 정본 라벨과 같다
     assert f"{lens['stated']}가 {{st}}건" in T.AMOUNT_TOTALS and f"{lens['est']}가 {{es}}건" in T.AMOUNT_TOTALS
     assert f"{T.KIND_NONE_LABEL}이 {{no}}건" in T.AMOUNT_TOTALS
+    none_text = v["kinds"][2]["text"]
+    assert f"「{lens['qual']}」과, " in none_text and f"「{lens['blank']}」로 나눠 보여 줍니다." in none_text
     assert [w["badge"]["label"] for w in v["who"]] == ["공식", "공식·재직자 수정", "재직자 등록"]  # badge.js 와 같은 글자
     assert v["timeline"]["stale"]["label"] == "만료·재확인 필요"
     badge_js = (REPO_ROOT / "web" / "assets" / "js" / "badge.js").read_text(encoding="utf-8")
@@ -251,3 +274,69 @@ def test_pipeline_emits_page_and_sitemap_entry(fake_bundle, fake_combinations_pa
     assert build_module.run(str(out), fake_bundle, lastmod="2026-10-06") == 0
     assert (out / "about" / "data.html").is_file()
     assert f"<loc>{CFG.site_origin}/about/data</loc>" in (out / "sitemap.xml").read_text(encoding="utf-8")
+
+
+# ── 검증 반영(리드 판정 (78)) ────────────────────────────────────────────────
+
+
+def test_estimate_definition_matches_the_data(synth, fake_bundle, fake_now):
+    """추정치는 「조건으로 계산」만이 아니라 「같은 종류 제도의 기준 금액」도 포함하고 재직자 입력도 든다(7번)."""
+    est = about_data.build_view(synth)["kinds"][1]["text"]
+    assert "어림값" in est and "조건(월액·횟수 등)이 있으면 그 조건으로 계산하고" in est
+    assert "없으면 같은 종류 제도에 쓰는 기준 금액을 씁니다" in est and "재직자가 넣은 금액도 여기에 들어갑니다" in est
+    assert "±20%" in est
+
+
+def test_amount_totals_detail_and_zero_parts(synth, fake_bundle, fake_now):
+    assert "금액 미등록이 4건(정성 1건 · 금액 미기재 3건)입니다." in about_data.build_view(synth)["totals"]
+    b = _bundle(fake_bundle, [("aa", {"careers_benefit_url": "https://ex.com"},
+                               [_row(), _row("x", "y", None, "none", qual=True)])])
+    t = about_data.build_view(build_context(b, now=fake_now))["totals"]
+    assert "금액 미등록이 1건(정성 1건)입니다." in t and "금액 미기재" not in t
+    b = _bundle(fake_bundle, [("aa", {"careers_benefit_url": "https://ex.com"}, [_row()])])
+    t = about_data.build_view(build_context(b, now=fake_now))["totals"]
+    assert "금액 미등록이 0건입니다." in t and "(" not in t
+
+
+def test_who_and_not_sentences(fake_bundle, fake_now):
+    v = about_data.build_view(build_context(fake_bundle, now=fake_now))
+    assert v["who"][0]["text"].startswith("회사 공식 자료에서 확인한 항목입니다. 재직자가 고친 기록은 없습니다.")
+    assert "위 금액 표시로 따로 봅니다" in v["who"][0]["text"]
+    assert v["who_note"].startswith("잡초위키 운영자 말고 복지를 고치거나 더할 수 있는 사람은 그 회사 재직 인증")
+    assert len(v["nots"]) == 2 and not any("금액을 지어" in x for x in v["nots"])
+
+
+def test_resort_title_comes_from_item_page_config_and_links(fake_bundle, fake_now):
+    from generator import benefit_rules
+    title = benefit_rules.load_pages()["resort"]["title"]
+    b = _bundle(fake_bundle, [("aa", {"careers_benefit_url": "https://ex.com"}, [_row("resort", "휴양소")])])
+    ctx = build_context(b, now=fake_now)
+    env = make_env()
+    linked = about_data.render(env, ctx, CFG, benefit_links={"resort": "/benefit/resort-condo"})
+    assert f'<a href="/benefit/resort-condo">{title}</a> 하나만 해도 1곳이 1가지 이름으로 부릅니다.' in linked.html
+    assert f'aria-label="{title}을 부르는 이름"' in linked.html
+    plain = about_data.render(env, ctx, CFG)
+    assert f"{title} 하나만 해도" in plain.html and "/benefit/resort-condo" not in plain.html
+
+
+def test_amount_marks_use_the_lens_chip_not_source_badges(fake_bundle, fake_now):
+    html = about_data.render(make_env(), build_context(fake_bundle, now=fake_now), CFG).html
+    amount = html[html.index("금액은 세 가지로"):html.index("언제 다시 확인하나")]
+    assert amount.count('class="sc-lens-chip guide-lens"') == 3 and "badge-" not in amount
+    who = html[html.index("누가 고칠 수 있나</h2>"):html.index("하지 않는 것</h2>")]
+    assert "badge-official" in who and "badge-edited" in who and "badge-member" in who
+    assert html.count('<span class="sr-only">: </span>') == 6  # 배지/칩과 설명 사이 스크린리더 구분
+
+
+def test_company_lens_and_home_say_the_same_estimate_definition(fake_bundle, fake_now):
+    from generator.pages.company import LENS_BUCKETS
+    est = dict((k, d) for k, _, d in LENS_BUCKETS)["est"]
+    assert "공개 정보로 환산" not in est and "잡초위키가 붙인 어림값" in est and "같은 종류 제도의 기준 금액" in est
+    t = home._trust(build_context(fake_bundle, now=fake_now))
+    html = (REPO_ROOT / "generator" / "templates" / "home.html").read_text(encoding="utf-8")
+    assert "잡초위키가 붙인 추정치입니다. 공개된 조건이 있으면 그 조건으로 계산하고, 없으면 같은 종류 제도의 기준 금액을 쓰며" in html
+    assert "공개된 조건을 바탕으로 계산한 추정치" not in html and t
+
+
+def test_verified_dates_are_written_in_korean_form(synth):
+    assert "2026년 3월 31일 ~ 2026년 10월 5일" in about_data.build_view(synth)["reverify"]
