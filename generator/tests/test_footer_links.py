@@ -150,3 +150,29 @@ def test_gc27b_hand_written_shells_have_company_index_link():
     for shell in (COMPARE_SHELL,):  # 랜딩은 생성 대문 — 위 생성 페이지 검사가 진다(2026-09-15)
         html = shell.read_text(encoding="utf-8")
         assert _INDEX_LINK in _extract_site_nav_links(html), f"{shell.name}: 회사 인덱스 진입문 없음"
+
+
+# ── 2026-10-06 D편 「데이터 안내」 진입문 — 푸터 사이트 탐색 + 면책 문단 ─────────
+# 상수로 뽑지 않고 하드코딩 대조한다(사이트 탐색 링크가 둘뿐이고 `_INDEX_LINK` 도 같은 방식).
+
+_DATA_LINK = ("데이터 안내", "/about/data")
+
+
+def test_about_data_link_in_footer_site_nav_generated_and_shells(fake_bundle, fake_now, fake_combinations_path):
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    pages = (company.render_all(env, ctx) + combo.render_all(env, ctx, CFG) + policy.render_all(env, ctx)
+             + [home.render(env, ctx, CFG, pairs=combo.load_pairs(ctx))])
+    for p in pages:
+        assert _DATA_LINK in _extract_site_nav_links(p.html), f"{p.path}: 데이터 안내 링크 없음"
+    for shell in (COMPARE_SHELL, COMMUNITY_SHELL):  # 커뮤니티 셸도 같은 사이트 탐색 nav 를 하드코딩한다
+        assert _DATA_LINK in _extract_site_nav_links(shell.read_text(encoding="utf-8")), f"{shell.name}: 데이터 안내 링크 없음"
+
+
+def test_about_data_link_in_disclaimer_paragraph(fake_bundle, fake_now, fake_combinations_path):
+    env = make_env()
+    ctx = build_context(fake_bundle, now=fake_now)
+    for p in company.render_all(env, ctx) + combo.render_all(env, ctx, CFG):
+        assert 'class="disclaimer"' in p.html
+        para = re.search(r'<aside class="disclaimer".*?</aside>', p.html, re.S).group(0)
+        assert '<a href="/about/data">데이터 안내</a>와 <a href="/disclaimer">데이터 정확성 면책조항</a>' in para, p.path
