@@ -11,7 +11,7 @@ import re
 
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import benefit, combo, company, company_index, find, heatmap, home, policy
+from generator.pages import about_data, benefit, combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
 from generator.tests.fixtures import render_benefit_net
 
@@ -71,6 +71,7 @@ def _build_all_pages(fake_bundle, fake_now):
         company.render_all(env, ctx, combo_pairs=pairs)
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
+        + [about_data.render(env, ctx, CFG)]  # 가이드 D편(2026-10-06) — 생성 페이지 그물에 함께 건다
         + benefit_pages
         + [find.render(env, ctx, CFG, benefit_links=benefit.links(benefit_pages))]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다

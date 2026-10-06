@@ -31,6 +31,7 @@ from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
 from generator.pages.find import derive_codes
 from generator.sector import load_sectors, sector_of
 from generator.slug import combo_slug
+from generator.trust import welfare_totals
 
 REGISTRATIONS_PATH = Path(__file__).resolve().parents[1] / "data" / "company_registrations.json"
 
@@ -232,34 +233,10 @@ def _trust(ctx) -> dict:
     행으로 센다 — 요약 행의 날짜는 확인일이 아니라 요약 기준일이다. 법정 · 업무 교육 표시 행은 전체 수 안에
     그대로 두고 따로 밝힌다.
     """
-    stated = estimated = qual = no_amount = 0
-    summary = member = 0
-    summary_comps: set = set()
-    marked: Counter = Counter()
-    dates: Counter = Counter()
-    for c in ctx.companies:
-        eng = c.get("comp_eng_nm") or ""
-        for b in _benefits(c):
-            kind = marks.row_mark(eng, b.get("benefit_cd"), b.get("benefit_nm") or "")
-            if kind:
-                marked[kind] += 1
-            src = b.get("badge_src_cd")
-            if b.get("qual_yn"):
-                qual += 1
-            elif b.get("benefit_amt") is None:
-                no_amount += 1
-            elif b.get("amt_source") == "stated":
-                stated += 1
-            else:
-                estimated += 1
-            if marks.is_summary(b):
-                summary += 1
-                summary_comps.add(c["comp_id"])
-                continue  # 요약 기준일은 확인일 집계에 넣지 않는다
-            if src == "user_report":
-                member += 1
-            dates[iso_date(b.get("verified_dtm"))] += 1
-    total = stated + estimated + qual + no_amount
+    t = welfare_totals(ctx)  # 집계는 /about/data 와 같은 함수 — 두 페이지의 숫자가 갈라지지 않게(SP-GUIDE-2)
+    stated, estimated, qual, no_amount = t["stated"], t["estimated"], t["qual"], t["no_amount"]
+    summary, member, summary_comps = t["summary"], t["member"], t["summary_comps"]
+    marked, dates, total = t["marked"], t["dates"], t["total"]
     dated = {d: n for d, n in dates.items() if d}
     pivot = max(dated.items(), key=lambda kv: (kv[1], kv[0]))[0] if dated else None
     return {

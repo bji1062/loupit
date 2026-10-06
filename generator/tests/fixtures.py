@@ -32,6 +32,7 @@ COMPANIES = [
         "comp_tp_cd": "large",
         "industry_nm": "반도체",
         "logo_nm": "S",
+        "careers_benefit_url": "https://ex.com/careers/benefit",
         "work_style_val": {"remote": True, "flex": True, "overtime": True},
         "aliases": ["삼성전자", "삼성", "Samsung"],
         "benefits": [
@@ -109,6 +110,7 @@ COMPANIES = [
         "comp_tp_cd": "large",
         "industry_nm": "반도체",
         "logo_nm": "SK",
+        "careers_benefit_url": "https://ex.com/careers/benefit",
         "work_style_val": {"flex": True, "unlimitedPTO": True},
         "aliases": ["SK하이닉스", "하이닉스"],
         "benefits": [
@@ -155,6 +157,7 @@ COMPANIES = [
         "comp_tp_cd": "unlisted",
         "industry_nm": "IT",
         "logo_nm": "N",
+        "careers_benefit_url": "https://ex.com/careers/benefit",
         "work_style_val": {"remote": True, "flex": True, "refreshLeave": True},
         "aliases": ["네이버", "NAVER"],
         "benefits": [
@@ -269,6 +272,7 @@ def _mk_cj_enm(comp_id: int, eng: str, nm: str) -> dict:
         "comp_tp_cd": "large",
         "industry_nm": "미디어",
         "logo_nm": "C",
+        "careers_benefit_url": "https://ex.com/careers/benefit",
         "work_style_val": {},
         "aliases": [nm],
         "benefits": [
