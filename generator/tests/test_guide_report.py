@@ -350,6 +350,7 @@ def test_amount_definitions_say_company_official_figure_not_company_stated(page)
     assert "재직자가 넣은 금액도 여기에 듭니다" in t  # 추정치에 재직자 금액
     assert "출산 축하금이나 의료비 한도처럼 회사가 숫자를 적었어도 해마다 받는 금액으로 바꾸지 않은 항목도 여기에 듭니다." in t
     assert "복지는 금액 없이 제도와 조건만 공개되기도 합니다." in t  # M-3
+    assert "어림값에는 회사 공식 수치보다 넓은 오차 범위를 붙입니다." in t and "회사가 밝힌 금액보다" not in t
     assert "데이터 기준일" not in t  # 메타는 「{날짜} 데이터」(D편 「기준일」과 뜻을 가른다)
 
 

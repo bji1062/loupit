@@ -124,7 +124,7 @@ def build_view(s: dict, benefit_links: dict | None = None) -> dict:
         },
         "amount": {
             "h": f(T.H_AMOUNT), "segs": seg, "counts": f(T.AMOUNT_COUNTS), "companies": f(T.AMOUNT_COMPANIES),
-            "calc": T.AMOUNT_CALC, "link": {"href": G.DATA_ROUTE, "text": T.AMOUNT_LINK},
+            "calc": f(T.AMOUNT_CALC), "link": {"href": G.DATA_ROUTE, "text": T.AMOUNT_LINK},
         },
         "gap": {
             "h": T.H_GAP, "rule": f(T.GAP_RULE), "read": f(ed["gap_read"]),
