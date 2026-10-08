@@ -4,12 +4,13 @@
 {% extends "base.html" %}
 {% set page_type = 'policy' %}
 {% from "partials/_badge.html" import badge %}
+{% from "partials/_guide_crumb.html" import guide_crumb %}
 {% macro para(segs) -%}
 {%- for seg in segs -%}{%- if seg is string -%}{{ seg }}{%- elif seg.get("href") -%}<a href="{{ seg.href }}">{{ seg.text }}</a>{%- else -%}{{ badge(seg) }}{%- endif -%}{%- endfor -%}
 {%- endmacro %}
 {% block main %}
 <article class="guide-page">
-  <p class="guide-crumb">{{ view.crumb }}</p>
+  {{ guide_crumb(view.crumb) }}
   <h1>{{ view.h1 }}</h1>
   <p class="guide-meta">{{ view.meta }}</p>
   <p class="guide-lead">{{ view.lead }}</p>

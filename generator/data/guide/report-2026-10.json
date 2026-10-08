@@ -1,0 +1,1099 @@
+{
+ "edition": "2026-10",
+ "edition_ko": "2026년 10월",
+ "asof": "2026-10-08",
+ "N": 147,
+ "large": 86,
+ "mid": 61,
+ "rows": 3179,
+ "counted": 3173,
+ "codes": 89,
+ "names": 2096,
+ "url_comps": 144,
+ "marks": {
+  "legal": {
+   "rows": 3,
+   "comps": 3
+  },
+  "work_edu": {
+   "rows": 3,
+   "comps": 3
+  },
+  "summary": {
+   "rows": 34,
+   "comps": 3
+  }
+ },
+ "vmin": "2026-03-31",
+ "vmax": "2026-10-05",
+ "top": [
+  {
+   "code": "health_check",
+   "label": "건강검진",
+   "slug": "health-check",
+   "comps": 134,
+   "pct": 91.2,
+   "large_pct": 95.3,
+   "mid_pct": 85.2
+  },
+  {
+   "code": "event",
+   "label": "경조사 지원",
+   "slug": "life-events",
+   "comps": 130,
+   "pct": 88.4,
+   "large_pct": 87.2,
+   "mid_pct": 90.2
+  },
+  {
+   "code": "resort",
+   "label": "콘도·휴양시설 지원",
+   "slug": "resort-condo",
+   "comps": 124,
+   "pct": 84.4,
+   "large_pct": 95.3,
+   "mid_pct": 68.9
+  },
+  {
+   "code": "child_edu",
+   "label": "자녀 학자금",
+   "slug": "child-edu",
+   "comps": 107,
+   "pct": 72.8,
+   "large_pct": 87.2,
+   "mid_pct": 52.5
+  },
+  {
+   "code": "welfare_point",
+   "label": "복지포인트",
+   "slug": "welfare-point",
+   "comps": 103,
+   "pct": 70.1,
+   "large_pct": 84.9,
+   "mid_pct": 49.2
+  },
+  {
+   "code": "flex_work",
+   "label": "유연근무제",
+   "slug": "flex-work",
+   "comps": 102,
+   "pct": 69.4,
+   "large_pct": 82.6,
+   "mid_pct": 50.8
+  },
+  {
+   "code": "meal",
+   "label": "구내식당·식대 지원",
+   "slug": "meal",
+   "comps": 99,
+   "pct": 67.3,
+   "large_pct": 55.8,
+   "mid_pct": 83.6
+  },
+  {
+   "code": "club",
+   "label": "사내 동호회 지원",
+   "slug": "company-club",
+   "comps": 96,
+   "pct": 65.3,
+   "large_pct": 66.3,
+   "mid_pct": 63.9
+  },
+  {
+   "code": "parenting",
+   "label": "출산·육아 지원",
+   "slug": "parenting",
+   "comps": 86,
+   "pct": 58.5,
+   "large_pct": 75.6,
+   "mid_pct": 34.4
+  },
+  {
+   "code": "childcare",
+   "label": "사내 어린이집",
+   "slug": "childcare",
+   "comps": 84,
+   "pct": 57.1,
+   "large_pct": 84.9,
+   "mid_pct": 18.0
+  },
+  {
+   "code": "edu_support",
+   "label": "교육·학습 지원",
+   "slug": "job-training",
+   "comps": 82,
+   "pct": 55.8,
+   "large_pct": 60.5,
+   "mid_pct": 49.2
+  },
+  {
+   "code": "mental",
+   "label": "심리상담",
+   "slug": "mental",
+   "comps": 82,
+   "pct": 55.8,
+   "large_pct": 81.4,
+   "mid_pct": 19.7
+  },
+  {
+   "code": "lang",
+   "label": "어학 교육 지원",
+   "slug": "language-learning",
+   "comps": 82,
+   "pct": 55.8,
+   "large_pct": 65.1,
+   "mid_pct": 42.6
+  },
+  {
+   "code": "fitness",
+   "label": "피트니스센터·운동 지원",
+   "slug": "fitness-center",
+   "comps": 79,
+   "pct": 53.7,
+   "large_pct": 66.3,
+   "mid_pct": 36.1
+  },
+  {
+   "code": "housing_loan",
+   "label": "주택자금 대출",
+   "slug": "housing-loan",
+   "comps": 76,
+   "pct": 51.7,
+   "large_pct": 69.8,
+   "mid_pct": 26.2
+  },
+  {
+   "code": "medical",
+   "label": "의료비 지원",
+   "slug": "medical",
+   "comps": 75,
+   "pct": 51.0,
+   "large_pct": 73.3,
+   "mid_pct": 19.7
+  },
+  {
+   "code": "long_service_leave",
+   "label": "장기근속 휴가·포상",
+   "slug": "long-service-leave",
+   "comps": 74,
+   "pct": 50.3,
+   "large_pct": 59.3,
+   "mid_pct": 37.7
+  },
+  {
+   "code": "insurance",
+   "label": "단체보험",
+   "slug": "group-insurance",
+   "comps": 72,
+   "pct": 49.0,
+   "large_pct": 51.2,
+   "mid_pct": 45.9
+  },
+  {
+   "code": "commute_subsidy",
+   "label": "통근버스",
+   "slug": "commute-bus",
+   "comps": 72,
+   "pct": 49.0,
+   "large_pct": 57.0,
+   "mid_pct": 37.7
+  },
+  {
+   "code": "leave_general",
+   "label": "휴가 제도",
+   "slug": "leave-policy",
+   "comps": 66,
+   "pct": 44.9,
+   "large_pct": 45.3,
+   "mid_pct": 44.3
+  },
+  {
+   "code": "dormitory",
+   "label": "기숙사·사택",
+   "slug": "dormitory",
+   "comps": 62,
+   "pct": 42.2,
+   "large_pct": 45.3,
+   "mid_pct": 37.7
+  },
+  {
+   "code": "snack_bar",
+   "label": "사내 카페·간식",
+   "slug": "cafe-snacks",
+   "comps": 62,
+   "pct": 42.2,
+   "large_pct": 31.4,
+   "mid_pct": 57.4
+  },
+  {
+   "code": "incentive",
+   "label": "성과급·인센티브",
+   "slug": "performance-bonus",
+   "comps": 59,
+   "pct": 40.1,
+   "large_pct": 39.5,
+   "mid_pct": 41.0
+  },
+  {
+   "code": "holiday_gift",
+   "label": "명절 선물·상여금",
+   "slug": "holiday-gift",
+   "comps": 58,
+   "pct": 39.5,
+   "large_pct": 29.1,
+   "mid_pct": 54.1
+  },
+  {
+   "code": "long_service_bonus",
+   "label": "장기근속 포상",
+   "slug": "long-service-award",
+   "comps": 57,
+   "pct": 38.8,
+   "large_pct": 37.2,
+   "mid_pct": 41.0
+  },
+  {
+   "code": "clinic",
+   "label": "사내 부속의원·건강관리실",
+   "slug": "company-clinic",
+   "comps": 52,
+   "pct": 35.4,
+   "large_pct": 48.8,
+   "mid_pct": 16.4
+  },
+  {
+   "code": "company_event",
+   "label": "사내 행사·가족 초청",
+   "slug": null,
+   "comps": 52,
+   "pct": 35.4,
+   "large_pct": 33.7,
+   "mid_pct": 37.7
+  },
+  {
+   "code": "excellence_award",
+   "label": "사내 포상 제도",
+   "slug": "employee-awards",
+   "comps": 49,
+   "pct": 33.3,
+   "large_pct": 23.3,
+   "mid_pct": 47.5
+  },
+  {
+   "code": "discount",
+   "label": "임직원 할인",
+   "slug": "employee-discount",
+   "comps": 49,
+   "pct": 33.3,
+   "large_pct": 40.7,
+   "mid_pct": 23.0
+  },
+  {
+   "code": "self_development",
+   "label": "자기계발비·자격증 지원",
+   "slug": "self-development",
+   "comps": 44,
+   "pct": 29.9,
+   "large_pct": 33.7,
+   "mid_pct": 24.6
+  },
+  {
+   "code": "mba",
+   "label": "MBA·대학원 학위 지원",
+   "slug": "mba-graduate-degree",
+   "comps": 43,
+   "pct": 29.3,
+   "large_pct": 43.0,
+   "mid_pct": 9.8
+  },
+  {
+   "code": "birthday_gift",
+   "label": "생일·기념일 선물",
+   "slug": "birthday-gift",
+   "comps": 42,
+   "pct": 28.6,
+   "large_pct": 24.4,
+   "mid_pct": 34.4
+  },
+  {
+   "code": "lounge",
+   "label": "직원 휴게실·휴식 공간",
+   "slug": "employee-lounge",
+   "comps": 35,
+   "pct": 23.8,
+   "large_pct": 17.4,
+   "mid_pct": 32.8
+  },
+  {
+   "code": "remote_work",
+   "label": "재택근무",
+   "slug": "remote-work",
+   "comps": 34,
+   "pct": 23.1,
+   "large_pct": 30.2,
+   "mid_pct": 13.1
+  },
+  {
+   "code": "career",
+   "label": "경력개발·사내공모",
+   "slug": null,
+   "comps": 33,
+   "pct": 22.4,
+   "large_pct": 29.1,
+   "mid_pct": 13.1
+  },
+  {
+   "code": "transport",
+   "label": "교통비·유류비 지원",
+   "slug": "transport-allowance",
+   "comps": 33,
+   "pct": 22.4,
+   "large_pct": 24.4,
+   "mid_pct": 19.7
+  },
+  {
+   "code": "fertility_support",
+   "label": "난임 지원",
+   "slug": null,
+   "comps": 33,
+   "pct": 22.4,
+   "large_pct": 31.4,
+   "mid_pct": 9.8
+  },
+  {
+   "code": "pension_support",
+   "label": "개인연금 지원",
+   "slug": null,
+   "comps": 31,
+   "pct": 21.1,
+   "large_pct": 32.6,
+   "mid_pct": 4.9
+  },
+  {
+   "code": "nap_room",
+   "label": "수면실·휴식 공간",
+   "slug": null,
+   "comps": 31,
+   "pct": 21.1,
+   "large_pct": 27.9,
+   "mid_pct": 11.5
+  },
+  {
+   "code": "summer_leave",
+   "label": "여름휴가(하계휴가)",
+   "slug": "summer-leave",
+   "comps": 27,
+   "pct": 18.4,
+   "large_pct": 19.8,
+   "mid_pct": 16.4
+  },
+  {
+   "code": "books",
+   "label": "도서 구입비·사내 도서관",
+   "slug": "books",
+   "comps": 25,
+   "pct": 17.0,
+   "large_pct": 14.0,
+   "mid_pct": 21.3
+  },
+  {
+   "code": "refresh_leave",
+   "label": "리프레시 휴가",
+   "slug": "refresh-leave",
+   "comps": 25,
+   "pct": 17.0,
+   "large_pct": 20.9,
+   "mid_pct": 11.5
+  },
+  {
+   "code": "leisure_ticket",
+   "label": "여가·문화 이용권(티빙·CGV 이용권)",
+   "slug": null,
+   "comps": 23,
+   "pct": 15.6,
+   "large_pct": 20.9,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "satellite_office",
+   "label": "거점·공유 오피스",
+   "slug": null,
+   "comps": 22,
+   "pct": 15.0,
+   "large_pct": 25.6,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "library",
+   "label": "전자도서관·북카페",
+   "slug": null,
+   "comps": 22,
+   "pct": 15.0,
+   "large_pct": 19.8,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "pc_off",
+   "label": "PC-OFF 제도",
+   "slug": null,
+   "comps": 21,
+   "pct": 14.3,
+   "large_pct": 22.1,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "welfare_fund_loan",
+   "label": "사내 대출·생활안정자금 지원",
+   "slug": null,
+   "comps": 21,
+   "pct": 14.3,
+   "large_pct": 14.0,
+   "mid_pct": 14.8
+  },
+  {
+   "code": "profit_sharing",
+   "label": "경영성과급",
+   "slug": null,
+   "comps": 20,
+   "pct": 13.6,
+   "large_pct": 14.0,
+   "mid_pct": 13.1
+  },
+  {
+   "code": "stock_option",
+   "label": "우리사주·스톡옵션",
+   "slug": null,
+   "comps": 18,
+   "pct": 12.2,
+   "large_pct": 16.3,
+   "mid_pct": 6.6
+  },
+  {
+   "code": "housing_support",
+   "label": "주거·숙소 지원금",
+   "slug": null,
+   "comps": 17,
+   "pct": 11.6,
+   "large_pct": 11.6,
+   "mid_pct": 11.5
+  },
+  {
+   "code": "summer_vacation_subsidy",
+   "label": "하계 휴가비",
+   "slug": null,
+   "comps": 15,
+   "pct": 10.2,
+   "large_pct": 11.6,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "massage",
+   "label": "안마의자",
+   "slug": null,
+   "comps": 14,
+   "pct": 9.5,
+   "large_pct": 10.5,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "conference",
+   "label": "컨퍼런스·세미나 참가 지원",
+   "slug": null,
+   "comps": 14,
+   "pct": 9.5,
+   "large_pct": 8.1,
+   "mid_pct": 11.5
+  },
+  {
+   "code": "relocation",
+   "label": "이사·정착 지원",
+   "slug": null,
+   "comps": 13,
+   "pct": 8.8,
+   "large_pct": 10.5,
+   "mid_pct": 6.6
+  },
+  {
+   "code": "telecom",
+   "label": "통신비 지원",
+   "slug": null,
+   "comps": 13,
+   "pct": 8.8,
+   "large_pct": 11.6,
+   "mid_pct": 4.9
+  },
+  {
+   "code": "welcome_kit",
+   "label": "웰컴키트",
+   "slug": null,
+   "comps": 12,
+   "pct": 8.2,
+   "large_pct": 3.5,
+   "mid_pct": 14.8
+  },
+  {
+   "code": "team_dinner",
+   "label": "회식비 지원",
+   "slug": null,
+   "comps": 12,
+   "pct": 8.2,
+   "large_pct": 5.8,
+   "mid_pct": 11.5
+  },
+  {
+   "code": "uniform",
+   "label": "근무복·유니폼 지원",
+   "slug": null,
+   "comps": 11,
+   "pct": 7.5,
+   "large_pct": 4.7,
+   "mid_pct": 11.5
+  },
+  {
+   "code": "work_tools",
+   "label": "업무 장비·도구 지원",
+   "slug": null,
+   "comps": 11,
+   "pct": 7.5,
+   "large_pct": 7.0,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "retirement_support",
+   "label": "정년퇴직·퇴직 준비 지원",
+   "slug": null,
+   "comps": 11,
+   "pct": 7.5,
+   "large_pct": 10.5,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "birthday_leave",
+   "label": "생일 휴가·조기퇴근",
+   "slug": null,
+   "comps": 10,
+   "pct": 6.8,
+   "large_pct": 4.7,
+   "mid_pct": 9.8
+  },
+  {
+   "code": "parking",
+   "label": "주차 지원",
+   "slug": null,
+   "comps": 10,
+   "pct": 6.8,
+   "large_pct": 4.7,
+   "mid_pct": 9.8
+  },
+  {
+   "code": "sports_ticket",
+   "label": "스포츠 티켓 지원",
+   "slug": null,
+   "comps": 9,
+   "pct": 6.1,
+   "large_pct": 9.3,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "office_furniture",
+   "label": "사무용 가구·의자 지원",
+   "slug": null,
+   "comps": 8,
+   "pct": 5.4,
+   "large_pct": 5.8,
+   "mid_pct": 4.9
+  },
+  {
+   "code": "bonus",
+   "label": "상여금",
+   "slug": null,
+   "comps": 7,
+   "pct": 4.8,
+   "large_pct": 1.2,
+   "mid_pct": 9.8
+  },
+  {
+   "code": "foundation_day_leave",
+   "label": "창립기념일 휴무",
+   "slug": null,
+   "comps": 7,
+   "pct": 4.8,
+   "large_pct": 2.3,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "family_day",
+   "label": "가정의 날",
+   "slug": null,
+   "comps": 6,
+   "pct": 4.1,
+   "large_pct": 4.7,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "leisure_room",
+   "label": "사내 여가·오락 시설",
+   "slug": null,
+   "comps": 6,
+   "pct": 4.1,
+   "large_pct": 1.2,
+   "mid_pct": 8.2
+  },
+  {
+   "code": "welfare_fund",
+   "label": "사내근로복지기금",
+   "slug": null,
+   "comps": 6,
+   "pct": 4.1,
+   "large_pct": 3.5,
+   "mid_pct": 4.9
+  },
+  {
+   "code": "travel_support",
+   "label": "여행비 지원",
+   "slug": null,
+   "comps": 5,
+   "pct": 3.4,
+   "large_pct": 4.7,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "free_seating",
+   "label": "자율좌석제",
+   "slug": null,
+   "comps": 5,
+   "pct": 3.4,
+   "large_pct": 4.7,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "disability_family_support",
+   "label": "장애 가족 지원",
+   "slug": null,
+   "comps": 5,
+   "pct": 3.4,
+   "large_pct": 3.5,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "culture_day",
+   "label": "문화의 날",
+   "slug": null,
+   "comps": 4,
+   "pct": 2.7,
+   "large_pct": 2.3,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "car_rental",
+   "label": "차량 대여 지원",
+   "slug": null,
+   "comps": 4,
+   "pct": 2.7,
+   "large_pct": 4.7,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "smoking_cessation",
+   "label": "금연수당",
+   "slug": null,
+   "comps": 3,
+   "pct": 2.0,
+   "large_pct": 0.0,
+   "mid_pct": 4.9
+  },
+  {
+   "code": "car_wash",
+   "label": "세차 서비스",
+   "slug": null,
+   "comps": 3,
+   "pct": 2.0,
+   "large_pct": 2.3,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "promotion_gift",
+   "label": "승진 축하 선물",
+   "slug": null,
+   "comps": 3,
+   "pct": 2.0,
+   "large_pct": 2.3,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "workation",
+   "label": "워케이션",
+   "slug": null,
+   "comps": 3,
+   "pct": 2.0,
+   "large_pct": 3.5,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "severance_plus",
+   "label": "퇴직금 누진제도",
+   "slug": null,
+   "comps": 3,
+   "pct": 2.0,
+   "large_pct": 1.2,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "visa_support",
+   "label": "비자 발급 지원",
+   "slug": null,
+   "comps": 2,
+   "pct": 1.4,
+   "large_pct": 0.0,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "smart_office",
+   "label": "스마트오피스",
+   "slug": null,
+   "comps": 2,
+   "pct": 1.4,
+   "large_pct": 1.2,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "stock_grant",
+   "label": "자사주 지급",
+   "slug": null,
+   "comps": 2,
+   "pct": 1.4,
+   "large_pct": 1.2,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "youth_savings",
+   "label": "청년내일채움공제",
+   "slug": null,
+   "comps": 2,
+   "pct": 1.4,
+   "large_pct": 0.0,
+   "mid_pct": 3.3
+  },
+  {
+   "code": "overseas_safety",
+   "label": "해외종합안전관리서비스",
+   "slug": null,
+   "comps": 2,
+   "pct": 1.4,
+   "large_pct": 2.3,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "homecoming",
+   "label": "Home-coming 제도",
+   "slug": null,
+   "comps": 1,
+   "pct": 0.7,
+   "large_pct": 1.2,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "parent_care",
+   "label": "부모 요양 치료비 지원",
+   "slug": null,
+   "comps": 1,
+   "pct": 0.7,
+   "large_pct": 0.0,
+   "mid_pct": 1.6
+  },
+  {
+   "code": "home_security",
+   "label": "여직원 무인경비 지원",
+   "slug": null,
+   "comps": 1,
+   "pct": 0.7,
+   "large_pct": 1.2,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "guest_house",
+   "label": "영빈관",
+   "slug": null,
+   "comps": 1,
+   "pct": 0.7,
+   "large_pct": 1.2,
+   "mid_pct": 0.0
+  },
+  {
+   "code": "blood_bank",
+   "label": "혈액은행",
+   "slug": null,
+   "comps": 1,
+   "pct": 0.7,
+   "large_pct": 0.0,
+   "mid_pct": 1.6
+  }
+ ],
+ "half": [
+  {
+   "code": "health_check",
+   "label": "건강검진",
+   "slug": "health-check",
+   "comps": 134,
+   "pct": 91.2,
+   "large_pct": 95.3,
+   "mid_pct": 85.2
+  },
+  {
+   "code": "event",
+   "label": "경조사 지원",
+   "slug": "life-events",
+   "comps": 130,
+   "pct": 88.4,
+   "large_pct": 87.2,
+   "mid_pct": 90.2
+  },
+  {
+   "code": "resort",
+   "label": "콘도·휴양시설 지원",
+   "slug": "resort-condo",
+   "comps": 124,
+   "pct": 84.4,
+   "large_pct": 95.3,
+   "mid_pct": 68.9
+  },
+  {
+   "code": "child_edu",
+   "label": "자녀 학자금",
+   "slug": "child-edu",
+   "comps": 107,
+   "pct": 72.8,
+   "large_pct": 87.2,
+   "mid_pct": 52.5
+  },
+  {
+   "code": "welfare_point",
+   "label": "복지포인트",
+   "slug": "welfare-point",
+   "comps": 103,
+   "pct": 70.1,
+   "large_pct": 84.9,
+   "mid_pct": 49.2
+  },
+  {
+   "code": "flex_work",
+   "label": "유연근무제",
+   "slug": "flex-work",
+   "comps": 102,
+   "pct": 69.4,
+   "large_pct": 82.6,
+   "mid_pct": 50.8
+  },
+  {
+   "code": "meal",
+   "label": "구내식당·식대 지원",
+   "slug": "meal",
+   "comps": 99,
+   "pct": 67.3,
+   "large_pct": 55.8,
+   "mid_pct": 83.6
+  },
+  {
+   "code": "club",
+   "label": "사내 동호회 지원",
+   "slug": "company-club",
+   "comps": 96,
+   "pct": 65.3,
+   "large_pct": 66.3,
+   "mid_pct": 63.9
+  },
+  {
+   "code": "parenting",
+   "label": "출산·육아 지원",
+   "slug": "parenting",
+   "comps": 86,
+   "pct": 58.5,
+   "large_pct": 75.6,
+   "mid_pct": 34.4
+  },
+  {
+   "code": "childcare",
+   "label": "사내 어린이집",
+   "slug": "childcare",
+   "comps": 84,
+   "pct": 57.1,
+   "large_pct": 84.9,
+   "mid_pct": 18.0
+  },
+  {
+   "code": "edu_support",
+   "label": "교육·학습 지원",
+   "slug": "job-training",
+   "comps": 82,
+   "pct": 55.8,
+   "large_pct": 60.5,
+   "mid_pct": 49.2
+  },
+  {
+   "code": "mental",
+   "label": "심리상담",
+   "slug": "mental",
+   "comps": 82,
+   "pct": 55.8,
+   "large_pct": 81.4,
+   "mid_pct": 19.7
+  },
+  {
+   "code": "lang",
+   "label": "어학 교육 지원",
+   "slug": "language-learning",
+   "comps": 82,
+   "pct": 55.8,
+   "large_pct": 65.1,
+   "mid_pct": 42.6
+  },
+  {
+   "code": "fitness",
+   "label": "피트니스센터·운동 지원",
+   "slug": "fitness-center",
+   "comps": 79,
+   "pct": 53.7,
+   "large_pct": 66.3,
+   "mid_pct": 36.1
+  },
+  {
+   "code": "housing_loan",
+   "label": "주택자금 대출",
+   "slug": "housing-loan",
+   "comps": 76,
+   "pct": 51.7,
+   "large_pct": 69.8,
+   "mid_pct": 26.2
+  },
+  {
+   "code": "medical",
+   "label": "의료비 지원",
+   "slug": "medical",
+   "comps": 75,
+   "pct": 51.0,
+   "large_pct": 73.3,
+   "mid_pct": 19.7
+  },
+  {
+   "code": "long_service_leave",
+   "label": "장기근속 휴가·포상",
+   "slug": "long-service-leave",
+   "comps": 74,
+   "pct": 50.3,
+   "large_pct": 59.3,
+   "mid_pct": 37.7
+  }
+ ],
+ "amount": {
+  "stated": {
+   "n": 64,
+   "pct": 2.0
+  },
+  "estimated": {
+   "n": 389,
+   "pct": 12.3
+  },
+  "none": {
+   "n": 2720,
+   "pct": 85.7
+  },
+  "zero_comps": 38,
+  "stated_comps": 39,
+  "stated_top": {
+   "code": "welfare_point",
+   "label": "복지포인트",
+   "n": 28
+  }
+ },
+ "gap": {
+  "min_comps": 15,
+  "mid_more": [
+   {
+    "code": "meal",
+    "label": "구내식당·식대 지원",
+    "slug": "meal",
+    "large_pct": 55.8,
+    "mid_pct": 83.6,
+    "comps": 99
+   },
+   {
+    "code": "snack_bar",
+    "label": "사내 카페·간식",
+    "slug": "cafe-snacks",
+    "large_pct": 31.4,
+    "mid_pct": 57.4,
+    "comps": 62
+   },
+   {
+    "code": "holiday_gift",
+    "label": "명절 선물·상여금",
+    "slug": "holiday-gift",
+    "large_pct": 29.1,
+    "mid_pct": 54.1,
+    "comps": 58
+   },
+   {
+    "code": "excellence_award",
+    "label": "사내 포상 제도",
+    "slug": "employee-awards",
+    "large_pct": 23.3,
+    "mid_pct": 47.5,
+    "comps": 49
+   },
+   {
+    "code": "lounge",
+    "label": "직원 휴게실·휴식 공간",
+    "slug": "employee-lounge",
+    "large_pct": 17.4,
+    "mid_pct": 32.8,
+    "comps": 35
+   }
+  ],
+  "large_more": [
+   {
+    "code": "childcare",
+    "label": "사내 어린이집",
+    "slug": "childcare",
+    "large_pct": 84.9,
+    "mid_pct": 18.0,
+    "comps": 84
+   },
+   {
+    "code": "mental",
+    "label": "심리상담",
+    "slug": "mental",
+    "large_pct": 81.4,
+    "mid_pct": 19.7,
+    "comps": 82
+   },
+   {
+    "code": "medical",
+    "label": "의료비 지원",
+    "slug": "medical",
+    "large_pct": 73.3,
+    "mid_pct": 19.7,
+    "comps": 75
+   },
+   {
+    "code": "housing_loan",
+    "label": "주택자금 대출",
+    "slug": "housing-loan",
+    "large_pct": 69.8,
+    "mid_pct": 26.2,
+    "comps": 76
+   },
+   {
+    "code": "parenting",
+    "label": "출산·육아 지원",
+    "slug": "parenting",
+    "large_pct": 75.6,
+    "mid_pct": 34.4,
+    "comps": 86
+   }
+  ],
+  "median_large": 24,
+  "median_mid": 18
+ },
+ "meal_large_pct": 55.8,
+ "child_edu_slug": "child-edu"
+}

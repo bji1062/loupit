@@ -18,7 +18,7 @@ from pathlib import Path
 from generator.config import CFG
 from generator.content.nav import GNB_TABS, GNB_TAB_HREFS
 from generator.context import build_context
-from generator.pages import about_data, combo, company, company_index, find, heatmap, home, policy
+from generator.pages import about_data, guide_index, guide_report, combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
 from generator.tests.fixtures import render_benefit_net
 
@@ -71,6 +71,7 @@ def _all_pages(fake_bundle, fake_now):
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
         + [about_data.render(env, ctx, CFG)]  # 가이드 D편(2026-10-06) — 생성 페이지 그물에 함께 건다
+        + [guide_index.render(env, ctx, CFG)] + guide_report.render_all(env, ctx, CFG)  # 가이드 목록 · A편(2026-10-08) — 같은 그물
         + render_benefit_net(env, ctx)  # 복지 항목(SP-BEN) — 문턱을 낮춰 그물에 건다
         + [find.render(env, ctx, CFG)]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다
@@ -139,8 +140,8 @@ def test_aria_current_marks_only_the_owning_tab(fake_bundle, fake_now, fake_comb
         elif p.path == "find.html" or p.path.startswith("benefit/"):
             # 복지 항목 페이지(SP-BEN)는 복지검색 탭 소속이다 — 빵부스러기의 첫 칸이 /find 다.
             assert cur == ["/find"], f"{p.path}: 복지검색 탭이 현재 탭이어야 한다"
-        elif p.path == "about/data.html":
-            assert cur == ["/about/data"], "가이드 탭이 현재 탭이어야 한다(2026-10-06, D편)"
+        elif p.path == "about/data.html" or p.path == "guide.html" or p.path.startswith("guide/"):
+            assert cur == ["/guide"], f"{p.path}: 가이드 탭이 현재 탭이어야 한다(D편 2026-10-06 · 목록 · A편 2026-10-08)"
         elif p.path == "index.html":
             assert cur == ["/"], "생성 대문은 홈 탭이 현재 탭이어야 한다(2026-09-13, 2단계)"
         else:

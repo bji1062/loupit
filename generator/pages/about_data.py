@@ -34,6 +34,7 @@ from generator.slug import BuildError
 from generator.trust import welfare_totals
 
 ROUTE = "/about/data"
+GUIDE_LIST_ROUTE = "/guide"  # 가이드 탭 · 목록 (content/guides.py::LIST_ROUTE 와 같다 — 테스트가 대조)
 PATH = "about/data.html"
 
 # ── 코드 정본과 맞물리는 상수 — 테스트가 원본과 대조한다(`test_about_data.py`) ────────────────────
@@ -182,6 +183,12 @@ def _ro(label: str) -> str:
     return "로"
 
 
+def _crumb() -> dict:
+    """빵부스러기 「가이드 › 데이터 안내」 — 「가이드」는 `/guide` 목록 링크다(2026-10-08, A편 목록이 생겼다). 글자는 T.CRUMB 그대로."""
+    root, _, tail = T.CRUMB.partition(" › ")
+    return {"href": GUIDE_LIST_ROUTE, "root": root, "tail": tail}
+
+
 def build_view(ctx, benefit_links: dict | None = None) -> dict:
     """뷰모델(순수). 문장은 content 모듈 · 숫자는 `counts` · 라벨은 각 정본에서 — 0이면 그 문장은 통째로 뺀다.
 
@@ -272,7 +279,7 @@ def build_view(ctx, benefit_links: dict | None = None) -> dict:
     ]
 
     return {
-        "crumb": T.CRUMB,
+        "crumb": _crumb(),
         "h1": T.H1,
         "meta": _sentence(T.META, asof=_korean_date(n["asof"]), N=f(n["N"])) if n["asof"] else
                 _sentence(T.META_NO_ASOF, N=f(n["N"])),
@@ -306,6 +313,7 @@ def render(env, ctx, cfg=CFG, benefit_links: dict | None = None) -> Page:
         view=view, meta_title=title, meta_desc=desc, canonical=url,
         og={"title": title, "description": desc, "type": "website", "url": url,
             "image": cfg.site_origin + cfg.default_og_image},
-        cfg=cfg, footer_links=POLICY_FOOTER_LINKS, nav_active=ROUTE,
+        cfg=cfg, footer_links=POLICY_FOOTER_LINKS, nav_active=GUIDE_LIST_ROUTE,  # 탭 「가이드」 = /guide 목록(2026-10-08)
+
     )
     return Page(path=PATH, url=url, html=html, title=title, description=desc)

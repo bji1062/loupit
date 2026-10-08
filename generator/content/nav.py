@@ -35,9 +35,9 @@ GNB_TABS: tuple[tuple[str, str], ...] = (
     ("복지검색", "/find"),  # SP-FIND(2026-09-06) — 생성 페이지 find.html, nginx = /find
     ("회사정보", "/companies"),
     ("히트맵", "/heatmap"),  # SP-HEAT(2026-08-27) — 생성 페이지 heatmap.html, nginx = /heatmap
-    # 2026-10-06 D편 「데이터 안내」 — 글이 하나뿐인 동안 탭이 그 글(`/about/data`)로 곧장 간다. A편(`/guide/report-<판>`)이
-    # 나오면 글이 둘이라 탭을 `/guide` 목록으로 옮기고 이 줄의 href 도 함께 바꾼다(셸 7개 · nginx · SPEC 21 같이).
-    ("가이드", "/about/data"),  # SP-GUIDE-1 — 생성 페이지 about/data.html, nginx = /about/data
+    # 2026-10-06 D편 「데이터 안내」로 탭이 생겼고, 2026-10-08 A편(`/guide/report-<판>`)이 나와 글이 둘이 되면서 탭을 `/guide` 목록으로
+    # 옮겼다. `/guide` · `/guide/*` · `/about/data` 모두 이 탭이 현재 탭이다. 이 줄의 href 를 바꾸면 셸 7개 · nginx · SPEC 21 도 함께.
+    ("가이드", "/guide"),  # SP-GUIDE-1·4 — 생성 페이지 guide.html, nginx = /guide
     # ("커뮤니티", "/community/") — 2026-09-24 숨김(위 머리말). 셸 web/community/index.html 은 그대로 서빙된다.
 )
 

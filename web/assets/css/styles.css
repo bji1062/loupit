@@ -1196,6 +1196,49 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .guide-timeline-line > span { position:relative; top:calc(-1 * var(--sp-3)); padding:0 var(--sp-2); background:var(--bg-0); }
 /* 카드 3장이 가로로 서는 768 규칙은 아래 하나뿐인 768 분기 블록 안에 있다(UT-BP — 분기 블록을 둘로 쪼개지 않는다). */
 
+/* ── 가이드 목록(/guide) · A편 고정판(/guide/report-<판>) (SP-GUIDE-7·8, 2026-10-08) ─────────────────────────────
+   새 색을 만들지 않는다 — 면·선·브랜드·슬롯B 토큰뿐. 그림은 HTML/CSS 만이고 모든 막대 · 점 옆에 같은 숫자가 글자로 있다.
+   ⚠ 분기는 아래 하나뿐인 768 블록 안에 `.gr-` · `.guide-cards` 규칙을 둔다(UT-BP). 다크 모드는 이 사이트에 없다. */
+.guide-cards { display:grid; gap:var(--sp-3); margin:var(--sp-5) 0 0; padding:0; list-style:none; }
+.guide-card a { display:flex; flex-direction:column; gap:var(--sp-1); padding:var(--sp-4); background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); color:var(--t1); text-decoration:none; }
+.guide-card a:hover { border-color:var(--border-strong); }
+.guide-card strong { font-size:var(--fs-lg); }
+.guide-card span { color:var(--t2); font-size:var(--fs-sm); }
+.gr-note { margin:var(--sp-5) 0 0; padding:var(--sp-3) var(--sp-4); background:var(--bg-2); border-radius:var(--r-md); }
+.gr-note p { margin:var(--sp-1) 0 0; color:var(--t2); font-size:var(--fs-sm); }
+.gr-cards { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:var(--sp-3); margin:var(--sp-5) 0 0; padding:0; list-style:none; }
+.gr-cards li { display:flex; flex-direction:column; gap:var(--sp-1); min-width:0; padding:var(--sp-3) var(--sp-4); background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-lg); overflow-wrap:anywhere; }
+.gr-card-k { color:var(--t3); font-size:var(--fs-xs); }
+.gr-card-v { color:var(--brand); font-size:var(--fs-h3); line-height:var(--lh-snug); }
+.gr-card-s { color:var(--t2); font-size:var(--fs-xs); }
+.gr-fig { margin:var(--sp-4) 0 0; }
+.gr-fig figcaption { color:var(--t3); font-size:var(--fs-sm); }
+.gr-bars, .gr-dumbbells { display:flex; flex-direction:column; gap:var(--sp-2); margin:var(--sp-3) 0 0; padding:0; list-style:none; }
+.gr-bars li, .gr-dumbbells li { display:grid; grid-template-columns:minmax(0, 1fr) auto; grid-template-areas:"name val" "track track"; gap:var(--sp-1) var(--sp-3); align-items:baseline; }
+.gr-bar-name { grid-area:name; min-width:0; font-size:var(--fs-sm); overflow-wrap:anywhere; }
+.gr-bar-val { grid-area:val; color:var(--t2); font-size:var(--fs-xs); text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+.gr-track, .gr-dtrack { grid-area:track; position:relative; display:block; height:10px; background:var(--bg-2); border-radius:var(--r-pill); }
+.gr-fill { display:block; height:100%; background:var(--brand); border-radius:var(--r-pill); }
+.gr-stack { display:flex; height:18px; margin-top:var(--sp-3); overflow:hidden; border-radius:var(--r-pill); background:var(--bg-2); }
+.gr-seg-stated { background:var(--brand); }
+.gr-seg-est { background:var(--slot-b); }
+.gr-seg-none { background:var(--bg-4); }
+.gr-seg { display:block; height:100%; }
+.gr-legend { display:flex; flex-direction:column; gap:var(--sp-1); margin:var(--sp-3) 0 0; padding:0; list-style:none; font-size:var(--fs-sm); }
+.gr-legend li { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-3); }
+.gr-legend b { margin-left:auto; font-weight:var(--fw-semibold); font-variant-numeric:tabular-nums; }
+.gr-sw { display:inline-block; width:12px; height:12px; border-radius:var(--r-xs); flex:none; }
+.gr-dlegend { display:flex; flex-wrap:wrap; align-items:center; gap:var(--sp-1) var(--sp-4); margin:var(--sp-3) 0 0; font-size:var(--fs-sm); }
+.gr-dlegend span { display:inline-flex; align-items:center; gap:var(--sp-2); }
+.gr-dcap { margin:var(--sp-4) 0 0; color:var(--t3); font-size:var(--fs-xs); }
+.gr-dline { position:absolute; top:50%; height:2px; margin-top:-1px; background:var(--border-strong); }
+/* 점 = 모양으로도 가른다 — 대기업은 채운 원, 중견기업은 속 빈 원(색만으로 구분하지 않는다). */
+.gr-dot { display:inline-block; width:14px; height:14px; border-radius:50%; box-sizing:border-box; flex:none; }
+.gr-dtrack .gr-dot { position:absolute; top:50%; margin:-7px 0 0 -7px; }
+.gr-dot-large { background:var(--brand); border:2px solid var(--brand); }
+.gr-dot-mid { background:var(--bg-1); border:2px solid var(--slot-b); }
+.gr-page a { color:var(--link); }
+
 /* ══════════════════════════════════════════════════ RESPONSIVE(768) ══ */
 /* ── 복지검색(/find, SP-FIND, 2026-09-06) ─────────────────────────────────
    도구는 find.js 가 그리고 이 절은 자리·간격·상태 색만 준다. 색은 전부 토큰이다(UT-NO-LITERAL).
@@ -1908,6 +1951,8 @@ main p.calc-exnote { margin:0; }
 
 @media (min-width: 768px) {
   .guide-sources { grid-template-columns:repeat(3, minmax(0, 1fr)); }  /* SP-GUIDE */
+  .gr-cards { grid-template-columns:repeat(4, minmax(0, 1fr)); }  /* SP-GUIDE-7 */
+  .gr-bars li, .gr-dumbbells li { grid-template-columns:minmax(0, 220px) minmax(0, 1fr) 150px; grid-template-areas:"name track val"; align-items:center; }  /* SP-GUIDE-7 */
   /* GNB 원복 — 여기부터는 워드마크와 넉넉한 gap 이 다 들어간다(768px 실측: 필요 폭 435px).
      `flex-wrap:nowrap` 을 되돌려 두는 건 안전판을 끄는 게 아니라, 이 폭에서 줄이 바뀌면
      그건 레이아웃이 아니라 버그라는 선언이다 — 접히면 눈에 띈다. */

@@ -1,0 +1,5 @@
+{# _guide_crumb.html — 가이드 글 빵부스러기 「가이드 › 글 이름」 (2026-10-08). 「가이드」는 `/guide` 목록 링크다(D편 · A편 공용).
+   `crumb` = {href, root, tail}. #}
+{% macro guide_crumb(crumb) -%}
+<p class="guide-crumb"><a href="{{ crumb.href }}">{{ crumb.root }}</a> › {{ crumb.tail }}</p>
+{%- endmacro %}

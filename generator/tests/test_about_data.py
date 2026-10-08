@@ -258,7 +258,8 @@ def test_page_is_active_tab_adless_and_indexable(fake_bundle, fake_now):
     page = about_data.render(make_env(), build_context(fake_bundle, now=fake_now), CFG)
     assert page.path == "about/data.html" and page.url == CFG.site_origin + "/about/data" and page.in_sitemap
     assert page.title == f"복지 데이터는 이렇게 만듭니다 | {CFG.site_name}"
-    assert '<a href="/about/data" class="gnb-link" aria-current="page">가이드</a>' in page.html
+    assert '<a href="/guide" class="gnb-link" aria-current="page">가이드</a>' in page.html  # 탭 = /guide 목록(2026-10-08)
+    assert '<p class="guide-crumb"><a href="/guide">가이드</a> › 데이터 안내</p>' in page.html
     assert page.html.count('aria-current="page"') == 1
     assert '<body data-page-type="policy">' in page.html and "data-ad-position" not in page.html
     assert f'<link rel="canonical" href="{page.url}">' in page.html
