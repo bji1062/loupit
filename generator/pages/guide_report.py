@@ -48,7 +48,7 @@ def values(s: dict) -> dict:
     t1, t2, t3 = top[0], top[1], top[2]
     lens = {k: label for k, label, _ in LENS_BUCKETS}
     return {
-        "stated_label": lens["stated"], "est_label": lens["est"],  # 「회사 공식 수치」 「추정치」 — 사이트 정본 라벨
+        "stated_label": lens["stated"], "est_label": lens["est"], "ga": _josa(lens["stated"], "이", "가"),  # 「회사 공식 수치」 「추정치」 — 사이트 정본 라벨
         "N": _n(s["N"]), "large": _n(s["large"]), "mid": _n(s["mid"]),
         "edition_ko": s["edition_ko"], "asof_ko": _korean_date(s["asof"]),
         "rows": _n(s["rows"]), "counted": _n(s["counted"]), "codes": _n(s["codes"]), "names": _n(s["names"]),

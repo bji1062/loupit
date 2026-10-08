@@ -31,7 +31,7 @@ EDITION = "2026-10"
 
 # 판마다 해시를 고정한다 — 판을 바꾸려면 새 파일 = 새 판이다. 이 해시를 고치지 않는다(리드 판정 (86)). 새 판은 여기 한 줄을 더한다.
 # 2026-10 = 운영 번들 2026-10-08 05:00 UTC 스냅숏.
-SNAPSHOT_SHA256 = {"2026-10": "730a2ff065b94d3934b6fa2201627dfb04561cb3f0e841cf6ff2d78efeebfa6f"}
+SNAPSHOT_SHA256 = {"2026-10": "7208257ff4874d3d7a23eb95d30afeea3bc96fecce89c45bec159199c4353f3a"}
 
 
 def _snap(edition: str = EDITION) -> dict:
@@ -73,9 +73,9 @@ def test_snapshot_matches_the_leads_measurements():
         ("건강검진", 134, 91.2), ("경조사 지원", 130, 88.4), ("콘도·휴양시설 지원", 124, 84.4)]
     a = s["amount"]
     assert (a["stated"], a["estimated"], a["none"]) == (
-        {"n": 64, "pct": 2.0}, {"n": 389, "pct": 12.3}, {"n": 2720, "pct": 85.7})
-    assert (a["zero_comps"], a["stated_comps"]) == (38, 39)
-    assert a["stated_top"] == {"code": "welfare_point", "label": "복지포인트", "n": 28}
+        {"n": 56, "pct": 1.8}, {"n": 392, "pct": 12.4}, {"n": 2725, "pct": 85.9})  # 데이터 정정 #111 반영(게시 전 같은 판 키로 다시 뜸)
+    assert (a["zero_comps"], a["stated_comps"]) == (39, 37)
+    assert a["stated_top"] == {"code": "welfare_point", "label": "복지포인트", "n": 27}
     g = s["gap"]
     assert (g["min_comps"], g["median_large"], g["median_mid"]) == (15, 24, 18)
     assert [e["code"] for e in g["mid_more"]] == ["meal", "snack_bar", "holiday_gift", "excellence_award", "lounge"]
@@ -307,10 +307,10 @@ def test_2026_10_rendered_numbers_match_the_leads_table():
     """계약 §2 기대값을 렌더 글자로 직접 — 2026-10 판 전용."""
     t = _main_text(guide_report.render(make_env(), None, CFG, edition="2026-10").html)
     for m in ["회사 147곳의 복지 공개 현황 — 2026년 10월 판", "2026년 10월 8일 데이터 · 회사 147곳 · 복지 3,173건 · 표준 항목 89종",
-              "가장 흔한 복지 건강검진 147곳 중 134곳(91.2%)", "금액이 회사 공식 수치인 복지 2.0% 3,173건 중 64건",
-              "등록된 금액이 하나도 없는 회사 38곳 147곳 중", "절반 넘는 회사가 공개한 복지 17가지",
-              "그다음은 경조사 지원(130곳)과 콘도·휴양시설 지원(124곳)입니다.", "389건(12.3%)은 추정치입니다", "나머지 2,720건(85.7%)은",
-              "회사 공식 수치가 하나라도 있는 회사는 39곳입니다", "회사 공식 수치가 가장 많이 나온 항목은 복지포인트(28건)입니다",
+              "가장 흔한 복지 건강검진 147곳 중 134곳(91.2%)", "금액이 회사 공식 수치인 복지 1.8% 3,173건 중 56건",
+              "등록된 금액이 하나도 없는 회사 39곳 147곳 중", "절반 넘는 회사가 공개한 복지 17가지",
+              "그다음은 경조사 지원(130곳)과 콘도·휴양시설 지원(124곳)입니다.", "392건(12.4%)은 추정치입니다", "나머지 2,725건(85.9%)은",
+              "회사 공식 수치가 하나라도 있는 회사는 37곳입니다", "회사 공식 수치가 가장 많이 나온 항목은 복지포인트(27건)입니다",
               "중앙값 24개, 중견기업이 18개입니다", "식대를 공개한 대기업이 55.8%라고",
               "(2026년 3월 31일 ~ 2026년 10월 5일)", "복지 이름 2,096가지를 표준 항목 89종으로"]:
         assert m in t, m
@@ -346,7 +346,7 @@ def test_amount_definitions_say_company_official_figure_not_company_stated(page)
     t = _main_text(page.html)
     for bad in ("금액까지 밝힌", "금액을 직접 밝힌", "회사가 밝힌 금액이 하나라도", "회사가 밝힌 금액이 가장 많이", "제도만 알려져", "이름만 공개되는"):
         assert bad not in t, bad
-    assert "회사가 밝힌 숫자를 그대로 연 금액으로 적은 것(회사 공식 수치)은" in t
+    assert "회사가 밝힌 숫자로 연 금액을 적은 것(회사 공식 수치)은" in t
     assert "재직자가 넣은 금액도 여기에 듭니다" in t  # 추정치에 재직자 금액
     assert "출산 축하금이나 의료비 한도처럼 회사가 숫자를 적었어도 해마다 받는 금액으로 바꾸지 않은 항목도 여기에 듭니다." in t
     assert "복지는 금액 없이 제도와 조건만 공개되기도 합니다." in t  # M-3
@@ -379,7 +379,7 @@ def test_2026_10_gap_sentences_and_reading_notes():
     assert "중견기업은 더 적게 공개하면서도 중견기업 쪽 다섯 항목은 대기업보다 더 자주 적었습니다." in t
     assert "날마다, 해마다 손에 잡히는" not in t and "제도나 시설을 갖춰야" not in t and "위 다섯 항목" not in t
     assert "사내 어린이집처럼 일정 규모 이상 사업장에 설치 의무가 있는 제도도 있어, 이 차이를 공개 성향만으로 읽기는 어렵습니다." in t
-    assert "여기서 대기업 · 중견기업은 잡초위키가 회사를 등록할 때 붙인 분류입니다(대기업집단 소속이거나 규모가 큰 상장사 = 대기업, 그 밖의 상장사 = 중견기업). 법에서 정한 기업 규모 구분과 다를 수 있습니다." in t
+    assert "여기서 대기업 · 중견기업은 잡초위키가 회사를 등록할 때 붙인 분류입니다. 법에서 정한 기업 규모 구분과 다를 수 있습니다." in t
     assert "대기업에는 같은 그룹 계열사가 여럿 있어 그룹 공통 제도가 함께 세어집니다." in t
     assert "대학교 학자금만 적은 곳이 있습니다." in t and "대학교만 지원한다고" not in t
 
@@ -524,11 +524,11 @@ def test_home_and_d_say_the_same_company_official_figure_definition(fake_bundle,
     from generator.pages import about_data, combo, home
     ctx = build_context(fake_bundle, now=fake_now)
     h = home.render(make_env(), ctx, CFG, pairs=combo.load_pairs(ctx)).html
-    assert "회사가 밝힌 숫자를 그대로 연 금액으로 적은 항목(회사 공식 수치)은 <strong>" in h
+    assert "회사가 밝힌 숫자로 연 금액을 적은 항목(회사 공식 수치)은 <strong>" in h
     assert "회사가 금액을 직접 밝힌" not in h
     d = about_data.build_view(ctx)["kinds"]
-    assert d[0]["text"].startswith("회사가 밝힌 숫자를 그대로 연 금액으로 쓴 값입니다. 이직 계산기의 오차 범위는 ±5%입니다.")
-    assert d[2]["text"].startswith("연 금액이 등록돼 있지 않습니다. 출산 축하금이나 의료비 한도처럼 회사가 숫자를 적었어도 해마다 받는 금액으로 바꾸지 않은 항목도 여기에 듭니다. 돈으로 바꾸지 않습니다.")
+    assert d[0]["text"].startswith("회사가 밝힌 숫자로 연 금액을 쓴 값입니다. 이직 계산기의 오차 범위는 ±5%입니다.")
+    assert d[2]["text"].startswith("연 금액이 등록돼 있지 않습니다. 출산 축하금이나 의료비 한도처럼 회사가 숫자를 적었어도 해마다 받는 금액으로 바꾸지 않은 항목도 여기에 듭니다. 이직 계산기는 이 항목을 더하지 않습니다.")
     assert "제도만 알려져" not in d[2]["text"]
 
 
@@ -537,5 +537,5 @@ def test_no_generated_template_or_content_keeps_the_old_definition():
         for f in (REPO_ROOT / "generator" / sub).rglob("*"):
             if f.is_file() and f.suffix in (".html", ".py"):
                 txt = f.read_text(encoding="utf-8")
-                for bad in ("제도만 알려져", "금액을 직접 밝힌", "금액까지 밝힌"):
+                for bad in ("제도만 알려져", "금액을 직접 밝힌", "금액까지 밝힌", "그대로 연 금액", "직접 밝힌"):
                     assert bad not in txt, f"{f.name}: {bad}"

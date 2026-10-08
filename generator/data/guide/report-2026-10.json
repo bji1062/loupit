@@ -986,23 +986,23 @@
  ],
  "amount": {
   "stated": {
-   "n": 64,
-   "pct": 2.0
+   "n": 56,
+   "pct": 1.8
   },
   "estimated": {
-   "n": 389,
-   "pct": 12.3
+   "n": 392,
+   "pct": 12.4
   },
   "none": {
-   "n": 2720,
-   "pct": 85.7
+   "n": 2725,
+   "pct": 85.9
   },
-  "zero_comps": 38,
-  "stated_comps": 39,
+  "zero_comps": 39,
+  "stated_comps": 37,
   "stated_top": {
    "code": "welfare_point",
    "label": "복지포인트",
-   "n": 28
+   "n": 27
   }
  },
  "gap": {
