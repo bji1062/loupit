@@ -16,11 +16,13 @@ from generator import guide_report as snap_mod
 from generator.config import CFG
 from generator.content import about_data as D
 from generator.content import guide_report as T
+from generator.content import guide_report_editions as E
 from generator.content import guides as G
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.finance import _josa
 from generator.pages.company import LENS_BUCKETS, _truncate
+from generator.slug import BuildError
 from generator.pages.home import _korean_date
 
 
@@ -44,7 +46,9 @@ def values(s: dict) -> dict:
     """스냅숏 → 문장 자리표시 값. 문장에 들어가는 모든 수가 여기서 나온다."""
     top, a, g, mk = s["top"], s["amount"], s["gap"], s["marks"]
     t1, t2, t3 = top[0], top[1], top[2]
+    lens = {k: label for k, label, _ in LENS_BUCKETS}
     return {
+        "stated_label": lens["stated"], "est_label": lens["est"],  # 「회사 공식 수치」 「추정치」 — 사이트 정본 라벨
         "N": _n(s["N"]), "large": _n(s["large"]), "mid": _n(s["mid"]),
         "edition_ko": s["edition_ko"], "asof_ko": _korean_date(s["asof"]),
         "rows": _n(s["rows"]), "counted": _n(s["counted"]), "codes": _n(s["codes"]), "names": _n(s["names"]),
@@ -74,6 +78,11 @@ def values(s: dict) -> dict:
 def build_view(s: dict, benefit_links: dict | None = None) -> dict:
     """뷰모델(순수) — 스냅숏 dict 만 읽는다."""
     links = benefit_links or {}
+    ed = E.for_edition(s["edition"])
+    for side in ("mid_more", "large_more"):  # 이 판의 묘사가 본 항목과 스냅숏이 같아야 한다 — 다르면 문안 판정 필요
+        got = tuple(e["code"] for e in s["gap"][side])
+        if got != tuple(ed["gap_codes"][side]):
+            raise BuildError(f"guide_report {s['edition']}: gap {side} 항목 {got} 이 판별 문안이 본 {ed['gap_codes'][side]} 와 다르다(리드 판정 필요)")
     v = values(s)
     f = lambda tpl: tpl.format(**v)  # noqa: E731
 
@@ -107,10 +116,10 @@ def build_view(s: dict, benefit_links: dict | None = None) -> dict:
         "meta": f(T.META),
         "lead": f(T.LEAD),
         "before": {"h": T.BEFORE_H, "text": T.BEFORE},
-        "cards": [{"k": f(k), "v": f(val), "s": f(sub)} for k, val, sub in T.CARDS],
+        "cards": [{"k": f(k), "v": f(val), "s": f(sub)} for k, val, sub in ed["cards"]],
         "half": {
             "h": f(T.H_HALF), "cap": f(T.FIG1_CAP), "bars": [bar_item(e) for e in s["half"]],
-            "top": f(T.HALF_TOP), "edu": T.HALF_EDU,
+            "top": f(T.HALF_TOP), "edu": ed["half_edu"],
             "edu_link": {"href": edu_href, "text": T.HALF_EDU_LINK} if edu_href else None,
         },
         "amount": {
@@ -118,11 +127,11 @@ def build_view(s: dict, benefit_links: dict | None = None) -> dict:
             "calc": T.AMOUNT_CALC, "link": {"href": G.DATA_ROUTE, "text": T.AMOUNT_LINK},
         },
         "gap": {
-            "h": T.H_GAP, "rule": f(T.GAP_RULE), "read": f(T.GAP_READ),
+            "h": T.H_GAP, "rule": f(T.GAP_RULE), "read": f(ed["gap_read"]),
             "legend_large": f(T.FIG3_LEGEND_LARGE), "legend_mid": f(T.FIG3_LEGEND_MID), "mid_cap": T.FIG3_MID_CAP, "large_cap": T.FIG3_LARGE_CAP,
             "mid_rows": [dumbbell_item(e) for e in s["gap"]["mid_more"]],
             "large_rows": [dumbbell_item(e) for e in s["gap"]["large_more"]],
-            "box": {"h": T.GAP_BOX_H, "text": f(T.GAP_BOX)},
+            "box": {"h": T.GAP_BOX_H, "text": f(ed["gap_box"])},
         },
         "read": {"h": T.H_READ, "list": read},
     }

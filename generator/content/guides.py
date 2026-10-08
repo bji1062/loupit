@@ -1,7 +1,7 @@
 """generator/content/guides.py — 가이드 글 목록 정본 (SP-GUIDE-8, 2026-10-08).
 
 `/guide` 목록 페이지가 이 튜플 하나에서 카드를 만든다. **다음 판(또는 새 글)이 늘면 여기 한 줄**이다 — 새 판은 새 스냅숏 파일
-(`generator/data/guide/report-<판>.json`) + `REPORT_EDITIONS` 맨 앞에 한 줄.
+(`generator/data/guide/report-<판>.json`) + `REPORT_EDITIONS` 맨 앞에 한 줄 + 판별 문안(`content/guide_report_editions.py` 에 새 판 키) + 테스트 해시 한 줄.
 
 규칙: 최신 먼저. 숫자를 문장에 박지 않는다(카드 설명의 숫자는 각 글의 스냅숏에서 채운다).
 """

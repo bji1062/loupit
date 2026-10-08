@@ -88,7 +88,7 @@ def report_facts(ctx, *, edition: str, asof: str) -> dict:
                 "large_pct": _pct(len(s & large_ids), len(large_ids)), "mid_pct": _pct(len(s & mid_ids), len(mid_ids))}
 
     top = sorted((entry(cd) for cd in has), key=lambda e: (-e["comps"], e["label"], e["code"]))
-    half = [e for e in top if e["comps"] * 2 >= N]
+    half = [e for e in top if e["comps"] * 2 > N]  # 「절반 넘는」 = 회사 수×2 > N (정확히 절반은 넘지 않는다)
 
     # 금액 세 갈래 — 셈 대상 기준
     kinds = Counter(amount_kind(b) for _, b in counted)
