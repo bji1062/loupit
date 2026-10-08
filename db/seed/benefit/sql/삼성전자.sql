@@ -5,6 +5,7 @@
 -- badge: 'est' (추정치 — 공식 확인 시 'official'로 변경)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
+-- 2026-10-08 금액 표시 정정(리드 판정 (88))
 
 -- 1) 회사 등록 (없는 경우)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -53,20 +54,20 @@ VALUES
 
   -- ── 여가·라이프 (leisure) ──
   (@comp_id, 'resort', '워터파크/테마파크/휴양소', 100, 'leisure',
-   'est', '워터파크 무료, 테마파크 할인, 호텔/휴양지 숙박 지원', FALSE, NULL, 70),
+   'est', '워터파크 무료, 테마파크 할인, 호텔/휴양지 숙박 지원 (추정)', FALSE, NULL, 70),
   (@comp_id, 'library', '사내 북카페/구독형 도서관', NULL, 'leisure',
    'est', NULL, TRUE, '대출·반납 가능 사내 북카페/라이브러리, 온라인 구독형 도서관 운영', 71),
 
   -- ── 경제적 부가혜택 (perks) ──
   (@comp_id, 'welfare_point', '선택적 복리포인트', 200, 'perks',
-   'est', '건강/여행/공연/도서/교육 자율 사용', FALSE, NULL, 80),
+   'est', '건강/여행/공연/도서/교육 자율 사용 (추정)', FALSE, NULL, 80),
   (@comp_id, 'discount', '자사 제품 임직원가 구매', 100, 'perks',
    'est', '가전/모바일 할인 (추정)', FALSE, NULL, 81),
   (@comp_id, 'meal', '구내식당 삼시세끼 무료', 864, 'perks',
    'est', '사내 삼시 세끼 무료, 매일 바뀌는 한식·중식·일식·양식·인도식 메뉴와 테이크아웃 메뉴 상시 제공 — 식사 단가 미기재 (하루 3끼 × 1끼 12,000원 × 연 240일 추정)', FALSE, NULL, 82),
   -- 2026-09-22 재코딩 transport → commute_subsidy — 교통비 지급이 아니라 통근버스 운행: db/migrations/20260922_recode_benefit_rows.sql
   (@comp_id, 'commute_subsidy', '통근버스', 120, 'perks',
-   'est', '수도권 150여 노선, 일 약 800회 운행', FALSE, NULL, 83)
+   'est', '수도권 150여 노선, 일 약 800회 운행 (추정)', FALSE, NULL, 83)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

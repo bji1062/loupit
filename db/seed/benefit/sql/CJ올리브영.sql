@@ -9,6 +9,7 @@
 -- 자사 채용 Benefit 페이지 기준.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 40·20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- 2026-10-08 금액 표시 정정(리드 판정 (88))
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('cj_oliveyoung', 'CJ올리브영',
@@ -34,8 +35,8 @@ VALUES
   (@comp_id, 'leave_general', '1시간 단위 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '1시간 단위 휴가 사용', 23),
   -- ── 보상 (compensation) ──
-  (@comp_id, 'excellence_award', '인재추천포상금', 500, 'compensation',
-   'est', '인재 추천 포상금 300~500만원. 표기값은 상한', FALSE, NULL, 81),
+  (@comp_id, 'excellence_award', '인재추천포상금', NULL, 'compensation',
+   'est', NULL, TRUE, '인재 추천 포상금 300~500만원', 81),
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', NULL, 'health',
    'est', NULL, TRUE, '본인 및 배우자 건강검진 지원', 30),

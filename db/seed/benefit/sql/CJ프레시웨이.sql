@@ -9,6 +9,7 @@
 -- CJ 계열사 중 금액 공개가 가장 상세하다. 자사 채용 복리후생 페이지 기준.
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 40·20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
+-- 2026-10-08 금액 표시 정정(리드 판정 (88))
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('cj_freshway', 'CJ프레시웨이',
@@ -32,8 +33,8 @@ VALUES
   (@comp_id, 'long_service_leave', 'CREATIVE WEEK(창의휴가)', NULL, 'time_off',
    'est', NULL, TRUE, '근속 3·5·7·10년(이후 5년마다) 2주 유급휴가', 20),
   -- ── 보상 (compensation) ──
-  (@comp_id, 'long_service_bonus', '근속포상금', 1000, 'compensation',
-   'est', 'CREATIVE WEEK 2주 유급휴가 + 10년 이상 근속자 50만원~최대 1,000만원. 표기값은 상한', FALSE, NULL, 82),
+  (@comp_id, 'long_service_bonus', '근속포상금', NULL, 'compensation',
+   'est', NULL, TRUE, 'CREATIVE WEEK 2주 유급휴가 + 10년 이상 근속자 50만원~최대 1,000만원', 82),
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '건강검진', NULL, 'health',
    'est', NULL, TRUE, '본인 및 배우자 건강검진 지원', 30),
@@ -48,8 +49,8 @@ VALUES
    'est', NULL, TRUE, '사내 어린이집 CJ키즈빌 운영', 41),
   (@comp_id, 'child_edu', '자녀 학자금', 120, 'family',
    'est', '유치원 월 10만원 (연 120만원), 장애인 자녀 양육비 연 4회 총 720만원 별도', FALSE, NULL, 42),
-  (@comp_id, 'event', '경조사 지원', 150, 'family',
-   'est', '최대 7일 휴가 + 최대 150만원 경조금, 웨딩홀 대관료 150만원 지원', FALSE, NULL, 43),
+  (@comp_id, 'event', '경조사 지원', NULL, 'family',
+   'est', NULL, TRUE, '최대 7일 휴가 + 최대 150만원 경조금, 웨딩홀 대관료 150만원 지원', 43),
   (@comp_id, 'fertility_support', '난임 지원', 680, 'family',
    'est', '난임 휴가 지원금 1년 최대 680만원, 여성 연간 총 6회·최대 42일 휴가', FALSE, NULL, 44),
   -- ── 성장·커리어 (growth) ──

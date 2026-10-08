@@ -583,3 +583,41 @@ def test_SI13d_guard_condition_looking_names_must_yield_a_condition():
             if code in _WS_CODE_KEY and name and looks.search(name) and not ws_conditions(name) and (eng, name) not in exceptions:
                 bad.append((eng, code, name))
     assert not bad, f"조건처럼 보이지만 읽히지 않는 근무형태 행 이름(수집 계약 「근무형태 칩 이름 규칙」 확인): {bad}"
+
+
+# ── SI-12: 금액 표시 정정 8행 (리드 판정 (88), 2026-10-08) ──
+# 삼성전자 3행은 원문에 금액이 없어 estimated, 한 번 받는 돈을 연 금액으로 적었던 5행은 금액 미등록(정성)이다.
+# 그리고 「공식 수치(stated)」인 행의 서술에는 원 · 만원 숫자가 있어야 한다 — 없으면 앵커가 stated 로 새어 든 것이다.
+_SI12_ESTIMATED = (("samsung_elec", "resort", 100), ("samsung_elec", "welfare_point", 200), ("samsung_elec", "commute_subsidy", 120))
+_SI12_ONE_TIME = (("kai", "parenting"), ("cj_freshway", "long_service_bonus"), ("cj_enm_com", "long_service_bonus"),
+                  ("cj_oliveyoung", "excellence_award"), ("cj_freshway", "event"))
+
+
+def test_SI12_samsung_anchor_rows_are_estimated(seeded_db):
+    for eng, code, amt in _SI12_ESTIMATED:
+        rows = _rows(seeded_db, """
+            SELECT B.BENEFIT_AMT, B.AMT_SOURCE_CD, B.NOTE_CTNT FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+             WHERE C.COMP_ENG_NM = %s AND B.BENEFIT_CD = %s""", (eng, code))
+        assert len(rows) == 1 and rows[0][0] == amt and rows[0][1] == "estimated" and "(추정)" in rows[0][2], (eng, code, rows)
+
+
+def test_SI12_one_time_payments_are_not_registered_as_yearly_amounts(seeded_db):
+    for eng, code in _SI12_ONE_TIME:
+        rows = _rows(seeded_db, """
+            SELECT B.BENEFIT_AMT, B.AMT_SOURCE_CD, B.QUAL_YN, B.NOTE_CTNT, B.QUAL_DESC_CTNT
+              FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID
+             WHERE C.COMP_ENG_NM = %s AND B.BENEFIT_CD = %s""", (eng, code))
+        assert len(rows) == 1, (eng, code, rows)
+        amt, src, qual, note, desc = rows[0]
+        assert amt is None and src == "none" and qual and note is None and desc, (eng, code, rows)
+        assert "표기값은 상한" not in desc, (eng, code)
+
+
+def test_SI12_stated_rows_show_a_won_figure_in_their_text(seeded_db):
+    rows = _rows(seeded_db, """
+        SELECT C.COMP_ENG_NM, B.BENEFIT_CD, COALESCE(B.NOTE_CTNT,''), COALESCE(B.QUAL_DESC_CTNT,'')
+          FROM TCOMPANY_BENEFIT B JOIN TCOMPANY C ON C.COMP_ID = B.COMP_ID WHERE B.AMT_SOURCE_CD = 'stated'""")
+    assert rows, "stated 행이 하나도 없다"
+    pat = _re.compile(r"\d[\d,.]*\s*(만\s*원|원|만)")
+    bad = [f"{eng}/{code}" for eng, code, note, desc in rows if not pat.search(f"{note} {desc}")]
+    assert not bad, f"서술에 원 · 만원 숫자가 없는 stated 행: {bad}"
