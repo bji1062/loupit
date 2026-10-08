@@ -1,0 +1,15 @@
+{# guide_index.html — 가이드 목록 `/guide` (SP-GUIDE-8, 2026-10-08). 카드는 `content/guides.py` 의 글 목록(최신 먼저)에서.
+   page_type = policy → 광고 0. 본문은 JS 없이 완성. #}
+{% extends "base.html" %}
+{% set page_type = 'policy' %}
+{% block main %}
+<article class="guide-page">
+  <h1>{{ view.h1 }}</h1>
+  <p class="guide-lead">{{ view.lead }}</p>
+  <ul class="guide-cards">
+  {% for c in view.cards %}
+    <li class="guide-card"><a href="{{ c.href }}"><strong>{{ c.title }}</strong><span>{{ c.desc }}</span></a></li>
+  {% endfor %}
+  </ul>
+</article>
+{% endblock %}

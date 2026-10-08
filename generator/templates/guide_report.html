@@ -1,0 +1,76 @@
+{# guide_report.html — 가이드 A편 「복지 공개 현황」 고정판 (SP-GUIDE-7, 2026-10-08). 문장은 `content/guide_report.py`, 숫자는
+   `pages/guide_report.py::build_view` 가 **스냅숏 JSON 에서만** 만든 문자열이다(템플릿에 숫자 · 라벨을 적지 않는다).
+   그림 셋은 HTML/CSS 뿐(JS 0) — 막대 · 점의 위치는 인라인 width/left 이고, 같은 숫자가 글자로 함께 실린다.
+   page_type = policy → 광고 0. #}
+{% extends "base.html" %}
+{% set page_type = 'policy' %}
+{% from "partials/_guide_crumb.html" import guide_crumb %}
+{% macro lbl(label, href) -%}{%- if href -%}<a href="{{ href }}">{{ label }}</a>{%- else -%}{{ label }}{%- endif -%}{%- endmacro %}
+{% block main %}
+<article class="guide-page gr-page">
+  {{ guide_crumb(view.crumb) }}
+  <h1>{{ view.h1 }}</h1>
+  <p class="guide-meta">{{ view.meta }}</p>
+  <p class="guide-lead">{{ view.lead }}</p>
+
+  <aside class="gr-note"><strong>{{ view.before.h }}</strong><p>{{ view.before.text }}</p></aside>
+
+  <ul class="gr-cards">
+  {% for c in view.cards %}
+    <li><span class="gr-card-k">{{ c.k }}</span><strong class="gr-card-v">{{ c.v }}</strong>{% if c.s %}<span class="gr-card-s">{{ c.s }}</span>{% endif %}</li>
+  {% endfor %}
+  </ul>
+
+  <h2>{{ view.half.h }}</h2>
+  <figure class="gr-fig">
+    <figcaption>{{ view.half.cap }}</figcaption>
+    <ol class="gr-bars">
+    {% for b in view.half.bars %}
+      <li><span class="gr-bar-name">{{ lbl(b.label, b.href) }}</span><span class="gr-track" aria-hidden="true"><span class="gr-fill" style="width:{{ b.w }}%"></span></span><span class="gr-bar-val">{{ b.val }}</span></li>
+    {% endfor %}
+    </ol>
+  </figure>
+  <p>{{ view.half.top }}</p>
+  <p>{{ view.half.edu }}{% if view.half.edu_link %} <a href="{{ view.half.edu_link.href }}">{{ view.half.edu_link.text }}</a>{% endif %}</p>
+
+  <h2>{{ view.amount.h }}</h2>
+  <figure class="gr-fig">
+    <div class="gr-stack" aria-hidden="true">
+    {% for s in view.amount.segs %}<span class="gr-seg gr-seg-{{ s.cls }}" style="width:{{ s.w }}%"></span>{% endfor %}
+    </div>
+    <ul class="gr-legend">
+    {% for s in view.amount.segs %}
+      <li><i class="gr-sw gr-seg-{{ s.cls }}" aria-hidden="true"></i><span>{{ s.label }}</span><b>{{ s.val }}</b></li>
+    {% endfor %}
+    </ul>
+  </figure>
+  <p>{{ view.amount.counts }}</p>
+  <p>{{ view.amount.companies }}</p>
+  <p>{{ view.amount.calc }} <a href="{{ view.amount.link.href }}">{{ view.amount.link.text }}</a></p>
+
+  <h2>{{ view.gap.h }}</h2>
+  <p>{{ view.gap.rule }}</p>
+  <figure class="gr-fig">
+    <p class="gr-dlegend"><span><i class="gr-dot gr-dot-large" aria-hidden="true"></i>{{ view.gap.legend_large }}</span><span><i class="gr-dot gr-dot-mid" aria-hidden="true"></i>{{ view.gap.legend_mid }}</span></p>
+    {% for cap, rows in ((view.gap.mid_cap, view.gap.mid_rows), (view.gap.large_cap, view.gap.large_rows)) %}
+    <p class="gr-dcap">{{ cap }}</p>
+    <ul class="gr-dumbbells">
+    {% for r in rows %}
+      <li>
+        <span class="gr-bar-name">{{ lbl(r.label, r.href) }}</span>
+        <span class="gr-dtrack" aria-hidden="true"><span class="gr-dline" style="left:{{ r.lo }}%;width:{{ r.span }}%"></span><i class="gr-dot gr-dot-large" style="left:{{ r.large_w }}%"></i><i class="gr-dot gr-dot-mid" style="left:{{ r.mid_w }}%"></i></span>
+        <span class="gr-bar-val">{{ r.val }}</span>
+      </li>
+    {% endfor %}
+    </ul>
+    {% endfor %}
+  </figure>
+  <p>{{ view.gap.read }}</p>
+  <aside class="gr-note"><strong>{{ view.gap.box.h }}</strong><p>{{ view.gap.box.text }}</p></aside>
+
+  <h2>{{ view.read.h }}</h2>
+  <ul class="guide-nots">
+  {% for it in view.read.list %}<li>{{ it.text }}{% if it.link %} <a href="{{ it.link.href }}">{{ it.link.text }}</a>{% endif %}</li>{% endfor %}
+  </ul>
+</article>
+{% endblock %}

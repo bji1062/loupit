@@ -1683,8 +1683,8 @@ function basisBlock(X) {
   };
   const ul = el('ul', { class: 'calc-basis' });
   const li = (...kids) => el('li', {}, ...kids);
-  ul.append(li(el('span', { class: badgeClassBem('official'), text: BADGE_LABEL_SHORT.official }), ' 회사가 직접 밝힌 금액(' + nm.a + ' ' + bs.a.stated + ' · ' + nm.b + ' ' + bs.b.stated + ')'));
-  ul.append(li(el('span', { class: badgeClassBem('est'), text: BADGE_LABEL_SHORT.est }), ' 비슷한 제도의 일반적인 금액을 기준으로 추정한 금액(' + nm.a + ' ' + bs.a.estimated + ' · ' + nm.b + ' ' + bs.b.estimated + ')'));
+  ul.append(li(el('span', { class: badgeClassBem('official'), text: BADGE_LABEL_SHORT.official }), ' 회사가 밝힌 숫자로 적은 연 금액(' + nm.a + ' ' + bs.a.stated + ' · ' + nm.b + ' ' + bs.b.stated + ')'));
+  ul.append(li(el('span', { class: badgeClassBem('est'), text: BADGE_LABEL_SHORT.est }), ' 공개된 조건으로 셀 수 있으면 그 조건으로, 셀 수 없으면 같은 종류 제도의 기준 금액으로 잡초위키가 붙인 어림값(' + nm.a + ' ' + bs.a.estimated + ' · ' + nm.b + ' ' + bs.b.estimated + ')'));
   const capped = [...bs.a.capped.map((x) => [nm.a, x]), ...bs.b.capped.map((x) => [nm.b, x])];
   if (capped.length) ul.append(li(el('span', { class: 'calc-tagm', text: '최대치·한도액 기준' }), ' 설명에 ‘최대’나 ‘한도’가 적혀 있어 실제로 받는 돈은 더 적을 수 있는 금액(' + capped.map(([w, x]) => w + ' ' + x.nm + ' ' + fmt(x.amt)).join(' · ') + ')'));
   const expired = (bs.a.expired || 0) + (bs.b.expired || 0);
