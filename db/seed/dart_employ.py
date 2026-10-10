@@ -29,7 +29,8 @@
 `server/.env DART_API_KEY` 이고 **로그·예외 메시지에 찍지 않는다**.
 
 HTTP 는 `fetch_fn(url) -> dict` 주입(기본 urllib, 새 의존성 0) — 테스트는 픽스처로 무접촉.
-멱등: `(CORP_CODE, BSNS_YEAR, SEGMENT_NM, SEX_CD)` UNIQUE 위 upsert. 재실행은 안전하다.
+멱등: `(CORP_CODE, BSNS_YEAR, SEGMENT_NM, SEX_CD)` UNIQUE 위 upsert. 한 해 안에서 이 키가 겹치는 행은
+덮이지 않게 부문명 뒤 ` #N` 으로 따로 저장한다(`collect` 독스트링 — 케이씨씨·ISC 실측 2026-10-10). 재실행은 안전하다.
 호출량: 100사 × 11년 = **1,100**(재무 2,200 과 합쳐 3,300 / 일 20,000 안). 호출 간 `sleep_sec`.
 
 CLI: `python3 db/seed/dart_employ.py [--base-year 2025] [--years 11] [--corp 00126380 …] [--sleep 0.1]`
@@ -100,6 +101,13 @@ KNOWN_NOT_TOTAL = {
     ("00104856", "위탁매매"): "삼성증권 2016 위탁매매 1,060 vs 나머지 1,107 · 2017 1,118 vs 1,121 — 5개 부문 중 가장 큰 하나",
     ("00104856", "기타"): "삼성증권 2020 기타 1,269(남 707·여 562) vs 위탁매매·기업금융·자기매매·기업영업 1,261 — 5개 부문 중 하나",
     ("00788773", "연구"): "씨젠 2021 연구 536(남 286·여 250) vs 사무·영업·생산 534 — 4개 부문 중 하나",
+    # ── 확장 웨이브 5(2026-10-10 적재 행 확인) — `--corp` 수집 경고 3사. 전부 이름 붙은 합계행이 없고 부문 중 하나다.
+    ("00120030", "플랜트"): "GS건설 2015 플랜트 3,162(남 2,874·여 288) vs 건축·기타·인프라·전력 3,292 — 5개 부문 중 가장 큰 하나",
+    ("00120030", "건축"): "GS건설 2021 건축 2,728 vs 기타·신사업·인프라·플랜트 2,705 — 5개 부문 중 하나",
+    ("00120030", "건축\u318d주택"): "GS건설 2025 건축\u318d주택 2,466 vs Prefab·개발\u318d신사업·기타·인프라·플랜트 2,530 — 6개 부문 중 하나",
+    ("00105271", "생산"): "케이씨씨 2021·2022·2025 생산(남) 1,673·1,673·1,763 vs 나머지 — 관리·생산·연구·영업 4개 부문 중 가장 큰 하나(여직원 행은 부문 칸이 「-」)",
+    ("00140955", "전자소재"): "한솔케미칼 2015~2017 전자소재 213·210·221 vs 정밀화학 218·202·213 — 부문이 둘뿐인 쌍",
+    ("00140955", "정밀화학"): "한솔케미칼 2015~2017 정밀화학 vs 전자소재 — 위와 같은 쌍의 반대편",
 }
 
 # 🚨 반대 방향의 예외 — **이름이 합계가 아닌데 사람이 합계행이라고 확인한 것.**
@@ -394,6 +402,20 @@ def _sample(stats: dict, line: str) -> None:
         stats["samples"].append(line)
 
 
+SEGMENT_NM_MAX = 200  # TCORP_EMPLOY.SEGMENT_NM VARCHAR(200)
+
+
+def _dedup_segment(segment: str, sex: str, seen: set) -> str:
+    """겹친 `(segment, sex)` 에 ` #2`·` #3`… 을 붙여 비어 있는 첫 이름을 돌려준다(칼럼 길이 안에서)."""
+    n = 2
+    while True:
+        suffix = f" #{n}"
+        cand = segment[:SEGMENT_NM_MAX - len(suffix)] + suffix
+        if (cand, sex) not in seen:
+            return cand
+        n += 1
+
+
 def collect(cur, corps: list[dict], *, api_key: str, base_year: int, years: int = YEARS_DEFAULT,
             fetch_fn=default_fetch, sleep_sec: float = SLEEP_DEFAULT, commit=None) -> dict:
     """법인 목록 × 최근 `years`개년을 받아 TCORP_EMPLOY 에 upsert (커밋은 호출자 몫).
@@ -401,6 +423,12 @@ def collect(cur, corps: list[dict], *, api_key: str, base_year: int, years: int 
     보고서가 있으면 **받은 행을 전부** 쓴다 — 합계행도 부문행도, 값이 NULL 인 행도. 어느 행을 셀지는
     저장이 아니라 집계(`aggregation_rows`)의 결정이고, 저장 단계에서 버리면 규칙이 바뀔 때 되돌릴 수
     없다. 접수번호가 빈 행에는 같은 보고서의 접수번호를 채운다(어느 공시를 봤는지가 남아야 한다).
+
+    **키가 겹친 행도 버리지 않는다.** 한 해 안에서 `(segment, sex)` 가 겹치면(케이씨씨: 여직원 행의
+    부문 칸이 전부 `-`, ISC: 제조/남 두 행) UNIQUE 때문에 뒤 행이 앞 행을 덮어 사람이 사라진다. 합치지
+    않고 두 번째부터 `SEGMENT_NM` 뒤에 ` #2`·` #3`… 을 붙여 **따로 저장**한다 — 행별 원문(RAW_*)·근속·
+    급여가 그대로 남고, 집계는 SEGMENT_NM 을 읽지 않고 저장된 행을 인원 가중으로 세므로 규칙이 한 곳에
+    머문다. 합계행 검사(`find_hidden_totals`)는 접미사 없는 원래 행 목록으로 돈다.
     """
     if not api_key:
         raise DartError("DART_API_KEY 미설정 — server/.env 에 넣어라. 키 없이 0건 수집은 허용하지 않는다")
@@ -431,13 +459,16 @@ def collect(cur, corps: list[dict], *, api_key: str, base_year: int, years: int 
             rcept = _report_rcept_no(rows)
             seen: set[tuple[str, str]] = set()
             for r in rows:
-                key = (r["segment"], r["sex"])
+                seg = r["segment"]
+                key = (seg, r["sex"])
                 if key in seen:
-                    # UNIQUE (CORP_CODE, BSNS_YEAR, SEGMENT_NM, SEX_CD) 라 **뒤 행이 앞 행을 덮는다**.
-                    # 에러 없이 사람이 사라지는 자리다 — 세고 표본을 남겨 사람이 원문을 보게 한다.
+                    # UNIQUE (CORP_CODE, BSNS_YEAR, SEGMENT_NM, SEX_CD) 라 그대로 쓰면 **뒤 행이 앞 행을
+                    # 덮는다** — 에러 없이 사람이 사라진다. 버리지 않고 부문명 뒤에 ` #N` 을 붙여 따로
+                    # 저장하고, 세고 표본을 남겨 사람이 원문을 보게 한다.
                     stats["dup_keys"] += 1
-                    _sample(stats, f"{nm}({code}) {year} 키 중복 {key} — 앞 행이 덮인다(UNIQUE)")
-                seen.add(key)
+                    seg = _dedup_segment(seg, r["sex"], seen)
+                    _sample(stats, f"{nm}({code}) {year} 키 중복 {key} — 부문명 뒤 #N 으로 따로 저장(인원 보존): {seg!r}")
+                seen.add((seg, r["sex"]))
                 for note in r["notes"]:
                     stats["notes"][note] = stats["notes"].get(note, 0) + 1
                 if "salary_out_of_range" in r["notes"]:
@@ -447,7 +478,7 @@ def collect(cur, corps: list[dict], *, api_key: str, base_year: int, years: int 
                     _sample(stats, f"{nm}({code}) {year} {r['segment']}/{r['sex']} "
                                    f"근속 원문 {r['raw_tenure']!r} → 5종 규칙 밖이라 NULL")
                 cur.execute(_SQL_UPSERT, (
-                    code, year, r["segment"], r["sex"], r["total_row"], r["headcount"],
+                    code, year, seg, r["sex"], r["total_row"], r["headcount"],
                     r["tenure"], r["salary"], r["raw_tenure"], r["raw_salary"],
                     r["rcept_no"] or rcept,
                 ))
