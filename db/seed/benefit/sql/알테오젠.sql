@@ -47,6 +47,7 @@ VALUES
    'est', '우수사원 포상 (연 30만원 추정)', FALSE, NULL, 11),
   (@comp_id, 'bonus', '상여금', NULL, 'compensation',
    'est', NULL, TRUE, '상여금 지급', 12),
+
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', NULL, 'health',
    'est', NULL, TRUE, '임직원 본인 및 배우자 종합건강검진 지원, 혈액종합검진, 특수검진', 30),

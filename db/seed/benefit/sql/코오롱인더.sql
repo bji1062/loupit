@@ -28,7 +28,7 @@
 --   복지 만족도 조사 · 생활임금 · 우리사주조합 주식 수 한 칸(97쪽) · 휴가 지원 항목의 유급휴가 지급(일수 · 연차 외 여부 불명).
 --   공고 근거 0행 / 전체 30행.
 --   SORT 섹션 순서 = 79쪽 텍스트에서 카테고리가 처음 나온 순서
---   (family 10 · flexibility 20 · perks 30 · work_env 40 · health 50 · growth 60 · compensation 70 · leisure 80 · time_off 90).
+--   (family 10 · flexibility 20 · perks 30 · work_env 40 · health 50 · growth 60 · compensation 70 · leisure 80).
 --   compensation 72 성과급은 77쪽 보조 출처, compensation 73 · perks 35 · perks 36 은 패션부문 페이지 출처다.
 -- 검증 · 감사 판정 반영(2026-10-10): 임산부 정기 건강검진 구절(법정 겹침) 제거 · 임원 행 1:1 외국어 코칭을 어학 보조금으로 교체 · 해외출장자 Travel Medical Kit overseas_safety 추가 — 최종 31행
 -- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 경조휴가 행 삭제, event 행에 합침 — 최종 30행

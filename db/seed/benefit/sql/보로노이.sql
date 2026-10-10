@@ -70,7 +70,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) — 복지 혜택 칸 3 ──
   (@comp_id, 'event', '경조사비·경조휴가 지원', NULL, 'family',
-   'est', NULL, TRUE, '경조사비 및 경조휴가 지원 (공식 채용 페이지 복지 혜택 항목), Leave and financial support for family events (공식 홈페이지 Careers Benefits 항목) — 경조금 금액·경조 범위별 휴가 일수·유급 여부 미기재', 50),
+   'est', NULL, TRUE, '경조사비 및 경조휴가 지원 (공식 채용 페이지 복지 혜택 항목), Leave and financial support for family events (공식 홈페이지 Careers Benefits 항목) — 경조금 금액·경조 범위·휴가 일수·유급 여부 미기재', 50),
 
   -- ── 보상 (compensation) — 복지 혜택 칸 3 · 성과 및 보상 체계 ──
   (@comp_id, 'holiday_gift', '명절 상여금', 100, 'compensation',
