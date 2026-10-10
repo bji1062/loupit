@@ -30,7 +30,8 @@
 
 HTTP 는 `fetch_fn(url) -> dict` 주입(기본 urllib, 새 의존성 0) — 테스트는 픽스처로 무접촉.
 멱등: `(CORP_CODE, BSNS_YEAR, SEGMENT_NM, SEX_CD)` UNIQUE 위 upsert. 한 해 안에서 이 키가 겹치는 행은
-덮이지 않게 부문명 뒤 ` #N` 으로 따로 저장한다(`collect` 독스트링 — 케이씨씨·ISC 실측 2026-10-10). 재실행은 안전하다.
+덮이지 않게 부문명 뒤 ` #N` 으로 따로 저장한다(`collect` 독스트링 — 케이씨씨·ISC 실측 2026-10-10).
+예외: 같은 표가 두 번 실린 공시 2건(엔켐 2022 · 펄어비스 2017)은 `KNOWN_REPEATED_TABLE` 로 뒤 행만 남긴다. 재실행은 안전하다.
 호출량: 100사 × 11년 = **1,100**(재무 2,200 과 합쳐 3,300 / 일 20,000 안). 호출 간 `sleep_sec`.
 
 CLI: `python3 db/seed/dart_employ.py [--base-year 2025] [--years 11] [--corp 00126380 …] [--sleep 0.1]`
@@ -108,6 +109,23 @@ KNOWN_NOT_TOTAL = {
     ("00105271", "생산"): "케이씨씨 2021·2022·2025 생산(남) 1,673·1,673·1,763 vs 나머지 — 관리·생산·연구·영업 4개 부문 중 가장 큰 하나(여직원 행은 부문 칸이 「-」)",
     ("00140955", "전자소재"): "한솔케미칼 2015~2017 전자소재 213·210·221 vs 정밀화학 218·202·213 — 부문이 둘뿐인 쌍",
     ("00140955", "정밀화학"): "한솔케미칼 2015~2017 정밀화학 vs 전자소재 — 위와 같은 쌍의 반대편",
+    # ── 2026-10-10 전체 재수집(키 중복 수정 뒤) — 새로 걸린 근사 일치 2사. 전부 부문 중 하나다.
+    ("00105961", "광학솔루션"): "LG이노텍 2017 광학솔루션 6,145 vs 나머지 5,923 — 광학솔루션 · 기판소재 · 전장부품 · LED · 본사 등 5개 부문 중 가장 큰 하나",
+    ("00105961", "광학솔루션사업부"): "LG이노텍 2024 6,456 vs 6,202 · 2025 6,013 vs 6,198 — 4개 사업부 중 가장 큰 하나",
+    # 부문명이 「화 + 공백 3칸 + 공」 그대로다(DB HEX ED9994202020EAB3B5) — 공백을 줄이면 면제가 풀린다.
+    ("00126308", "화   공"): "삼성E&A 2025 화공 2,621 vs 비화공 · 기타 2,628 — 3개 부문 중 하나(기타 남 두 행 811 · 208 이 따로 저장되며 걸림)",
+}
+
+# 🚨 세 번째 예외 — **같은 표가 한 공시에 두 번 실린 것.** 사람이 원문을 보고 확인한 것만 넣는다.
+# 한 해 안에서 `(부문, 성별)` 키가 겹치면 `collect` 는 다른 집단일 수 있다고 보고 ` #N` 으로 따로
+# 저장한다(케이씨씨·ISC). 그러나 같은 표가 반복된 공시는 따로 저장하면 인원이 두 배가 된다.
+# 여기 있는 (법인, 연도)는 예전처럼 **뒤 행이 앞 행을 대신한다**(각 키의 마지막 행만 남는다).
+# 왜 연도까지 키에 넣나: 같은 표 반복은 그해 공시 한 건의 사고라서 다음 해에는 되풀이되지 않는다 —
+# 법인만 키로 하면 다른 해의 진짜 중복(다른 집단)까지 합쳐 버린다.
+# 면제된 건수는 매 실행 요약(「반복표예외 n」)에 찍는다 — `KNOWN_NOT_TOTAL` 과 같은 이유.
+KNOWN_REPEATED_TABLE = {
+    ("01011526", 2022): "엔켐 2022 전해액 남녀 2행 묶음이 두 번 — 근속 · 급여 원문이 글자까지 같아 같은 집단의 반복(292·28 / 277·27). 뒤 묶음만 저장(이전 운영값 304)",
+    ("01152470", 2017): "펄어비스 2017 게임사업 · 관리사무직 남녀 4행 묶음이 두 번 — 급여 수준이 연간(55,000,000 꼴) · 반기(26,000,000 꼴)로 기간이 다른 같은 표. 뒤 묶음만 저장(이전 운영값 325)",
 }
 
 # 🚨 반대 방향의 예외 — **이름이 합계가 아닌데 사람이 합계행이라고 확인한 것.**
@@ -393,7 +411,7 @@ def load_corps(cur, corp_codes: list[str] | None = None) -> list[dict]:
 
 
 def _new_stats() -> dict:
-    return {"calls": 0, "reports": 0, "rows": 0, "no_data": 0, "dup_keys": 0, "waived": 0,
+    return {"calls": 0, "reports": 0, "rows": 0, "no_data": 0, "dup_keys": 0, "waived": 0, "repeated_waived": 0,
             "notes": {}, "samples": [], "suspects": []}
 
 
@@ -429,6 +447,8 @@ def collect(cur, corps: list[dict], *, api_key: str, base_year: int, years: int 
     않고 두 번째부터 `SEGMENT_NM` 뒤에 ` #2`·` #3`… 을 붙여 **따로 저장**한다 — 행별 원문(RAW_*)·근속·
     급여가 그대로 남고, 집계는 SEGMENT_NM 을 읽지 않고 저장된 행을 인원 가중으로 세므로 규칙이 한 곳에
     머문다. 합계행 검사(`find_hidden_totals`)는 접미사 없는 원래 행 목록으로 돈다.
+    예외: 같은 표가 두 번 실린 공시로 사람이 확인한 (법인, 연도)는 `KNOWN_REPEATED_TABLE` 에 있고,
+    거기서는 접미사 없이 뒤 행만 남긴다(따로 저장하면 인원이 두 배). 건수는 `repeated_waived` 로 센다.
     """
     if not api_key:
         raise DartError("DART_API_KEY 미설정 — server/.env 에 넣어라. 키 없이 0건 수집은 허용하지 않는다")
@@ -466,8 +486,14 @@ def collect(cur, corps: list[dict], *, api_key: str, base_year: int, years: int 
                     # 덮는다** — 에러 없이 사람이 사라진다. 버리지 않고 부문명 뒤에 ` #N` 을 붙여 따로
                     # 저장하고, 세고 표본을 남겨 사람이 원문을 보게 한다.
                     stats["dup_keys"] += 1
-                    seg = _dedup_segment(seg, r["sex"], seen)
-                    _sample(stats, f"{nm}({code}) {year} 키 중복 {key} — 부문명 뒤 #N 으로 따로 저장(인원 보존): {seg!r}")
+                    repeated = KNOWN_REPEATED_TABLE.get((code, year))
+                    if repeated:
+                        # 같은 표 반복 — 접미사 없이 upsert 해 뒤 행이 앞 행을 대신하게 둔다.
+                        stats["repeated_waived"] += 1
+                        _sample(stats, f"{nm}({code}) {year} 키 중복 {key} — 예외(같은 표 반복): 뒤 행만 저장 — {repeated}")
+                    else:
+                        seg = _dedup_segment(seg, r["sex"], seen)
+                        _sample(stats, f"{nm}({code}) {year} 키 중복 {key} — 부문명 뒤 #N 으로 따로 저장(인원 보존): {seg!r}")
                 seen.add((seg, r["sex"]))
                 for note in r["notes"]:
                     stats["notes"][note] = stats["notes"].get(note, 0) + 1
@@ -532,6 +558,7 @@ def format_notes(stats: dict) -> str:
     parts = [f"{NOTE_LABELS.get(k, k)} {notes[k]}" for k in sorted(notes)]
     parts.append(f"키중복 {stats.get('dup_keys', 0)}")
     parts.append(f"예외통과(KNOWN_NOT_TOTAL) {stats.get('waived', 0)}")
+    parts.append(f"반복표예외 {stats.get('repeated_waived', 0)}")
     return "  이상: " + " · ".join(parts)
 
 
