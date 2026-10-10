@@ -173,7 +173,7 @@ def test_SI7_no_duplicate_alias_per_company(seeded_db):
 # ── SI-8: 200-seed 미등록 — 회사 수 = 95 (≠ 200) ──
 def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
-    assert count == 147  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02)
+    assert count == 160  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02) + 확장 웨이브 5 13개사(2026-10-10)
     assert count != 200
 
 
@@ -558,6 +558,7 @@ def test_SI13c_real_companies_cond_is_pinned():
         "pharma_research": {"flex": ["자녀를 둔 부·모"]},
         "rainbow_robotics": {"flex": ["조건부"]},
         "jeju_semi": {"flex": ["부서별"]},
+        "orion": {"remote": ["조건부"]},
     }
     for eng in ("db_insurance", "hyundai_glovis"):
         assert ws[eng]["remote"] is True and "cond" not in ws[eng], f"{eng}: 「재택근무 포함」 · 신청형은 맨 칩 유지"

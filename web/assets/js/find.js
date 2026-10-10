@@ -85,6 +85,8 @@ export const LABEL_OVERRIDE = {
   work_tools: '업무 장비·도구 지원',
   // 2026-10-04 R-3 묶음 7 — uniform 은 11행 이름이 전부 1회라 한 회사 표기가 대표가 된다(find.py 같은 자리).
   uniform: '근무복·유니폼 지원',
+  // 2026-10-10 웨이브 5: 「패밀리데이」가 사내 행사 가족 초청(company_event)과 같은 낱말이라 조기 퇴근 축 이름으로 고정(find.py 같은 자리).
+  family_day: '가정의 날',
 };
 
 export const MODES = ['and', 'or'];

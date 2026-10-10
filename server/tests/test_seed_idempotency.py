@@ -57,7 +57,7 @@ def test_SM1_repeated_full_run_is_stable(seeded_db):
     _reseed()
     snap2 = _snapshot(seeded_db)
     assert snap1 == snap2, f"재실행 전후 분포 불일치: {snap1} != {snap2}"
-    assert snap2["TCOMPANY"] == 147  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02)
+    assert snap2["TCOMPANY"] == 160  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02) + 확장 웨이브 5 13개사(2026-10-10)
     assert snap2["badge_est"] == 0
 
 

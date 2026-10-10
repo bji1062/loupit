@@ -459,3 +459,33 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'pskinc.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'psk';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'poongsan.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'poongsan';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 5 (2026-10-10 서빙 반영, 13개사 중 9사)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-10-wave5/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소만.
+-- 미등록 4사: 현대해상(주소 관측 0 — MX hi.co.kr 만) · ISC(ISC 주소 관측 0 — MX isc21.kr 만) ·
+--             한솔케미칼 · 코오롱인더스트리(관측 주소가 그룹 공용 도메인뿐) — 수동 승인 폴백.
+-- @rejected: hansol.com — 한솔케미칼. 한솔그룹 공용 도메인(지주 문의처도 같은 도메인) — 계열사 전 직원이 인증될 수 있음
+-- @rejected: kolon.com — 코오롱인더스트리. 코오롱그룹 공용 도메인(웹 도메인 kolonindustries.com · kolonfnc.com 과 다름)
+-- ISC 는 위 SK 그룹 줄(sk.com)에 넣지 않는다 — 관측 주소 skc.ethics@sk.com 은 모회사 SKC 감사실이라 ISC 직원 도메인 근거가 아니다
+-- ⚠ orionworld.com · kolmar.co.kr · cosmax.com 은 법인 자기 사이트 도메인이지만 지주 · 형제 법인(오리온홀딩스 ·
+--    콜마홀딩스 · 코스맥스비티아이 등)도 쓸 수 있다 — 형제가 코퍼스에 들어오면 다시 본다.
+-- ⚠ gsenc.com 의 MX 에 옛 도메인 gsconst.co.kr 게이트웨이가 함께 있다 — 재직 인증 도메인은 gsenc.com.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'otoki.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ottogi';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kccworld.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kcc';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'orionworld.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'orion';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'gsenc.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gs_enc';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hanonsystems.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hanon_systems';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'slworld.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'sl_corp';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'sanil.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'sanil_electric';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kolmar.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kolmar_korea';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'cosmax.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'cosmax';

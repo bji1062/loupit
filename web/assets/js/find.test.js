@@ -232,7 +232,8 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     // 2026-10-02 R-3 묶음 6-A: work_tools 의 「노트북 지원」이 시드에서 사라져 → 지금 동률인 lounge(휴게실)로 바꿨다(파이썬 쪽과 같음).
     // 2026-10-02 R-3 묶음 6-A: smoking_cessation 은 「금연수당」이 2회가 돼 동률이 풀렸다 → 지금 8:8 동률인 resort(휴양시설)로 바꿨다.
     // 2026-10-04 R-3 묶음 7: foundation_day_leave 는 동률이 풀렸다 → 지금 동률인 family_day(가정의 날)로 · uniform 은 대표가 「유니폼지급」으로 바뀌었다 · lounge · parking 도 단독 최다가 돼 car_wash · promotion_gift 로 바꿨다(파이썬 쪽과 같음).
-    for (const [code, expect] of [['family_day', '가정의 날'], ['uniform', '유니폼지급'],
+    // 2026-10-10 웨이브 5: family_day 는 오리온 「패밀리데이」가 들어와 2회가 돼 동률이 풀렸다(표시명은 LABEL_OVERRIDE 로 「가정의 날」 고정) → 지금 11개 이름이 모두 1회인 sports_ticket(스포츠 관람 지원)으로 바꿨다(파이썬 쪽과 같음).
+    for (const [code, expect] of [['sports_ticket', '스포츠 관람 지원'], ['uniform', '유니폼지급'],
       ['car_wash', '세차 서비스'], ['promotion_gift', '승진자 축하선물'], ['massage', '안마의자'],
       ['resort', '휴양시설']]) {
       assert.equal(codes[code].baseLabel, expect, code);
