@@ -20,6 +20,7 @@
 -- 재수집(2026-10-02): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-02, RV-3-7): 13행 원문 확인 · 행 조치 없음(경조사비와 경조휴가 두 행 · 무료 카페테리아 snack_bar · 그리팅 정본 유지 · 원격근무 1명 미수록) — 최종 13행
 -- 후속 정리 5(2026-10-05, 보류 · 붙여넣기): 보류에서 넣기로 정한 줄(사용자 결정 2026-10-05) — 새 행 1(welfare_fund_loan 2026 반기 · 2025 사업보고서 주석 임직원대출금관련 질권설정 · 반기말 15억 원은 회사 담보라 금액 칸 비움) — 최종 14행
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 경조휴가 행 삭제, event 행에 합침 — 최종 13행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -52,8 +53,6 @@ VALUES
   -- ── 시간·휴가 (time_off) — 복지 혜택 칸 2 · 칸 3 ──
   (@comp_id, 'foundation_day_leave', '창립기념일 휴무', NULL, 'time_off',
    'est', NULL, TRUE, '창립기념일 휴무 (공식 채용 페이지 복지 혜택 항목), Day off on our company anniversary (공식 홈페이지 Careers Benefits 항목) — 휴무 날짜 미기재', 20),
-  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '경조사비 및 경조휴가 지원 중 경조휴가 (공식 채용 페이지 복지 혜택 항목), Leave and financial support for family events (공식 홈페이지 Careers Benefits 항목) — 경조 범위별 휴가 일수·유급 여부 미기재', 21),
 
   -- ── 근무환경 (work_env) — 복지 혜택 칸 2 ──
   (@comp_id, 'lounge', '휴게 공간', NULL, 'work_env',
@@ -70,8 +69,8 @@ VALUES
    'est', NULL, TRUE, '임직원 대출금 관련 회사 정기예금 질권설정 (2026 반기보고서 · 2025 사업보고서 재무제표 주석 사용이 제한된 금융상품 항목) — 대출 기관·용도·한도·금리·대상 미기재', 43),
 
   -- ── 가족·돌봄 (family) — 복지 혜택 칸 3 ──
-  (@comp_id, 'event', '경조사비 지원', NULL, 'family',
-   'est', NULL, TRUE, '경조사비 및 경조휴가 지원 중 경조사비 (공식 채용 페이지 복지 혜택 항목), Leave and financial support for family events (공식 홈페이지 Careers Benefits 항목) — 경조금 금액·경조 범위 미기재', 50),
+  (@comp_id, 'event', '경조사비·경조휴가 지원', NULL, 'family',
+   'est', NULL, TRUE, '경조사비 및 경조휴가 지원 (공식 채용 페이지 복지 혜택 항목), Leave and financial support for family events (공식 홈페이지 Careers Benefits 항목) — 경조금 금액·경조 범위·휴가 일수·유급 여부 미기재', 50),
 
   -- ── 보상 (compensation) — 복지 혜택 칸 3 · 성과 및 보상 체계 ──
   (@comp_id, 'holiday_gift', '명절 상여금', 100, 'compensation',

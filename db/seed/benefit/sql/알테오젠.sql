@@ -15,6 +15,7 @@
 --       검증 판정(2026-08-31): 원문에 있어도 **법정 제도는 미수록** — 4대보험(insurance 는
 --       코퍼스 전체가 단체상해보험 의미)·DC형 퇴직연금(pension_support 는 개인연금 지원 의미)
 --       2행 제외. 창립기념 행사는 company_event 로 통합(배치 공용 행사 코드).
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 경조휴가 행 삭제, event 행에 합침 — 최종 11행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- ⚠ 법정 제도 문구 정리(2026-09-20): SORT 20 문안 교체 — 법정 제도 서술을 걷고 회사 상회분만 남겼다. 행 수 변동 없음.
 
@@ -47,17 +48,13 @@ VALUES
   (@comp_id, 'bonus', '상여금', NULL, 'compensation',
    'est', NULL, TRUE, '상여금 지급', 12),
 
-  -- ── 시간·휴가 (time_off) ──
-  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '경조휴가 제공', 20),
-
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강검진', NULL, 'health',
    'est', NULL, TRUE, '임직원 본인 및 배우자 종합건강검진 지원, 혈액종합검진, 특수검진', 30),
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'event', '경조지원', NULL, 'family',
-   'est', NULL, TRUE, '경조금 지급, 장례지원서비스 및 상조용품 지원', 40),
+   'est', NULL, TRUE, '경조금 지급, 경조휴가 제공, 장례지원서비스 및 상조용품 지원', 40),
 
   -- ── 성장·커리어 (growth) ──
   (@comp_id, 'edu_support', '신입사원 교육', NULL, 'growth',

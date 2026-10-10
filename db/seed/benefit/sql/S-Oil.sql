@@ -36,6 +36,7 @@
 --   SORT 섹션 순서는 ① 페이지에서 카테고리가 처음 나온 순서다
 --     (compensation 10 · health 20 · perks 30 · family 40 · leisure 50 · time_off 60 · flexibility 70 · growth 80).
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 2(severance_plus · lang) — 최종 31행
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 성과급 코드 incentive를 profit_sharing으로 재코딩 — 최종 31행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
@@ -63,7 +64,7 @@ VALUES
   -- ── 보상·금전 (compensation) ──
   (@comp_id, 'bonus', '상여금', NULL, 'compensation',
    'est', NULL, TRUE, '상여금 연 800% (공식 채용 페이지 인사정보 복리후생 급여제도 항목 — 지급 시기·분할 방식 미기재)', 10),
-  (@comp_id, 'incentive', '성과급', 500, 'compensation',
+  (@comp_id, 'profit_sharing', '성과급', 500, 'compensation',
    'est', '성과급 경영실적에 따라 지급 (공식 채용 페이지 인사정보 복리후생 급여제도 항목 — 지급률·지급액 미기재) (추정)', FALSE, NULL, 11),
   (@comp_id, 'long_service_bonus', '장기근속 기념품·기념여행', NULL, 'compensation',
    'est', NULL, TRUE, '장기근속 기념품 및 기념여행 (2025 ESG 보고서 기타 복지 프로그램 항목 — 근속 연수 기준·여행 내용 미기재)', 12),

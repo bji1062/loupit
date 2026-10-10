@@ -23,6 +23,7 @@
 --     (perks 10 · health 20 · flexibility 30 · work_env 40 · leisure 50 · time_off 60 · compensation 70 · family 80 · growth 90).
 -- 재수집(2026-10-01): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-10-01, RV-3-3): 32행 원문 확인 · Creative Week 서술에서 개인 휴가를 붙인 최대 4주(법정 휴가분) 제거 · parenting 보육수당 자녀 1인 월 10만원을 연 120 환산으로 금액 칸에 · pc_off(조직문화편 카드 PC 자동 종료) · leisure_room(오피스 소개 오껨존) 2행 추가 · 직원 1,476명(DART 2026-06-01 대규모기업집단현황공시)이라 재취업지원 의무 대상이나 관련 행 없음 — 최종 34행
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 여사우 휴게실 nap_room 행을 lounge 행에 합침 — 최종 33행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (기존 회사 — INSERT IGNORE 는 no-op)
@@ -83,10 +84,8 @@ VALUES
   -- ── 근무환경 (work_env) — Work ──
   (@comp_id, 'free_seating', '자율좌석제', NULL, 'work_env',
    'est', NULL, TRUE, '자율좌석제 (공식 채용 사이트 복지혜택 페이지 — 적용 사업장 미기재)', 40),
-  (@comp_id, 'lounge', '세라젬 Zone·휴게 공간', NULL, 'work_env',
-   'est', NULL, TRUE, '세라젬 Zone(공식 채용 사이트 복지혜택 페이지), 본사 O’Cera·O’Terrace 공간(같은 사이트 오피스 소개 페이지) — 이용 시간 미기재', 41),
-  (@comp_id, 'nap_room', '여사우 휴게실', NULL, 'work_env',
-   'est', NULL, TRUE, '편안한 휴식을 위한 여사우 휴게실 (공식 채용 사이트 복지혜택 페이지 · 오피스 소개 페이지 — 설치 사업장 미기재)', 42),
+  (@comp_id, 'lounge', '세라젬 Zone·휴게 공간·여사우 휴게실', NULL, 'work_env',
+   'est', NULL, TRUE, '세라젬 Zone(공식 채용 사이트 복지혜택 페이지), 본사 O’Cera·O’Terrace 공간(같은 사이트 오피스 소개 페이지), 편안한 휴식을 위한 여사우 휴게실(같은 사이트 복지혜택 페이지 · 오피스 소개 페이지) — 이용 시간·설치 사업장 미기재', 41),
 
   -- ── 여가·라이프 (leisure) — Work · Refresh · Career ──
   (@comp_id, 'welcome_kit', '웰컴키트', NULL, 'leisure',
