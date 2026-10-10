@@ -425,6 +425,60 @@ def test_MET5_numbered_duplicate_rows_do_not_disturb_the_hidden_total_search():
     assert ("00120030", "건축\u318d주택") in de.KNOWN_NOT_TOTAL and ("00105271", "생산") in de.KNOWN_NOT_TOTAL
 
 
+def _enkem_shaped_rows():
+    """엔켐 2022 꼴 — 같은 (부문, 성별) 2행 묶음이 근속 · 급여 원문까지 같게 두 번."""
+    return [_emp("전해액", "남", "292", "1년6개월", "45,230,000"), _emp("전해액", "여", "28", "1년5개월", "31,210,000"),
+            _emp("전해액", "남", "277", "1년6개월", "45,230,000"), _emp("전해액", "여", "27", "1년5개월", "31,210,000")]
+
+
+def test_collect_known_repeated_table_keeps_only_the_later_rows_without_suffix():
+    cur = FakeCursor()
+    stats = de.collect(cur, [{"corp_code": "01011526", "corp_nm": "엔켐"}], api_key=KEY, base_year=2022, years=1,
+                       fetch_fn=Router({("01011526", 2022): _ok(_enkem_shaped_rows())}), sleep_sec=0)
+    ups = _upserts(cur)
+    assert all(" #" not in p[2] for p in ups)
+    final = {}
+    for p in ups:  # ON DUPLICATE KEY UPDATE — 같은 키는 뒤 upsert 가 남는다
+        final[(p[2], p[3])] = p[5]
+    assert sorted(final.values()) == [27, 277] and sum(final.values()) == 304
+    assert stats["dup_keys"] == 2 and stats["repeated_waived"] == 2
+    assert sum("예외(같은 표 반복): 뒤 행만 저장" in s_ and "엔켐 2022" in s_ for s_ in stats["samples"]) == 2
+    assert "반복표예외 2" in de.format_notes(stats)
+
+
+def test_collect_same_shape_outside_the_repeated_table_list_is_still_stored_apart():
+    """예외 목록에 없는 (법인, 연도)는 기존대로 ` #2` — 회귀 방지."""
+    cur = FakeCursor()
+    stats = de.collect(cur, [{"corp_code": "01011526", "corp_nm": "엔켐"}], api_key=KEY, base_year=2021, years=1,
+                       fetch_fn=Router({("01011526", 2021): _ok(_enkem_shaped_rows())}), sleep_sec=0)
+    names = [p[2] for p in _upserts(cur)]
+    assert names == ["전해액", "전해액", "전해액 #2", "전해액 #2"]
+    assert sum(p[5] for p in _upserts(cur)) == 624
+    assert stats["dup_keys"] == 2 and stats["repeated_waived"] == 0
+    assert "반복표예외 0" in de.format_notes(stats)
+
+
+def test_MET5_lg_innotek_shaped_candidate_is_waived_by_known_not_total():
+    rows = [_emp("광학솔루션", "남", "6,145", "8.0", "90,000,000"), _emp("기판소재", "남", "1,900", "8.0", "90,000,000"),
+            _emp("전장부품", "남", "2,000", "8.0", "90,000,000"), _emp("LED", "남", "1,000", "8.0", "90,000,000"),
+            _emp("본사", "남", "1,023", "8.0", "90,000,000")]
+    cur, stats = _collect_one(rows, corp={"corp_code": "00105961", "corp_nm": "LG이노텍"}, code="00105961")
+    assert stats["suspects"] == [] and stats["waived"] == 1
+    assert ("00105961", "광학솔루션") in de.KNOWN_NOT_TOTAL and ("00105961", "광학솔루션사업부") in de.KNOWN_NOT_TOTAL
+    assert "화   공".encode().hex().upper() == "ED9994202020EAB3B5"
+    assert ("00126308", "화   공") in de.KNOWN_NOT_TOTAL
+
+
+def test_known_exception_dicts_have_wellformed_keys_and_reasons():
+    for (code, year), why in de.KNOWN_REPEATED_TABLE.items():
+        assert isinstance(code, str) and len(code) == 8 and code.isdigit()
+        assert isinstance(year, int) and 2000 <= year <= 2100
+        assert isinstance(why, str) and len(why) >= 5
+    for (code, seg), why in {**de.KNOWN_NOT_TOTAL, **de.KNOWN_TOTAL}.items():
+        assert isinstance(code, str) and len(code) == 8 and code.isdigit()
+        assert isinstance(seg, str) and seg and isinstance(why, str) and len(why) >= 5
+
+
 # ── 응답 상태 ────────────────────────────────────────────────────────────────
 
 def test_extract_returns_none_for_013_no_data():
