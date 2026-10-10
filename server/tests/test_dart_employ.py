@@ -349,15 +349,80 @@ def test_collect_counts_out_of_range_salaries_and_keeps_a_sample():
     assert "급여 범위밖 1" in de.format_notes(stats)
 
 
-def test_collect_counts_duplicate_unique_keys_because_the_later_row_overwrites():
-    """같은 (부문, 성별)이 두 번 오면 UNIQUE 때문에 뒤 행이 앞 행을 덮는다 — 사람이 조용히 사라진다."""
-    payload = _ok([_emp("A", "남", "100", "5.00", "80,000,000"),
-                   _emp("A", "남", "200", "6.00", "90,000,000")])
+def _collect_one(rows, corp=SAMSUNG, code="00126380"):
     cur = FakeCursor()
-    stats = de.collect(cur, [SAMSUNG], api_key=KEY, base_year=2025, years=1,
-                       fetch_fn=Router({("00126380", 2025): payload}), sleep_sec=0)
-    assert stats["dup_keys"] == 1
-    assert any("키 중복" in s for s in stats["samples"])
+    stats = de.collect(cur, [corp], api_key=KEY, base_year=2025, years=1,
+                       fetch_fn=Router({(code, 2025): _ok(rows)}), sleep_sec=0)
+    return cur, stats
+
+
+def test_collect_stores_a_duplicate_key_row_under_a_numbered_segment_instead_of_overwriting():
+    """같은 (부문, 성별)이 두 번 오면 UNIQUE 때문에 뒤 행이 앞 행을 덮어 사람이 사라졌다(ISC 2021).
+    이제 둘 다 저장한다: 두 번째는 부문명 뒤 ` #2`, 원문 칸은 그 행 그대로."""
+    cur, stats = _collect_one([_emp("A", "남", "100", "5.00", "80,000,000"),
+                               _emp("A", "남", "200", "6.00", "90,000,000")])
+    ups = _upserts(cur)
+    assert [(p[2], p[5], p[6], p[7]) for p in ups] == [
+        ("A", 100, 5.0, 80_000_000), ("A #2", 200, 6.0, 90_000_000)]
+    assert stats["dup_keys"] == 1 and stats["rows"] == 2
+    assert any("키 중복" in s and "#N 으로 따로 저장(인원 보존)" in s for s in stats["samples"])
+
+
+def test_collect_keeps_kcc_shaped_dash_rows_apart_and_headcount_equals_the_source():
+    """케이씨씨 2025 꼴 — 여직원 4행의 부문 칸이 전부 `-` 라 4행이 1행으로 덮였다(3,583 → 3,301)."""
+    rows = [_emp("영업", "남", "677", "10.0", "90,000,000"), _emp("-", "여", "135", "8.0", "60,000,000"),
+            _emp("생산", "남", "1,763", "15.0", "80,000,000"), _emp("-", "여", "71", "9.0", "55,000,000"),
+            _emp("관리", "남", "308", "14.0", "85,000,000"), _emp("-", "여", "76", "9.5", "58,000,000"),
+            _emp("연구", "남", "491", "12.0", "88,000,000"), _emp("-", "여", "62", "8.5", "57,000,000")]
+    cur, stats = _collect_one(rows)
+    ups = _upserts(cur)
+    assert len(ups) == 8
+    assert [p[2] for p in ups if p[3] != ups[0][3]] == ["-", "- #2", "- #3", "- #4"]
+    assert sum(p[5] for p in ups) == 677 + 135 + 1763 + 71 + 308 + 76 + 491 + 62 == 3583
+    assert len({(p[2], p[3]) for p in ups}) == 8, "UNIQUE 키가 더는 겹치지 않아야 한다"
+    assert stats["dup_keys"] == 3
+
+
+def test_collect_numbers_a_triple_collision_and_skips_names_already_taken():
+    """세 번 겹치면 #2·#3 — 접미사 붙인 이름이 원래 있던 부문명과 또 겹치면 번호를 올린다."""
+    cur, stats = _collect_one([_emp("A", "남", "1", "5.0", "80,000,000"), _emp("A", "남", "2", "5.0", "80,000,000"),
+                               _emp("A", "남", "3", "5.0", "80,000,000")])
+    assert [p[2] for p in _upserts(cur)] == ["A", "A #2", "A #3"] and stats["dup_keys"] == 2
+    cur, stats = _collect_one([_emp("A #2", "남", "1", "5.0", "80,000,000"), _emp("A", "남", "2", "5.0", "80,000,000"),
+                               _emp("A", "남", "4", "5.0", "80,000,000")])
+    names = [p[2] for p in _upserts(cur)]
+    assert names == ["A #2", "A", "A #3"], names
+    assert len(set(names)) == 3 and stats["dup_keys"] == 1
+
+
+def test_collect_suffixed_segment_stays_inside_the_column_length():
+    long_nm = "가" * de.SEGMENT_NM_MAX
+    cur, _ = _collect_one([_emp(long_nm, "남", "1", "5.0", "80,000,000"), _emp(long_nm, "남", "2", "5.0", "80,000,000")])
+    names = [p[2] for p in _upserts(cur)]
+    assert len(names) == 2 and len(set(names)) == 2 and all(len(n) <= de.SEGMENT_NM_MAX for n in names)
+
+
+def test_dup_key_rows_aggregate_to_the_source_headcount_and_weighted_salary():
+    """집계는 SEGMENT_NM 을 읽지 않고 저장된 행을 인원 가중으로 센다 — ISC 2021 꼴."""
+    from generator.employ import aggregate
+    cur, _ = _collect_one([_emp("제조", "남", "177", "5.6", "58,000,000"), _emp("제조", "남", "29", "5.7", "68,000,000")])
+    rows = [{"total_row": p[4], "head": p[5], "tenure": p[6], "salary": p[7]} for p in _upserts(cur)]
+    agg = aggregate(rows)
+    assert agg["head"] == 206
+    assert agg["salary"] == round((177 * 58_000_000 + 29 * 68_000_000) / 206)
+    assert agg["tenure"] == round((177 * 5.6 + 29 * 5.7) / 206, 2)
+
+
+def test_MET5_numbered_duplicate_rows_do_not_disturb_the_hidden_total_search():
+    """합계행 검사는 접미사 없는 원래 행 목록으로 돈다 — GS건설 꼴 후보는 KNOWN_NOT_TOTAL 로 면제된다."""
+    rows = [_emp("건축", "남", "1,500", "8.0", "90,000,000"), _emp("건축", "여", "1,228", "7.0", "70,000,000"),
+            _emp("기타", "남", "1,000", "8.0", "90,000,000"), _emp("기타", "남", "5", "8.0", "90,000,000"),
+            _emp("인프라", "남", "1,000", "8.0", "90,000,000"), _emp("플랜트", "남", "700", "8.0", "90,000,000")]
+    cands = de.find_hidden_totals(de.extract_rows(_ok(rows), "00120030"))
+    assert [c["segment"] for c in cands] == ["건축"]  # 2,728 vs 2,705
+    cur, stats = _collect_one(rows, corp={"corp_code": "00120030", "corp_nm": "GS건설"}, code="00120030")
+    assert stats["suspects"] == [] and stats["waived"] == 1 and stats["dup_keys"] == 1
+    assert ("00120030", "건축\u318d주택") in de.KNOWN_NOT_TOTAL and ("00105271", "생산") in de.KNOWN_NOT_TOTAL
 
 
 # ── 응답 상태 ────────────────────────────────────────────────────────────────
