@@ -3,6 +3,7 @@
 -- 출처: AI 파싱 (2026-10-01)
 -- URL: https://www.samsungcareers.com/subsid/detail/E11
 -- badge: est
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): PlusWeek 연속 휴가 행 삭제 — 최종 26행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 참고:
 --   정본 = 삼성 공식 채용사이트의 삼성생명 법인 전용 페이지(/subsid/detail/E11). 귀속 경로: samsungcareers.com
@@ -110,11 +111,7 @@ VALUES
 
   -- ── 보상·금전 (compensation) ── 공식 홈페이지 영문 인사제도
   (@comp_id, 'incentive', '성과급', NULL, 'compensation',
-   'est', NULL, TRUE, '연봉과 별도로 개인성과급(업무성과급, 영업관리자 영업인센티브)과 조직성과급(목표인센티브 연 2회, 성과인센티브 연 1회) 지급 (공식 홈페이지 영문 인사제도 Salary and Treatment 항목 — 지급 기준·지급률 미기재)', 70),
-
-  -- ── 시간·휴가 (time_off) ── 공식 홈페이지 영문 인사제도
-  (@comp_id, 'leave_general', 'PlusWeek 연속 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '월요일부터 금요일까지 5일 연속 휴가를 연 2회 이상 쓰도록 하는 PlusWeek 운영 (공식 홈페이지 영문 인사제도 Distinctive Culture 항목 — 별도 부여 일수 미기재)', 80)
+   'est', NULL, TRUE, '연봉과 별도로 개인성과급(업무성과급, 영업관리자 영업인센티브)과 조직성과급(목표인센티브 연 2회, 성과인센티브 연 1회) 지급 (공식 홈페이지 영문 인사제도 Salary and Treatment 항목 — 지급 기준·지급률 미기재)', 70)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

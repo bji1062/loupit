@@ -15,6 +15,7 @@
 --       주택지원=주택자금+기숙사/사택, 건강진단/의료비=검진+가족의료비,
 --       경조사=경조금/화환+경조휴가, 장기근속상=포상금/여행+휴가.
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) — 최종 13행
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 경조휴가 행 삭제, event 행에 합침 — 최종 12행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -47,8 +48,6 @@ VALUES
   -- ── 시간·휴가 (time_off) ──
   (@comp_id, 'long_service_leave', '장기근속 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '장기근속상 — 장기근속에 따른 휴가 지원', 30),
-  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '경조사 지원 — 각종 경조사별 경조휴가 지원', 31),
 
   -- ── 건강·의료 (health) ──
   (@comp_id, 'health_check', '종합건강진단', NULL, 'health',
@@ -58,7 +57,7 @@ VALUES
 
   -- ── 가족·돌봄 (family) ──
   (@comp_id, 'event', '경조사 지원', NULL, 'family',
-   'est', NULL, TRUE, '각종 경조사별 경조금 및 화환 지원', 50),
+   'est', NULL, TRUE, '각종 경조사별 경조금·경조휴가 및 화환 지원', 50),
   (@comp_id, 'child_edu', '자녀 학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '중학교·고등학교·전문대학·대학교 취학자녀 학자금 지원', 51),
 

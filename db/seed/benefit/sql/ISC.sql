@@ -23,6 +23,7 @@
 --   공고 근거 0행 / 전체 17행. 신규 코드 0.
 --   SORT 섹션 순서 = 정본 첫 등장 순: time_off 10 · compensation 20 · perks 30 · leisure 40 · growth 50 · family 60.
 -- 검증 · 감사 판정 반영(2026-10-10): 경조휴가 행에서 권장휴가(회사가 더 주는 날 없음) 걷기 — 최종 17행
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 경조휴가 행 삭제, event 행에 합침 — 최종 16행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
@@ -47,8 +48,6 @@ INSERT INTO TCOMPANY_BENEFIT
    BADGE_CD, NOTE_CTNT, QUAL_YN, QUAL_DESC_CTNT, SORT_ORDER_NO)
 VALUES
   -- ── 휴가 (time_off) — 정본 2번 블록 ──
-  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '경조휴가 (공식 채용 페이지 i-Gle LIFE 복리후생 「휴가는 눈치보지 말아요」 항목) — 경조 사유별 휴가 일수·유급 여부 미기재', 10),
   (@comp_id, 'birthday_leave', '생일휴가', NULL, 'time_off',
    'est', NULL, TRUE, '생일휴가 (공식 채용 페이지 i-Gle LIFE 복리후생 「휴가는 눈치보지 말아요」 항목) — 휴가 일수·유급 여부 미기재', 11),
   (@comp_id, 'refresh_leave', '자율휴가 (추가 휴일 5일)', NULL, 'time_off',
@@ -87,8 +86,8 @@ VALUES
    'est', NULL, TRUE, '사외 직무 교육 지원 (공식 채용 페이지 i-Gle LIFE 복리후생 「구성원의 성장을 위해 지원해요」 항목) — 지원 한도·대상 과정 미기재', 52),
 
   -- ── 가족 (family) — 정본 12번 블록 ──
-  (@comp_id, 'event', '경조사', NULL, 'family',
-   'est', NULL, TRUE, '경조사 (공식 채용 페이지 i-Gle LIFE 복리후생 「슬픔과 기쁨은 함께 나눠요」 항목) — 경조 사유별 지원 내용·금액 미기재', 60),
+  (@comp_id, 'event', '경조사·경조휴가', NULL, 'family',
+   'est', NULL, TRUE, '경조사 (공식 채용 페이지 i-Gle LIFE 복리후생 「슬픔과 기쁨은 함께 나눠요」 항목), 경조휴가 (같은 페이지 「휴가는 눈치보지 말아요」 항목) — 경조 사유별 지원 내용·금액·휴가 일수·유급 여부 미기재', 60),
   (@comp_id, 'child_edu', '자녀 대학학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '자녀 대학학자금 지원 (공식 채용 페이지 i-Gle LIFE 복리후생 「슬픔과 기쁨은 함께 나눠요」 항목) — 지원 한도·자녀 수 제한 미기재', 61)
 ON DUPLICATE KEY UPDATE

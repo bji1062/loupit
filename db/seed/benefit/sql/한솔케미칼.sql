@@ -25,6 +25,7 @@
 --   SORT 섹션 순서 = 정본 첫 등장 순: flexibility 10 · time_off 20 · leisure 30 · perks 40 · health 50 ·
 --     family 60 · growth 70 · compensation 80 · work_env 90.
 -- 검증 · 감사 판정 반영(2026-10-10): 영문판 단독 재택근무 remote_work 삭제 · 그룹 보고서 주거비 지원 housing_support 를 주택대출이자 행 서술로 병합 — 최종 22행
+-- 코퍼스 정리(2026-10-10 · 웨이브 5 감사 후속): 경조휴가 행 삭제, event 행에 합침 — 최종 21행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
@@ -57,8 +58,6 @@ VALUES
   -- ── 휴가 (time_off) — 정본 Work-Life Balance · 더욱 먼 미래 ──
   (@comp_id, 'refresh_leave', 'Refresh 휴가 (5일 유급)', NULL, 'time_off',
    'est', NULL, TRUE, 'Refresh 휴가(5일 유급) (공식 인재채용 인사제도 페이지 Work-Life Balance 항목) — 부여 주기·부여 조건 미기재', 20),
-  (@comp_id, 'leave_general', '경조휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '경조지원 항목의 경조휴가 (공식 인재채용 인사제도 페이지 더욱 먼 미래를 함께 꿈꾸는 회사 항목) — 경조 사유별 휴가 일수·유급 여부 미기재', 21),
 
   -- ── 여가 (leisure) — 정본 Work-Life Balance · 보고서 ──
   (@comp_id, 'summer_vacation_subsidy', '휴가비 지원', NULL, 'leisure',
@@ -89,8 +88,8 @@ VALUES
   -- ── 가족 (family) — 정본 건강하고 풍요로운 생활 · 더욱 먼 미래 ──
   (@comp_id, 'child_edu', '자녀 학자금 지원', NULL, 'family',
    'est', NULL, TRUE, '자녀 학자금 지원(유치원, 중, 고, 대학생 자녀) (공식 인재채용 인사제도 페이지 건강하고 풍요로운 생활을 지원 항목) — 지원 한도·자녀 수 제한 미기재', 60),
-  (@comp_id, 'event', '경조사비·장례서비스 지원', NULL, 'family',
-   'est', NULL, TRUE, '경조지원 항목의 경조사비, 장례서비스 지원 (공식 인재채용 인사제도 페이지 더욱 먼 미래를 함께 꿈꾸는 회사 항목) — 경조 사유별 지급 금액·장례서비스 내용 미기재', 61),
+  (@comp_id, 'event', '경조사비·경조휴가·장례서비스 지원', NULL, 'family',
+   'est', NULL, TRUE, '경조지원 항목의 경조사비·경조휴가, 장례서비스 지원 (공식 인재채용 인사제도 페이지 더욱 먼 미래를 함께 꿈꾸는 회사 항목) — 경조 사유별 지급 금액·휴가 일수·유급 여부·장례서비스 내용 미기재', 61),
 
   -- ── 성장 (growth) — 정본 도전과 학습을 통한 지속 성장 ──
   (@comp_id, 'mba', 'MBA·석박사 특별연수', NULL, 'growth',
