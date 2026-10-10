@@ -41,6 +41,8 @@
     {"comp": "kbfg", "h": "4915378bc4", "mode": "both", "why": "사내 심리상담센터(상담사 상주)와 전국 심리상담센터 연계를 함께 적었다"},
     {"comp": "hyundai_steel", "h": "54a5d6fb8f", "mode": "both", "why": "원문은 사업장 안(마음의숲·그루터기)과 밖(인천·포항·순천·여수 상담센터)·비대면 상담을 함께 운영한다 — 「사외」 낱말이 외부 규칙에 없어 사내로만 잡혔다"},
     {"comp": "doosan_enerbility", "h": "f0a92fd55d", "mode": "both", "facets_remove": ["cost"], "why": "직원은 사내 미소담, 가족은 사외 상담 센터 — 「무료」는 법률 상담 몫이고 심리상담 비용은 원문에 없다"},
-    {"comp": "hyosung_heavy", "h": "9eaba201c1", "facets_remove": ["family"], "why": "「가족 관계」는 상담 주제다 — 가족도 이용하는지는 원문에 없다"}
+    {"comp": "hyosung_heavy", "h": "9eaba201c1", "facets_remove": ["family"], "why": "「가족 관계」는 상담 주제다 — 가족도 이용하는지는 원문에 없다"},
+    {"comp": "ottogi", "h": "66ef43a16e", "mode": "unknown", "why": "「사내」는 명상 Class 를 꾸민 말이다 — 상담 방식(사내 상담실·외부 기관)은 원문에 없다"},
+    {"comp": "kolon_industries", "h": "21a7e497f7", "mode": "external", "why": "「전국 1,600여 개 전문 상담센터와 협력」 · 패션부문 「전문업체를 통한 … EAP」 — 회사 밖 전문기관이다(사내 상담실 아님)"}
   ]
 }

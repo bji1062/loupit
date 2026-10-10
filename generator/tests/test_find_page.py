@@ -241,7 +241,8 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-10-04 R-3 묶음 7: foundation_day_leave 는 「창립기념일 휴무」가 2회가 돼 동률이 풀렸다 → 지금 동률인 family_day(가정의 날)로 바꿨다 ·
     #   uniform 은 아직 동률이지만 대표가 「유니폼지급」(케어젠 신규 표기 — 11개 이름 모두 1회, 길이 5 동률을 코드포인트로 이김)으로 바뀌어 기대 문자열만 고쳤다.
     #   lounge(휴게실 3회) · parking(주차 지원 3회)도 단독 최다가 돼 동률이 풀렸다 → 지금 동률인 car_wash(세차 서비스) · promotion_gift(승진자 축하선물)로 바꿨다.
-    for code, expect in (("family_day", "가정의 날"), ("uniform", "유니폼지급"),
+    # 2026-10-10 웨이브 5: family_day 는 오리온 「패밀리데이」가 들어와 2회가 돼 동률이 풀렸다(표시명은 LABEL_OVERRIDE 로 「가정의 날」 고정) → 지금 11개 이름이 모두 1회인 sports_ticket(스포츠 관람 지원)으로 바꿨다.
+    for code, expect in (("sports_ticket", "스포츠 관람 지원"), ("uniform", "유니폼지급"),
                          ("car_wash", "세차 서비스"), ("promotion_gift", "승진자 축하선물"),
                          ("massage", "안마의자"), ("resort", "휴양시설")):
         names = cases["codes"][code]["names"]

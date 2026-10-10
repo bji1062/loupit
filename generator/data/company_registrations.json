@@ -9,6 +9,25 @@
   ],
   "waves": [
     {
+      "date": "2026-10-10",
+      "label": "회사 확장 웨이브 5",
+      "companies": [
+        "cosmax",
+        "gs_enc",
+        "hanon_systems",
+        "hansol_chemical",
+        "hyundai_marine",
+        "isc",
+        "kcc",
+        "kolmar_korea",
+        "kolon_industries",
+        "orion",
+        "ottogi",
+        "sanil_electric",
+        "sl_corp"
+      ]
+    },
+    {
       "date": "2026-09-20",
       "companies": [
         "gc_biopharma",

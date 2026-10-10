@@ -118,6 +118,28 @@
       "h": "ef7e4a18e4",
       "mode": "company",
       "why": "「사업부(Performance Unit) 평가와 연계」 · 「조직이 설정한 목표 대비 달성도」는 조직 실적 연동인데 규칙 낱말에 걸리지 않아 원문에 안 나옴으로 잡혔다"
+    },
+    {
+      "comp": "kcc",
+      "h": "8a508eada5",
+      "facets_remove": [
+        "frequency"
+      ],
+      "why": "원문 「연간 업무성과에 따른 성과급」의 연간은 평가 기간이다 — 지급 주기가 원문에 없다"
+    },
+    {
+      "comp": "kolon_industries",
+      "h": "ad58a8e7eb",
+      "facets_remove": [
+        "frequency"
+      ],
+      "why": "「연간」은 「회사의 연간 경영 목표 달성 여부」에서 걸렸다 — 지급 주기를 밝힌 것이 아니다"
+    },
+    {
+      "comp": "isc",
+      "h": "3cb4d361fc",
+      "mode": "both",
+      "why": "보상체계 원문이 Incentive Bonus 를 회사 실적 및 개인·팀 성과를 반영한 보상으로 적어 회사 실적과 개인·팀 성과를 함께 밝힌다"
     }
   ]
 }

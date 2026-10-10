@@ -32,10 +32,10 @@ def test_SD2_benefit_preset_total_count(seeded_db):
 def test_SD3_company_count_is_102(seeded_db):
     """정확 카운트 핀. 회사 추가는 **의도적으로만** 가능해야 한다(시드 유실·중복 조기 발견).
     회사를 늘리거나 줄일 땐 이 값과 SI-8·멱등성 스냅샷을 함께 갱신하라."""
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 147  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음)
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY") == 160  # 150 − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02, 공식 복지 원문 없음) + 확장 웨이브 5 13개사(2026-10-10)
 
 
-# ── SD-4: 복지 총행 3179(3097 + 77 R-3 후속 정리 2 + 1 R-3 후속 정리 3 월말휴무 + 11 후속 정리 5 − 7 엘앤에프 출처 이전, 2026-10-05), 하한 1200 방어 ──
+# ── SD-4: 복지 총행 3472(3179 + 293 확장 웨이브 5, 2026-10-10 · 3179 = 3097 + 77 R-3 후속 정리 2 + 1 R-3 후속 정리 3 월말휴무 + 11 후속 정리 5 − 7 엘앤에프 출처 이전, 2026-10-05), 하한 1200 방어 ──
 def test_SD4_benefit_total_row_count(seeded_db):
     """정확 카운트 핀 — 시드 유실·중복 적재를 조기에 잡는다.
 
@@ -134,9 +134,11 @@ def test_SD4_benefit_total_row_count(seeded_db):
           + R-3 후속 6 — 엘앤에프 출처 이전 20 → 13(−11 + 4) — 운영은 표적 삭제 11 뒤 멱등 적재
           (db/migrations/20261005_landf_recollect.sql) — loupit-evidence/2026-10-05-hold-recollect/
           3186 − 11 + 4 = 3179 (R-3 후속 6)
+          3179 (2026-10-05 엘앤에프 출처 이전 뒤)
+          3179 + 293 = 3472 (확장 웨이브 5 — 13개사 · 수집 291 − 삭제 4 + 추가 6 — 지금 핀)
     """
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_BENEFIT")
-    assert count == 3179, f"복지 총행 불일치: {count} (기대 3179 = 3097 + 77 R-3 후속 정리 2 + 1 후속 정리 3 + 11 후속 정리 5 − 11 + 4 엘앤에프 출처 이전)"
+    assert count == 3472, f"복지 총행 불일치: {count} (기대 3472 = 3179 + 293 확장 웨이브 5; 3179 = 3097 + 77 R-3 후속 정리 2 + 1 후속 정리 3 + 11 후속 정리 5 − 11 + 4 엘앤에프 출처 이전)"
     assert count >= 1200
 
 
