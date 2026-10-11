@@ -27,6 +27,7 @@
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 서술 · 이름 수정 1(lang) — 최종 33행
 -- 후속 정리 5(2026-10-05, 보류 · 붙여넣기): 보류에서 넣기로 정한 줄(사용자 결정 2026-10-05) — lang 서술에 회사생활 외국어 생활관 · 지속가능경영 임직원 인텐시브 과정 보탬 · 꼬리에 선발 기준 — 최종 33행
 -- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
+-- 코퍼스 정리(2026-10-11 · 수면실 휴게실 경계): 모성보호실 이름 정리 · 명상실 lounge 새 행 1 — 최종 34행
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -130,8 +131,10 @@ VALUES
   -- ── 근무환경 (work_env) ── 사내 문화 및 편의
   (@comp_id, 'dormitory', '기숙사', NULL, 'work_env',
    'est', NULL, TRUE, '원거리 거주 임직원 대상 기숙사 시설 지원 (공식 채용 페이지 회사생활 통근버스 · 기숙사 항목 — 입주 조건·비용 미기재)', 90),
-  (@comp_id, 'nap_room', '모성보호실·명상실', NULL, 'work_env',
-   'est', NULL, TRUE, '여성 임직원의 휴식 및 수유를 위한 모성보호실, 사내 명상실 (공식 홈페이지 지속가능경영 임직원 육아 및 가족 케어 지원 · 임직원 마음건강 케어 항목 — 설치 사업장·이용 시간 미기재)', 91)
+  (@comp_id, 'nap_room', '모성보호실', NULL, 'work_env',
+   'est', NULL, TRUE, '여성 임직원의 휴식 및 수유를 위한 모성보호실 (공식 홈페이지 지속가능경영 임직원 육아 및 가족 케어 지원 항목 — 설치 사업장·이용 시간 미기재)', 91),
+  (@comp_id, 'lounge', '명상실', NULL, 'work_env',
+   'est', NULL, TRUE, '사내 명상실 (공식 홈페이지 지속가능경영 임직원 마음건강 케어 항목 — 설치 사업장·이용 시간 미기재)', 92)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),

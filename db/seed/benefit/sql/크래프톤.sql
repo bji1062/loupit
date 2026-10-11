@@ -21,6 +21,7 @@
 -- 재수집(2026-09-28): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다
 -- 검증(2026-09-28, RV-3): 조치 없음 — parenting 500 은 ESG p.37 연 500만 원 지급 + 보도자료 미사용액 현금 환급으로 지급액 확인 · 956 leave_general → holiday_gift 재코딩 · 958 · 970 표적 삭제 — 최종 27행
 -- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
+-- 코퍼스 정리(2026-10-11 · 수면실 휴게실 경계): 휴게시설 lounge 재코딩 · 모유수유 공간 nap_room 새 행 1 — 최종 28행
 
 -- 1) 회사 등록 (기존 회사 — no-op)
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
@@ -88,8 +89,10 @@ VALUES
    'est', NULL, TRUE, 'ChatGPT Enterprise와 직무·직군별 AI Tool 제공 (공식 채용 페이지 AI 업무 Tool 지원 항목)', 60),
   (@comp_id, 'parking', '주차 지원', NULL, 'work_env',
    'est', NULL, TRUE, '자차 통근이 불가피한 구성원에게 주차 공간 지원 (공식 채용 페이지 주차 항목)', 61),
-  (@comp_id, 'nap_room', '휴게시설', NULL, 'work_env',
-   'est', NULL, TRUE, '안마의자와 리클라이너가 비치된 휴식공간, 남녀 샤워실, 모유수유 공간 운영 (공식 채용 페이지 휴게시설 항목), 게이머스라운지 운영 (2025 ESG 보고서)', 62),
+  (@comp_id, 'lounge', '휴게시설', NULL, 'work_env',
+   'est', NULL, TRUE, '안마의자와 리클라이너가 비치된 휴식공간, 남녀 샤워실 운영 (공식 채용 페이지 휴게시설 항목), 게이머스라운지 운영 (2025 ESG 보고서)', 62),
+  (@comp_id, 'nap_room', '모유수유 공간', NULL, 'work_env',
+   'est', NULL, TRUE, '모유수유 공간 운영 (공식 채용 페이지 휴게시설 항목)', 63),
 
   -- ── 가족·돌봄 (family) ── 라이프 생활이 편리한 1·2·3 · ESG p.37·38
   (@comp_id, 'parenting', '출산·육아 지원', 500, 'family',
