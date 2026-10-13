@@ -355,7 +355,8 @@ def test_amount_definitions_say_company_official_figure_not_company_stated(page)
 
 
 def test_the_guide_card_says_amount_display_not_amount_disclosure():
-    assert "회사 규모별로" in guide_index.cards()[0]["desc"] and "금액 표시" in guide_index.cards()[0]["desc"] and "금액 공개" not in guide_index.cards()[0]["desc"]
+    a_card = next(c for c in guide_index.cards() if c["href"] == G.report_route(G.REPORT_EDITIONS[0]))  # B편이 맨 앞이라 A편 카드는 href 로 찾는다
+    assert "회사 규모별로" in a_card["desc"] and "금액 표시" in a_card["desc"] and "금액 공개" not in a_card["desc"]
 
 
 def test_gap_sentence_uses_the_snapshot_labels_and_not_the_dropped_item(page, edition):
@@ -446,12 +447,12 @@ def test_guide_index_lists_the_article_tuple_newest_first():
     assert p.path == "guide.html" and p.url == CFG.site_origin + "/guide" and p.in_sitemap
     assert p.title == f"가이드 | {CFG.site_name}"
     cards = guide_index.cards()
-    assert [c["href"] for c in cards] == [G.report_route(e) for e in G.REPORT_EDITIONS] + [G.DATA_ROUTE]
-    assert cards[0]["title"] == "회사 147곳의 복지 공개 현황 — 2026년 10월 판"
-    assert cards[0]["desc"] == "2026년 10월 판 · 회사 147곳의 복지를 공개 비율 · 금액 표시 · 회사 규모별로 나눠 봅니다."
+    assert [c["href"] for c in cards] == [G.TOTAL_ROUTE] + [G.report_route(e) for e in G.REPORT_EDITIONS] + [G.DATA_ROUTE]  # B → A → D (SP-GUIDE-10)
+    assert cards[1]["title"] == "회사 147곳의 복지 공개 현황 — 2026년 10월 판"
+    assert cards[1]["desc"] == "2026년 10월 판 · 회사 147곳의 복지를 공개 비율 · 금액 표시 · 회사 규모별로 나눠 봅니다."
     assert cards[-1] == {"href": "/about/data", "title": D.H1, "desc": "어디서 가져오고, 어떻게 나누고, 언제 다시 확인하는지 적어 둡니다."}
     t = _main_text(p.html)
-    assert "<h1>가이드</h1>" in p.html and "잡초위키 데이터로만 쓸 수 있는 글을 모아 둡니다." in t
+    assert "<h1>가이드</h1>" in p.html and "잡초위키 데이터와 이직 계산기를 바탕으로 쓴 글을 모아 둡니다." in t
     assert p.html.count('class="guide-card"') == len(cards)
     assert '<a href="/guide" class="gnb-link" aria-current="page">가이드</a>' in p.html and "data-ad-position" not in p.html
     assert '<body data-page-type="policy">' in p.html

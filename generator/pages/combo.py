@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 
 from generator import corpus as corpus_mod, marks
+from generator.finance import _josa
 from generator.format import WS_KEYS, WS_LABELS, work_style_cell
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -138,9 +139,9 @@ def _combo_seo(a: dict, b: dict, url: str, cfg) -> dict:
     # ⚠ 착지점의 사실을 말한다(2026-09-12). 비교 툴의 기본 화면은 **입력이 없는** 모드 A 라
     # 「직접 입력해 확인해 보세요」는 이제 거짓이다 — 검색 결과에 뜨는 문장이라 더 그렇다.
     desc = (
-        f"{a['comp_nm']}과 {b['comp_nm']}의 복지·연봉·근무형태를 한눈에 비교합니다. "
+        f"{a['comp_nm']}{_josa(a['comp_nm'], '과', '와')} {b['comp_nm']}의 복지·연봉·근무형태를 한눈에 비교합니다. "
         f"기업정보·근무형태·복지 카테고리별 항목을 대조하고, 비교 툴에서 두 회사 복지를 "
-        f"나란히 보거나 내 연봉을 넣어 실효연봉을 계산해 보세요."
+        f"나란히 보거나 내 연봉을 넣어 실효 총보상을 계산해 보세요."
     )
     desc = _truncate(desc, cfg.desc_max)
     return {

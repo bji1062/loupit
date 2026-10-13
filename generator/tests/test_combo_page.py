@@ -248,3 +248,15 @@ def test_work_style_cells_three_states(fake_bundle, fake_now, fake_combinations_
     rows = {m.group(1): re.findall(r"<td>(.*?)</td>", m.group(2)) for m in re.finditer(r"<tr>\s*<td>(.*?)</td>(.*?)</tr>", sec, re.S)}
     assert rows["재택근무"] == ["제공", ""]
     assert rows["유연근무"] == ["제공 · 패션부문", ""]
+
+
+def test_combo_description_picks_gwa_or_wa_by_the_last_syllable():
+    """조합 페이지 검색 설명의 「과/와」 — 받침 없거나 한글이 아니면 와, 받침 있으면 과(카카오과 · 삼성전자과 · 현대모비스과 회귀)."""
+    from generator.config import CFG
+    from generator.pages.combo import _combo_seo
+
+    def desc(a, b):
+        return _combo_seo({"comp_nm": a}, {"comp_nm": b}, "https://jobcho.wiki/vs/x", CFG)["meta_desc"]
+
+    for a, particle in (("카카오", "와"), ("삼성전자", "와"), ("NAVER", "와"), ("현대모비스", "와"), ("롯데케미칼", "과")):
+        assert desc(a, "기아").startswith(f"{a}{particle} 기아의 복지·연봉·근무형태를"), a

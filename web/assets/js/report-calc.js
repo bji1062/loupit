@@ -904,7 +904,7 @@ function bridgeBlock(X) {
       + (other ? ' ' + other + '에 그 복지가 없다는 뜻은 아닙니다.' : '')));
   }
   const expired = (report.basis.a.expired || 0) + (report.basis.b.expired || 0);
-  caps.append(el('li', { text: '흐리게 번진 부분은 오차 범위입니다. 회사가 밝힌 금액은 ±5%, 추정한 금액은 ±20%로 잡았습니다(통계적 신뢰구간이 아닙니다).'
+  caps.append(el('li', { text: '흐리게 번진 부분은 오차 범위입니다. 회사 공식 수치는 ±5%, 추정치는 ±20%로 잡았습니다(통계적 신뢰구간이 아닙니다).'
     + (expired ? ' 유효기간이 지난 자료 ' + expired + '건은 15%p 더 넓혔습니다.' : '') }));
   caps.append(el('li', { text: '계산에 넣은 것: 연봉 · 금액이 등록된 복지 · 야근수당(입력하신 조건). 넣지 않은 것: 통근(시간으로만 비교) · 금액을 알 수 없는 복지 '
     + (ben.noAmt.a + ben.noAmt.b) + '개(' + nm.a + ' ' + ben.noAmt.a + ' · ' + nm.b + ' ' + ben.noAmt.b + ') · 법정 연차(두 회사의 연차 일수를 확인하지 못함).' }));
@@ -1689,7 +1689,7 @@ function basisBlock(X) {
   if (capped.length) ul.append(li(el('span', { class: 'calc-tagm', text: '최대치·한도액 기준' }), ' 설명에 ‘최대’나 ‘한도’가 적혀 있어 실제로 받는 돈은 더 적을 수 있는 금액(' + capped.map(([w, x]) => w + ' ' + x.nm + ' ' + fmt(x.amt)).join(' · ') + ')'));
   const expired = (bs.a.expired || 0) + (bs.b.expired || 0);
   const exp = expired ? '이번 비교에서는 ' + expired + '건이 유효기간을 넘겨 범위를 넓혔습니다' : bs.earliestExpiry ? '이번 비교는 해당 없음 — 가장 빠른 유효기간이 ' + String(bs.earliestExpiry).slice(0, 10) + '입니다' : '이번 비교는 해당 없음';
-  ul.append(li('오차 범위: 공식 금액 ±5% · 추정 금액 ±20%. 자료가 유효기간을 넘기면 범위를 15%p 넓힙니다(' + exp + ').'));
+  ul.append(li('오차 범위: 회사 공식 수치 ±5% · 추정치 ±20%. 자료가 유효기간을 넘기면 범위를 15%p 넓힙니다(' + exp + ').'));
   ul.append(li('계산하지 않은 것: 세금·4대보험(모두 세전 기준) · 통근 시간의 금액 환산 · 법정 연차(두 회사의 연차 일수를 확인하지 못함) · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '개 · 퇴직금·주가 변동'));
   for (const kind of Object.keys(MARK)) {
     const n = markedCount(bs, kind);
@@ -1702,7 +1702,7 @@ function basisBlock(X) {
   if (sa + sb) ul.append(li(el('span', { class: badgeClassBem('summary'), text: SUMMARY.label }), ' 회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목(' + [sa ? nm.a + ' ' + sa : '', sb ? nm.b + ' ' + sb : ''].filter(Boolean).join(' · ') + ')'));
   ul.append(li('복지 금액에는 대출 한도나 한 번만 주는 포상처럼 1년 단위가 아닌 값이 섞여 있을 수 있어서, 위에서 여러 경우로 나눠 다시 계산해 보였습니다. 또 복지는 연봉과 세금 방식이 달라, 실제로 손에 쥐는 금액은 이보다 작을 수 있습니다.'));
   const amtN = bs.a.amt + bs.b.amt;
-  return blk('basis', '이 비교에 쓴 자료 — 금액 ' + amtN + '건(회사 공개 ' + (bs.a.stated + bs.b.stated) + ' · 추정 ' + (bs.a.estimated + bs.b.estimated) + ') · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '건',
+  return blk('basis', '이 비교에 쓴 자료 — 금액 ' + amtN + '건(회사 공식 수치 ' + (bs.a.stated + bs.b.stated) + ' · 추정치 ' + (bs.a.estimated + bs.b.estimated) + ') · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '건',
     '자료 출처', [el('div', { class: 'calc-waffle' }, waffle('a'), waffle('b')), ul]);
 }
 
