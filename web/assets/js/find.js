@@ -55,7 +55,8 @@ export const LABEL_OVERRIDE = {
   mba: 'MBA·대학원 학위 지원',
   leave_general: '휴가 제도',
   stock_option: '우리사주·스톡옵션',
-  nap_room: '수면실·휴식 공간',
+  // 2026-10-11 코퍼스 정리: 수면실은 lounge 로 모으고 nap_room 은 수유·모성 공간 전용 — 표시명도 맞춘다.
+  nap_room: '수유실·모성보호실',
   leisure_room: '사내 여가·오락 시설',
   travel_support: '여행비 지원',
   culture_day: '문화의 날',

@@ -27,6 +27,7 @@
 -- 증분 검증(2026-10-04, RV-3-7): refresh_leave 서술에 홈페이지 LABOR and HUMAN RIGHTS 페이지의 정기 유급휴가 문장을 되살리고 유급 미기재 표기를 걷음 — 최종 26행
 -- 주 출처: 사용자 붙여넣기 careers.telechips.com 사본(2026-10-04 · sha256 21365fc0…ae8d) — 점검기 429 헛경보로 정본 URL 은 esg02
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(lang) · 서술 · 이름 수정 2(edu_support · housing_loan) — 최종 27행
+-- 코퍼스 정리(2026-10-11 · 수면실 휴게실 경계): 캡슐 수면실·안마의자 nap_room → lounge 재코딩 — 최종 27행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 2026-10-06 식대 기준 금액 1끼 12,000원(리드 판정 (82)) — meal 행 금액 = 1끼 단가 × 끼니 × 연 240일, 꼬리에 식 공개
 
@@ -58,7 +59,7 @@ VALUES
    'est', NULL, TRUE, '업계 최고 수준의 장비 및 소프트웨어 제공, 허먼밀러 의자를 비롯한 최고급 장비 (공식 채용 사이트 복리후생 EFFICIENT WORKING ENVIRONMENT 항목) — 지급 대상·다른 가구 미기재', 11),
   (@comp_id, 'dormitory', '역세권 사택', NULL, 'work_env',
    'est', NULL, TRUE, '역세권 인근 거주를 위한 사택 지원 (공식 채용 사이트 복리후생 FINANCIAL AID & HEALTHCARE 항목), 사택(기숙사) 지원 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 항목) — 위치·입주 대상·본인 부담 미기재', 12),
-  (@comp_id, 'nap_room', '캡슐 수면실·안마의자', NULL, 'work_env',
+  (@comp_id, 'lounge', '캡슐 수면실·안마의자', NULL, 'work_env',
    'est', NULL, TRUE, '재충전을 위한 캡슐 수면실 및 안마의자 운영 (공식 채용 사이트 복리후생 FUN OFFICE LIFE 항목), 사내 휴식공간 제공 (공식 홈페이지 LABOR & HUMAN RIGHTS 페이지 조직문화 항목) — 이용 시간·좌석 수 미기재', 13),
 
   -- ── 성장·교육 (growth) — 채용 사이트 AI-BASED · CAREER DEVELOPMENT ──
