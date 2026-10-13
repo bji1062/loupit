@@ -1,0 +1,143 @@
+{
+  "K": {
+    "AXIS_THRESHOLDS": {
+      "nearBandMult": 1.5,
+      "nearTotalPct": 0.03,
+      "wlbCommuteAnnHrs": 40,
+      "wlbQualCount": 3,
+      "wlbWeekHrs": 2
+    },
+    "BAND_BASE": {
+      "estimated": 0.2,
+      "none": 0,
+      "stated": 0.05
+    },
+    "BAND_EXPIRE": 0.15,
+    "COMMUTE_WORKDAYS": 240,
+    "LEGAL_WEEK_HRS": 40,
+    "MONTHLY_STD_HRS": 209,
+    "OT_MULT": 1.5,
+    "WEEKS_PER_MONTH": 4.33,
+    "WEEKS_PER_YEAR": 52
+  },
+  "input": {
+    "benefits": {
+      "a": [
+        {
+          "amount": 100,
+          "category": "perks",
+          "name": "복지포인트",
+          "source": "stated"
+        },
+        {
+          "amount": 250,
+          "category": "family",
+          "name": "자녀 학자금",
+          "source": "estimated"
+        },
+        {
+          "amount": null,
+          "category": "health",
+          "name": "건강검진",
+          "source": "none"
+        }
+      ],
+      "b": [
+        {
+          "amount": 100,
+          "category": "perks",
+          "name": "복지포인트",
+          "source": "estimated"
+        },
+        {
+          "amount": null,
+          "category": "health",
+          "name": "건강검진",
+          "source": "none"
+        },
+        {
+          "amount": null,
+          "category": "family",
+          "name": "사내 어린이집",
+          "source": "none"
+        }
+      ]
+    },
+    "commute_min": {
+      "a": 40,
+      "b": 40
+    },
+    "expires": "2027-12-31",
+    "now": "2026-09-24T00:00:00Z",
+    "priority": "salary",
+    "raise_pct": 10,
+    "salary": "5000-5000",
+    "tenure_years": 3,
+    "work": {
+      "a": {
+        "hours": 45,
+        "ot": "mid",
+        "wage": "separate"
+      },
+      "b": {
+        "hours": 50,
+        "wage": "inclusive"
+      }
+    }
+  },
+  "output": {
+    "a": {
+      "band": 55,
+      "hourly": 26184,
+      "hours": 45,
+      "net": 350,
+      "ot": 777,
+      "sal": 5000,
+      "total": 6127
+    },
+    "b": {
+      "band": 20,
+      "hourly": 21538,
+      "hours": 50,
+      "net": 100,
+      "ot": 0,
+      "sal": 5500,
+      "total": 5600
+    },
+    "breakeven": {
+      "full": {
+        "bound": null,
+        "rate": 0.20540000000000003,
+        "sal": 6027
+      },
+      "noBenefit": {
+        "bound": null,
+        "rate": 0.15539999999999998,
+        "sal": 5777
+      }
+    },
+    "deltas": {
+      "benDiff": -250,
+      "effMax": 250,
+      "effMid": 250,
+      "effMin": 250,
+      "effRate": -0.08601273053696752,
+      "hourlyDiff": -4646,
+      "otDiff": -777,
+      "salMid": 500,
+      "totalDiff": -527
+    },
+    "flip": {
+      "key": "b_wage_flip",
+      "result": "flip",
+      "totalDiff": 1182
+    },
+    "hourlyPct": -0.17743660250534676,
+    "monthly": -44,
+    "range": [
+      -602,
+      -452
+    ],
+    "tier": "a"
+  }
+}

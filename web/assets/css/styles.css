@@ -1238,6 +1238,25 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .gr-dot-large { background:var(--brand); border:2px solid var(--brand); }
 .gr-dot-mid { background:var(--bg-1); border:2px solid var(--slot-b); }
 .gr-page a { color:var(--link); }
+.gr-page a.btn { color:var(--accent-ink); }
+/* ── 가이드 B편(/guide/total-compensation, SP-GUIDE-10, 2026-10-13) — 표 · 가운데 0 기준선 막대. 분기는 위 768 블록 하나(A편 막대 줄을 같이 쓴다) ── */
+.gt-tablewrap { margin:var(--sp-4) 0 0; overflow-x:auto; }
+.gt-table { width:100%; min-width:30rem; border-collapse:collapse; font-size:var(--fs-sm); }
+.gt-cap { caption-side:top; padding-bottom:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); text-align:left; }
+.gt-table th, .gt-table td { padding:var(--sp-2) var(--sp-3); border-bottom:var(--bw) solid var(--border); text-align:left; vertical-align:top; }
+.gt-table thead th { color:var(--t2); font-weight:var(--fw-semibold); }
+.gt-table tbody th { width:28%; color:var(--t2); font-weight:var(--fw-medium); }
+.gt-sub { display:block; margin-top:var(--sp-1); color:var(--t3); font-size:var(--fs-xs); }
+.gt-verdict strong { font-size:var(--fs-lg); line-height:var(--lh-snug); }
+.gt-track::after { content:""; position:absolute; top:-3px; bottom:-3px; left:50%; width:2px; margin-left:-1px; background:var(--border-strong); }
+.gt-fill { position:absolute; top:0; height:100%; }
+.gt-fill.gt-up { background:var(--pos); border-radius:0 var(--r-pill) var(--r-pill) 0; }
+.gt-fill.gt-down { background:var(--neg); border-radius:var(--r-pill) 0 0 var(--r-pill); }
+.gt-val-up { color:var(--positive); }
+.gt-val-down { color:var(--negative); }
+.gt-total .gr-bar-name, .gt-total .gr-bar-val { font-weight:var(--fw-semibold); }
+.gt-steps li strong { font-weight:var(--fw-semibold); }
+.gt-cta { margin:var(--sp-5) 0 0; }
 
 /* ══════════════════════════════════════════════════ RESPONSIVE(768) ══ */
 /* ── 복지검색(/find, SP-FIND, 2026-09-06) ─────────────────────────────────

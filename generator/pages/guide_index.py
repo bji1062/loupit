@@ -1,13 +1,14 @@
 """generator/pages/guide_index.py — 가이드 목록 `/guide` (SP-GUIDE-8, 2026-10-08, 리드 판정 (86)).
 
 카드는 `generator/content/guides.py` 의 글 목록(최신 먼저)에서 만든다. 카드 제목 · 설명의 숫자는 각 글의 정본에서 채운다
-(A편 = 고정판 스냅숏, D편 = 글 제목 상수). 무광고 · sitemap 포함 · 탭 「가이드」 활성.
+(B편 = 글 제목 · 설명 상수, A편 = 고정판 스냅숏, D편 = 글 제목 상수). 무광고 · sitemap 포함 · 탭 「가이드」 활성.
 """
 from __future__ import annotations
 
 from generator.config import CFG
 from generator.content import about_data as D
 from generator.content import guide_report as TR
+from generator.content import guide_total_comp as TB
 from generator.content import guides as G
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -15,7 +16,7 @@ from generator.pages import guide_report
 
 
 def cards() -> list[dict]:
-    out = []
+    out = [{"href": G.TOTAL_ROUTE, "title": TB.H1, "desc": TB.CARD_DESC}]  # B편 — 최신 먼저(B → A → D)
     for ed in G.REPORT_EDITIONS:
         s = guide_report.facts_for(ed)
         v = guide_report.values(s)

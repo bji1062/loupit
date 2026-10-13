@@ -1,0 +1,60 @@
+{# guide_total_comp.html — 가이드 B편 「복지를 연봉에 더해 보는 법」 (SP-GUIDE-10, 2026-10-13). 문장은 `content/guide_total_comp.py`, 숫자는
+   `pages/guide_total_comp.py::build_view` 가 **예시 JSON 에서만** 만든 문자열이다(템플릿에 숫자 · 라벨을 적지 않는다).
+   표 · 막대는 HTML/CSS 뿐(JS 0) — 막대 위치는 인라인 left/width 이고, 같은 숫자가 글자로 함께 실린다.
+   page_type = policy → 광고 0. #}
+{% extends "base.html" %}
+{% set page_type = 'policy' %}
+{% from "partials/_guide_crumb.html" import guide_crumb %}
+{% block main %}
+<article class="guide-page gr-page gt-page">
+  {{ guide_crumb(view.crumb) }}
+  <h1>{{ view.h1 }}</h1>
+  <p class="guide-meta">{{ view.meta }}</p>
+  <p class="guide-lead">{{ view.lead }}</p>
+
+  <h2>{{ view.example.h }}</h2>
+  <p>{{ view.example.intro }}</p>
+  <div class="gt-tablewrap">
+    <table class="gt-table">
+      <caption class="gt-cap">{{ view.example.table.cap }}</caption>
+      <thead><tr><td></td>{% for c in view.example.table.cols %}<th scope="col">{{ c }}</th>{% endfor %}</tr></thead>
+      <tbody>
+      {% for r in view.example.table.rows %}
+        <tr>
+          <th scope="row">{{ r.k }}</th>
+          {% for cell in r.cells %}
+          <td>{% for line in cell %}{% if not loop.first %}<br>{% endif %}{{ line }}{% endfor %}{% if r.get("sub") %}<small class="gt-sub">{{ r.sub[loop.index0] }}</small>{% endif %}</td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <aside class="gr-note gt-verdict"><strong>{{ view.verdict.main }}</strong><p>{{ view.verdict.sub }}</p></aside>
+
+  <figure class="gr-fig">
+    <figcaption>{{ view.bars.cap }}</figcaption>
+    <ol class="gr-bars gt-bars">
+    {% for b in view.bars.rows %}
+      <li{% if b.total %} class="gt-total"{% endif %}><span class="gr-bar-name">{{ b.label }}</span><span class="gr-track gt-track" aria-hidden="true"><span class="gt-fill gt-{{ b.dir }}" style="left:{{ b.left }}%;width:{{ b.w }}%"></span></span><span class="gr-bar-val gt-val-{{ b.dir }}">{{ b.val }}</span></li>
+    {% endfor %}
+    </ol>
+  </figure>
+
+  <p>{{ view.breakeven }}</p>
+  <p>{{ view.flip }}</p>
+
+  <h2>{{ view.steps.h }}</h2>
+  <ol class="guide-nots gt-steps">
+  {% for s in view.steps.list %}<li><strong>{{ s.head }}</strong>{{ s.text }}</li>{% endfor %}
+  </ol>
+
+  <h2>{{ view.nots.h }}</h2>
+  <ul class="guide-nots">
+  {% for it in view.nots.list %}<li>{{ it.text }}{% if it.link %} <a href="{{ it.link.href }}">{{ it.link.text }}</a>{% endif %}</li>{% endfor %}
+  </ul>
+  <p class="gt-cta"><a class="btn" href="{{ view.cta.href }}">{{ view.cta.text }}</a></p>
+  <p><a href="{{ view.data_link.href }}">{{ view.data_link.text }}</a></p>
+</article>
+{% endblock %}
