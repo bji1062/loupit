@@ -1,12 +1,12 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 카카오페이 복리후생 데이터
 -- 출처: AI 파싱 (2026-09-26)
--- URL: https://kakaopay.career.greetinghr.com/ko/benefit
+-- URL: https://careers.kakaopay.com/ko/benefit
 -- badge: est
 --
 -- 참고:
 --   정본은 카카오페이 자사 채용 사이트(www.kakaopay.com 푸터 채용 링크 → 그리팅 ATS 호스팅
---   kakaopay.career.greetinghr.com) 메뉴 PAY-GUIDE 의 복리 후생 페이지 하나다. 4섹션 21항목
+--   careers.kakaopay.com · 옛 주소 kakaopay.career.greetinghr.com) 메뉴 PAY-GUIDE 의 복리 후생 페이지 하나다. 4섹션 21항목
 --   (근무환경 지원 6 · 생활 속 지원 6 · 휴식 지원 4 · 건강 지원 5). 섹션 이름은 이미지 4장(Benefit_01~04.png,
 --   아이콘+제목 482x128)에만 있고 항목 본문은 원본 HTML 의 __NEXT_DATA__ JSON 에 전부 있다 — 헤드리스 렌더 없음.
 --   robots: kakaopay.career.greetinghr.com 은 Allow: / (지원서·관리 경로만 Disallow),
@@ -34,6 +34,9 @@
 --      work_env 70 · health 80 · leisure 90).
 -- 재수집(2026-09-26): 구본(2026-04-15 AI 파싱, 근거 URL 없음)을 공식 출처로 다시 세웠다 — 대조 보고서 2026-09-25-official-compare
 -- 감사(RA-1 2026-09-26) 반영: snack_bar 144 추정치 미승계(카카오 계열 고유값, 전제 가격이 원문에 없음)
+-- 주소 이동(2026-10-13): 옛 주소가 자사 도메인 careers.kakaopay.com 으로 넘겨준다(10-12 주간 출처 점검 moved).
+--   새 주소 robots 는 Allow: / (지원서 · 관리 경로만 Disallow). 새 주소에서 받은 본문의 복지 21항목이
+--   2026-09-26 사본과 글자까지 같다(달라진 것은 메뉴 이름과 채용 공고 목록뿐) — 행은 그대로 두고 주소만 바꾼다.
 -- 코퍼스 정리(2026-10-11 · 수면실 휴게실 경계): 수면실 lounge 재코딩 · 맘스룸 nap_room 새 행 1 — 최종 22행
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -41,13 +44,13 @@
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('kakao_pay', '카카오페이',
         (SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD = 'large'),
-        '핀테크', 'K', 'https://kakaopay.career.greetinghr.com/ko/benefit');
+        '핀테크', 'K', 'https://careers.kakaopay.com/ko/benefit');
 
 -- 2) COMP_ID 조회
 SET @comp_id = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'kakao_pay');
 
 -- 3) 기존 행의 CAREERS_BENEFIT_URL 갱신 (구본이 있으면 INSERT IGNORE 로는 안 바뀐다)
-UPDATE TCOMPANY SET CAREERS_BENEFIT_URL = 'https://kakaopay.career.greetinghr.com/ko/benefit'
+UPDATE TCOMPANY SET CAREERS_BENEFIT_URL = 'https://careers.kakaopay.com/ko/benefit'
  WHERE COMP_ID = @comp_id;
 
 -- 4) 기존 추정 데이터 삭제 (official 보존)
