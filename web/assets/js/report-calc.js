@@ -1702,7 +1702,7 @@ function basisBlock(X) {
   if (sa + sb) ul.append(li(el('span', { class: badgeClassBem('summary'), text: SUMMARY.label }), ' 회사 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목(' + [sa ? nm.a + ' ' + sa : '', sb ? nm.b + ' ' + sb : ''].filter(Boolean).join(' · ') + ')'));
   ul.append(li('복지 금액에는 대출 한도나 한 번만 주는 포상처럼 1년 단위가 아닌 값이 섞여 있을 수 있어서, 위에서 여러 경우로 나눠 다시 계산해 보였습니다. 또 복지는 연봉과 세금 방식이 달라, 실제로 손에 쥐는 금액은 이보다 작을 수 있습니다.'));
   const amtN = bs.a.amt + bs.b.amt;
-  return blk('basis', '이 비교에 쓴 자료 — 금액 ' + amtN + '건(회사 공개 ' + (bs.a.stated + bs.b.stated) + ' · 추정 ' + (bs.a.estimated + bs.b.estimated) + ') · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '건',
+  return blk('basis', '이 비교에 쓴 자료 — 금액 ' + amtN + '건(회사 공식 수치 ' + (bs.a.stated + bs.b.stated) + ' · 추정치 ' + (bs.a.estimated + bs.b.estimated) + ') · 금액을 알 수 없는 복지 ' + (bs.a.qual + bs.b.qual) + '건',
     '자료 출처', [el('div', { class: 'calc-waffle' }, waffle('a'), waffle('b')), ul]);
 }
 

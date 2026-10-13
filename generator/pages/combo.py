@@ -140,7 +140,7 @@ def _combo_seo(a: dict, b: dict, url: str, cfg) -> dict:
     desc = (
         f"{a['comp_nm']}과 {b['comp_nm']}의 복지·연봉·근무형태를 한눈에 비교합니다. "
         f"기업정보·근무형태·복지 카테고리별 항목을 대조하고, 비교 툴에서 두 회사 복지를 "
-        f"나란히 보거나 내 연봉을 넣어 실효연봉을 계산해 보세요."
+        f"나란히 보거나 내 연봉을 넣어 실효 총보상을 계산해 보세요."
     )
     desc = _truncate(desc, cfg.desc_max)
     return {
