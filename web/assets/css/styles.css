@@ -1246,6 +1246,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .gt-table th, .gt-table td { padding:var(--sp-2) var(--sp-2); border-bottom:var(--bw) solid var(--border); text-align:left; vertical-align:top; }
 .gt-table thead th { color:var(--t2); font-weight:var(--fw-semibold); }
 .gt-table tbody th { width:26%; color:var(--t2); font-weight:var(--fw-medium); }
+.gt-item { display:block; }
+.gt-item + .gt-item { margin-top:var(--sp-2); }  /* 칸 안 항목 경계 — 줄 중간에서 끊겨도 어디서 새 항목인지 보인다 */
 .gt-sub { display:block; margin-top:var(--sp-1); color:var(--t3); font-size:var(--fs-xs); }
 .gt-verdict strong { font-size:var(--fs-lg); line-height:var(--lh-snug); }
 .gt-track::after { content:""; position:absolute; top:-3px; bottom:-3px; left:50%; width:2px; margin-left:-1px; background:var(--border-strong); }
@@ -1255,7 +1257,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .gt-val-up { color:var(--positive); }
 .gt-val-down { color:var(--negative); }
 .gt-total .gr-bar-name, .gt-total .gr-bar-val { font-weight:var(--fw-semibold); }
-.gt-steps { list-style:decimal; }
+.gt-steps { list-style:decimal; padding-left:var(--sp-5); margin:var(--sp-3) 0 0; }  /* `.guide-nots`(「하지 않는 것」 이름)를 빌리지 않고 자체 규칙 */
+.gt-steps li + li { margin-top:var(--sp-2); }
 .gt-steps li strong { font-weight:var(--fw-semibold); }
 .gt-cta { margin:var(--sp-5) 0 0; }
 

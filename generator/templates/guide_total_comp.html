@@ -23,7 +23,7 @@
         <tr>
           <th scope="row">{{ r.k }}</th>
           {% for cell in r.cells %}
-          <td>{% for line in cell %}{% if not loop.first %}<br>{% endif %}{{ line }}{% endfor %}{% if r.get("sub") %}<small class="gt-sub">{{ r.sub[loop.index0] }}</small>{% endif %}</td>
+          <td>{% for line in cell %}<span class="gt-item">{{ line }}</span>{% endfor %}{% if r.get("sub") %}<small class="gt-sub">{{ r.sub[loop.index0] }}</small>{% endif %}</td>
           {% endfor %}
         </tr>
       {% endfor %}
@@ -46,7 +46,7 @@
   <p>{{ view.flip }}</p>
 
   <h2>{{ view.steps.h }}</h2>
-  <ol class="guide-nots gt-steps">
+  <ol class="gt-steps">
   {% for s in view.steps.list %}<li><strong>{{ s.head }}</strong>{{ s.text }}</li>{% endfor %}
   </ol>
 

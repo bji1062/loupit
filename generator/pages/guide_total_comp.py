@@ -1,7 +1,7 @@
 """generator/pages/guide_total_comp.py — 가이드 B편 「복지를 연봉에 더해 보는 법」 `/guide/total-compensation` (SP-GUIDE-10, 2026-10-13, 리드 판정 (90)(91)).
 
 **고정판이 아니라 계산기를 따라가는 글**이다. 예시 숫자는 전부 `generator/data/guide/total-compensation.json` 에서만 읽는다
-(`input` = 예시 입력 정본, `output` · `K` = 이직 계산기 `calc.js` 가 낸 값 · 상수 — `node generator/tools/guide_total_comp.mjs` 가 만든다).
+(`input` = 예시 입력 정본, `output` · `K` = 이직 계산기 `calc.js` 가 낸 값 · 상수 — `node infra/tools/guide_total_comp.mjs` 가 만든다).
 빌드(파이썬)에 node 를 들이지 않는다. 계산기 계산이 바뀌면 프런트 테스트(`web/test/guide-total-comp.test.js`)가 실패해 JSON 을 다시 만들게 한다.
 문장은 `generator/content/guide_total_comp.py`(사람이 쓴 정본) · 그림(표 · 막대)은 HTML/CSS 만(JS 없음)이고 같은 숫자를 글자로 함께 싣는다.
 
@@ -14,6 +14,8 @@
 from __future__ import annotations
 
 import json
+import math
+from pathlib import Path
 
 from generator.config import CFG
 from generator.content import about_data as D
@@ -27,7 +29,7 @@ from generator.pages.company import LENS_BUCKETS, _truncate
 from generator.slug import BuildError
 
 MINUS = "−"  # 음수 글자 — 계산기 화면(`report-calc.js`)이 쓰는 U+2212(−)와 같다
-DATA_PATH = G.TOTAL_DATA_PATH
+DATA_PATH = Path(__file__).resolve().parent.parent / "data" / "guide" / "total-compensation.json"  # 예시 정본(`infra/tools/guide_total_comp.mjs` 가 output · K 를 쓴다)
 
 
 def load_example() -> dict:
@@ -57,9 +59,11 @@ def _sign(v: int) -> str:
 
 def _check_direction(o: dict) -> None:
     """문안이 기대는 예시의 결론 방향 — 어긋나면 글이 거짓이 된다(조용히 틀린 글 금지)."""
-    d, rng, be = o["deltas"], o["range"], o["breakeven"]["full"]
+    d, rng, be, nb = o["deltas"], o["range"], o["breakeven"]["full"], o["breakeven"]["noBenefit"]
     ok = (
         d["salMid"] > 0 and d["totalDiff"] < 0 and rng[0] < 0 and rng[1] < 0 and o["tier"] == "a"
+        and d["benDiff"] < 0 and d["otDiff"] < 0  # 「복지와 야근수당 차이로 … 줄어듭니다」
+        and not nb["bound"] and nb["sal"] > o["a"]["sal"]  # 「복지를 아예 빼고 계산하면 …만원(…% 인상)」
         and o["flip"] and o["flip"]["key"] == "b_wage_flip" and o["flip"]["result"] == "flip" and o["flip"]["totalDiff"] > 0
         and not be["bound"] and o["b"]["sal"] < be["sal"]
     )
@@ -92,12 +96,13 @@ def values(doc: dict) -> dict:
     v.update({
         "stated_label": lens["stated"], "est_label": lens["est"], "none_label": D.KIND_NONE_LABEL,
         "stated_eun": _josa(lens["stated"], "은", "는"), "est_eun": _josa(lens["est"], "은", "는"),  # A편과 같은 조사 함수
+        "benefit_value_eun": _josa(T.SCREEN_LABELS["benefit_value"], "은", "는"),
         "hourly_eun": _josa(T.SCREEN_LABELS["hourly"], "은", "는"), "hourly_eul": _josa(T.SCREEN_LABELS["hourly"], "을", "를"),
         "nameA": T.COL_A, "nameB": T.COL_B,
         "salA": _n(a["sal"]), "salB": _n(b["sal"]), "raise": _g(i["raise_pct"]),
         "salMid": _n(d["salMid"]), "diffAbs": _n(abs(d["totalDiff"])),
         "rangeLo": _sign(o["range"][0]), "rangeHi": _sign(o["range"][1]), "monthly": _sign(o["monthly"]),
-        "hourPct": (MINUS if o["hourlyPct"] < 0 else "+") + str(round(abs(o["hourlyPct"]) * 100)),  # 화면처럼 정수 반올림
+        "hourPct": (MINUS if o["hourlyPct"] < 0 else "+") + str(math.floor(abs(o["hourlyPct"]) * 100 + 0.5)),  # 화면 `Math.round` 처럼 0.5 는 올림(파이썬 round 는 짝수 쪽이라 다르다)
         "be": _n(be["sal"]), "beRate": _p(be["rate"] * 100), "beNoBen": _n(nb["sal"]), "beNoBenRate": _p(nb["rate"] * 100),
         "flip": _n(o["flip"]["totalDiff"]),
         "K_40": _g(k["LEGAL_WEEK_HRS"]), "K_ot": _g(k["OT_MULT"]), "K_wpm": _g(k["WEEKS_PER_MONTH"]), "K_209": _g(k["MONTHLY_STD_HRS"]),
@@ -119,6 +124,10 @@ def build_view(doc: dict) -> dict:
     v = values(doc)
     f = lambda tpl: tpl.format(**v)  # noqa: E731
     kind_label = {"stated": v["stated_label"], "estimated": v["est_label"]}
+    for s in ("a", "b"):
+        for x in i["benefits"][s]:
+            if x["amount"] is not None and x["source"] not in kind_label:
+                raise BuildError(f"guide_total_comp: 금액 있는 복지 「{x['name']}」의 source {x['source']!r} 는 stated · estimated 가 아니다 — 문안 판정 필요")
 
     def stated_cell(s: str) -> list[str]:
         return [T.CELL_BENEFIT.format(nm=x["name"], amt=_n(x["amount"]), kind=kind_label[x["source"]])

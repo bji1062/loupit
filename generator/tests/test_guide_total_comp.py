@@ -10,6 +10,7 @@ from __future__ import annotations
 import ast
 import copy
 import json
+import math
 import re
 from datetime import datetime
 from pathlib import Path
@@ -33,7 +34,7 @@ MINUS = "−"
 
 
 def _doc() -> dict:
-    return json.loads(G.TOTAL_DATA_PATH.read_text(encoding="utf-8"))
+    return json.loads(P.DATA_PATH.read_text(encoding="utf-8"))
 
 
 @pytest.fixture(scope="module")
@@ -87,11 +88,11 @@ def test_every_number_on_the_page_comes_from_the_json_or_a_known_source(page):
     allowed |= {P._n(abs(x)) for x in o["deltas"].values() if isinstance(x, int)}
     allowed |= {str(h) for s in doc["input"]["work"].values() for h in [s.get("hours")] if h}
     allowed |= {P._n(x["amount"]) for s in doc["input"]["benefits"].values() for x in s if x["amount"]}
-    allowed |= {P._n(abs(x)) for x in o["range"]} | {P._n(abs(o["monthly"])), str(round(abs(o["hourlyPct"]) * 100))}  # 부호 뗀 값(−602 · −44 · −18%)
+    allowed |= {P._n(abs(x)) for x in o["range"]} | {P._n(abs(o["monthly"])), str(math.floor(abs(o["hourlyPct"]) * 100 + 0.5))}  # 부호 뗀 값(−602 · −44 · −18%)
     allowed |= {"0"}  # 야근수당 포괄 칸 「0원」 — 입력(포괄)에서 나온 값이고 빌드가 ot == 0 을 확인한다
-    allowed |= {str(i) for i in range(1, 8)}  # 계산 순서 번호(ol)는 글자로 안 나오지만 안전하게
     t = _main_text(page.html)
-    t = t.replace("4대 보험료", "")  # 고유 낱말
+    for ex in ("4대 보험료", "(1 + 인상률)"):  # 고유 낱말 · 식 — 문장 쪽 예외와 같은 둘(_DIGIT_EXEMPT)
+        t = t.replace(ex, "")
     for n in _NUM_RE.findall(t):
         assert n.rstrip(",.") in allowed, f"출처 없는 숫자 {n!r}"
 
@@ -160,8 +161,10 @@ def test_threshold_and_guard_rules_the_text_describes_exist_in_calc_js():
 # 사람 문장에 숫자 · 수량어 없음 (D · A 와 같은 검사). 숫자 예외는 숫자가 아닌 낱말 · 식의 일부뿐이다:
 #   「4대 보험료」(고유 낱말) · 「(1 + 인상률)」(식) · 단독 「0」(없음 — 야근수당 0 · 0으로 계산 · 0원). 화면 인용 낱말은 SCREEN_LABELS 에만 있고 문장은 {lbl_…} 로 받는다.
 
-_QUANTIFIERS = ("대부분", "많은", "보통", "거의")
-_DIGIT_EXEMPT = ("4대 보험료", "(1 + 인상률)")
+from generator.tests.test_about_data import _QUANTIFIERS  # 기존 정의 재사용(D · A 와 같은 목록)
+
+_DIGIT_EXEMPT = ("4대 보험료", "(1 + 인상률)")  # 고유 낱말 · 식
+_ZERO_FORMS = ("0원", "0으로", "야근수당 0)")  # 단독 「0」은 이 꼴만(없음 — 0원 · 0으로 계산 · 야근수당 0)
 
 
 def _content_strings() -> list[str]:
@@ -181,7 +184,8 @@ def test_human_sentences_carry_no_numbers_or_quantifiers():
         stripped = re.sub(r"\{[^}]*\}", "", s)  # 자리표시는 숫자 칸이다
         for ex in _DIGIT_EXEMPT:
             stripped = stripped.replace(ex, "")
-        stripped = re.sub(r"(?<![\d.,])0(?![\d.,])", "", stripped)
+        for z in _ZERO_FORMS:
+            stripped = stripped.replace(z, "")
         assert not re.search(r"\d", stripped), f"사람 문장에 숫자가 박혔다: {s!r}"
         for q in _QUANTIFIERS:
             assert not re.search(q + r"(?!지)", s), f"수량어: {s!r}"  # 「많은지」(어느 쪽이 많은지)는 서술어라 수량어가 아니다
@@ -194,6 +198,15 @@ def test_rendered_page_has_no_quantifiers_outside_screen_labels(page):
     for q in _QUANTIFIERS:
         assert not re.search(q + r"(?!지)", t), q
     assert all(q not in "".join(T.SCREEN_LABELS[k] for k in T.SCREEN_LABELS if k != "near_small") for q in _QUANTIFIERS)  # 화면 인용은 「거의 같습니다」 하나뿐
+
+
+def test_template_source_carries_no_numbers_or_quantifiers():
+    """템플릿 소스에서 `{{ }}` · `{# #}` · `{% %}` · 태그를 지운 나머지 글자에 숫자 · 수량어가 없다(허용값을 손으로 박아도 잡는다)."""
+    src = (REPO_ROOT / "generator" / "templates" / "guide_total_comp.html").read_text(encoding="utf-8")
+    text = re.sub(r"\{#.*?#\}|\{\{.*?\}\}|\{%.*?%\}", "", src, flags=re.S)
+    text = re.sub(r"<[^>]+>", "", text)
+    assert not re.search(r"\d", text), f"템플릿에 숫자가 박혔다: {text.strip()[:80]!r}"
+    assert not any(q in text for q in _QUANTIFIERS)
 
 
 # ── ⑤ 라벨 = 사이트 정본 ─────────────────────────────────────────────────────
@@ -215,19 +228,70 @@ def test_amount_kind_labels_come_from_the_canonical_sources(page):
 # ── ⑥ 계산기 화면 낱말 = 계산기 JS 에 글자 그대로 ─────────────────────────────
 
 
+def _js_strings(src: str) -> list[str]:
+    """JS 소스에서 주석을 빼고 따옴표(' " `) 문자열 리터럴만 뽑는다 — 주석 · 식별자에 남은 글자로 통과하지 못하게."""
+    out, i, n = [], 0, len(src)
+    while i < n:
+        c = src[i]
+        if src.startswith("//", i):
+            i = src.find("\n", i)
+            i = n if i < 0 else i
+        elif src.startswith("/*", i):
+            j = src.find("*/", i + 2)
+            i = n if j < 0 else j + 2
+        elif c in "'\"`":
+            j, buf = i + 1, []
+            while j < n and src[j] != c:
+                if src[j] == "\\":
+                    j += 1
+                buf.append(src[j] if j < n else "")
+                j += 1
+            out.append("".join(buf))
+            i = j + 1
+        else:
+            i += 1
+    return out
+
+
+def _ui_strings() -> list[str]:
+    lits: list[str] = []
+    for p in sorted(JS_DIR.glob("*.js")):
+        if not p.name.endswith(".test.js"):
+            lits += _js_strings(p.read_text(encoding="utf-8"))
+    html = (REPO_ROOT / "web" / "compare" / "index.html").read_text(encoding="utf-8")
+    lits.append(re.sub(r"<!--.*?-->", "", html, flags=re.S))  # 계산기 셸 본문(주석 뺀 것) — 「실효 총보상」
+    return lits
+
+
 def test_screen_labels_exist_verbatim_in_the_calculator_ui():
-    corpus = "\n".join(p.read_text(encoding="utf-8") for p in sorted(JS_DIR.glob("*.js")) if not p.name.endswith(".test.js"))
-    corpus += (REPO_ROOT / "web" / "compare" / "index.html").read_text(encoding="utf-8")
+    """각 낱말이 계산기 화면 문자열(주석 아님)에 있다. 짧은 표시 낱말(법정 · 업무 교육 · 최근 비교)은 다른 문장에도 들어 있어 정본과 정확히 대조한다."""
+    lits = _ui_strings()
+    exact = {"legal", "work_edu", "recent"}
     for key, label in T.SCREEN_LABELS.items():
-        assert label in corpus, f"계산기 화면에 「{label}」({key})가 없다 — 낱말이 바뀌었다면 글을 함께 고쳐라"
+        if key in exact:
+            continue
+        assert any(label in x for x in lits), f"계산기 화면 문자열에 「{label}」({key})가 없다 — 낱말이 바뀌었다면 글을 함께 고쳐라"
+    from generator import marks as site_marks
+    marks_src = (JS_DIR / "marks.js").read_text(encoding="utf-8")
+    for key in ("legal", "work_edu"):
+        label = T.SCREEN_LABELS[key]
+        assert site_marks.KINDS[key]["label"] == label, f"generator/marks.py KINDS.{key}.label 이 글의 「{label}」와 다르다"
+        assert re.search(rf"{key}:\s*Object\.freeze\(\{{\s*label:\s*'{re.escape(label)}'", marks_src), f"marks.js MARK.{key}.label 이 「{label}」가 아니다"
+    report_src = (JS_DIR / "report.js").read_text(encoding="utf-8")
+    assert re.search(rf"el\('h3',\s*\{{\s*text:\s*'{re.escape(T.SCREEN_LABELS['recent'])}'", report_src), "report.js 의 「최근 비교」 머리글이 바뀌었다"
+
+
+def test_js_string_extractor_ignores_comments():
+    lits = _js_strings("// 'a'\nconst x = 'b'; /* \"c\" */ const y = `d`;")
+    assert lits == ["b", "d"]
 
 
 def test_table_names_and_chips_match_the_calculator():
-    rc = (JS_DIR / "report-calc.js").read_text(encoding="utf-8")
-    assert f"'{T.COL_A}'" in rc and f"'{T.COL_B}'" in rc  # 기본 회사 이름(makeCtx)
-    ui = (JS_DIR / "ui.js").read_text(encoding="utf-8")
+    rc = _js_strings((JS_DIR / "report-calc.js").read_text(encoding="utf-8"))
+    assert T.COL_A in rc and T.COL_B in rc  # 기본 회사 이름(makeCtx)
+    ui = _js_strings((JS_DIR / "ui.js").read_text(encoding="utf-8"))
     assert "따로 받음(비포괄)" in ui and "연봉에 포함(포괄)" in ui and T.CELL_OT_SEPARATE.startswith("따로 받음(비포괄)") and T.CELL_OT_INCLUSIVE.startswith("연봉에 포함(포괄)")
-    assert "−" in rc  # 음수는 U+2212 — 페이지의 MINUS 와 같은 글자
+    assert any("\u2212" in x or "−" in x for x in rc)  # 음수는 U+2212 — 페이지의 MINUS 와 같은 글자
     assert P.MINUS == MINUS
 
 
@@ -244,6 +308,7 @@ def test_page_is_active_tab_adless_and_indexable(page):
     assert '<p class="guide-crumb"><a href="/guide">가이드</a> › 이직 계산</p>' in page.html
     assert "<h1>복지를 연봉에 더해 보는 법</h1>" in page.html
     assert "<script" not in page.html[page.html.index("<main"):page.html.index("</main>")]  # 표 · 막대는 HTML/CSS 뿐
+    assert G.COMPARE_ROUTE == "/compare/#input" and 'href="/compare/#input"' in page.html  # 이직 계산기 입구(`/compare/` 는 복지 비교 흐름)
     assert f'href="{G.COMPARE_ROUTE}"' in page.html and 'href="/privacy"' in page.html and 'href="/about/data"' in page.html
 
 
@@ -293,6 +358,10 @@ def _mutate(fn) -> dict:
     lambda o: o["flip"].update(totalDiff=-1),
     lambda o: o["breakeven"]["full"].update(bound="low"),
     lambda o: o["b"].update(sal=9999),
+    lambda o: o["deltas"].update(benDiff=1),  # 이직 후보 복지가 더 많은 경우(「복지 … 차이로 줄어듭니다」가 거짓)
+    lambda o: o["deltas"].update(otDiff=0),  # 현재 직장 주 40시간 등 야근수당 차이가 없는 경우
+    lambda o: o["breakeven"]["noBenefit"].update(bound="low"),
+    lambda o: o["breakeven"]["noBenefit"].update(sal=5000),  # 「0.0% 인상」이 되는 경우
 ])
 def test_conclusion_direction_change_stops_the_build(mutate):
     with pytest.raises(BuildError, match="예시 결론이 바뀌었다"):

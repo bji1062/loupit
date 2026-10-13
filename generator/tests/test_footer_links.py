@@ -153,7 +153,7 @@ def test_gc27b_hand_written_shells_have_company_index_link():
 
 
 # ── 2026-10-06 D편 「데이터 안내」 진입문 — 푸터 사이트 탐색 + 면책 문단 ─────────
-# 상수로 뽑지 않고 하드코딩 대조한다(사이트 탐색 링크가 둘뿐이고 `_INDEX_LINK` 도 같은 방식).
+# 상수로 뽑지 않고 하드코딩 대조한다(사이트 탐색 링크가 셋뿐 — 계산기 셸은 「계산 방식」이 더해졌다 — 이고 `_INDEX_LINK` 도 같은 방식).
 
 _DATA_LINK = ("데이터 안내", "/about/data")
 

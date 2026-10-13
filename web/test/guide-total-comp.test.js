@@ -4,13 +4,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { computeExample, JSON_PATH } from '../../generator/tools/guide_total_comp.mjs';
+import { computeExample, JSON_PATH } from '../../infra/tools/guide_total_comp.mjs';
 
-const MSG = '이직 계산기 계산 방식이 바뀌었다 — `node generator/tools/guide_total_comp.mjs` 로 가이드 B편 예시를 다시 계산하고 글 문장이 여전히 맞는지 확인하라';
+const MSG = '이직 계산기 계산 방식이 바뀌었다 — `node infra/tools/guide_total_comp.mjs` 로 가이드 B편 예시를 다시 계산하고 글 문장이 여전히 맞는지 확인하라';
 
 test('가이드 B편 예시 JSON 의 output · K 는 지금 calc.js 가 낸 값과 같다', () => {
   const doc = JSON.parse(readFileSync(JSON_PATH, 'utf8'));
   const fresh = computeExample(doc.input);
-  assert.deepStrictEqual(doc.output, fresh.output, MSG);
-  assert.deepStrictEqual(doc.K, fresh.K, MSG);
+  assert.deepStrictEqual(fresh.output, doc.output, MSG);  // actual = 지금 계산기 · expected = JSON(글의 숫자)
+  assert.deepStrictEqual(fresh.K, doc.K, MSG);
 });
