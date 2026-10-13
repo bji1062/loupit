@@ -228,8 +228,8 @@ def test_amount_kind_labels_come_from_the_canonical_sources(page):
 # ── ⑥ 계산기 화면 낱말 = 계산기 JS 에 글자 그대로 ─────────────────────────────
 
 
-def _js_strings(src: str) -> list[str]:
-    """JS 소스에서 주석을 빼고 따옴표(' " `) 문자열 리터럴만 뽑는다 — 주석 · 식별자에 남은 글자로 통과하지 못하게."""
+def _js_tokens(src: str) -> list[tuple[str, str]]:
+    """JS 소스에서 주석을 빼고 따옴표(' " `) 문자열 리터럴만 (따옴표, 내용) 으로 뽑는다 — 주석 · 식별자에 남은 글자로 통과하지 못하게."""
     out, i, n = [], 0, len(src)
     while i < n:
         c = src[i]
@@ -246,18 +246,25 @@ def _js_strings(src: str) -> list[str]:
                     j += 1
                 buf.append(src[j] if j < n else "")
                 j += 1
-            out.append("".join(buf))
+            out.append((c, "".join(buf)))
             i = j + 1
         else:
             i += 1
     return out
 
 
+# 화면 낱말이 사는 파일만 읽는다 — 이 간이 추출기는 정규식 안 따옴표 · 템플릿 안 템플릿(`dom.js` · `radar.js`)에서 박자가 어긋나 그 뒤 주석을 문자열로 읽을 수 있다.
+_LABEL_FILES = ("report-calc.js", "report.js", "ui.js", "marks.js", "trending.js", "benefits.js", "calc.js", "app.js")
+
+
+def _js_strings(src: str) -> list[str]:
+    return [t for _, t in _js_tokens(src)]
+
+
 def _ui_strings() -> list[str]:
     lits: list[str] = []
-    for p in sorted(JS_DIR.glob("*.js")):
-        if not p.name.endswith(".test.js"):
-            lits += _js_strings(p.read_text(encoding="utf-8"))
+    for name in _LABEL_FILES:
+        lits += _js_strings((JS_DIR / name).read_text(encoding="utf-8"))
     html = (REPO_ROOT / "web" / "compare" / "index.html").read_text(encoding="utf-8")
     lits.append(re.sub(r"<!--.*?-->", "", html, flags=re.S))  # 계산기 셸 본문(주석 뺀 것) — 「실효 총보상」
     return lits
@@ -266,11 +273,19 @@ def _ui_strings() -> list[str]:
 def test_screen_labels_exist_verbatim_in_the_calculator_ui():
     """각 낱말이 계산기 화면 문자열(주석 아님)에 있다. 짧은 표시 낱말(법정 · 업무 교육 · 최근 비교)은 다른 문장에도 들어 있어 정본과 정확히 대조한다."""
     lits = _ui_strings()
-    exact = {"legal", "work_edu", "recent"}
+    prefix = {"changes": " — "}  # 「이직하면 달라지는 복지 — 새로 생기는 것 N · …」 칸 요약의 머리
+    substring = {"benefit_value", "trending"}  # 문장 속 낱말(「복지 환산 가치까지 …」) · 「많이 찾아본 조합 TOP 10」
+    sep = {"legal", "work_edu", "recent"}  # 아래에서 정본과 따로 대조
     for key, label in T.SCREEN_LABELS.items():
-        if key in exact:
+        if key in sep:
             continue
-        assert any(label in x for x in lits), f"계산기 화면 문자열에 「{label}」({key})가 없다 — 낱말이 바뀌었다면 글을 함께 고쳐라"
+        if key in substring:
+            ok = any(label in x for x in lits)
+        elif key in prefix:
+            ok = any(x.startswith(label + prefix[key]) for x in lits)
+        else:
+            ok = label in lits  # 화면에 단독으로 쓰이는 글자 — 문자열 전체가 같아야 한다(다른 문장에 낱말이 남아 있어도 통과하지 못하게)
+        assert ok, f"계산기 화면 문자열에 「{label}」({key})가 없다 — 낱말이 바뀌었다면 글을 함께 고쳐라"
     from generator import marks as site_marks
     marks_src = (JS_DIR / "marks.js").read_text(encoding="utf-8")
     for key in ("legal", "work_edu"):
@@ -279,6 +294,13 @@ def test_screen_labels_exist_verbatim_in_the_calculator_ui():
         assert re.search(rf"{key}:\s*Object\.freeze\(\{{\s*label:\s*'{re.escape(label)}'", marks_src), f"marks.js MARK.{key}.label 이 「{label}」가 아니다"
     report_src = (JS_DIR / "report.js").read_text(encoding="utf-8")
     assert re.search(rf"el\('h3',\s*\{{\s*text:\s*'{re.escape(T.SCREEN_LABELS['recent'])}'", report_src), "report.js 의 「최근 비교」 머리글이 바뀌었다"
+
+
+def test_label_files_have_no_multiline_quoted_strings():
+    """추출기 자기 점검 — 화면 낱말 파일에서 '…' · "…" 문자열이 줄을 넘으면 박자가 어긋난 것이다(정규식 · 템플릿 처리 실패). 템플릿(`…`)은 줄을 넘을 수 있다."""
+    for name in _LABEL_FILES:
+        bad = [t[:40] for q, t in _js_tokens((JS_DIR / name).read_text(encoding="utf-8")) if q in "'\"" and "\n" in t]
+        assert not bad, f"{name}: 따옴표 문자열이 줄을 넘는다 — 추출기 박자 점검 필요: {bad}"
 
 
 def test_js_string_extractor_ignores_comments():
