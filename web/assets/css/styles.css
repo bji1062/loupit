@@ -351,7 +351,7 @@ main p { margin-top:var(--sp-3); }
 .benefit-amount { color:var(--brand); font-weight:var(--fw-semibold); white-space:nowrap; }
 .benefit-note { color:var(--t3); }
 .benefit-verified { color:var(--t4); font-size:var(--fs-xs); }
-/* 법정 제도 배지(SP-LEGAL-5) — 근로기준법 등이 모든 회사에 강제하는 행. 지우지 않고 표시만 하며
+/* 법정 제도 배지(SP-LEGAL-5) — 근로기준법 등 법이 회사에 의무로 정한 제도만 담은 행. 지우지 않고 표시만 하며
    복지 항목 수에서는 빠진다. 「공식/추정」 출처 배지와 다른 축이라 색을 빌려 쓰지 않는다. */
 .benefit-legal { color:var(--t3); font-size:var(--fs-xs); font-weight:var(--fw-medium);
   border:1px solid var(--line); border-radius:3px; padding:0 .35em; white-space:nowrap; }
@@ -1272,7 +1272,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .gl-quotes li + li { margin-top:var(--sp-2); }
 .gl-ask { list-style:decimal; padding-left:var(--sp-5); margin:var(--sp-3) 0 0; }
 .gl-ask li + li { margin-top:var(--sp-3); }
-.gl-ask .gl-small { display:block; margin-top:var(--sp-1); }
+.gl-ask p { margin:var(--sp-1) 0 0; }
+.gl-why { margin:var(--sp-1) 0 0; }
 .gl-page a { color:var(--link); }
 
 /* ══════════════════════════════════════════════════ RESPONSIVE(768) ══ */
@@ -1564,6 +1565,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* 법으로 정해진 것 — 표에서 옮긴 칸만. 표에 없으면 라벨 한 줄. */
 .bn-law-none { background:var(--bg-2); border-radius:var(--r-sm); padding:var(--sp-3) var(--sp-4); color:var(--t2); }
 .bn-law-src { font-size:var(--fs-xs); color:var(--t3); }
+.bn-law-change { margin:var(--sp-2) 0 0; font-size:var(--fs-sm); color:var(--t2); }
 .bn-law-more { margin:var(--sp-1) 0 0; font-size:var(--fs-sm); }
 .bn-tag { font-size:var(--fs-xs); color:var(--badge-est-fg); background:var(--badge-est-bg); border-radius:var(--r-pill); padding:0 var(--sp-2); white-space:nowrap; }
 

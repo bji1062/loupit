@@ -54,7 +54,7 @@
   {% if view.good.list %}
   <h2>{{ view.good.h }}</h2>
   <p>{{ view.good.intro }}</p>
-  <ul class="gl-quotes">{% for g in view.good.list %}<li><a href="{{ g.href }}">{{ g.company }}</a>{{ g.tail }}</li>{% endfor %}</ul>
+  <ul class="gl-quotes">{% for g in view.good.list %}<li><a href="{{ g.href }}">{{ g.company }}</a>{{ g.tail }}<p class="gl-why">{{ g.why }}</p></li>{% endfor %}</ul>
   <p>{{ view.good.after }}</p>
   {% endif %}
 
@@ -65,7 +65,7 @@
 
   <h2>{{ view.ask.h }}</h2>
   <ol class="gl-ask">
-  {% for it in view.ask.list %}<li><strong>{{ it.q }}</strong><span class="gl-small">{{ it.a }}</span></li>{% endfor %}
+  {% for it in view.ask.list %}<li><strong>{{ it.q }}</strong><p>{{ it.a }}</p></li>{% endfor %}
   </ol>
 
   <p>{{ view.end }}</p>

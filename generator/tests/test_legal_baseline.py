@@ -338,45 +338,92 @@ def test_item_keys_are_all_known_to_the_renderer():
         assert set(it) <= _OLD_ITEM_KEYS | _NEW_ITEM_KEYS, f"{it['key']} 의 {set(it) - _OLD_ITEM_KEYS - _NEW_ITEM_KEYS} 를 렌더러가 모른다"
 
 
+# formula · set 의 값 글자 ↔ basis 글자가 다르게 쓰인 낱말 — 「1일 2시간」 ↔ 「하루 2시간」(임의 처리 금지: 여기 있는 낱말만 정수로 환산)
+_BASIS_ALIAS_INTS = {"하루": 1}
+_PAID_WORDS = {"employer": ("회사",), "unpaid": ("무급",), "insurance": ("고용보험",)}  # mixed = 회사 + (무급 또는 고용보험)
+
+
+def _basis_ints(basis: str) -> set[int]:
+    return _ints(basis) | {n for w, n in _BASIS_ALIAS_INTS.items() if w in basis}
+
+
+def _check_tenure_table(it: dict, basis: str) -> None:
+    """연차 — 값이 글자 속 **자기 자리**에 있는지(같은 숫자가 다른 자리에 있어도 통과하지 못하게 이름표 · 순서로 대조)."""
+    rows = it["baseline"]["table"]
+    first, mid = rows[0], next(r for r in rows if r.get("from_years") == 1)
+    step = next(r for r in rows if r.get("step_years"))
+    marks = [f"최대 {first['value']}일", f"{mid['value']}일", f"{step['from_years']}년 이상", f"{step['step_years']}년마다 {step['step_value']}일", f"최대 {step['cap']}일"]
+    at = 0  # 앞 낱말 **뒤에서** 다음 낱말을 찾는다 — 같은 숫자가 앞 자리에 있어도(「최대 11일」의 11일) 통과하지 못하게
+    for m in marks:
+        i = basis.find(m, at)
+        assert i >= 0, f"{it['key']}: 「{m}」가 basis 의 제자리(앞 낱말 뒤)에 없다 — 값을 바꿨다면 guide 글자도 고쳐라: {marks}"
+        at = i + len(m)
+
+
 def test_guide_text_contains_the_structured_numbers():
+    """값만 바꾸고 글자를 안 고치면 멈춘다 — 숫자는 이름표(미숙아 · 다태아 · 최대 …)와 함께, 연차는 자기 자리에서 대조한다(REVIEW-C M-3)."""
     from generator.pages.benefit import FIXED_EXTRA_KEYS
+    labels = dict(FIXED_EXTRA_KEYS)
     for it in legal.items():
         basis, pay, bl = it["guide"]["basis"], it["guide"]["pay"], it["baseline"]
-        nums = _ints(basis)
         if bl["type"] == "fixed":
-            keys = ["value"] + [k for k, _ in FIXED_EXTRA_KEYS if bl.get(k)]
-            for k in keys:
-                v = bl[k]
-                if bl["unit"] == "개월":
-                    assert v in _MONTHS_AS_TEXT, f"{it['key']} 의 {v}개월은 환산 표에 없다 — 표에 더하고 글자를 확인하라"
-                    assert _MONTHS_AS_TEXT[v] in basis, f"{it['key']}: {k}={v}개월 → 「{_MONTHS_AS_TEXT[v]}」가 basis 에 없다"
-                else:
-                    assert v in nums, f"{it['key']}: {k}={v} 가 basis 글자에 없다 — 값을 바꿨다면 guide 글자도 고쳐라"
+            unit = bl["unit"]
+            if unit == "개월":
+                assert bl["value"] in _MONTHS_AS_TEXT, f"{it['key']} 의 {bl['value']}개월은 환산 표에 없다 — 표에 더하고 글자를 확인하라"
+                base_txt = _MONTHS_AS_TEXT[bl["value"]]
+                assert base_txt in basis, f"{it['key']}: {bl['value']}개월 → 「{base_txt}」가 basis 에 없다"
+                if bl.get("extended"):  # 「요건 … {년}」 — 요건 문구 뒤에 확대된 기간이 온다
+                    assert bl["extended"] in _MONTHS_AS_TEXT, f"{it['key']} 의 {bl['extended']}개월은 환산 표에 없다"
+                    ext = _MONTHS_AS_TEXT[bl["extended"]]
+                    assert ext in basis and basis.index(ext) > basis.index(base_txt) and "면 " + ext in basis, f"{it['key']}: 요건 충족 시 「{ext}」 자리가 어긋났다"
+                if bl.get("max"):
+                    assert bl["max"] in _MONTHS_AS_TEXT, f"{it['key']} 의 최대 {bl['max']}개월은 환산 표에 없다"
+                    assert f"최대 {_MONTHS_AS_TEXT[bl['max']]}" in basis, f"{it['key']}: 「최대 {_MONTHS_AS_TEXT[bl['max']]}」가 basis 에 없다"
+            else:
+                head = f"{bl['value']}일" if unit.startswith("일") and unit != "일/주" else None
+                assert (head in basis) if head else (bl["value"] in _ints(basis)), f"{it['key']}: 값 {bl['value']}{unit} 가 basis 글자에 없다"
+                for k in ("premature_birth", "multiple_birth"):  # 덧붙임은 이름표와 함께
+                    if bl.get(k):
+                        assert f"{labels[k].strip()} {bl[k]}{unit}" in basis, f"{it['key']}: 「{labels[k].strip()} {bl[k]}{unit}」가 basis 에 없다"
+                unknown = [k for k in ("extended", "max") if bl.get(k)]
+                assert not unknown, f"{it['key']}: 일 단위 {unknown} 대조 규칙이 없다 — 규칙을 코드로 적어라"
         elif bl["type"] == "tenure_table":
-            # 가산 행(step_years)의 value(16)는 앞 행(15)에 step_value(1)를 더한 값이라 글자는 「2년마다 1일 더(최대 25일)」로 쓴다 — 시작 값 대신 step · cap 을 대조한다.
-            vals = [r["value"] for r in bl["table"] if not r.get("step_years")] + [r[k] for r in bl["table"] if r.get("step_years") for k in ("step_years", "step_value", "cap")]
-            assert set(vals) <= nums, f"{it['key']}: 표 값 {sorted(set(vals) - nums)} 가 basis 에 없다"
+            _check_tenure_table(it, basis)
         elif bl["type"] == "rate":
-            assert round(bl["value"] * 100) in nums, f"{it['key']}: 비율 {bl['value']} → {round(bl['value'] * 100)} 가 basis 에 없다"
+            assert f"{round(bl['value'] * 100)}% 이상" in basis, f"{it['key']}: 「{round(bl['value'] * 100)}% 이상」이 basis 에 없다"
+        elif bl["type"] in ("formula", "set"):
+            assert _ints(str(bl.get("value", ""))) <= _basis_ints(basis), f"{it['key']}: value 의 숫자 {sorted(_ints(str(bl['value'])) - _basis_ints(basis))} 가 basis 에 없다"
+        # paid ↔ pay 낱말
+        if it["paid"] == "mixed":
+            assert "회사" in pay and ("무급" in pay or "고용보험" in pay), f"{it['key']}: mixed 인데 pay 글자에 회사 + 무급/고용보험이 없다"
+        else:
+            assert all(w in pay for w in _PAID_WORDS[it["paid"]]), f"{it['key']}: paid={it['paid']} 인데 pay 글자에 {_PAID_WORDS[it['paid']]} 이 없다"
         pay_nums = _ints(pay)
         for k in ("employer_paid_days", "employer_paid_days_multi"):
             if it.get(k):
                 assert it[k] in pay_nums, f"{it['key']}: {k}={it[k]} 가 pay 글자에 없다"
         nc = it.get("next_change") or {}
         if nc.get("employer_paid_days"):
-            assert nc["employer_paid_days"] in pay_nums and nc["from"] in pay, f"{it['key']}: next_change 가 pay 글자에 없다"
+            from generator.pages.home import _korean_date  # C편 페이지가 쓰는 사이트 날짜 포매터
+            assert nc["employer_paid_days"] in pay_nums and _korean_date(nc["from"]) in pay, f"{it['key']}: next_change 가 pay 글자에 없다"
 
 
 def test_next_change_has_not_taken_effect_yet():
     """날짜 장치 — 이미 정해진 변경의 시행일이 지났으면 표의 값을 바꾸고 next_change 를 지워야 한다.
-    ⚠ 빌드 HTML 은 날짜를 읽지 않는다(결정적) — 날짜는 이 테스트만 읽는다."""
-    today = datetime.date.today()
+    ⚠ 빌드 HTML 은 날짜를 읽지 않는다(결정적) — 날짜는 이 테스트만 읽는다. 서버 시각대는 UTC 라 한국 날짜(Asia/Seoul)로 잰다 —
+    시행일 당일 한국 시각 09:00 이전에 뒤늦게 실패하지 않게."""
+    from zoneinfo import ZoneInfo
+    today = datetime.datetime.now(ZoneInfo("Asia/Seoul")).date()
+    after = {
+        "infertility_leave": "legal_baseline.json 값을 바꾸고 next_change 를 지운 뒤, 난임이면 데이터 「(법정 유급 2일에 N일 추가)」 6행 · 수집 계약 · LG디스플레이 행도 고칠 것(리드 판정 (94) D2)",
+        "annual_leave": "legal_baseline.json 값을 확인하고 next_change 를 지운 뒤, row_marks.json `_한계` 의 「시간 단위 · 반반차 연차 = 복지」 판단(사용자 결정 2026-09-20)을 다시 볼 것 — 시행령 확인",
+    }
     for it in legal.items():
         nc = it.get("next_change")
         if nc:
             assert datetime.date.fromisoformat(nc["from"]) > today, (
-                f"법정 기준선 `{it['key']}` 의 이미 정해진 변경({nc['from']}, {nc['law_no']})이 시행됐다 — legal_baseline.json 값을 바꾸고 next_change 를 지운 뒤, "
-                "난임이면 데이터 「(법정 유급 2일에 N일 추가)」 6행 · 수집 계약 · LG디스플레이 행도 고칠 것(리드 판정 (94) D2)")
+                f"법정 기준선 `{it['key']}` 의 이미 정해진 변경({nc['from']}, {nc['law_no']})이 시행됐다 — "
+                + after.get(it["key"], "legal_baseline.json 값을 확인하고 next_change 를 지운 뒤 관련 데이터를 확인할 것"))
 
 
 def test_c_article_additions_to_the_table():

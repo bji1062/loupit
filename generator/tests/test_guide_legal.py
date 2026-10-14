@@ -137,7 +137,7 @@ def test_rendered_sentences_carry_the_values(ctx):
               "배우자 출산휴가의 법정 기간이 10일에서 20일로 늘어난 뒤", "「법정기간 10일에 추가로 10일 사용 가능」",
               "2026년 11월 27일부터 난임치료휴가의 유급 일수가 2일에서 4일로", "법은 연 6일 가운데 처음 2일을 유급으로 정합니다. 2026년 11월 27일부터는 처음 4일입니다.",
               "이미 정해진 변경: 2026년 11월 27일부터 난임치료휴가 — 처음 4일 유급(법률 제21700호).",
-              "이미 정해진 변경: 2027년 6월 10일부터 연차유급휴가 — 근로자가 시간 단위로 나눠 청구하면 그대로 줘야 함(법률 제21784호).",
+              "이미 정해진 변경: 2027년 6월 10일부터 연차유급휴가 — 근로자가 대통령령이 정하는 범위에서 시간 단위로 나눠 청구할 수 있음(법률 제21784호).",
               "표는 국가법령정보센터의 현행 원문과 2026년 10월 13일에 대조했습니다"):
         assert s in t, s
     assert t.index("2026년 11월 27일부터 난임치료휴가 —") < t.index("2027년 6월 10일부터 연차유급휴가 —")  # from 순
@@ -207,6 +207,30 @@ def test_changed_example_stops_the_build(ctx, mutate):
         P.build_view(ctx, examples=_bad(mutate))
 
 
+@pytest.mark.parametrize("mutate", [
+    lambda e: e["good"][0]["checks"][0].update(shown="최대 24일"),  # 풀이 글에 없는 법 숫자 글자
+    lambda e: e["good"][2]["checks"][1].update(shown="처음 61일"),
+    lambda e: e["good"][3]["checks"][1].update(equals=24),  # 육아휴직 요건 충족 시 18개월 → 24 (extended 사전)
+    lambda e: e["good"][2]["checks"][1].update(equals=59),  # 사업주 유급 60일 (employer_paid_days 사전)
+    lambda e: e["good"][0].pop("why"),
+    lambda e: e["good"][0].update(why="법이 정한 연차는 최대 25일입니다."),  # 다른 check 의 shown 이 사라진 경우는 아래 별도
+])
+def test_good_example_why_and_shown_checks(ctx, mutate):
+    ex = _bad(mutate)
+    if ex["good"][0].get("why") == "법이 정한 연차는 최대 25일입니다.":
+        P.build_view(ctx, examples=ex)  # shown 이 풀이에 있으면 통과
+        return
+    with pytest.raises(BuildError):
+        P.build_view(ctx, examples=ex)
+
+
+def test_good_example_company_without_a_source_url_stops_the_build(fake_bundle, fake_now):
+    c = make_ctx(fake_bundle, fake_now)
+    c.by_eng["kia"]["careers_benefit_url"] = None
+    with pytest.raises(BuildError, match="근거 주소"):
+        P.build_view(c)
+
+
 def test_good_example_that_is_a_marked_row_stops_the_build(fake_bundle, fake_now):
     ex = _bad(lambda e: e["good"].__setitem__(0, dict(e["good"][0], comp_eng_nm="kt", benefit_cd="parenting", benefit_nm="출산/육아 지원", quote="출산휴가")))
     c = make_ctx(fake_bundle, fake_now)
@@ -240,10 +264,58 @@ def test_examples_data_shape():
     good = ex["good"]
     assert len(good) == 5 and len({g["comp_eng_nm"] for g in good}) == 5 and len({g["label"] for g in good}) == 5
     assert len(ex["legal_rows"]) == 2
+    for g in good:
+        assert g["why"] and all(c.get("shown") is None or c["shown"] in g["why"] for c in g["checks"])  # 풀이에 나올 법 숫자 글자
 
 
-def test_example_rows_all_exist_in_seed_sql():
-    """인용 예가 가리키는 (회사, 항목명)이 시드 SQL 에 있다 — 시드가 바뀌면 운영 빌드가 BuildError 로 알려 주지만 테스트에서도 미리 잡는다."""
+def _seed_fields(src: str, cd: str, nm: str) -> list[str] | None:
+    """시드 VALUES 튜플 `(@comp_id, 'cd', 'nm', …)` 의 최상위 필드들(문자열은 따옴표를 벗긴다). 없으면 None."""
+    head = f"(@comp_id, '{cd}', '{nm}',"
+    i = src.find(head)
+    if i < 0:
+        return None
+    fields, buf, depth, q, j = [], [], 0, False, i
+    while j < len(src):
+        c = src[j]
+        if q:
+            if c == "\\" and j + 1 < len(src):
+                buf.append(src[j + 1]); j += 2; continue
+            if c == "'":
+                if src[j + 1:j + 2] == "'":
+                    buf.append("'"); j += 2; continue
+                q = False
+            else:
+                buf.append(c)
+        elif c == "'":
+            q = True
+        elif c == "(":
+            depth += 1
+            if depth > 1:
+                buf.append(c)
+        elif c == ")":
+            depth -= 1
+            if depth == 0:
+                fields.append("".join(buf).strip()); return fields
+            buf.append(c)
+        elif c == "," and depth == 1:
+            fields.append("".join(buf).strip()); buf = []
+        else:
+            buf.append(c)
+        j += 1
+    return None
+
+
+def _seed_screen_text(src: str, r: dict) -> str | None:
+    """시드 행 → 회사 페이지가 쓰는 화면 글자(`format.benefit_desc`). 칸 순서 = INSERT 열 목록(COMP_ID … SORT_ORDER_NO)."""
+    from generator.format import benefit_desc
+    f = _seed_fields(src, r["benefit_cd"], r["benefit_nm"])
+    if f is None:
+        return None
+    desc = f[8]  # QUAL_DESC_CTNT
+    return benefit_desc(desc, "none" if f[3] == "NULL" else "estimated")
+
+
+def _seed_by_slug() -> dict:
     seed_dir = REPO_ROOT / "db" / "seed" / "benefit" / "sql"
     by_slug = {}
     for path in seed_dir.glob("*.sql"):
@@ -251,10 +323,32 @@ def test_example_rows_all_exist_in_seed_sql():
         m = re.search(r"COMP_ENG_NM\s*=\s*'([A-Za-z0-9_]+)'", src)
         if m:
             by_slug[m.group(1)] = src
+    return by_slug
+
+
+def test_example_rows_match_the_seed_sql_at_the_gate():
+    """게이트에서 인용 대조(REVIEW-C M-4) — 운영 빌드(`_validate_examples`)와 같은 검사를 시드 VALUES 튜플로 미리 돈다.
+    시드의 그 행(benefit_cd · 항목명)을 찾아 서술에 `format.benefit_desc` 를 적용한 글자가 법정 행 인용과 **같고**, 좋은 예 인용을 **품는지**.
+    ⚠ 이 7행을 건드리는 데이터 PR 은 `legal-examples.json` 을 함께 고친다 — 안 고치면 여기서 멈춘다(안 잡히면 release [4/7] 에서 멈춘다)."""
+    by_slug = _seed_by_slug()
     ex = _ex()
-    for r in ex["legal_rows"] + ex["good"]:
-        src = by_slug.get(r["comp_eng_nm"], "")
-        assert f"'{r['benefit_nm']}'" in src, f"시드에 없다: {r['comp_eng_nm']}/{r['benefit_nm']}"
+    for r in ex["legal_rows"]:
+        got = _seed_screen_text(by_slug.get(r["comp_eng_nm"], ""), r)
+        assert got is not None, f"시드에 없다(benefit_cd · 항목명): {r['comp_eng_nm']}/{r['benefit_cd']}/{r['benefit_nm']}"
+        assert got == r["quote"], f"{r['comp_eng_nm']} 시드 서술의 화면 글자가 인용과 다르다: {got!r}"
+    for g in ex["good"]:
+        got = _seed_screen_text(by_slug.get(g["comp_eng_nm"], ""), g)
+        assert got is not None, f"시드에 없다(benefit_cd · 항목명): {g['comp_eng_nm']}/{g['benefit_cd']}/{g['benefit_nm']}"
+        assert g["quote"] in got, f"{g['comp_eng_nm']} 시드 서술의 화면 글자에 인용이 없다: {got!r}"
+
+
+def test_seed_check_catches_a_changed_description_or_code():
+    """위 게이트 검사가 정말 걸리는지 — 기아 행 서술 · benefit_cd 를 바꾼 시드 사본에서 (스크래치 문자열 변이, 파일은 건드리지 않는다)."""
+    src = _seed_by_slug()["kia"]
+    g = next(x for x in _ex()["good"] if x["comp_eng_nm"] == "kia")
+    assert g["quote"] in _seed_screen_text(src, g)
+    assert g["quote"] not in _seed_screen_text(src.replace("여직원 유급 보건휴가 부여", "여직원 보건휴가(무급)"), g)
+    assert _seed_screen_text(src.replace("(@comp_id, 'leave_general', '프로드림 휴가·유급 보건휴가'", "(@comp_id, 'health', '프로드림 휴가·유급 보건휴가'"), g) is None
 
 
 # ── ⑤ 직원 수 · 법정 행 0 ────────────────────────────────────────────────────
@@ -291,13 +385,30 @@ def test_zero_legal_rows_drops_the_paragraph(fake_bundle, fake_now, monkeypatch,
 
 def test_small_workplace_names_are_built_from_the_json(ctx, monkeypatch):
     t = _main_text(_page(ctx).html)
-    assert "연차유급휴가 · 생리휴가 · 관공서 공휴일 유급휴일 · 연장·야간·휴일 가산수당은 상시 근로자 5명 이상인 사업장에만" in t
+    # 표 순서(GROUPS) · 쉼표 구분(이름 안 「·」와 섞이지 않게)
+    assert "연차유급휴가, 관공서 공휴일 유급휴일, 생리휴가, 연장·야간·휴일 가산수당은 상시 근로자 5명 이상인 사업장에만" in t
     raw = copy.deepcopy(legal.raw())
     for it in raw["items"]:
         it["small_ok"] = it["key"] not in ("annual_leave", "severance")
     monkeypatch.setattr(legal, "raw", lambda: raw)
     t2 = _main_text(_page(ctx).html)
-    assert "연차유급휴가 · 퇴직급여는 상시 근로자 5명 이상인 사업장에만" in t2
+    assert "연차유급휴가, 퇴직급여는 상시 근로자 5명 이상인 사업장에만" in t2
+
+
+def test_insured_note_keeps_the_employers_shortfall_duty(ctx):
+    t = _main_text(_page(ctx).html)
+    assert ("출산전후휴가 · 배우자 출산전후휴가 · 배우자 유산·사산휴가 · 난임치료휴가는, 고용보험법이 정한 우선지원 대상기업이면 고용보험 급여도 나옵니다(급여에는 상한이 있습니다). "
+            "이때도 출산전후휴가 · 배우자 출산전후휴가 · 배우자 유산·사산휴가의 회사 몫은 급여가 나온 만큼만 줄어들고, 모자라는 임금은 회사가 줍니다.") in t
+    assert "대신 나옵니다" not in t
+
+
+def test_good_examples_carry_a_why_line_and_answers_are_body_paragraphs(ctx):
+    html = _page(ctx).html
+    for g in _ex()["good"]:
+        assert f'<p class="gl-why">{g["why"]}</p>' in html
+    assert html.count('<li><strong>') == len(T.ASK) and "gl-small\">법은" not in html
+    assert "<strong>생리휴가는 유급인가요?</strong><p>법은 유급을 요구하지 않습니다. 유급이면 회사가 더 주는 것입니다.</p>" in html
+    assert "권장휴가는 원문에 설명이 없습니다." in html
 
 
 # ── ⑦ 링크 앵커 ──────────────────────────────────────────────────────────────

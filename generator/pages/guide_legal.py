@@ -31,12 +31,19 @@ from generator.trust import welfare_totals
 
 EXAMPLES_PATH = Path(__file__).resolve().parent.parent / "data" / "guide" / "legal-examples.json"
 STRICT_DATA = True  # 테스트 conftest 만 끈다(fake 번들에는 실제 회사 · 직원 수가 없다)
-INSURED_KEYS = ("maternity_leave", "spouse_birth_leave", "spouse_miscarriage_leave", "infertility_leave")  # 고용보험 급여가 대신 나오는 제도(우선지원 대상기업)
+INSURED_KEYS = ("maternity_leave", "spouse_birth_leave", "spouse_miscarriage_leave", "infertility_leave")  # 고용보험 급여가 나오는 제도(우선지원 대상기업)
+EXEMPT_KEYS = ("maternity_leave", "spouse_birth_leave", "spouse_miscarriage_leave")  # 「그 금액의 한도에서 지급의 책임을 면한다」 조항이 있는 것 — 난임치료휴가는 그 조항이 없다
 EXAMPLE_ERR = "가이드 C편 인용이 지금 데이터와 다르다 — 문안 판정 필요(리드)"
 
 
 def load_examples() -> dict:
     return json.loads(EXAMPLES_PATH.read_text(encoding="utf-8"))
+
+
+def next_change_line(it: dict) -> str:
+    """「이미 정해진 변경: …」 한 줄 — C편 작은 글과 항목 페이지(`pages/benefit.py`)가 같은 틀 · 같은 날짜 포매터를 쓴다."""
+    nc = it["next_change"]
+    return T.NEXT_CHANGE.format(date=_korean_date(nc["from"]), name=it["name"], text=nc["text"], law_no=nc["law_no"])
 
 
 def _item(key: str) -> dict:
@@ -60,10 +67,12 @@ _WHAT = {
     "value_minus_employer_paid": lambda it: it["baseline"]["value"] - it["employer_paid_days"],
     "paid": lambda it: it["paid"],
     "prev_value": lambda it: it["prev"]["value"],
+    "employer_paid_days": lambda it: it["employer_paid_days"],
+    "extended": lambda it: it["baseline"]["extended"],
 }
 
 
-def _check(checks: list[dict]) -> None:
+def _check(checks: list[dict], why: str | None = None) -> None:
     for c in checks:
         fn = _WHAT.get(c["what"])
         if fn is None:
@@ -74,6 +83,8 @@ def _check(checks: list[dict]) -> None:
             raise BuildError(f"{EXAMPLE_ERR} ({c['key']}.{c['what']}: {e})") from e
         if got != c["equals"]:
             raise BuildError(f"{EXAMPLE_ERR} ({c['key']}.{c['what']} = {got!r}, 인용은 {c['equals']!r})")
+        if c.get("shown") and (why is None or c["shown"] not in why):
+            raise BuildError(f"{EXAMPLE_ERR} ({c['key']}.{c['what']}: 풀이 글에 「{c['shown']}」가 없다)")
 
 
 def _law_cell(it: dict) -> str:
@@ -149,9 +160,13 @@ def _validate_examples(ctx, ex: dict) -> None:
             raise BuildError(f"{EXAMPLE_ERR} (법정 행 {r['comp_eng_nm']}/{r['benefit_nm']})")
     for g in ex["good"]:
         c, b = _row_in(ctx, g["comp_eng_nm"], g["benefit_cd"], g["benefit_nm"])
+        if not g.get("why"):
+            raise BuildError(f"{EXAMPLE_ERR} (좋은 예 {g['comp_eng_nm']} 에 풀이 why 가 없다)")
         if b is None or g["quote"] not in _screen_text(b) or marks.row_mark(g["comp_eng_nm"], g["benefit_cd"], g["benefit_nm"]) is not None:
             raise BuildError(f"{EXAMPLE_ERR} (좋은 예 {g['comp_eng_nm']}/{g['benefit_nm']})")
-        _check(g["checks"])
+        _check(g["checks"], g.get("why"))
+        if not c.get("careers_benefit_url"):
+            raise BuildError(f"{EXAMPLE_ERR} (좋은 예 {g['comp_eng_nm']} 에 근거 주소 careers_benefit_url 이 없다)")
     _validate_old_law(ex["old_law"])
 
 
@@ -186,16 +201,17 @@ def build_view(ctx, examples: dict | None = None, strict: bool | None = None) ->
          "small": T.SMALL_YES if by_key[k]["small_ok"] else T.SMALL_NO}
         for k in ks]} for name, ks in T.GROUPS]
 
-    small_names = [it["name"] for it in items if not it["small_ok"]]
+    small_names = [by_key[k]["name"] for k in keys_grouped if not by_key[k]["small_ok"]]  # 표 순서(GROUPS)
     insured_names = [by_key[k]["name"] for k in INSURED_KEYS]
-    smalls = [f(T.SMALL_NOTE_ONE, names=T.NAME_JOIN.join(small_names), eun=_josa(small_names[-1], "은", "는"))]
+    smalls = [f(T.SMALL_NOTE_ONE, names=T.SMALL_NAME_JOIN.join(small_names), eun=_josa(small_names[-1], "은", "는"))]
     if by_key["labor_day"].get("small_note"):
         smalls.append(f(T.SMALL_NOTE_LABOR))
-    smalls.append(f(T.INSURED_NOTE, names=T.NAME_JOIN.join(insured_names), eun=_josa(insured_names[-1], "은", "는")))
+    smalls.append(f(T.INSURED_NOTE, insured_names=T.NAME_JOIN.join(insured_names), insured_eun=_josa(insured_names[-1], "은", "는"),
+                    exempt_names=T.NAME_JOIN.join(by_key[k]["name"] for k in EXEMPT_KEYS)))
     smalls.append(T.ABBR_NOTE)
     for it in sorted((i for i in items if i.get("next_change")), key=lambda i: i["next_change"]["from"]):
         nc = it["next_change"]
-        smalls.append(T.NEXT_CHANGE.format(date=_korean_date(nc["from"]), name=it["name"], text=nc["text"], law_no=nc["law_no"]))
+        smalls.append(next_change_line(it))
     smalls.append(T.NOT_IN_TABLE)
 
     old_quote = ex["old_law"]["quote"]
@@ -206,7 +222,7 @@ def build_view(ctx, examples: dict | None = None, strict: bool | None = None) ->
 
     good = [{"company": ctx.by_eng[g["comp_eng_nm"]]["comp_nm"],
              "href": f"/company/{ctx.slugs[g['comp_eng_nm']]}#{benefit_anchor(g['benefit_cd'], g['benefit_nm'])}",
-             "tail": T.GOOD_ITEM_TAIL.format(label=g["label"], quote=g["quote"])} for g in ex["good"]]
+             "tail": T.GOOD_ITEM_TAIL.format(label=g["label"], quote=g["quote"]), "why": g["why"]} for g in ex["good"]]
     return {
         "crumb": {"href": G.LIST_ROUTE, "root": T.CRUMB_ROOT, "tail": T.CRUMB_TAIL},
         "h1": T.H1, "meta": f(T.META), "lead": T.LEAD,

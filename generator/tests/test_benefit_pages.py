@@ -460,7 +460,10 @@ def test_legal_cell_quotes_the_baseline_table_or_says_it_is_absent():
     html = parenting[0].html
     assert "근로기준법 제74조" in html and "90일 (미숙아 100일 · 다태아 120일)" in html
     assert "12개월 (요건 충족 시 18개월)" in html and "12개월 (최대 36개월)" in html
-    assert "재수집 대상" not in html and "법률 제" not in html, "기준선 표의 내부 메모(note)가 새어 나왔다"
+    assert "재수집 대상" not in html and "난임 치료비 지원은 법정이 아니므로" not in html, "기준선 표의 내부 메모(note)가 새어 나왔다"
+    # 이미 정해진 변경(next_change)은 C편과 같은 틀 한 줄 — 메모가 아니라 사실 칸이다(L-8). 그 항목이 있는 페이지에만.
+    assert '<p class="bn-law-change">이미 정해진 변경: 2026년 11월 27일부터 난임치료휴가 — 처음 4일 유급(법률 제21700호).</p>' in html
+    assert "연차유급휴가 —" not in html
 
 
 def test_legal_cell_still_shows_the_unconfirmed_tag(monkeypatch):
