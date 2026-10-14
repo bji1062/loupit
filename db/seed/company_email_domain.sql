@@ -357,12 +357,17 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          'cj_oliveyoung','cj_logistics','cj_cheiljedang','cj_cgv');
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hyosung.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hyosung_heavy';
+-- doosan.com → 두산 3사 그룹 단위 인증(사용자 2026-10-14). @doosan.com 보유자는 두산 3사 어디로든 인증된다.
+-- 두산에너빌리티는 전용 doosanenerbility.com 도 그대로 둔다.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
-  SELECT COMP_ID, 'doosan.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'doosan';
+  SELECT COMP_ID, 'doosan.com', TRUE FROM TCOMPANY
+   WHERE COMP_ENG_NM IN ('doosan','doosan_enerbility','doosan_tesna');
 -- 롯데케미칼은 자체 도메인(lottechem.com, 위)과 그룹 도메인을 **병행**한다 — 대외 역할주소는
 -- @lottechem.com, 임직원 실계정은 @lotte.net 에 있다(자사 e-Sales 처리방침 게시).
+-- 그룹 단위 인증(사용자 2026-10-14) · ⚠ 롯데렌탈은 최대주주 지분 매각 계약(2026-08-11 · 종결 전) — 종결되면 이 IN 목록에서 뺀다.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
-  SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lotte_chem';
+  SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY
+   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental');
 
 -- ── 확장 웨이브 1 (2026-09-01, 11개사 신규 등록 중 관측 6사) ─────────────────────
 -- 근거: 각사 공식 페이지 실관측(docs/handoff/2026-09-01-evidence/wave1/ 각 evidence).
@@ -529,9 +534,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 확장 웨이브 7 (2026-10-17 서빙 반영, 22개사 중 전용 16사 + 그룹 줄 병합 2사)
 -- 근거는 각사 evidence(loupit-evidence/2026-10-14-wave7/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소의 도메인만.
--- 그룹 줄 병합: 제일기획 → 위 삼성 그룹 줄(samsung.com) · SK바이오사이언스 → 위 SK 그룹 줄(sk.com).
--- 미등록 5사(수동 승인 폴백): 롯데정밀화학 · 롯데칠성음료 · 롯데렌탈(관측 주소가 롯데 그룹 공용 lotte.net 뿐 — 롯데케미칼 줄에만 있고 그룹 단위 인증이 아니다) ·
---   두산테스나(관측 주소가 doosan.com 뿐 — ㈜두산 줄에만) · F&F(관측 주소가 지주 F&F홀딩스 명의 fnfcorp.com 뿐).
+-- 그룹 줄 병합: 제일기획 → 위 삼성 그룹 줄(samsung.com) · SK바이오사이언스 → 위 SK 그룹 줄(sk.com) ·
+--   롯데 3사(롯데정밀화학 · 롯데칠성음료 · 롯데렌탈) → 위 롯데 그룹 줄(lotte.net) · 두산테스나 → 위 두산 그룹 줄(doosan.com) (사용자 2026-10-14).
+-- 미등록 1사(수동 승인 폴백): F&F(관측 주소가 지주 F&F홀딩스 명의 fnfcorp.com 뿐).
 -- @rejected: fnfcorp.com — F&F. 지주 F&F홀딩스 명의 보고서 문의처 도메인 — 지주 · 계열 공용으로 보여 계열 전 직원이 F&F 재직자로 인증될 수 있음
 -- @rejected: kct.co.kr — 케이씨텍. KC 그룹 · 분할 존속 지주 쪽 Family Site 도메인(채택본은 kctech.co.kr)
 -- ⓘ fnf.co.kr(F&F) · tesna.co.kr(두산테스나) · lottechilsung.co.kr(롯데칠성음료)은 MX 가 있으나 게시된 주소가 0이라 넣지 않았다.
