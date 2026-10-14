@@ -47,6 +47,9 @@
     {"comp": "bgf_retail", "h": "fc655d0e15", "mode": "external", "why": "원문은 EAP 프로그램(빅데이터 기반 상담센터 추천 · EAP 모바일 플랫폼)으로 사내 상담실이 아니다 — 「상담센터」 낱말이 사내 규칙에 걸렸다"},
     {"comp": "s1", "h": "daa4c2f7b5", "facets_remove": ["family"], "why": "「커플사랑더하기 · 자녀양육 프로그램」은 상담 프로그램 이름이다 — 가족도 이용하는지는 원문에 없다"},
     {"comp": "sk_chemicals", "h": "ec50bb27bc", "mode": "both", "why": "근무자 지원 프로그램(EAP) 업체를 활용한 상담과 사내 대면·비대면 「토닥토닥」을 함께 운영한다 — 「사내」에 먼저 걸려 회사 밖 기관 몫이 빠졌다"},
-    {"comp": "paradise", "h": "c95ed5857b", "facets_add": ["remote"], "why": "원문 「온 · 오프라인 심리 상담 서비스」 — 온라인 상담을 밝혔는데 규칙 정규식은 「온오프라인」만 본다"}
+    {"comp": "paradise", "h": "c95ed5857b", "facets_add": ["remote"], "why": "원문 「온 · 오프라인 심리 상담 서비스」 — 온라인 상담을 밝혔는데 규칙 정규식은 「온오프라인」만 본다"},
+    {"comp": "innocean", "h": "8f2cf75318", "facets_add": ["count"], "why": "원문 연간 최대 8회의 전문 상담 — 한 해 이용 횟수가 적혀 있으나 규칙 패턴(연 N회 · N회까지)이 연간 최대 N회 꼴을 못 잡는다"},
+    {"comp": "hyundai_elevator", "h": "da88a21b7d", "mode": "external", "facets_add": ["count"], "why": "원문 Keapa 한국EAP협회/서울심리상담센터 · 지역 심리상담센터 연계 운영은 외부 기관 연계이고 연간 1인당 최대 7회 상담 지원은 횟수를 밝힌 문장이다"},
+    {"comp": "lotte_chilsung", "h": "2c639af1c6", "mode": "external", "why": "원문 「외부 전문 기관을 통한 심리상담센터(EAP)」 · 「외부심리상담센터(EAP) 운영」 — 회사 밖 기관인데 「상담센터」 낱말이 사내 규칙에 먼저 걸린다"}
   ]
 }

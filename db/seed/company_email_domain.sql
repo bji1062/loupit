@@ -69,7 +69,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 3(2026-09-14): 삼성증권 관측 주소 ss.recruit@samsung.com(자기 도메인 경력채용·samsungcareers E40)
                          'samsung_sec',
                          -- 확장 웨이브 6(2026-10-17): 에스원 관측 주소가 전부 @samsung.com(samsungcareers E80 채용 문의 · 2025 보고서 IR 문의 — 역할 주소)
-                         's1');
+                         's1',
+                         -- 확장 웨이브 7(2026-10-17): 제일기획 — 사용자 그룹 단위 인증 결정(삼성 계열 전부 samsung.com). 전용 도메인 cheil.com 은 아래 단일 줄
+                         'cheil_worldwide');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
@@ -78,7 +80,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 3(2026-09-14): SK바이오팜 관측 주소 skbp_comm@sk.com(skbp.com 푸터, MX spmail.sk.com)
                          'sk_biopharm',
                          -- 확장 웨이브 6(2026-10-17): SK케미칼 2025 지속가능경영보고서 문의처 @sk.com(자기 도메인 skchemicals.com 의 MX 도 spmail.sk.com)
-                         'sk_chemicals');
+                         'sk_chemicals',
+                         -- 확장 웨이브 7(2026-10-17): SK바이오사이언스 — 사용자 그룹 단위 인증 결정. 자기 웹 도메인 skbioscience.com 은 MX 가 없다(메일 미수신)
+                         'sk_bioscience');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -521,3 +525,47 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'kkpc.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kumho_petrochemical';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'gsretail.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gs_retail';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 7 (2026-10-17 서빙 반영, 22개사 중 전용 16사 + 그룹 줄 병합 2사)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-14-wave7/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소의 도메인만.
+-- 그룹 줄 병합: 제일기획 → 위 삼성 그룹 줄(samsung.com) · SK바이오사이언스 → 위 SK 그룹 줄(sk.com).
+-- 미등록 5사(수동 승인 폴백): 롯데정밀화학 · 롯데칠성음료 · 롯데렌탈(관측 주소가 롯데 그룹 공용 lotte.net 뿐 — 롯데케미칼 줄에만 있고 그룹 단위 인증이 아니다) ·
+--   두산테스나(관측 주소가 doosan.com 뿐 — ㈜두산 줄에만) · F&F(관측 주소가 지주 F&F홀딩스 명의 fnfcorp.com 뿐).
+-- @rejected: fnfcorp.com — F&F. 지주 F&F홀딩스 명의 보고서 문의처 도메인 — 지주 · 계열 공용으로 보여 계열 전 직원이 F&F 재직자로 인증될 수 있음
+-- @rejected: kct.co.kr — 케이씨텍. KC 그룹 · 분할 존속 지주 쪽 Family Site 도메인(채택본은 kctech.co.kr)
+-- ⓘ fnf.co.kr(F&F) · tesna.co.kr(두산테스나) · lottechilsung.co.kr(롯데칠성음료)은 MX 가 있으나 게시된 주소가 0이라 넣지 않았다.
+-- ⚠ kdiwin.com(경동나비엔)은 법인 웹 도메인 kdnavien.co.kr 의 메일도 받는 인프라 도메인이고 법인 팀이 게시한 주소다 — 경동 계열(경동원 등)과
+--    공용일 수 있다. boryung.co.kr 도 지주 보령홀딩스와 같은 apex 일 수 있다. 형제가 코퍼스에 들어오면 다시 본다(웨이브 6 daewoong.co.kr 주석과 같은 처리).
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'boryung.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'boryung';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'inno-n.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hk_inno_n';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kctech.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kctech';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'innocean.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'innocean';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hyundaielevator.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hyundai_elevator';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'iprovest.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kyobo_securities';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kdiwin.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kyungdong_navien';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'ahnlab.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ahnlab';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'cheil.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'cheil_worldwide';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hanamts.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hana_materials';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'cosmecca.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'cosmecca_korea';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hanssem.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hanssem';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'koreanre.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'korean_re';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lxintl.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lx_international';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kumhotire.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kumho_tire';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'komico.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'komico';

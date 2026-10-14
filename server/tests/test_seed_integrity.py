@@ -173,7 +173,7 @@ def test_SI7_no_duplicate_alias_per_company(seeded_db):
 # ── SI-8: 200-seed 미등록 — 회사 수 = 95 (≠ 200) ──
 def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
-    assert count == 173  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-17)
+    assert count == 195  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-17) + 확장 웨이브 7 22개사(2026-10-17)
     assert count != 200
 
 
@@ -561,8 +561,12 @@ def test_SI13c_real_companies_cond_is_pinned():
         "orion": {"remote": ["조건부"]},
         "daewoong_pharm": {"flex": ["조건부"], "remote": ["조건부"]},
         "s1": {"remote": ["조건부"]},
+        "hk_inno_n": {"remote": ["조건부"]},
+        "kyobo_securities": {"remote": ["조건부"]},
+        "hana_materials": {"remote": ["부서별"]},
+        "lotte_rental": {"remote": ["자녀돌봄"]},
     }
-    for eng in ("db_insurance", "hyundai_glovis", "hyundai_wia"):
+    for eng in ("db_insurance", "hyundai_glovis", "hyundai_wia", "sk_bioscience", "lotte_fine_chem", "innocean", "hanssem", "lotte_chilsung"):
         assert ws[eng]["remote"] is True and "cond" not in ws[eng], f"{eng}: 「재택근무 포함」 · 신청형은 맨 칩 유지"
     assert ws["hanwha"]["flex"] is True and ws["hanwha"]["refreshLeave"] is not None, "㈜한화 flex · refreshLeave 는 맨 칩 유지"
     for eng, v in ws.items():
