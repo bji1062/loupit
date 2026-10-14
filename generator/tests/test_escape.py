@@ -42,7 +42,10 @@ def test_gc21_no_executable_script_alert_anywhere_in_page(fake_bundle_xss, fake_
     # 방출하고 사용자 데이터가 경유하지 않는다(칩 라벨·숫자는 본문이지 스크립트 소스가 아니다).
     lens_tag = '<script type="module" src="/assets/v2/js/lens.js" defer>'
     allowed_literals = {static_ads_tag, authnav_tag, lens_tag}
-    script_tags = re.findall(r"<script[^>]*>", p.html)
+    # 구글 태그 관리자(2026-10-14) — 고정 리터럴 스니펫 한 덩어리(컨테이너 ID 만 설정 값)는 통째로 뺀다.
+    # 덩어리 밖의 맨 `<script>` 는 여전히 전부 실패한다.
+    html = re.sub(r"<!-- Google Tag Manager -->.*?<!-- End Google Tag Manager -->", "", p.html, flags=re.S)
+    script_tags = re.findall(r"<script[^>]*>", html)
     assert all(
         'type="application/ld+json"' in tag or tag in allowed_literals
         for tag in script_tags

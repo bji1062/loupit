@@ -1,0 +1,10 @@
+{#- 구글 태그 관리자(애널리틱스) head 스니펫 — 사용자가 준 원문 그대로, 컨테이너 ID 만 `cfg.gtm_container_id`
+    (단일 소스, SP-ADS-12). `_head_meta.html` 이 `<meta charset>` 바로 뒤에 싣는다(= head 최대한 위).
+    수기 셸(`web/compare`·`web/community`)은 같은 글자를 넣고 `test_gtm.py` 가 ID 일치를 강제한다. -#}
+<!-- Google Tag Manager -->
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','{{ cfg.gtm_container_id }}');</script>
+<!-- End Google Tag Manager -->
