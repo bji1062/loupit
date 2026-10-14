@@ -496,7 +496,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 확장 웨이브 6 (2026-10-17 서빙 반영, 13개사 중 전용 9사 + 그룹 줄 병합 2사)
--- 근거는 각사 evidence(loupit-evidence/2026-10-14-wave6/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소만.
+-- 근거는 각사 evidence(docs/handoff/2026-10-14-evidence/wave6/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소만.
 -- 그룹 줄 병합: 에스원 → 위 삼성 그룹 줄(samsung.com) · SK케미칼 → 위 SK 그룹 줄(sk.com).
 -- 미등록 2사: 이수스페셜티케미컬(게시 주소 0) · BGF리테일(관측 주소가 그룹 공용 도메인뿐 — 웹 도메인 bgfretail.com 은 MX 없음) — 수동 승인 폴백.
 -- @rejected: bgf.co.kr — BGF리테일. BGF그룹 지주 · 공용 도메인(보고서 ESG팀 주소) — 계열사 전 직원이 BGF리테일 재직자로 인증될 수 있음
