@@ -3,7 +3,7 @@
 `/guide` 목록 페이지가 이 튜플 하나에서 카드를 만든다. **다음 판(또는 새 글)이 늘면 여기 한 줄**이다 — 새 판은 새 스냅숏 파일
 (`generator/data/guide/report-<판>.json`) + `REPORT_EDITIONS` 맨 앞에 한 줄 + 판별 문안(`content/guide_report_editions.py` 에 새 판 키) + 테스트 해시 한 줄.
 
-규칙: 최신 먼저(B → A → D). 숫자를 문장에 박지 않는다(카드 설명의 숫자는 각 글의 스냅숏에서 채운다).
+규칙: 최신 먼저(C → B → A → D). 숫자를 문장에 박지 않는다(카드 설명의 숫자는 각 글의 스냅숏에서 채운다).
 """
 from __future__ import annotations
 
@@ -13,6 +13,10 @@ LIST_LEAD = "잡초위키 데이터와 이직 계산기를 바탕으로 쓴 글�
 
 LIST_ROUTE = "/guide"
 LIST_PATH = "guide.html"
+
+# C편 「복지처럼 보이지만 법으로 정해진 제도」 — 법정 기준선 표(`generator/data/legal_baseline.json`)를 따라가는 글 하나. 인용 예 = `generator/data/guide/legal-examples.json`.
+LEGAL_ROUTE = "/guide/legal-baseline"
+LEGAL_PATH = "guide/legal-baseline.html"
 
 # B편 「복지를 연봉에 더해 보는 법」 — 고정판이 아니라 이직 계산기를 따라가는 글 하나. 예시 숫자는 JSON 한 개(`input` + 계산기 출력 `output` · `K`, 경로 = `pages/guide_total_comp.py::DATA_PATH`).
 TOTAL_ROUTE = "/guide/total-compensation"

@@ -351,7 +351,7 @@ main p { margin-top:var(--sp-3); }
 .benefit-amount { color:var(--brand); font-weight:var(--fw-semibold); white-space:nowrap; }
 .benefit-note { color:var(--t3); }
 .benefit-verified { color:var(--t4); font-size:var(--fs-xs); }
-/* 법정 제도 배지(SP-LEGAL-5) — 근로기준법 등이 모든 회사에 강제하는 행. 지우지 않고 표시만 하며
+/* 법정 제도 배지(SP-LEGAL-5) — 근로기준법 등 법이 회사에 의무로 정한 제도만 담은 행. 지우지 않고 표시만 하며
    복지 항목 수에서는 빠진다. 「공식/추정」 출처 배지와 다른 축이라 색을 빌려 쓰지 않는다. */
 .benefit-legal { color:var(--t3); font-size:var(--fs-xs); font-weight:var(--fw-medium);
   border:1px solid var(--line); border-radius:3px; padding:0 .35em; white-space:nowrap; }
@@ -1261,6 +1261,20 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .gt-steps li + li { margin-top:var(--sp-2); }
 .gt-steps li strong { font-weight:var(--fw-semibold); }
 .gt-cta { margin:var(--sp-5) 0 0; }
+/* ── 가이드 C편(/guide/legal-baseline, SP-GUIDE-11, 2026-10-14) — 법정 표(항목 페이지 `.bn-table` · `.table-scroll` 재사용) · 인용 · 작은 글. 분기 없음 ── */
+.gl-table { min-width:44em; }  /* 다섯 칸이 360px 에서 뭉개지지 않게 — 표 칸만 가로 스크롤(`.table-scroll`) */
+.gl-cap { caption-side:top; padding-bottom:var(--sp-2); color:var(--t3); font-size:var(--fs-xs); text-align:left; }
+.gl-table tbody th[scope="row"] { min-width:8em; }
+.gl-table tbody td { min-width:7em; }
+.gl-group th { padding-top:var(--sp-4); font-size:var(--fs-xs); font-weight:var(--fw-semibold); color:var(--t2); background:var(--bg-2); }
+.gl-small { margin:var(--sp-2) 0 0; color:var(--t3); font-size:var(--fs-sm); }
+.gl-quotes { list-style:disc; padding-left:var(--sp-5); margin:var(--sp-3) 0; }
+.gl-quotes li + li { margin-top:var(--sp-2); }
+.gl-ask { list-style:decimal; padding-left:var(--sp-5); margin:var(--sp-3) 0 0; }
+.gl-ask li + li { margin-top:var(--sp-3); }
+.gl-ask p { margin:var(--sp-1) 0 0; }
+.gl-why { margin:var(--sp-1) 0 0; }
+.gl-page a { color:var(--link); }
 
 /* ══════════════════════════════════════════════════ RESPONSIVE(768) ══ */
 /* ── 복지검색(/find, SP-FIND, 2026-09-06) ─────────────────────────────────
@@ -1551,6 +1565,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* 법으로 정해진 것 — 표에서 옮긴 칸만. 표에 없으면 라벨 한 줄. */
 .bn-law-none { background:var(--bg-2); border-radius:var(--r-sm); padding:var(--sp-3) var(--sp-4); color:var(--t2); }
 .bn-law-src { font-size:var(--fs-xs); color:var(--t3); }
+.bn-law-change { margin:var(--sp-2) 0 0; font-size:var(--fs-sm); color:var(--t2); }
+.bn-law-more { margin:var(--sp-1) 0 0; font-size:var(--fs-sm); }
 .bn-tag { font-size:var(--fs-xs); color:var(--badge-est-fg); background:var(--badge-est-bg); border-radius:var(--r-pill); padding:0 var(--sp-2); white-space:nowrap; }
 
 .bn-more { margin-top:var(--sp-2); }

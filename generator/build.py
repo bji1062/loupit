@@ -21,7 +21,7 @@ from generator.employ import coverage as employ_coverage
 from generator.employ import is_loaded as employ_is_loaded
 from generator.config import CFG
 from generator.context import build_context
-from generator.pages import about_data, benefit, combo, company, company_index, find, guide_index, guide_report, guide_total_comp, heatmap, home, policy
+from generator.pages import about_data, benefit, combo, company, company_index, find, guide_index, guide_legal, guide_report, guide_total_comp, heatmap, home, policy
 from generator.pages import sitemap as sitemap_page
 from generator import indexnow
 from generator.release import lastmod_index, stage_and_swap, write_manifest
@@ -83,6 +83,7 @@ def run(
     pages += policy.render_all(env, ctx)  # 정책 4 + 404 (SP-POL 문안)
     pages.append(about_data.render(env, ctx, CFG, benefit_links=benefit.links(benefit_pages, benefit_cfgs)))  # 가이드 D편 데이터 안내 /about/data (SP-GUIDE, 2026-10-06) — 정책 옆, 무광고
     pages.append(guide_index.render(env, ctx, CFG))  # 가이드 목록 /guide (SP-GUIDE-8, 2026-10-08) — 무광고
+    pages.append(guide_legal.render(env, ctx, CFG))  # 가이드 C편 /guide/legal-baseline (SP-GUIDE-11) — 법정 기준선 표 · 인용 예 JSON · 데이터를 따라간다
     pages.append(guide_total_comp.render(env, ctx, CFG))  # 가이드 B편 /guide/total-compensation (SP-GUIDE-10) — 예시 숫자는 계산기가 낸 JSON 뿐
     pages += guide_report.render_all(env, ctx, CFG, benefit_links=benefit.links(benefit_pages, benefit_cfgs))  # 가이드 A편 고정판 /guide/report-<판> (SP-GUIDE-7) — 숫자는 스냅숏 JSON 뿐
     if only:  # 개발용 경로 접두 필터 — 대문은 예외로 항상 남긴다

@@ -632,14 +632,14 @@ describe('RC-7 적대 검증 재현(2026-09-23) — 문장이 사실과 같게 �
     const { mount } = render(verifyState('KT', '네패스'), 'benefits', V);
     const how = txt(mount, '.calc-vd .calc-how');
     assert.match(how, /그대로 계산한 값\(\+342\)과 네패스에만 금액이 등록된 1건을 뺀 값\(\+142\)이 서로 다른 회사를 가리키면/);
-    assert.match(how, /법으로 모든 회사에 정해진 제도만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
+    assert.match(how, /법으로 정해진 제도만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
     assert.match(txt(mount, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정 제외\) — KT 10개 · 네패스 18개/);
     assert.match(txt(mount, '#calc-b-contrast .calc-foot'), /복지로 세지 않아 비교에서 뺀 항목: 법정 출산\/육아 지원\(KT\)$/);
     // 법정 항목이 두 회사에 하나씩일 때 「 · 」로 잇는 경로 — 네패스 해제로 사라진 단언을 KT · 삼성카드로 다시 잰다
     const { mount: sc } = render(verifyState('KT', '삼성카드'), 'benefits', V);
     assert.match(txt(sc, '#calc-b-contrast .calc-foot'), /복지로 세지 않아 비교에서 뺀 항목: 법정 출산\/육아 지원\(KT\) · 법정 육아휴직·모성보호제도\(삼성카드\)/);
     // 삼성카드에는 업무 교육 표시 행(Job master 양성과정)도 있다 — 두 kind 를 「과」로 잇고 제목 꼬리도 합친다(SP-MARK).
-    assert.match(txt(sc, '.calc-vd .calc-how'), /법으로 모든 회사에 정해진 제도만 적힌 항목\(2개\)과 회사가 업무를 맡기려고 여는 교육만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
+    assert.match(txt(sc, '.calc-vd .calc-how'), /법으로 정해진 제도만 적힌 항목\(2개\)과 회사가 업무를 맡기려고 여는 교육만 적힌 항목\(1개\)은 복지로 세지 않았습니다/);
     assert.match(txt(sc, '#calc-b-contrast > summary'), /^복지 전체 비교표\(법정·업무 교육 제외\)/);
     assert.match(txt(sc, '#calc-b-contrast .calc-foot'), /업무 교육 Job master 양성과정\(삼성카드\)$/);
     assert.match(txt(sc, '#calc-b-basis'), /회사가 업무를 맡기려고 여는 교육만 적힌 항목 1개는 표시만 하고 비교에서 뺐습니다/);

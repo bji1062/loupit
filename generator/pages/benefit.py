@@ -25,12 +25,14 @@ import sys
 from collections import Counter
 
 from generator import benefit_rules, legal, marks
+from generator.content import guides
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.format import amount_kind, benefit_desc
 from generator.pages.company import CATEGORY_LABEL, LENS_BUCKETS, amount_view, benefit_anchor, lens_keys
 from generator.pages.find import _prefer_name, derive_codes
+from generator.pages.guide_legal import next_change_line
 from generator.slug import BuildError
 
 # 페이지를 만드는 보유 회사 수 하한(법정 행·exclude 제외). 실측: 2026-09-18 87종 중 36종 · 2026-09-21 90종 중 38종(SPEC 20 SP-BEN-13).
@@ -162,7 +164,8 @@ def _legal_view(code: str) -> dict:
         }
         for it in legal.items() if code in (it.get("benefit_cds") or [])
     ]
-    return {"entries": items, "reviewed": legal.raw().get("reviewed", "")}
+    changes = [next_change_line(it) for it in legal.items() if code in (it.get("benefit_cds") or []) and it.get("next_change")]  # 이미 정해진 변경(C편 작은 글과 같은 틀)
+    return {"entries": items, "changes": changes, "reviewed": legal.raw().get("reviewed", ""), "more_href": guides.LEGAL_ROUTE}  # 가이드 C편 링크(경로는 guides 정본 하나)
 
 
 def _row_view(r: dict, code: str, mode_by_key: dict) -> dict:

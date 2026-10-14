@@ -334,11 +334,11 @@ def test_page_is_active_tab_adless_and_indexable(page):
     assert f'href="{G.COMPARE_ROUTE}"' in page.html and 'href="/privacy"' in page.html and 'href="/about/data"' in page.html
 
 
-def test_guide_index_lists_b_first_then_a_then_d():
+def test_guide_index_lists_b_then_a_then_d_after_c():
     cards = guide_index.cards()
-    assert [c["href"] for c in cards] == ["/guide/total-compensation"] + [G.report_route(e) for e in G.REPORT_EDITIONS] + [G.DATA_ROUTE]
-    assert cards[0] == {"href": "/guide/total-compensation", "title": T.H1, "desc": T.CARD_DESC}
-    assert cards[0]["desc"] == "연봉이 오르는 이직이 늘 이득은 아닙니다. 이직 계산기가 무엇을 더하고 빼는지 예시로 적어 둡니다."
+    assert [c["href"] for c in cards] == ["/guide/legal-baseline", "/guide/total-compensation"] + [G.report_route(e) for e in G.REPORT_EDITIONS] + [G.DATA_ROUTE]  # C → B → A → D (SP-GUIDE-11)
+    assert cards[1] == {"href": "/guide/total-compensation", "title": T.H1, "desc": T.CARD_DESC}
+    assert cards[1]["desc"] == "연봉이 오르는 이직이 늘 이득은 아닙니다. 이직 계산기가 무엇을 더하고 빼는지 예시로 적어 둡니다."
     html = guide_index.render(make_env(), None, CFG).html
     assert html.index("/guide/total-compensation") < html.index("/guide/report-2026-10") < html.index("/about/data")
 

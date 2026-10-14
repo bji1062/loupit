@@ -1,0 +1,74 @@
+{# guide_legal.html — 가이드 C편 「복지처럼 보이지만 법으로 정해진 제도」 (SP-GUIDE-11, 2026-10-14). 문장은 `content/guide_legal.py`, 표 · 숫자는
+   `pages/guide_legal.py::build_view` 가 법정 기준선 표(`legal_baseline.json`) · 인용 예 JSON · 빌드 ctx 에서만 만든 문자열이다(템플릿에 숫자 · 라벨을 적지 않는다).
+   표는 HTML 뿐(JS 0) — 모바일은 표 칸만 가로 스크롤(`.table-scroll`). page_type = policy → 광고 0. #}
+{% extends "base.html" %}
+{% set page_type = 'policy' %}
+{% from "partials/_guide_crumb.html" import guide_crumb %}
+{% block main %}
+<article class="guide-page gl-page">
+  {{ guide_crumb(view.crumb) }}
+  <h1>{{ view.h1 }}</h1>
+  <p class="guide-meta">{{ view.meta }}</p>
+  <p class="guide-lead">{{ view.lead }}</p>
+
+  <h2 id="gl-line">{{ view.line.h }}</h2>
+  <p>{{ view.line.intro }}</p>
+  <div class="table-scroll gl-scroll" tabindex="0" role="group" aria-labelledby="gl-line">
+    <table class="bn-table gl-table">
+      <caption class="gl-cap">{{ view.line.cap }}</caption>
+      <thead><tr>{% for c in view.line.cols %}<th scope="col">{{ c }}</th>{% endfor %}</tr></thead>
+      {% for g in view.line.groups %}
+      <tbody>
+        <tr class="gl-group"><th scope="rowgroup" colspan="5">{{ g.name }}</th></tr>
+        {% for r in g.rows %}
+        <tr>
+          <th scope="row">{{ r.name }}</th>
+          <td>{{ r.basis }}</td>
+          <td>{{ r.law }}</td>
+          <td>{{ r.pay }}</td>
+          <td>{{ r.small }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+      {% endfor %}
+    </table>
+  </div>
+  {% for s in view.line.smalls %}<p class="gl-small">{{ s }}</p>{% endfor %}
+
+  <h2>{{ view.who.h }}</h2>
+  {% for p in view.who.paras %}<p>{{ p }}</p>{% endfor %}
+
+  <h2>{{ view.how.h }}</h2>
+  {% for p in view.how.paras %}<p>{{ p }}</p>{% endfor %}
+
+  <h2>{{ view.bad.h }}</h2>
+  {% if view.bad.quotes %}
+  <p>{{ view.bad.intro }}</p>
+  <ul class="gl-quotes">{% for q in view.bad.quotes %}<li>「{{ q }}」</li>{% endfor %}</ul>
+  <p>{{ view.bad.after }}</p>
+  {% endif %}
+  <p>{{ view.bad.mixed_intro }}</p>
+  <ul class="gl-quotes"><li>「{{ view.bad.mixed_quote }}」</li></ul>
+  <p>{{ view.bad.mixed_after }}</p>
+
+  {% if view.good.list %}
+  <h2>{{ view.good.h }}</h2>
+  <p>{{ view.good.intro }}</p>
+  <ul class="gl-quotes">{% for g in view.good.list %}<li><a href="{{ g.href }}">{{ g.company }}</a>{{ g.tail }}<p class="gl-why">{{ g.why }}</p></li>{% endfor %}</ul>
+  <p>{{ view.good.after }}</p>
+  {% endif %}
+
+  <h2>{{ view.change.h }}</h2>
+  <p>{{ view.change.p1 }}</p>
+  <p>{{ view.change.p2 }}</p>
+  {% for s in view.change.smalls %}<p class="gl-small">{{ s }}</p>{% endfor %}
+
+  <h2>{{ view.ask.h }}</h2>
+  <ol class="gl-ask">
+  {% for it in view.ask.list %}<li><strong>{{ it.q }}</strong><p>{{ it.a }}</p></li>{% endfor %}
+  </ol>
+
+  <p>{{ view.end }}</p>
+  <p><a href="{{ view.data_link.href }}">{{ view.data_link.text }}</a></p>
+</article>
+{% endblock %}

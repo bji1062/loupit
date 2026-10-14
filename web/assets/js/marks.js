@@ -21,8 +21,8 @@ export const ROW_MARKS = Object.freeze([
 export const MARK = Object.freeze({
   legal: Object.freeze({
     label: '법정',
-    title: '근로기준법 등이 모든 회사에 강제하는 제도입니다. 복지 항목 수에서 제외됩니다.',
-    phrase: '법으로 모든 회사에 정해진 제도만 적힌 항목',
+    title: '근로기준법 등 법이 회사에 의무로 정한 제도입니다. 복지 항목 수에서 제외됩니다.',
+    phrase: '법으로 정해진 제도만 적힌 항목',
     note: '',
   }),
   work_edu: Object.freeze({
