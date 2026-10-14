@@ -94,6 +94,11 @@ function renderDetail(company, mountEl, deps, now = Date.now()) {
       for (const b of g.items) {
         const li = el('li', { class: 'cp-ben-row' });
         li.append(el('span', { class: 'cp-ben-nm', text: benefitLine(b) })); // "이름 — 연 N만원"/정성은 이름만
+        // 금액 축(추정치) — 출처 배지(계보)와 별개다. 판정은 generator/format.py::amount_kind 와 같은 규칙:
+        // 정성이거나 금액이 비면 해당 없음, 'stated' 가 아닌 금액은 추정치.
+        if (!b.qual_yn && b.benefit_amt != null && b.amt_source !== 'stated') {
+          li.append(el('span', { class: 'cmp-chip est', title: '회사 공식 수치가 아니라 잡초위키가 붙인 어림값입니다', text: '추정치' }));
+        }
         const mk = rowMark(company.comp_eng_nm, b);
         if (mk) {
           li.append(el('span', { class: 'benefit-mark', title: MARK[mk].title, text: MARK[mk].label }));
@@ -110,7 +115,7 @@ function renderDetail(company, mountEl, deps, now = Date.now()) {
     totalRow.append(el('span', { text: '복지 총가치(금액 환산 합계): ' }));
     totalRow.append(el('strong', { class: 'cp-total-amt', text: '연 ' + total + '만원' }));
     page.append(totalRow);
-    page.append(el('p', { class: 'cp-note', text: '정성 복지(금액 환산 불가)는 합계에 포함되지 않습니다. 추정 금액은 배지로 표기됩니다.' }));
+    page.append(el('p', { class: 'cp-note', text: '정성 복지(금액 환산 불가)는 합계에 포함되지 않습니다. 추정치는 따로 표시합니다.' }));
   }
 
   const actions = el('div', { class: 'cp-actions' });

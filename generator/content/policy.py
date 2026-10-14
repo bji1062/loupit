@@ -13,6 +13,15 @@ import·호출해 4개 `PolicyDoc`을 얻고 `templates/policy.html`로 감싸 �
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
+
+from generator.format import badge_state
+from generator.marks import SUMMARY_SRC_CD
+
+
+def _badge_label(**row) -> str:
+    """출처 배지 라벨 — 사이트 표시 정본(`format.badge_state`)에서 읽는다. 여기에 다시 적지 않는다."""
+    return badge_state(row, datetime(2000, 1, 1))["label"]
 
 
 @dataclass(frozen=True)
@@ -460,18 +469,22 @@ def _disclaimer(cfg) -> PolicyDoc:
                 ),
             ),
             _S(
-                "D-2", "d2", "출처 신뢰도 배지", "출처 신뢰도 배지(공식/추정)",
+                "D-2", "d2", "출처 배지", "출처 배지",
                 (
-                    "각 복지 항목에는 출처 신뢰도 배지가 표시됩니다. 공식(official)은 "
-                    "회사 공식 공개 정보에 근거한 항목, 추정(est)은 집계·프리셋 등 "
-                    "추정에 근거한 항목입니다.",
+                    "각 복지 항목에는 출처 배지가 붙습니다. "
+                    f"「{_badge_label(badge_cd='official')}」은 회사 공식 자료에서 확인한 항목, "
+                    f"「{_badge_label(edit_origin='edited')}」은 공식 값을 재직자가 고친 항목, "
+                    f"「{_badge_label(edit_origin='member')}」은 재직자가 새로 더한 항목, "
+                    f"「{_badge_label(badge_src_cd=SUMMARY_SRC_CD)}」은 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목입니다. "
+                    f"확인 기한이 지난 항목에는 「{_badge_label(expires_dtm='1999-01-01')}」가 붙고, "
+                    f"공식 출처가 아닌 항목은 「{_badge_label()}」으로 표시합니다.",
                 ),
             ),
             _S(
                 "D-3", "d3", "출처≠금액 신뢰도", "출처 신뢰도 ≠ 금액 신뢰도",
                 (
                     "출처가 공식이라도 금액은 추정치일 수 있습니다. 출처의 신뢰도와 "
-                    "금액의 신뢰도는 별개로 표기되며, 추정 금액은 더 넓은 오차로 "
+                    "금액의 신뢰도는 별개로 표기되며, 추정치는 더 넓은 오차로 "
                     "표시됩니다.",
                 ),
             ),

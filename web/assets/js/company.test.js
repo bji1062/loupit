@@ -107,6 +107,23 @@ describe('renderCompanyView — 상세/후보목록/무결과', () => {
     assert.ok(mount().querySelector('.cp-compare-cta'), '비교 시작 CTA');
   });
 
+  test('추정치 표시 — 금액 있는 추정 행에만(공식 수치·정성·금액 빈 행에는 없음)', () => {
+    const co = { ...SAMSUNG, benefits: [
+      ben('a', '통근버스', 120, 'perks', { amt_source: 'estimated' }),
+      ben('b', '식대', 240, 'perks'),
+      ben('c', '사내 어린이집', null, 'family'),
+      ben('d', '건강검진', null, 'health', { qual_yn: false, amt_source: 'estimated' }),
+    ] };
+    renderCompanyView({ term: '삼성전자', matches: [co] }, mount(), {});
+    const rows = [...mount().querySelectorAll('.cp-ben-row')];
+    const has = (nm) => rows.find((r) => r.textContent.includes(nm)).textContent.includes('추정치');
+    assert.equal(has('통근버스'), true);
+    assert.equal(has('식대'), false);
+    assert.equal(has('사내 어린이집'), false);
+    assert.equal(has('건강검진'), false);
+    assert.match(mount().textContent, /추정치는 따로 표시합니다/);
+  });
+
   test('CTA 클릭 → deps.onCompare(company) 호출', () => {
     const picked = [];
     renderCompanyView({ term: '삼성전자', matches: [SAMSUNG] }, mount(), { onCompare: (c) => picked.push(c) });
