@@ -302,3 +302,90 @@ def test_group_benefits_without_company_name_flags_nothing(fake_now):
     c = _fake_company("kt", ["출산/육아 지원"], ctgr="parenting")
     groups = _group_benefits(c["benefits"], fake_now)
     assert all(not i["mark"] for _, _, its in groups for i in its)
+
+
+# ── 글 C편이 읽는 칸 (SP-GUIDE-11, 2026-10-14) ──────────────────────────────
+# `guide` 칸(글 표의 사람 글자)은 구조 칸 숫자를 글자로 다시 쓴 것이다. 값만 바꾸고 글자를 안 고치면 여기서 멈춘다.
+
+import datetime
+import re
+
+_NEW_ITEM_KEYS = {"small_ok", "small_note", "employer_paid_days", "employer_paid_days_multi", "next_change", "prev", "guide"}
+_OLD_ITEM_KEYS = {"key", "name", "law", "article", "identify", "convert", "convert_basis", "baseline", "paid", "paid_note",
+                  "effective_from", "confidence", "benefit_cds", "note"}
+# 개월 ↔ 년 환산 표 — 글자 기준이 「년」인 항목만 여기 있다(임의 처리 금지: 표에 없는 개월 값이 생기면 실패한다).
+_MONTHS_AS_TEXT = {12: "1년", 18: "1년 6개월", 36: "3년"}
+
+
+def _ints(text: str) -> set[int]:
+    return {int(x) for x in re.findall(r"\d+", text)}
+
+
+def test_every_item_has_guide_and_small_ok_and_header_fields():
+    raw = legal.raw()
+    assert raw["reviewed"] == "2026-10-13"
+    assert raw["small_workplace"]["cut"] == 5 and raw["small_workplace"]["law"] == "근로기준법 제11조"
+    for it in legal.items():
+        assert isinstance(it.get("small_ok"), bool), it["key"]
+        g = it.get("guide") or {}
+        assert g.get("basis") and g.get("pay"), it["key"]
+    assert [it["key"] for it in legal.items() if not it["small_ok"]] == ["annual_leave", "menstrual_leave", "public_holiday", "overtime_premium"]
+
+
+def test_item_keys_are_all_known_to_the_renderer():
+    """항목 키의 허용 목록 — 모르는 키가 생기면 글(`pages/guide_legal.py`)이 조용히 안 읽는다(FIXED_EXTRA_KEYS 함정과 같은 뜻)."""
+    for it in legal.items():
+        assert set(it) <= _OLD_ITEM_KEYS | _NEW_ITEM_KEYS, f"{it['key']} 의 {set(it) - _OLD_ITEM_KEYS - _NEW_ITEM_KEYS} 를 렌더러가 모른다"
+
+
+def test_guide_text_contains_the_structured_numbers():
+    from generator.pages.benefit import FIXED_EXTRA_KEYS
+    for it in legal.items():
+        basis, pay, bl = it["guide"]["basis"], it["guide"]["pay"], it["baseline"]
+        nums = _ints(basis)
+        if bl["type"] == "fixed":
+            keys = ["value"] + [k for k, _ in FIXED_EXTRA_KEYS if bl.get(k)]
+            for k in keys:
+                v = bl[k]
+                if bl["unit"] == "개월":
+                    assert v in _MONTHS_AS_TEXT, f"{it['key']} 의 {v}개월은 환산 표에 없다 — 표에 더하고 글자를 확인하라"
+                    assert _MONTHS_AS_TEXT[v] in basis, f"{it['key']}: {k}={v}개월 → 「{_MONTHS_AS_TEXT[v]}」가 basis 에 없다"
+                else:
+                    assert v in nums, f"{it['key']}: {k}={v} 가 basis 글자에 없다 — 값을 바꿨다면 guide 글자도 고쳐라"
+        elif bl["type"] == "tenure_table":
+            # 가산 행(step_years)의 value(16)는 앞 행(15)에 step_value(1)를 더한 값이라 글자는 「2년마다 1일 더(최대 25일)」로 쓴다 — 시작 값 대신 step · cap 을 대조한다.
+            vals = [r["value"] for r in bl["table"] if not r.get("step_years")] + [r[k] for r in bl["table"] if r.get("step_years") for k in ("step_years", "step_value", "cap")]
+            assert set(vals) <= nums, f"{it['key']}: 표 값 {sorted(set(vals) - nums)} 가 basis 에 없다"
+        elif bl["type"] == "rate":
+            assert round(bl["value"] * 100) in nums, f"{it['key']}: 비율 {bl['value']} → {round(bl['value'] * 100)} 가 basis 에 없다"
+        pay_nums = _ints(pay)
+        for k in ("employer_paid_days", "employer_paid_days_multi"):
+            if it.get(k):
+                assert it[k] in pay_nums, f"{it['key']}: {k}={it[k]} 가 pay 글자에 없다"
+        nc = it.get("next_change") or {}
+        if nc.get("employer_paid_days"):
+            assert nc["employer_paid_days"] in pay_nums and nc["from"] in pay, f"{it['key']}: next_change 가 pay 글자에 없다"
+
+
+def test_next_change_has_not_taken_effect_yet():
+    """날짜 장치 — 이미 정해진 변경의 시행일이 지났으면 표의 값을 바꾸고 next_change 를 지워야 한다.
+    ⚠ 빌드 HTML 은 날짜를 읽지 않는다(결정적) — 날짜는 이 테스트만 읽는다."""
+    today = datetime.date.today()
+    for it in legal.items():
+        nc = it.get("next_change")
+        if nc:
+            assert datetime.date.fromisoformat(nc["from"]) > today, (
+                f"법정 기준선 `{it['key']}` 의 이미 정해진 변경({nc['from']}, {nc['law_no']})이 시행됐다 — legal_baseline.json 값을 바꾸고 next_change 를 지운 뒤, "
+                "난임이면 데이터 「(법정 유급 2일에 N일 추가)」 6행 · 수집 계약 · LG디스플레이 행도 고칠 것(리드 판정 (94) D2)")
+
+
+def test_c_article_additions_to_the_table():
+    assert legal.by_key("spouse_birth_leave")["prev"] == {"value": 10, "until": "2025-02-22", "law_no": "법률 제20521호"}
+    assert legal.by_key("infertility_leave")["next_change"]["employer_paid_days"] == 4
+    assert legal.by_key("annual_leave")["next_change"]["from"] == "2027-06-10"
+    assert legal.by_key("maternity_leave")["employer_paid_days"] == 60 and legal.by_key("maternity_leave")["employer_paid_days_multi"] == 75
+    for k in ("infertility_leave", "family_care_leave", "family_care_absence"):
+        assert legal.by_key(k)["baseline"]["unit"] == "일/년"
+    assert legal.by_key("parental_work_reduction")["paid_note"].startswith("줄인 시간만큼 임금이 줄고")
+    assert legal.by_key("labor_day")["small_note"].startswith("고용노동부 해석")
+    assert "계산기 연결 전" in legal.raw()["_용도"]["convert"]

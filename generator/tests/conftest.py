@@ -72,3 +72,11 @@ def fake_combinations_path(tmp_path, monkeypatch):
     path.write_text(json.dumps(FAKE_COMBINATIONS_RAW, ensure_ascii=False), encoding="utf-8")
     monkeypatch.setattr(combo_module, "COMBINATIONS_PATH", path)
     return path
+
+
+@pytest.fixture(autouse=True)
+def _guide_legal_lenient(monkeypatch):
+    """가이드 C편(`pages/guide_legal.py`)은 운영 빌드에서 인용 예 · 직원 수 최솟값을 실제 데이터와 대조한다(어긋나면 BuildError).
+    fake 번들에는 실제 회사(kt · 유한양행 …)와 직원 현황이 없으므로 기본은 끈다. 대조 자체를 검사하는 `test_guide_legal.py` 가 다시 켠다."""
+    from generator.pages import guide_legal
+    monkeypatch.setattr(guide_legal, "STRICT_DATA", False)

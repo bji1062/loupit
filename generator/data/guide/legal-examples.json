@@ -1,0 +1,16 @@
+{
+  "_": "가이드 C편 인용 예 — 빌드가 지금 데이터와 대조한다(어긋나면 BuildError). 근거: loupit-evidence/2026-10-13-guide-c/FACTCHECK-C.md 4 · 5 · 6절.",
+  "legal_rows": [
+    {"comp_eng_nm": "kt", "benefit_cd": "parenting", "benefit_nm": "출산/육아 지원", "quote": "출산휴가 및 육아휴직을 지원합니다."},
+    {"comp_eng_nm": "samsung_card", "benefit_cd": "parenting", "benefit_nm": "육아휴직·모성보호제도", "quote": "육아휴직제도 및 단축근무 등 모성보호제도를 운영합니다."}
+  ],
+  "mixed_list": {"quote": "자유로운 연차사용, 반차제도, 산전/산후휴가, 육아휴직, 생리휴가, 경조휴가, 생일휴가, 권장휴가, *자율휴가", "source": "loupit-evidence/2026-10-10-wave5/isc/i-gle-life_2026-10-10.html", "seen": "2026-10-10"},
+  "good": [
+    {"comp_eng_nm": "yuhan", "benefit_cd": "leave_general", "benefit_nm": "추가 휴가 7일 (최대 32일)", "label": "휴가", "quote": "법정 기준보다 7일 추가 휴가 부여, 최대 32일", "checks": [{"key": "annual_leave", "what": "cap", "equals": 25}]},
+    {"comp_eng_nm": "hanwha_systems", "benefit_cd": "parenting", "benefit_nm": "배우자 출산휴가 26일·출산 축하금·임신/출산 패키지", "label": "배우자 출산휴가", "quote": "배우자 출산 휴가 26일(법정 20일에 6일 추가)", "checks": [{"key": "spouse_birth_leave", "what": "value", "equals": 20}]},
+    {"comp_eng_nm": "hyundai_motor", "benefit_cd": "parenting", "benefit_nm": "임신·출산·육아 지원", "label": "출산 전후 휴가", "quote": "출산 전후 휴가 잔여 30일의 정부 급여와 통상임금 차액 회사 보전", "checks": [{"key": "maternity_leave", "what": "value_minus_employer_paid", "equals": 30}]},
+    {"comp_eng_nm": "gs_enc", "benefit_cd": "parenting", "benefit_nm": "출산·육아 지원 (추가 육아휴직 1년)", "label": "육아휴직", "quote": "법정 육아휴직 외 최대 1년 추가 육아휴직 제공", "checks": [{"key": "parental_leave", "what": "value", "equals": 12}]},
+    {"comp_eng_nm": "kia", "benefit_cd": "leave_general", "benefit_nm": "프로드림 휴가·유급 보건휴가", "label": "보건휴가", "quote": "여직원 유급 보건휴가를 부여합니다.", "checks": [{"key": "menstrual_leave", "what": "paid", "equals": "unpaid"}]}
+  ],
+  "old_law": {"quote": "법정기간 10일에 추가로 10일 사용 가능", "doc": "2025 지속가능경영보고서(2026-06-30 발행)", "source": "loupit-evidence/2026-10-02-recollect-3-5/doosan/doosan_SR2025_KOR.txt:2108", "checks": [{"key": "spouse_birth_leave", "what": "prev_value", "equals": 10}, {"key": "spouse_birth_leave", "what": "value", "equals": 20}]}
+}

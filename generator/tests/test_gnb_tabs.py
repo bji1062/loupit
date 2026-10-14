@@ -18,7 +18,7 @@ from pathlib import Path
 from generator.config import CFG
 from generator.content.nav import GNB_TABS, GNB_TAB_HREFS
 from generator.context import build_context
-from generator.pages import about_data, guide_index, guide_report, guide_total_comp, combo, company, company_index, find, heatmap, home, policy
+from generator.pages import about_data, guide_index, guide_legal, guide_report, guide_total_comp, combo, company, company_index, find, heatmap, home, policy
 from generator.render import make_env
 from generator.tests.fixtures import render_benefit_net
 
@@ -71,7 +71,7 @@ def _all_pages(fake_bundle, fake_now):
         + [company_index.render(env, ctx, CFG)]
         + [heatmap.render(env, ctx, CFG)]
         + [about_data.render(env, ctx, CFG)]  # 가이드 D편(2026-10-06) — 생성 페이지 그물에 함께 건다
-        + [guide_index.render(env, ctx, CFG)] + guide_report.render_all(env, ctx, CFG) + [guide_total_comp.render(env, ctx, CFG)]  # 가이드 목록 · A편(2026-10-08) · B편(2026-10-13) — 같은 그물
+        + [guide_index.render(env, ctx, CFG)] + guide_report.render_all(env, ctx, CFG) + [guide_total_comp.render(env, ctx, CFG)] + [guide_legal.render(env, ctx, CFG)]  # 가이드 목록 · A편(2026-10-08) · B편(2026-10-13) · C편(2026-10-14) — 같은 그물
         + render_benefit_net(env, ctx)  # 복지 항목(SP-BEN) — 문턱을 낮춰 그물에 건다
         + [find.render(env, ctx, CFG)]
         + [home.render(env, ctx, CFG, pairs=pairs)]  # 대문(2026-09-13, 2단계) — 생성 페이지 그물에 함께 건다

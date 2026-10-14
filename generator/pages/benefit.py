@@ -25,6 +25,7 @@ import sys
 from collections import Counter
 
 from generator import benefit_rules, legal, marks
+from generator.content import guides
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
@@ -162,7 +163,7 @@ def _legal_view(code: str) -> dict:
         }
         for it in legal.items() if code in (it.get("benefit_cds") or [])
     ]
-    return {"entries": items, "reviewed": legal.raw().get("reviewed", "")}
+    return {"entries": items, "reviewed": legal.raw().get("reviewed", ""), "more_href": guides.LEGAL_ROUTE}  # 가이드 C편 링크(경로는 guides 정본 하나)
 
 
 def _row_view(r: dict, code: str, mode_by_key: dict) -> dict:
