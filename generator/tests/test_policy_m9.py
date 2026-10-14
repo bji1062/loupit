@@ -127,12 +127,12 @@ def test_PM7_on_p1_distinguishes_anonymous_from_contribution():
 @pytest.mark.parametrize(
     "cfg,key,expected",
     [
-        (PRE_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6"}),
+        (PRE_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P11"}),
         (PRE_M9, "terms", {"T1", "T2", "T3", "T4"}),
         # P8·P9 는 2026-07-29 신설 — 회원 제도와 **함께** 발생하는 고지 의무다(위탁·국외이전 /
         # 보유기간·권리·보호책임자). 이 정확일치 계약이 "새 항목을 조용히 추가"를 막는다.
         # P10·T6 은 2026-08-27 SC15 커뮤니티 — 게시물 정보·게시물 책임/임시조치. 같은 스위치(SP-COMM-10).
-        (POST_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10"}),
+        (POST_M9, "privacy", {"P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8", "P9", "P10", "P11"}),
         (POST_M9, "terms", {"T1", "T2", "T3", "T4", "T5", "T6"}),
     ],
 )

@@ -27,7 +27,7 @@ _TRUTHY = frozenset({"1", "true", "t", "yes", "y", "on"})
 # 환경(배포 호스트)에서는 `GenConfig().policy_contact` 가 폴백이 아니다. 폴백 계약을
 # 검증하려면 **이 상수를** 봐야 한다(함정 0079: env 로 오염되는 단정은 CI 에서만 초록이다).
 POLICY_CONTACT_FALLBACK = "bji1062@gmail.com"
-POLICY_LAST_MODIFIED_FALLBACK = "2026-07-19"
+POLICY_LAST_MODIFIED_FALLBACK = "2026-10-14"
 
 
 def env_flag(name: str) -> bool:
@@ -89,6 +89,9 @@ class GenConfig:
     # 두는 이유는 회전 때 코드를 안 건드리기 위해서다. 비어 있으면 키 파일도 통보도 없다 —
     # 테스트·CI 가 실 검색엔진을 두드리지 않는 경계다(`build.run` 은 out_dir 도 함께 본다).
     indexnow_key: str = os.environ.get("INDEXNOW_KEY", "")
+    # 구글 태그 관리자 컨테이너 ID(공개값) — 정적 페이지 head/body 스니펫과 수기 셸이 **이 값 하나**를
+    # 따른다(2026-10-14, SP-ADS-12). 수기 셸은 글자를 복사해 두므로 test_gtm.py 가 일치를 강제한다.
+    gtm_container_id: str = os.environ.get("GTM_CONTAINER_ID", "GTM-M7WP4QZ2")
     compare_path: str = "/compare"  # CTA 진입 경로(SP-FE 셸)
     # 복지 편집 진입(SC14 셸 web/edit.html). 회사 페이지 원장의 각 행이 `?comp=&benefit=` 로
     # **그 항목을 지목**해 보낸다 — 실제 편집은 재직 인증 게이트 뒤이고(서버 강제), 인증 전이면
