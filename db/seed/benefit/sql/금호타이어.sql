@@ -14,7 +14,7 @@
 --   제외: 타이어 Academy(교양 — 직무별 역량과정) · 법정(난임 휴가 · 태아검진 휴가 · 출산전후 휴가 90일 · 배우자 출산휴가 20일 · 유급 육아휴직 최대 1년 6개월 · 근로시간 단축제도 · 퇴직 예정자 재취업 · 창업 교육 · 정기 · 특수 건강검진 사후조치) ·
 --     업무 교육(직무 · 계층별 · 신입 · 멘토링 · 리더십 · 러닝센터 · 법정필수) · 사우회 운영(내용 미기재) · 연봉 인상률 연계(급여 조정).
 --   공고 근거 0행 / 전체 30행 · SORT 섹션 순서 = growth · flexibility · time_off · health · work_env · perks · family · compensation · leisure
--- 검증 · 감사 판정 반영(2026-10-14): 개인사외교육 conference 삭제(업무 교육) · 국내영업 지점근무 주택 임차금 지원을 housing_support 로 갈라 추가 · 71쪽 동등급여 표 주석의 인센티브 incentive 추가 — 최종 31행
+-- 검증 · 감사 판정 반영(2026-10-14): 개인사외교육 conference 삭제(업무 교육) · 국내영업 지점근무 주택 임차금 지원을 housing_support 로 갈라 추가 · 71쪽 동등급여 표 주석의 인센티브 incentive 추가 — 최종 31행 · 이름 조건 범위 정리(독립 검토 L-4)
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- 1) 회사 등록 (신규 — 이 INSERT 가 실제 등록을 수행한다)
@@ -55,7 +55,7 @@ VALUES
    'est', NULL, TRUE, '휴식시간 알람과 근무 시작 및 종료에 대한 자동시스템, 임직원의 정시근무 보장 및 저녁시간 존중 (공식 홈페이지 ESG 임직원 페이지 Work & Life Balance PC-OFF제도 항목) — 적용 시각·대상 미기재', 21),
 
   -- ── 휴가 (time_off) — ESG 임직원 페이지 Work & Life Balance · Culture & Leisure · 보고서 75쪽 ──
-  (@comp_id, 'leave_general', '휴가 셀프 승인·리더스 데이 (조직장)', NULL, 'time_off',
+  (@comp_id, 'leave_general', '리더스 데이 (조직장)·휴가 셀프 승인', NULL, 'time_off',
    'est', NULL, TRUE, '본인의 휴가를 직접 승인하는 휴가 셀프 승인 제도, 매월 둘째 주 조직장의 정기 의무휴가를 운영하는 리더스 데이 (공식 홈페이지 ESG 임직원 페이지 Work & Life Balance 항목, 2026 지속가능경영보고서 75쪽 복리제도 항목) — 리더스 데이 휴가 일수·유급 여부·별도 부여 여부 미기재', 30),
   (@comp_id, 'refresh_leave', 'Refresh 휴가', NULL, 'time_off',
    'est', NULL, TRUE, '일할 때 확실히 일하고 쉴 때 확실히 쉬는 문화 조성을 위한 Refresh 휴가 (공식 홈페이지 ESG 임직원 페이지 Work & Life Balance 항목, 2026 지속가능경영보고서 75쪽 복리제도 항목) — 휴가 일수·부여 조건 미기재', 31),
