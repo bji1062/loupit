@@ -629,7 +629,7 @@ main p { margin-top:var(--sp-3); }
 .cp-ben-list { list-style:none; margin:0; padding:0; }
 .cp-ben-row { display:flex; align-items:center; justify-content:space-between; gap:var(--sp-3); padding:var(--sp-2) 0; border-bottom:var(--bw) solid var(--bg-2); font-size:var(--fs-sm); }
 .cp-ben-row:last-child { border-bottom:0; }
-.cp-ben-nm { color:var(--t2); }
+.cp-ben-nm { color:var(--t2); word-break:keep-all; }
 .cp-total { margin-top:var(--sp-5); padding:var(--sp-3) var(--sp-4); background:var(--brand-tint); border-radius:var(--r-md); font-weight:var(--fw-medium); }
 .cp-total-amt { color:var(--brand); font-family:var(--font-serif); font-size:var(--fs-h3); font-weight:var(--fw-regular); margin-left:var(--sp-2); }
 .cp-note { margin-top:var(--sp-2); font-size:var(--fs-xs); color:var(--t4); }

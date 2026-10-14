@@ -13,6 +13,15 @@ import·호출해 4개 `PolicyDoc`을 얻고 `templates/policy.html`로 감싸 �
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
+
+from generator.format import badge_state
+from generator.marks import SUMMARY_SRC_CD
+
+
+def _badge_label(**row) -> str:
+    """출처 배지 라벨 — 사이트 표시 정본(`format.badge_state`)에서 읽는다. 여기에 다시 적지 않는다."""
+    return badge_state(row, datetime(2000, 1, 1))["label"]
 
 
 @dataclass(frozen=True)
@@ -447,7 +456,7 @@ def _disclaimer(cfg) -> PolicyDoc:
         title="데이터 정확성 면책조항",
         meta_description=(
             "jobcho.wiki(잡초) 데이터 정확성 면책조항 — 복지·연봉 정보는 참고용이며, 출처 "
-            "신뢰도 배지와 금액 신뢰도 기준 불확실성 밴드·정정 요청 경로를 "
+            "배지와 금액 신뢰도 기준 불확실성 밴드·정정 요청 경로를 "
             "안내합니다."
         ),
         sections=(
@@ -460,18 +469,22 @@ def _disclaimer(cfg) -> PolicyDoc:
                 ),
             ),
             _S(
-                "D-2", "d2", "출처 신뢰도 배지", "출처 신뢰도 배지(공식/추정)",
+                "D-2", "d2", "출처 배지", "출처 배지",
                 (
-                    "각 복지 항목에는 출처 신뢰도 배지가 표시됩니다. 공식(official)은 "
-                    "회사 공식 공개 정보에 근거한 항목, 추정(est)은 집계·프리셋 등 "
-                    "추정에 근거한 항목입니다.",
+                    "각 복지 항목에는 출처 배지가 붙습니다. "
+                    f"「{_badge_label(badge_cd='official')}」은 회사 공식 자료에서 확인한 항목, "
+                    f"「{_badge_label(edit_origin='edited')}」은 공식 값을 재직자가 고친 항목, "
+                    f"「{_badge_label(edit_origin='member')}」은 재직자가 새로 더한 항목, "
+                    f"「{_badge_label(badge_src_cd=SUMMARY_SRC_CD)}」은 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목입니다. "
+                    f"확인 기한이 지난 항목에는 「{_badge_label(expires_dtm='1999-01-01')}」가 붙습니다. "
+                    f"그 밖에 공식 출처가 아닌 항목은 「{_badge_label()}」으로 표시합니다.",
                 ),
             ),
             _S(
                 "D-3", "d3", "출처≠금액 신뢰도", "출처 신뢰도 ≠ 금액 신뢰도",
                 (
                     "출처가 공식이라도 금액은 추정치일 수 있습니다. 출처의 신뢰도와 "
-                    "금액의 신뢰도는 별개로 표기되며, 추정 금액은 더 넓은 오차로 "
+                    "금액의 신뢰도는 별개로 표기되며, 추정치는 더 넓은 오차로 "
                     "표시됩니다.",
                 ),
             ),
@@ -479,8 +492,8 @@ def _disclaimer(cfg) -> PolicyDoc:
                 "D-4", "d4", "불확실성 밴드", "불확실성 밴드",
                 (
                     "복지 금액에는 불확실성 밴드가 적용됩니다. 밴드는 출처 배지가 "
-                    "아니라 금액 신뢰도를 기준으로 하며, 명시 금액은 ±5%, 추정 "
-                    "금액은 ±20%, 만료된 항목은 +15%를 가산해 넓힙니다. 따라서 "
+                    "아니라 금액 신뢰도를 기준으로 하며, 회사 공식 수치는 ±5%, 추정치는 "
+                    "±20%, 만료된 항목은 +15%를 가산해 넓힙니다. 따라서 "
                     "출처가 공식이어도 금액이 추정치이면 ±20% 밴드가 유지됩니다.",
                 ),
             ),
