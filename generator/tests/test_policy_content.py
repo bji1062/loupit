@@ -223,3 +223,16 @@ def test_policy_footer_links_constant_has_four_entries_matching_routes():
     linked_routes = {route for _, route in POLICY_FOOTER_LINKS}
     doc_routes = {d.route for d in build_policy_docs(CFG)}
     assert linked_routes == doc_routes
+
+
+def test_d2_badge_sentence_pinned():
+    """D-2 렌더 문장 고정 — 배지 라벨(`format.badge_state`)이 바뀌면 조사(은/는·이/가·으로)를 다시 확인한다."""
+    doc = next(d for d in build_policy_docs(CFG) if d.key == "disclaimer")
+    d2 = next(s for s in doc.sections if s.req_id == "D-2")
+    assert d2.paragraphs == (
+        "각 복지 항목에는 출처 배지가 붙습니다. 「공식」은 회사 공식 자료에서 확인한 항목, "
+        "「공식·재직자 수정」은 공식 값을 재직자가 고친 항목, 「재직자 등록」은 재직자가 새로 더한 항목, "
+        "「검색 요약」은 공식 원문을 찾지 못해 검색 AI 요약을 근거로 한 항목입니다. "
+        "확인 기한이 지난 항목에는 「만료·재확인 필요」가 붙습니다. "
+        "그 밖에 공식 출처가 아닌 항목은 「추정」으로 표시합니다.",
+    )
