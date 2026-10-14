@@ -99,3 +99,4 @@ def test_policy_p8_and_p11_cover_excluded_calculator_and_transfer():
     assert "Google LLC" in p8 and "메일 발송에 따른" in p8
     p11 = " ".join(next(s for s in privacy.sections if s.req_id == "P11").paragraphs)
     assert "비교·이직 계산기 화면" in p11
+    assert "마지막 방문으로부터" in p11 and "합계 통계" in p11
