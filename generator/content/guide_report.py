@@ -24,7 +24,7 @@ META = "{asof_ko} 데이터 · 회사 {N}곳 · 복지 {counted}건 · 표준 �
 LEAD = (
     "회사들이 스스로 공개한 복지를 모아 같은 기준으로 다시 나눠 보면, 어떤 복지가 흔한지, 금액을 얼마나 밝히는지, "
     "회사 규모에 따라 무엇이 갈리는지가 보입니다. "
-    "잡초위키에 등록된 회사 {N}곳의 복지 {rows}건 가운데, 법으로 모든 회사에 정해진 제도만 적힌 {legal_rows}건과 "
+    "잡초위키에 등록된 회사 {N}곳의 복지 {rows}건 가운데, 법으로 정해진 제도만 적힌 {legal_rows}건과 "
     "회사가 업무를 맡기려고 여는 교육만 적힌 {work_edu_rows}건을 뺀 {counted}건을 {asof_ko} 데이터로 셌습니다."
 )
 DESCRIPTION_TAIL = "{edition_ko} 판."  # description = LEAD 첫 문장 + 이 줄
@@ -80,7 +80,7 @@ GAP_BOX_H = "이 차이를 읽는 법"
 H_READ = "이 숫자를 읽는 법"
 READ_ITEMS = (
     "회사가 공개한 것만 셉니다. 공개 목록에 없는 제도는 알 수 없습니다.",
-    "법으로 모든 회사에 정해진 제도만 적힌 항목 {legal_rows}건({legal_comps}곳)과 업무 교육만 적힌 항목 {work_edu_rows}건({work_edu_comps}곳)은 세지 않았습니다.",
+    "법으로 정해진 제도만 적힌 항목 {legal_rows}건({legal_comps}곳)과 업무 교육만 적힌 항목 {work_edu_rows}건({work_edu_comps}곳)은 세지 않았습니다.",
     "공식 원문을 찾지 못한 {summary_comps}곳의 {summary_rows}건은 검색 AI 요약을 근거로 했습니다. 이 항목들에는 금액이 없습니다.",
     "회사마다 확인한 날짜가 다릅니다({vmin_ko} ~ {vmax_ko}).",
     "{N}곳은 대기업 {large}곳과 중견기업 {mid}곳입니다. 한국 회사 전체를 대표하는 표본이 아닙니다.",
