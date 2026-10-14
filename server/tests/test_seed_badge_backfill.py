@@ -192,6 +192,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 확장 웨이브 5(2026-10-10, 13) — 신규 등록, 전부 실 URL 헤더
         "ottogi", "kcc", "hansol_chemical", "orion", "gs_enc", "hyundai_marine", "hanon_systems",
         "sl_corp", "kolon_industries", "sanil_electric", "isc", "kolmar_korea", "cosmax",
+        # 확장 웨이브 6(2026-10-17, 13) — 신규 등록, 전부 실 URL 헤더
+        "hyundai_wia", "daewoong_pharm", "binggrae", "isu_specialty_chemical", "hj_heavy", "sfa_semicon", "bgf_retail",
+        "s1", "sebang_battery", "sk_chemicals", "paradise", "kumho_petrochemical", "gs_retail",
         # 재수집 R-1(2026-09-26, 9) — 구본 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
         "skt", "sk_innovation", "sk_hynix", "lig_nex1", "naver", "kakao_pay",
         "hyundai_motor", "s_oil", "lotte_chem",

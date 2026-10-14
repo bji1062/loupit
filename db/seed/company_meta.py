@@ -164,6 +164,23 @@ WAVE5_ALIASES: dict[str, list[str]] = {
     "cosmax": ["COSMAX"],
 }
 
+# 확장 웨이브 6(2026-10-17 서빙 반영) — 구명·영문·약칭만. 지주·형제 법인 이름은 절대 금지.
+WAVE6_ALIASES: dict[str, list[str]] = {
+    "hyundai_wia": ["Hyundai WIA", "위아"],  # 위아(주) 2001~2009 구명 — 같은 법인
+    "daewoong_pharm": ["Daewoong Pharmaceutical"],  # ㈜대웅(지주)과 섞이지 않게 「대웅」 단독은 쓰지 않는다
+    "binggrae": ["Binggrae"],
+    "isu_specialty_chemical": ["ISU Specialty Chemical", "이수스페셜티"],  # 이수화학(별개 법인) 이름 금지
+    "hj_heavy": ["HJ Shipbuilding & Construction", "HJSC", "한진중공업"],  # 2021 사명 변경 전 구명 — 같은 법인(corp 00633835)
+    "sfa_semicon": ["SFA Semicon", "에스에프에이반도체"],  # 모회사 SFA 이름 금지
+    "bgf_retail": ["BGF Retail", "비지에프리테일"],  # 법인 국문 상호
+    "s1": ["S-1", "S1 Corporation"],
+    "sebang_battery": ["Sebang Global Battery"],
+    "sk_chemicals": ["SK chemicals", "에스케이케미칼"],
+    "paradise": ["PARADISE", "Paradise Co."],  # 파라다이스시티 · 파라다이스세가사미(다른 법인) 이름 금지
+    "kumho_petrochemical": ["Kumho Petrochemical", "금호석화"],
+    "gs_retail": ["GS Retail", "지에스리테일"],
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -408,6 +425,10 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE5_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE6_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

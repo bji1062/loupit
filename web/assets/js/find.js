@@ -68,6 +68,10 @@ export const LABEL_OVERRIDE = {
   stock_grant: '자사주 지급',
   // ⑤ 2026-10-01 재수집 R-3 묶음 2 — self_development 가 자격증 이름으로 좁아짐 · company_event 가 「가족친화 프로그램」
   self_development: '자기계발비·자격증 지원',
+  // 2026-10-14 웨이브 6: 현금형(금연수당)과 프로그램형(HJ중공업 금연클리닉)을 함께 담는 이름.
+  smoking_cessation: '금연 지원',
+  // 2026-10-14 웨이브 6: 「포상제도」 · 「우수사원 포상」 5:5 동률이 행 하나에 뒤집혀 항목 페이지 제목으로 고정.
+  excellence_award: '사내 포상 제도',
   company_event: '사내 행사·가족 초청',
   // ⑥ 2026-10-01 재수집 R-3 묶음 3 — relocation 은 「부임이사 지원」이 대표가 돼 정착금 행을 못 덮고 · promotion_gift 는 한 회사 표기가 대표가 됨
   relocation: '이사·정착 지원',
