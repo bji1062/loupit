@@ -7,13 +7,17 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 from generator.config import CFG, GenConfig
 from generator.content.policy import build_policy_docs
 from generator.tests.test_gnb_tabs import SHELLS, _all_pages
 
-PUBLIC_SHELLS = ("compare/index.html", "community/index.html")
-MEMBER_SHELLS = ("login.html", "mypage.html", "verify.html", "edit.html", "edits.html")
+PUBLIC_SHELLS = ("community/index.html",)
+# 비교·이직 계산기 화면은 설치하지 않는다 — 주소 `?a=&b=` 에 고른 두 회사(현재 직장·이직 후보)가 실려 구글로 간다(리드 판정 112).
+MEMBER_SHELLS = ("login.html", "mypage.html", "verify.html", "edit.html", "edits.html", "compare/index.html")
+REFERRER_META = '<meta name="referrer" content="strict-origin">'
+WEB = Path(__file__).resolve().parents[2] / "web"
 GTM_ID_RE = re.compile(r"GTM-[A-Z0-9]+")
 
 
@@ -69,4 +73,29 @@ def test_policy_discloses_analytics():
     text = " ".join(p11.paragraphs)
     assert "Google 애널리틱스" in text and "14개월" in text and "Google LLC" in text
     assert "https://tools.google.com/dlpage/gaoptout" in [u for _, u in p11.external_links]
-    assert "회원·인증·관리 화면" in text
+    assert "관리 화면에는 이 도구를 설치하지 않습니다" in text and "14개월" in text
+
+
+def test_excluded_shells_have_strict_origin_referrer():
+    """제외 화면에서 공개 페이지로 넘어갈 때 page_referrer 로 `?a=&b=`·`?comp=` 주소가 새지 않게 한다."""
+    for n in MEMBER_SHELLS:
+        assert REFERRER_META in SHELLS[n].read_text(encoding="utf-8"), f"{n}: strict-origin referrer meta 없음"
+
+
+def test_every_handwritten_html_is_classified():
+    """web/ 아래 모든 수기 .html 은 「설치」 또는 「제외」 목록에 있어야 한다 — 새 셸이 목록 밖이면 실패."""
+    skip = {"dist", "dist.prev", "test", "node_modules"}
+    found = {
+        p.relative_to(WEB).as_posix()
+        for p in WEB.rglob("*.html")
+        if p.relative_to(WEB).parts[0] not in skip
+    }
+    assert found == set(PUBLIC_SHELLS) | set(MEMBER_SHELLS), found ^ (set(PUBLIC_SHELLS) | set(MEMBER_SHELLS))
+
+
+def test_policy_p8_and_p11_cover_excluded_calculator_and_transfer():
+    privacy = build_policy_docs(GenConfig(m9_enabled=True))[0]
+    p8 = " ".join(next(s for s in privacy.sections if s.req_id == "P8").paragraphs)
+    assert "Google LLC" in p8 and "메일 발송에 따른" in p8
+    p11 = " ".join(next(s for s in privacy.sections if s.req_id == "P11").paragraphs)
+    assert "비교·이직 계산기 화면" in p11
