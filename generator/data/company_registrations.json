@@ -9,6 +9,34 @@
   ],
   "waves": [
     {
+      "date": "2026-10-31",
+      "label": "회사 확장 웨이브 9",
+      "companies": [
+        "cha_biotech",
+        "daehan_shipbuilding",
+        "daishin_securities",
+        "dn_automotive",
+        "hotel_shilla",
+        "hs_hyosung_advanced",
+        "ipark_hdc",
+        "lotte_energy_materials",
+        "lotte_shopping",
+        "lotte_tour",
+        "ls_marine_solution",
+        "nexon_games",
+        "pan_ocean",
+        "robostar",
+        "sampyo_cement",
+        "sk_networks",
+        "snt_dynamics",
+        "snt_energy",
+        "taekwang_ind",
+        "yg_entertainment",
+        "youngone",
+        "youngpoong"
+      ]
+    },
+    {
       "date": "2026-10-24",
       "label": "회사 확장 웨이브 8",
       "companies": [
