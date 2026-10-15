@@ -236,8 +236,9 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     // 2026-10-14 웨이브 7: resort 는 케이씨텍 「휴양시설」이 들어와 9:8 로 동률이 풀렸다 → 지금 13개 이름이 모두 1회인 work_tools(업무기기 예산)로 · promotion_gift 는 대표가 「승진 축하 선물」로 바뀌어 기대 문자열만 고쳤다(파이썬 쪽과 같음).
     // 2026-10-24 웨이브 8: uniform 은 「근무복 지급」이 2회가 돼 동률이 풀렸다 · work_tools 는 대표가 「듀얼 모니터」로 바뀌었다 → 지금 동률인 visa_support · housing_support 로 바꿨다(파이썬 쪽과 같음).
     // 2026-10-31 웨이브 9: massage 는 SK네트웍스 「헬스키퍼 운영」이 들어와 2회가 돼 동률이 풀렸다 → 지금 6개 이름이 모두 1회인 travel_support(휴양프로그램)로 바꿨다(파이썬 쪽과 같음).
+    // 2026-11-07 웨이브 10: car_wash 는 원익QnC 「사내 세차」(더 짧은 일반명)가 들어와 대표가 「세차 서비스」에서 바뀌었다 → 지금 8개 이름이 모두 1회인 culture_day(컬쳐데이)로 바꿨다(파이썬 쪽과 같음).
     for (const [code, expect] of [['sports_ticket', '스포츠 관람 지원'], ['visa_support', '비자 발급 지원'],
-      ['car_wash', '세차 서비스'], ['promotion_gift', '승진 축하 선물'], ['travel_support', '휴양프로그램'],
+      ['culture_day', '컬쳐데이'], ['promotion_gift', '승진 축하 선물'], ['travel_support', '휴양프로그램'],
       ['housing_support', '숙소지원금']]) {
       assert.equal(codes[code].baseLabel, expect, code);
     }

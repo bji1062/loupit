@@ -88,7 +88,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 8(2026-10-24): SK가스 2025 지속가능경영보고서 문의처 @sk.com · 자기 웹 도메인 skgas.co.kr 의 MX 도 spmail.sk.com
                          'sk_gas',
                          -- 확장 웨이브 9(2026-10-31): SK네트웍스 개인정보처리방침 · 보고서 문의처 @sk.com · 자기 웹 도메인 sknetworks.co.kr 의 MX 도 spmail.sk.com
-                         'sk_networks');
+                         'sk_networks',
+                         -- 확장 웨이브 10(2026-11-07): SKC 2026 지속가능경영보고서 문의처 @sk.com · 자기 웹 도메인 skc.kr · skc.co.kr 의 MX 도 spmail.sk.com
+                         'skc');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -329,7 +331,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 게시 이메일이 0건이라 채택하지 않았다.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'ecopro.co.kr', TRUE FROM TCOMPANY
-   WHERE COMP_ENG_NM IN ('ecopro','ecopro_bm');
+   WHERE COMP_ENG_NM IN ('ecopro','ecopro_bm',
+                         -- 확장 웨이브 10(2026-11-07): 에코프로머티리얼즈 — 그룹 채용 사이트 문의처 @ecopro.co.kr · 자기 웹 도메인 ecopromaterials.com 의 MX 도 smf.ecoproep.com(ecopro.co.kr 과 같은 메일 서버) · 법인 자기 도메인 게시 주소 0
+                         'ecopro_materials');
 
 -- ── 그룹 공용 도메인 — 우리 목록엔 계열사가 1곳뿐인 경우 ─────────────────────────
 -- 아래 5건은 그룹 전체가 쓰는 도메인인데 그 그룹에서 우리가 다루는 회사가 하나뿐이다.
@@ -664,3 +668,26 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hisntd.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'snt_dynamics';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'jejudreamtower.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lotte_tour';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 10 (2026-11-07 서빙 반영, 12개사 중 전용 4사 4도메인 + 그룹 줄 병합 2사)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-15-wave10/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소의 도메인만.
+-- 그룹 줄 병합: SKC → 위 SK 그룹 줄(sk.com) · 에코프로머티리얼즈 → 위 에코프로 그룹 줄(ecopro.co.kr).
+-- 미등록 6사(수동 승인 폴백): 동원산업 · 코스모신소재 · 씨에스윈드(게시된 주소 0) · SGC에너지(관측 주소가 그룹 공용 도메인뿐 — 코퍼스 SGC 계열 1사) ·
+--   원익QnC(관측 주소가 원익 계열 공용 wonik.com 뿐 — 위 확장 웨이브 1 보류 줄 그대로) · 효성티앤씨(관측 주소가 hyosung.com 뿐 — 위 효성중공업 줄의 도메인).
+-- @rejected: sgc.co.kr — SGC에너지. SGC그룹 홈 도메인(보고서 문의처 · MX ocigw.net) · 법인 웹 sgcenergy.co.kr 은 MX 없음 — 코퍼스 SGC 계열 1사
+-- ⓘ wonik.com(원익QnC 개인정보처리방침 관측 · 웹 wonikqnc.com 의 MX 도 mail.wonik.com)은 위 확장 웨이브 1 보류 줄(원익IPS 관측)과 같은 도메인이다.
+--   원익 계열이 코퍼스에 둘(원익IPS · 원익QnC)이 됐지만 그룹 단위 인증은 사용자 결정 전이라 넣지 않는다(넣으려면 보류 줄을 지우고 IN 한 문장으로).
+-- ⓘ hyosung.com(효성티앤씨 보고서 문의처 · 웹 hyosungtnc.com 의 MX 도 smtpi.hyosung.com)은 위 효성중공업 단일 줄의 도메인이다 — 효성 계열 공용으로 보이나
+--   그룹 단위 인증은 사용자 결정 전이라 이 회사를 넣지 않는다(지금 hyosung.com 보유자는 효성중공업으로만 자동 인증된다 · 넣으려면 그 줄을 IN 한 문장으로).
+-- ⓘ dongwon.com · cswind.com · cosmoamt.com 은 MX 가 있으나 게시된 주소가 0이라 넣지 않았다. 한올바이오파마 웹 도메인 hanall.com 도 게시 주소 0 — 채택본은 보고서 문의처 hanall.co.kr.
+-- ⓘ lsmaterials.co.kr 은 LS 그룹 메일 호스팅 lsworkplace.com 을 거치지만 주소 도메인은 법인 고유다(웨이브 9 lsms.co.kr 과 같은 처리).
+-- ⚠ gst-in.com — GST 개인정보처리방침 · 자기 웹 도메인. 사이트에 그룹 계열사 메뉴가 있으나 계열사가 같은 메일 도메인을 쓰는지는 확인하지 못했다.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'daejoo.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'daejoo_electronic';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hanall.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hanall_biopharma';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'gst-in.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gst';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lsmaterials.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ls_materials';

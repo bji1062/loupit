@@ -128,6 +128,9 @@
       ],
       "why": "원문 「매년 겨울 독감 예방 접종」의 매년은 예방접종 주기이고 건강검진 주기는 원문에 없다(W:364)"
     },
-    {"comp": "dn_automotive", "h": "a4b7f1cbf9", "facets_add": ["cycle"], "why": "영문 인사제도 페이지가 Providing annual health checkups 로 매년 검진을 밝힌다 — cycle 규칙이 영문 annual 을 못 읽는다"}
+    {"comp": "dn_automotive", "h": "a4b7f1cbf9", "facets_add": ["cycle"], "why": "영문 인사제도 페이지가 Providing annual health checkups 로 매년 검진을 밝힌다 — cycle 규칙이 영문 annual 을 못 읽는다"},
+    {"comp": "skc", "h": "aa905cb200", "facets_remove": ["condition"], "why": "원문 「전 연령대 구성원을 대상으로 매년 종합 건강검진」 — 나이 조건이 아니라 모든 연령이 대상이라는 뜻"},
+    {"comp": "hanall_biopharma", "h": "3731714953", "facets_remove": ["comprehensive"], "why": "원문의 「종합」은 「종합건강관리」(플랫폼 기반 건강관리)이고 검진 종류는 「개인 맞춤검진」 — 종합검진 · 정밀검진이라고 밝히지 않았다"},
+    {"comp": "cs_wind", "h": "81145c3133", "facets_remove": ["comprehensive"], "why": "원문 「격년 상급종합병원 건강검진비 지원」의 「종합」은 병원 종별(상급종합병원)이지 종합검진이 아니다"}
   ]
 }

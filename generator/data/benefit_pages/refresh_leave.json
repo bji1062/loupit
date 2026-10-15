@@ -122,6 +122,7 @@
       ],
       "why": "「연중 휴가」는 휴가 이름이다 — 쓰는 시기 정보가 아니다(수집 메모도 사용 단위 미기재)"
     },
-    {"comp": "shinyoung_sec", "h": "bbf0ff1378", "mode": "extra", "why": "원문 휴가제도 표가 「정기휴가: 유급휴가 연 5일」을 「법정휴가: 연차휴가」와 다른 항목으로 적어 법정 휴가 위에 더 주는 날로 읽힌다"}
+    {"comp": "shinyoung_sec", "h": "bbf0ff1378", "mode": "extra", "why": "원문 휴가제도 표가 「정기휴가: 유급휴가 연 5일」을 「법정휴가: 연차휴가」와 다른 항목으로 적어 법정 휴가 위에 더 주는 날로 읽힌다"},
+    {"comp": "dongwon_industries", "h": "9b2906af2d", "facets_remove": ["when"], "why": "원문 「연중 4일 유급휴가 부여」(영문판 Four days of paid leave per year)의 연중은 한 해 일수를 말한다 — 쓰는 시기 정보가 아니다"}
   ]
 }

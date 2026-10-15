@@ -43,6 +43,7 @@
     {"comp": "sk_bioscience", "h": "c464a98025", "mode": "both", "why": "어학지원비(비용)와 함께 회사 SKBS Academy 표 공통 열의 English Comm. Skill Up(회사가 여는 과정)이 한 행에 있다"},
     {"comp": "fnf", "h": "90b3b21582", "mode": "cost", "why": "원문 「어학 강좌 수강료 지원」은 회사가 수업을 여는 것이 아니라 수강료를 대 주는 것 — 「강좌」 낱말이 inhouse 규칙에 걸려 both 로 나옴"},
     {"comp": "posco_dx", "h": "1eb051457f", "mode": "cost", "why": "원문 「토익, 오픽 등 사내 어학시험 응시료 지원」 · 보고서 「외국어 검정 응시료 지원」 — 사내는 시험 장소이고 회사가 여는 어학 수업은 적히지 않았다"},
-    {"comp": "nice_info", "h": "071ed24c49", "facets_remove": ["abroad"], "why": "원문은 「어학연수비를 지원」만 적고 해외 연수인지 밝히지 않는다"}
+    {"comp": "nice_info", "h": "071ed24c49", "facets_remove": ["abroad"], "why": "원문은 「어학연수비를 지원」만 적고 해외 연수인지 밝히지 않는다"},
+    {"comp": "dongwon_industries", "h": "9adbc56d3d", "mode": "inhouse", "why": "영문판 원문 「we offer training programs that enhance … language proficiency」 — 회사가 여는 과정이고 학습비 지원 낱말은 없다"}
   ]
 }
