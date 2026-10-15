@@ -155,6 +155,9 @@
     {"comp": "samwha_capacitor", "h": "c6e0bd057b", "mode": "inhouse", "why": "원문이 운동시설을 식당 · 휴게실 · 매점과 함께 「복리후생시설」로 나열(편하게 일할 수 있는 최선의 환경을 제공합니다 블록) — 회사 안 시설"},
     {"comp": "hanwha_inv_sec", "h": "cb5ec7cc68", "mode": "inhouse", "why": "원문 회사 내 휘트니스 시설 운영 · 회사 내 피트니스 시설 운영이 사내 시설을 밝힘 — 회사 내 · 휘트니스 시설 낱말이 inhouse 규칙에 없음"},
     {"comp": "posco_dx", "h": "8f953ed674", "mode": "inhouse", "why": "원문 「포항, 광양, 판교지역에 헬스센터 및 건강관리실 운영」 — 회사가 지역 사업장에 운영하는 헬스센터다"},
-    {"comp": "sfa", "h": "b275f4cfd7", "mode": "external", "why": "원문 「삼성웰빙클럽 멤버십 월회비 지원」 — 외부 클럽 멤버십 회비를 회사가 지원하는 방식"}
+    {"comp": "sfa", "h": "b275f4cfd7", "mode": "external", "why": "원문 「삼성웰빙클럽 멤버십 월회비 지원」 — 외부 클럽 멤버십 회비를 회사가 지원하는 방식"},
+    {"comp": "hotel_shilla", "h": "80e3df4dbf", "mode": "external", "why": "원문 「외부 피트니스 업체 법인권으로 이용가능」 — 회사 밖 업체 법인권인데 「외부」 · 「법인권」이 external 규칙(제휴 · 회원권 · 사외)에 없어 unknown 으로 떨어진다"},
+    {"comp": "youngone", "h": "bbd291889b", "facets_add": ["site"], "why": "보고서 42쪽 사내체육시설 칸이 명동/만리동/상대원동에 체육시설 운영이라고 사업장 이름을 적었다"},
+    {"comp": "sampyo_cement", "h": "65cea7dbf9", "mode": "both", "why": "복지관 내 헬스장 및 사우나 운영(회사 시설)과 체련비 지급(운동비)을 함께 적은 행"}
   ]
 }

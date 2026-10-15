@@ -233,6 +233,31 @@ WAVE8_ALIASES: dict[str, list[str]] = {
     "foosung": ["FOOSUNG"],  # 후성그룹 · 퍼스텍 · 한국내화 이름 금지
 }
 
+# 확장 웨이브 9(2026-10-31 서빙 반영) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름은 절대 금지.
+WAVE9_ALIASES: dict[str, list[str]] = {
+    "lotte_shopping": ["LOTTE SHOPPING"],  # 롯데지주 · 롯데 계열사 이름 금지
+    "hotel_shilla": ["HOTEL SHILLA"],  # 신라호텔 · 신라면세점 · 신라스테이는 사업장 · 상표 이름이라 넣지 않는다 · 삼성 형제 이름 금지
+    "hs_hyosung_advanced": ["HS Hyosung Advanced Materials", "에이치에스효성첨단소재", "효성첨단소재"],  # 법인 국문 상호 · 2024-09 사명 변경 전 구명(효성첨단소재) — 지주 HS효성 · ㈜효성 · 효성중공업 이름 금지
+    "taekwang_ind": ["Taekwang Industrial"],  # 태광그룹 · 흥국 계열 이름 금지
+    "pan_ocean": ["Pan Ocean"],  # 하림지주 이름 금지
+    "youngone": ["Youngone Corporation"],  # 2009-07 인적분할 신설 — 존속 지주 영원무역홀딩스(구 영원무역) 이름 금지
+    "daehan_shipbuilding": ["DAEHAN SHIPBUILDING"],  # 최대주주 케이에이치아이 이름 금지
+    "youngpoong": ["Young Poong"],  # 고려아연 · 영풍 계열 이름 금지
+    "ipark_hdc": ["IPARK HYUNDAI DEVELOPMENT", "아이파크현대산업개발", "HDC현대산업개발", "에이치디씨현대산업개발"],  # 법인 국문 상호 · 2026 사명 변경 전 구명 · 약칭(HDC현대산업개발) — 지주 HDC(구 현대산업개발) 이름 금지
+    "dn_automotive": ["DN AUTOMOTIVE", "디엔오토모티브", "디티알오토모티브", "동아타이어공업"],  # 법인 국문 상호 · 구명(2017-11 동아타이어공업 → 디티알오토모티브 · 2022-06 → 디엔오토모티브) — DN그룹 다른 계열 이름 금지
+    "daishin_securities": ["DAISHIN SECURITIES"],  # 대신파이낸셜그룹 계열 이름 금지
+    "sk_networks": ["SK Networks", "에스케이네트웍스"],  # 법인 국문 상호 — SK㈜ · SK인텔릭스(구 SK매직) 등 자회사 이름 금지
+    "lotte_energy_materials": ["LOTTE ENERGY MATERIALS", "일진머티리얼즈"],  # 2023-03 사명 변경 전 구명 — 같은 법인 · 일진 그룹 다른 계열 · 롯데케미칼 이름 금지
+    "yg_entertainment": ["YG Entertainment", "YG엔터테인먼트"],  # 영문 · 약칭 — YG PLUS 등 계열 이름 금지
+    "nexon_games": ["NEXON Games", "넷게임즈"],  # 2022-03 사명 변경 전 구명(넷게임즈 — 존속 법인) — 흡수된 넥슨지티 · 넥슨코리아 이름 금지
+    "cha_biotech": ["Chabiotech"],  # 차병원 · 차바이오그룹 계열 이름 금지
+    "sampyo_cement": ["SAMPYO Cement", "동양시멘트"],  # 2017-03 사명 변경 전 구명(동양시멘트 — 2010 흡수합병 뒤 같은 법인) — 삼표 · 삼표산업 이름 금지
+    "robostar": ["Robostar"],  # LG 계열 이름 금지
+    "ls_marine_solution": ["LS Marine Solution", "엘에스마린솔루션", "KT서브마린", "케이티서브마린"],  # 법인 국문 상호 · 2023-08 사명 변경 전 구명(케이티서브마린) — LS전선 · KT 이름 금지
+    "snt_energy": ["SNT Energy"],  # 구명 S&TC 는 2008 분할 전 지주(현 SNT홀딩스)도 쓰던 이름이라 넣지 않는다 — SNT홀딩스 · SNT모티브 이름 금지
+    "snt_dynamics": ["SNT DYNAMICS", "에스앤티다이내믹스", "S&T중공업", "SNT중공업"],  # 법인 국문 상호 · 구명(2005 S&T중공업 · 2021 SNT중공업 → 2023 SNT다이내믹스) — SNT홀딩스 · SNT모티브 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -489,6 +514,10 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE8_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE9_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

@@ -114,6 +114,7 @@
     }
   ],
   "overrides": [
-    {"comp": "posco_dx", "h": "454bd0108c", "facets_remove": ["specialty"], "why": "원문은 근골격계질환 예방 장비(Self 진단 키오스크 · 안마의자 · 수치료기)를 적었을 뿐 진료 과목은 적지 않았다"}
+    {"comp": "posco_dx", "h": "454bd0108c", "facets_remove": ["specialty"], "why": "원문은 근골격계질환 예방 장비(Self 진단 키오스크 · 안마의자 · 수치료기)를 적었을 뿐 진료 과목은 적지 않았다"},
+    {"comp": "pan_ocean", "h": "0f2a6ba0e4", "mode": "room", "why": "원문은 보건상담실에 간호사 경력 의료진을 둔다는 문장이라 의사 진료 의원이 아니다"}
   ]
 }

@@ -177,10 +177,10 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
 
   // 실데이터 픽스처 — `generator/tests/test_find_page.py` 가 **같은 파일**로 같은 기대값을 잰다.
   // 표(파이썬)와 칩(JS)이 같은 이름을 부른다는 약속을 실데이터에서 확인하는 자리다.
-  test('실 번들 91종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
+  test('실 번들 93종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
     const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
     const entries = Object.entries(cases.codes);
-    assert.equal(entries.length, 91, '픽스처가 실데이터 91종이 아니다'); // 2026-10-14 확장 웨이브 6 grocery_support · leave_buyout 신설 +2 · 2026-09-28 wedding 사용 회사 0 · 2026-10-04 long_service 사용 회사 0 · R-3 후속 정리 2 severance_plus 신설
+    assert.equal(entries.length, 93, '픽스처가 실데이터 93종이 아니다'); // 2026-10-31 확장 웨이브 9 family_onboard · barber_shop 신설 +2 · 2026-10-14 확장 웨이브 6 grocery_support · leave_buyout 신설 +2 · 2026-09-28 wedding 사용 회사 0 · 2026-10-04 long_service 사용 회사 0 · R-3 후속 정리 2 severance_plus 신설
     // 행 하나 = 회사 하나. 회사 안에서 코드는 UNIQUE 라 빈도만큼 회사를 나눈다(파이썬 쪽과 같은 방식).
     const companies = [];
     for (const [code, info] of entries) {
@@ -235,8 +235,9 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
     // 2026-10-10 웨이브 5: family_day 는 오리온 「패밀리데이」가 들어와 2회가 돼 동률이 풀렸다(표시명은 LABEL_OVERRIDE 로 「가정의 날」 고정) → 지금 11개 이름이 모두 1회인 sports_ticket(스포츠 관람 지원)으로 바꿨다(파이썬 쪽과 같음).
     // 2026-10-14 웨이브 7: resort 는 케이씨텍 「휴양시설」이 들어와 9:8 로 동률이 풀렸다 → 지금 13개 이름이 모두 1회인 work_tools(업무기기 예산)로 · promotion_gift 는 대표가 「승진 축하 선물」로 바뀌어 기대 문자열만 고쳤다(파이썬 쪽과 같음).
     // 2026-10-24 웨이브 8: uniform 은 「근무복 지급」이 2회가 돼 동률이 풀렸다 · work_tools 는 대표가 「듀얼 모니터」로 바뀌었다 → 지금 동률인 visa_support · housing_support 로 바꿨다(파이썬 쪽과 같음).
+    // 2026-10-31 웨이브 9: massage 는 SK네트웍스 「헬스키퍼 운영」이 들어와 2회가 돼 동률이 풀렸다 → 지금 6개 이름이 모두 1회인 travel_support(휴양프로그램)로 바꿨다(파이썬 쪽과 같음).
     for (const [code, expect] of [['sports_ticket', '스포츠 관람 지원'], ['visa_support', '비자 발급 지원'],
-      ['car_wash', '세차 서비스'], ['promotion_gift', '승진 축하 선물'], ['massage', '안마의자'],
+      ['car_wash', '세차 서비스'], ['promotion_gift', '승진 축하 선물'], ['travel_support', '휴양프로그램'],
       ['housing_support', '숙소지원금']]) {
       assert.equal(codes[code].baseLabel, expect, code);
     }

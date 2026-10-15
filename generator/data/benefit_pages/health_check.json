@@ -127,6 +127,7 @@
         "cycle"
       ],
       "why": "원문 「매년 겨울 독감 예방 접종」의 매년은 예방접종 주기이고 건강검진 주기는 원문에 없다(W:364)"
-    }
+    },
+    {"comp": "dn_automotive", "h": "a4b7f1cbf9", "facets_add": ["cycle"], "why": "영문 인사제도 페이지가 Providing annual health checkups 로 매년 검진을 밝힌다 — cycle 규칙이 영문 annual 을 못 읽는다"}
   ]
 }

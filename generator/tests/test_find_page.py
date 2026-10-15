@@ -186,15 +186,15 @@ def _companies_from_label_cases(cases: dict) -> list[dict]:
 
 
 def test_real_bundle_labels_match_the_shared_fixture():
-    """실데이터 91종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
+    """실데이터 93종의 대표 이름·별칭 순서를 못 박는다(2026-09-28 R-3 묶음 1: 에이피알 결혼 행이 경조금 행에
     흡수돼 wedding 을 쓰는 회사가 0 → 90 → 89종 · 2026-10-04 R-3 묶음 7 효성중공업 long_service 재코딩으로 88종 ·
-    2026-10-04 R-3 후속 정리 2 퇴직금 누진제 새 코드 severance_plus 로 89종 · 2026-10-14 확장 웨이브 6 grocery_support · leave_buyout 신설 +2 로 91종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
+    2026-10-04 R-3 후속 정리 2 퇴직금 누진제 새 코드 severance_plus 로 89종 · 2026-10-14 확장 웨이브 6 grocery_support · leave_buyout 신설 +2 로 91종 · 2026-10-31 확장 웨이브 9 family_onboard · barber_shop 신설 +2 로 93종. 어휘표의 코드 수가 아니라 **쓰이는** 코드 수다).
 
     같은 파일을 `web/assets/js/find.test.js` 도 읽어 같은 기대값을 검사한다 — 표(파이썬)와
     칩(JS)이 **같은 이름을 부른다**는 약속을 실데이터로 재는 자리다. 규칙을 손대면 여기가 먼저 빨개진다.
     """
     cases = json.loads(LABEL_CASES.read_text(encoding="utf-8"))
-    assert len(cases["codes"]) == 91, "픽스처가 실데이터 91종이 아니다"  # 2026-10-14 확장 웨이브 6: grocery_support · leave_buyout 신설 +2 · 2026-10-04 R-3 묶음 7: 효성중공업 long_service → long_service_leave 재코딩으로 long_service 코드 사용 0 · R-3 후속 정리 2: severance_plus 신설 +1
+    assert len(cases["codes"]) == 93, "픽스처가 실데이터 93종이 아니다"  # 2026-10-31 확장 웨이브 9: family_onboard · barber_shop 신설 +2 · 2026-10-14 확장 웨이브 6: grocery_support · leave_buyout 신설 +2 · 2026-10-04 R-3 묶음 7: 효성중공업 long_service → long_service_leave 재코딩으로 long_service 코드 사용 0 · R-3 후속 정리 2: severance_plus 신설 +1
     codes = find.derive_codes(_companies_from_label_cases(cases))
     assert sorted(codes) == sorted(cases["codes"])
     for code, want in cases["codes"].items():
@@ -245,9 +245,10 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-10-14 웨이브 7: resort 는 케이씨텍 「휴양시설」이 들어와 9:8 로 동률이 풀렸다 → 지금 13개 이름이 모두 1회인 work_tools(업무기기 예산)로 바꿨다 ·
     #   promotion_gift 는 동률이지만 HK이노엔 「승진 축하 선물」이 들어와 대표가 「승진자 축하선물」에서 바뀌어 기대 문자열만 고쳤다.
     # 2026-10-24 웨이브 8: uniform 은 「근무복 지급」이 2회가 돼 동률이 풀렸다 · work_tools 는 대표가 「듀얼 모니터」로 바뀌었다 → 지금 동률인 visa_support · housing_support 로 바꿨다.
+    # 2026-10-31 웨이브 9: massage 는 SK네트웍스 「헬스키퍼 운영」이 들어와 2회가 돼 동률이 풀렸다 → 지금 6개 이름이 모두 1회인 travel_support(휴양프로그램)로 바꿨다.
     for code, expect in (("sports_ticket", "스포츠 관람 지원"), ("visa_support", "비자 발급 지원"),
                          ("car_wash", "세차 서비스"), ("promotion_gift", "승진 축하 선물"),
-                         ("massage", "안마의자"), ("housing_support", "숙소지원금")):
+                         ("travel_support", "휴양프로그램"), ("housing_support", "숙소지원금")):
         names = cases["codes"][code]["names"]
         assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
         top = max(names.values())

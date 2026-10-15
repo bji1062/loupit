@@ -71,7 +71,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 6(2026-10-17): 에스원 관측 주소가 전부 @samsung.com(samsungcareers E80 채용 문의 · 2025 보고서 IR 문의 — 역할 주소)
                          's1',
                          -- 확장 웨이브 7(2026-10-17): 제일기획 — 사용자 그룹 단위 인증 결정(삼성 계열 전부 samsung.com). 전용 도메인 cheil.com 은 아래 단일 줄
-                         'cheil_worldwide');
+                         'cheil_worldwide',
+                         -- 확장 웨이브 9(2026-10-31): 호텔신라 — samsungcareers E50 채용 문의 주소가 @samsung.com(삼성 그룹 단위 인증). 자기 메일 도메인 관측 0
+                         'hotel_shilla');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
@@ -84,7 +86,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 7(2026-10-17): SK바이오사이언스 — 사용자 그룹 단위 인증 결정. 자기 웹 도메인 skbioscience.com 은 MX 가 없다(메일 미수신)
                          'sk_bioscience',
                          -- 확장 웨이브 8(2026-10-24): SK가스 2025 지속가능경영보고서 문의처 @sk.com · 자기 웹 도메인 skgas.co.kr 의 MX 도 spmail.sk.com
-                         'sk_gas');
+                         'sk_gas',
+                         -- 확장 웨이브 9(2026-10-31): SK네트웍스 개인정보처리방침 · 보고서 문의처 @sk.com · 자기 웹 도메인 sknetworks.co.kr 의 MX 도 spmail.sk.com
+                         'sk_networks');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -369,9 +373,10 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 롯데케미칼은 자체 도메인(lottechem.com, 위)과 그룹 도메인을 **병행**한다 — 대외 역할주소는
 -- @lottechem.com, 임직원 실계정은 @lotte.net 에 있다(자사 e-Sales 처리방침 게시).
 -- 그룹 단위 인증(사용자 2026-10-14) · ⚠ 롯데렌탈은 최대주주 지분 매각 계약(2026-08-11 · 종결 전) — 종결되면 이 IN 목록에서 뺀다.
+-- 확장 웨이브 9(2026-10-31): 롯데쇼핑(채용 FAQ · 보고서 문의처) · 롯데에너지머티리얼즈(보고서 제보 메일) 관측 주소가 @lotte.net. 롯데관광개발은 롯데그룹이 아니다 — 이 줄에 넣지 않는다.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY
-   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood');
+   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials');
 
 -- ── 확장 웨이브 1 (2026-09-01, 11개사 신규 등록 중 관측 6사) ─────────────────────
 -- 근거: 각사 공식 페이지 실관측(docs/handoff/2026-09-01-evidence/wave1/ 각 evidence).
@@ -615,3 +620,47 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'shiftup.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'shift_up';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'sfa.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'sfa';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 9 (2026-10-31 서빙 반영, 22개사 중 전용 12사 12도메인 + 그룹 줄 병합 4사)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-15-wave9/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 공고에 게시된 주소의 도메인만.
+-- 그룹 줄 병합: 호텔신라 → 위 삼성 그룹 줄(samsung.com) · SK네트웍스 → 위 SK 그룹 줄(sk.com) ·
+--   롯데쇼핑 · 롯데에너지머티리얼즈 → 위 롯데 그룹 줄(lotte.net).
+-- 미등록 6사(수동 승인 폴백): DN오토모티브(게시된 주소 0) ·
+--   HS효성첨단소재 · 영원무역 · 대신증권 · 차바이오텍 · 삼표시멘트(관측 주소가 그룹 · 지주 공용 도메인뿐 — 코퍼스에 그 그룹 계열이 하나뿐).
+-- @rejected: hshyosung.com — HS효성첨단소재. 지주 HS효성 그룹 도메인(보고서 문의처) · 법인 웹 도메인 메일 주소 관측 0 — 코퍼스 HS효성 계열 1사
+-- @rejected: youngone.com — 영원무역. 지주 영원무역홀딩스와 함께 쓰는 도메인(개인정보 제보처가 홀딩스 IT팀) — 코퍼스 영원 계열 1사
+-- @rejected: daishin.com — 대신증권. 대신파이낸셜그룹 계열 사이트가 함께 쓰는 apex 도메인(company.daishin.com/group) — 코퍼스 대신 계열 1사
+-- @rejected: chamc.co.kr — 차바이오텍. 차병원 그룹 도메인(개인정보처리방침) · 법인 고유 주소 관측 0 — 코퍼스 차 계열 1사
+-- @rejected: sampyo.co.kr — 삼표시멘트. 삼표그룹 홈 도메인(보고서 문의처) · 법인 웹 sampyocement.co.kr 은 MX 없음 — 코퍼스 삼표 계열 1사
+-- ⓘ chabio.com 은 MX 가 있으나 게시된 주소가 0이라 넣지 않았다. dnautomotive.com 은 DN 그룹 메일 서버를 쓰고 게시된 주소가 0이다.
+-- ⓘ 웹 도메인 ≠ 메일 도메인: IPARK현대산업개발(ipark-dvp.com 웹 · hdc-dvp.com 메일 — 2025 사명 변경 전 이름) · 와이지엔터테인먼트(ygfamily.com 웹 · ygmail.net 메일) ·
+--   LS마린솔루션(lsmarinesolution.co.kr 웹 MX 없음 · lsms.co.kr 메일 — LS 그룹 메일 호스팅 lsworkplace.com 을 거치지만 주소 도메인은 법인 고유) ·
+--   롯데관광개발(lottetour.edk.ai 보고서 · jejudreamtower.com 메일).
+-- ⚠ ygmail.net — 와이지엔터테인먼트 보고서 문의처. YG 계열(YG PLUS 등)과 함께 쓰는지 확인하지 못했다 — 계열 직원도 이 회사로 인증될 수 있다.
+-- ⚠ hisnt.com — SNT에너지 공고 제출처 · 자기 웹 도메인. SNT 형제는 각자 도메인(sntmotiv.com · hisntd.com)이나 지주 쪽 사용 여부는 확인하지 못했다.
+-- ⚠ jejudreamtower.com — 롯데관광개발 보고서 문의처(ESG팀). 제주 드림타워를 함께 운영하는 자회사 엘티엔터테인먼트(미등록) 직원도 같은 도메인을 쓸 수 있다.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'taekwang.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'taekwang_ind';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'panocean.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'pan_ocean';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'daehanship.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'daehan_shipbuilding';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'ypzinc.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'youngpoong';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hdc-dvp.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ipark_hdc';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'ygmail.net', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'yg_entertainment';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'nexongames.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'nexon_games';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'robostar.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'robostar';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lsms.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ls_marine_solution';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hisnt.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'snt_energy';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hisntd.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'snt_dynamics';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'jejudreamtower.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lotte_tour';
