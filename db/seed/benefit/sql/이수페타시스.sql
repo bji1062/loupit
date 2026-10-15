@@ -34,6 +34,7 @@
 --       있다 · SORT 51 장애인·보훈대상자 혜택(disability_veteran) 삭제 — 혜택 내용이
 --       0자라 무엇을 비교하는지 정의가 없다. SORT 70 은 법정 휴일인 노동절 문구를 뺐다.
 -- 후속 정리 2(2026-10-04, R-3): 사용자가 정한 복지 범위 규칙 개정(규칙 8 · 기준 13 · 기준 18 · 기준 20 · 기준 23)과 코퍼스 판정을 반영 — 새 행 1(edu_support) — 최종 22행
+-- 코퍼스 정리(2026-10-15 · 판정 (129)): 서술의 편집 낱말 정리
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 -- ⚠ 데이터 정리 2차(2026-09-21): SORT 71·80 문안 교체. db/migrations/20260921_data_cleanup_2.sql 동봉.
@@ -60,63 +61,63 @@ INSERT INTO TCOMPANY_BENEFIT
 VALUES
   -- ── 여가·라이프 (leisure) — 원문 Leisure & Activity ──
   (@comp_id, 'resort', '리조트 회원권', NULL, 'leisure',
-   'est', NULL, TRUE, '리조트 회원권 운영 (공식 페이지 Leisure & Activity 항목명 그대로 — 제휴 리조트·이용 조건·회원권 수 미기재)', 10),
+   'est', NULL, TRUE, '리조트 회원권 운영 (공식 페이지 Leisure & Activity 항목 — 제휴 리조트·이용 조건·회원권 수 미기재)', 10),
   (@comp_id, 'club', '써클(동아리) 지원', NULL, 'leisure',
-   'est', NULL, TRUE, '써클(동아리) 운영 및 지원 (공식 페이지 Leisure & Activity 항목명 그대로 — 활동비 지원 규모·동호회 수 미기재)', 11),
+   'est', NULL, TRUE, '써클(동아리) 운영 및 지원 (공식 페이지 Leisure & Activity 항목 — 활동비 지원 규모·동호회 수 미기재)', 11),
   (@comp_id, 'leisure_ticket', '문화생활 지원(영화티켓 등)', NULL, 'leisure',
-   'est', NULL, TRUE, '문화생활 지원(영화티켓 등) (공식 페이지 Leisure & Activity 항목명 그대로 — 지원 횟수·금액 미기재)', 12),
+   'est', NULL, TRUE, '문화생활 지원(영화티켓 등) (공식 페이지 Leisure & Activity 항목 — 지원 횟수·금액 미기재)', 12),
 
   -- ── 성장·커리어 (growth) — 원문 Leisure & Activity ──
   (@comp_id, 'lang', '사내 외국어 강좌', NULL, 'growth',
-   'est', NULL, TRUE, '사내 외국어 강좌 (공식 페이지 Leisure & Activity 항목명 그대로 — 개설 언어·수강 대상·비용 부담 미기재)', 20),
+   'est', NULL, TRUE, '사내 외국어 강좌 (공식 페이지 Leisure & Activity 항목 — 개설 언어·수강 대상·비용 부담 미기재)', 20),
   (@comp_id, 'edu_support', '사이버 연수원', NULL, 'growth',
-   'est', NULL, TRUE, '사이버 연수원 운영 (공식 페이지 Leisure & Activity 항목명 그대로 — 개설 과정·수강 대상·비용 부담 미기재)', 21),
+   'est', NULL, TRUE, '사이버 연수원 운영 (공식 페이지 Leisure & Activity 항목 — 개설 과정·수강 대상·비용 부담 미기재)', 21),
   (@comp_id, 'career', '멘토링 제도', NULL, 'growth',
-   'est', NULL, TRUE, '멘토링 제도 (공식 페이지 Leisure & Activity 항목명 그대로 — 대상·운영 기간 미기재)', 22),
+   'est', NULL, TRUE, '멘토링 제도 (공식 페이지 Leisure & Activity 항목 — 대상·운영 기간 미기재)', 22),
 
   -- ── 가족·돌봄 (family) — 원문 Life Balance + Happy Workplace ──
   (@comp_id, 'child_edu', '자녀 학자금·수능 격려품', NULL, 'family',
-   'est', NULL, TRUE, '자녀 학자금 지원, 수능대상자 자녀 격려품 지급 (공식 페이지 Life Balance·Happy Workplace 항목명 그대로 — 지원 학교급·한도·금액 미기재)', 30),
+   'est', NULL, TRUE, '자녀 학자금 지원, 수능대상자 자녀 격려품 지급 (공식 페이지 Life Balance·Happy Workplace 항목 — 지원 학교급·한도·금액 미기재)', 30),
   (@comp_id, 'event', '경조금·경조휴가 지원', NULL, 'family',
-   'est', NULL, TRUE, '각종 경조금 지원, 경조휴가 지원 (공식 페이지 Life Balance·Happy Workplace 항목명 그대로 — 경조 사유별 금액·휴가 일수 미기재)', 31),
+   'est', NULL, TRUE, '각종 경조금 지원, 경조휴가 지원 (공식 페이지 Life Balance·Happy Workplace 항목 — 경조 사유별 금액·휴가 일수 미기재)', 31),
 
   -- ── 건강·의료 (health) — 원문 Life Balance ──
   (@comp_id, 'health_check', '건강검진', NULL, 'health',
-   'est', NULL, TRUE, '정기검진 및 상담실 운영, 직위·연령별 건강검진 지원 (공식 페이지 Life Balance 항목명 그대로 — 검진 주기·직위 구간·검진 항목·비용 미기재)', 40),
+   'est', NULL, TRUE, '정기검진 및 상담실 운영, 직위·연령별 건강검진 지원 (공식 페이지 Life Balance 항목 — 검진 주기·직위 구간·검진 항목·비용 미기재)', 40),
   (@comp_id, 'insurance', '단체상해보험', NULL, 'health',
-   'est', NULL, TRUE, '임직원 단체상해보험 (공식 페이지 Life Balance 항목명 그대로 — 보장 범위·가족 포함 여부·보험료 미기재)', 42),
+   'est', NULL, TRUE, '임직원 단체상해보험 (공식 페이지 Life Balance 항목 — 보장 범위·가족 포함 여부·보험료 미기재)', 42),
 
   -- ── 경제적 부가혜택 (perks) — 원문 Life Balance + Happy Workplace ──
   (@comp_id, 'housing_loan', '주택자금대출', NULL, 'perks',
-   'est', NULL, TRUE, '주택자금대출 (공식 페이지 Life Balance 항목명 그대로 — 대출 한도·이율·근속 요건 미기재)', 50),
+   'est', NULL, TRUE, '주택자금대출 (공식 페이지 Life Balance 항목 — 대출 한도·이율·근속 요건 미기재)', 50),
   (@comp_id, 'meal', '구내식당', NULL, 'perks',
-   'est', NULL, TRUE, '구내식당 운영 (공식 페이지 Happy Workplace 항목명 그대로 — 제공 끼니·식대·본인 부담 미기재)', 52),
+   'est', NULL, TRUE, '구내식당 운영 (공식 페이지 Happy Workplace 항목 — 제공 끼니·식대·본인 부담 미기재)', 52),
   (@comp_id, 'commute_subsidy', '통근버스', NULL, 'perks',
-   'est', NULL, TRUE, '통근버스 운행 (공식 페이지 Happy Workplace 항목명 그대로 — 노선·운행 지역·이용 대상 미기재)', 53),
+   'est', NULL, TRUE, '통근버스 운행 (공식 페이지 Happy Workplace 항목 — 노선·운행 지역·이용 대상 미기재)', 53),
   (@comp_id, 'telecom', '통신비 지원', NULL, 'perks',
-   'est', NULL, TRUE, '통신비 지원 (공식 페이지 Happy Workplace 항목명 그대로 — 지원액·대상 직군 미기재)', 54),
+   'est', NULL, TRUE, '통신비 지원 (공식 페이지 Happy Workplace 항목 — 지원액·대상 직군 미기재)', 54),
 
   -- ── 근무환경 (work_env) — 원문 Happy Workplace ──
   (@comp_id, 'dormitory', '기숙사', NULL, 'work_env',
-   'est', NULL, TRUE, '기숙사 제공 (공식 페이지 Happy Workplace 항목명 그대로 — 소재지·입주 자격·본인 부담 미기재)', 60),
+   'est', NULL, TRUE, '기숙사 제공 (공식 페이지 Happy Workplace 항목 — 소재지·입주 자격·본인 부담 미기재)', 60),
   (@comp_id, 'lounge', '휴게실·샤워실·회의실', NULL, 'work_env',
-   'est', NULL, TRUE, '휴게실, 샤워실, 회의실 운영 (공식 페이지 Happy Workplace 항목명 그대로 — 사업장별 설치 현황 미기재)', 61),
+   'est', NULL, TRUE, '휴게실, 샤워실, 회의실 운영 (공식 페이지 Happy Workplace 항목 — 사업장별 설치 현황 미기재)', 61),
 
   -- ── 휴가 (time_off) — 원문 Happy Workplace + Motivation ──
   (@comp_id, 'foundation_day_leave', '창립기념일 휴무', NULL, 'time_off',
    'est', NULL, TRUE, '창립기념일 휴무 (공식 페이지 Happy Workplace 항목명 기준 — 휴무 일수 미기재)', 70),
   (@comp_id, 'long_service_leave', '장기근속자 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목명 그대로 — 근속 연수 구간·휴가 일수 미기재)', 71),
+   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목 — 근속 연수 구간·휴가 일수 미기재)', 71),
   (@comp_id, 'refresh_leave', 'Refresh 휴가', NULL, 'time_off',
-   'est', NULL, TRUE, 'Refresh 휴가 (공식 페이지 Motivation 항목명 그대로 — 사용 주기·일수·근속 요건 미기재)', 72),
+   'est', NULL, TRUE, 'Refresh 휴가 (공식 페이지 Motivation 항목 — 사용 주기·일수·근속 요건 미기재)', 72),
 
   -- ── 보상·금전 (compensation) — 원문 Motivation ──
   (@comp_id, 'long_service_bonus', '장기근속자 포상', NULL, 'compensation',
-   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목명 그대로 — 근속 연수 구간·포상 금액 미기재)', 80),
+   'est', NULL, TRUE, '장기근속자 포상 및 휴가 (공식 페이지 Motivation 항목 — 근속 연수 구간·포상 금액 미기재)', 80),
   (@comp_id, 'excellence_award', '우수사원 표창', NULL, 'compensation',
-   'est', NULL, TRUE, '우수사원 표창 (공식 페이지 Motivation 항목명 그대로 — 선발 기준·포상 규모 미기재)', 81),
+   'est', NULL, TRUE, '우수사원 표창 (공식 페이지 Motivation 항목 — 선발 기준·포상 규모 미기재)', 81),
   (@comp_id, 'incentive', '성과급', NULL, 'compensation',
-   'est', NULL, TRUE, '성과급 지급 (공식 페이지 Motivation 항목명 그대로 — 지급 기준·지급률·지급 시기 미기재)', 82)
+   'est', NULL, TRUE, '성과급 지급 (공식 페이지 Motivation 항목 — 지급 기준·지급률·지급 시기 미기재)', 82)
 ON DUPLICATE KEY UPDATE
   BENEFIT_NM=VALUES(BENEFIT_NM), BENEFIT_AMT=VALUES(BENEFIT_AMT),
   BENEFIT_CTGR_CD=VALUES(BENEFIT_CTGR_CD), BADGE_CD=VALUES(BADGE_CD),
