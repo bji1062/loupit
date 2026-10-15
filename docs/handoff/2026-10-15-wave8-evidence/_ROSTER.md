@@ -52,3 +52,5 @@
 - 10:02 UTC **감사 끝: BLOCK 0 · MED 4 · LOW 10 · 23사 526 → 542행 · SD-3 218 · SD-4 4,897 · FN-1 217/216/217 · 금융사 18 · 새 코드 0(own_product → discount).** MED-1 (132) 를 롯데웰푸드 72 · SK가스 93 에도 적용(mba 추가).
 - (133) **감사 §13 기본안 채택:** ① 포스코DX SORT 65 장애인가족지원 「1인당 연 200만원」 = 금액 200 stated(계약 3-3 ① 「장애 자녀 치료비」 예시 · 두산에너빌리티 선례). ② 포스코DX KRX 업종 = 「건설」(웨이브 7 (128) 과 같은 OpenDART 표준산업분류 대응 방법 — INDUSTRY_NM 은 IT서비스 그대로). 13-2 감사가 정한 것(mba 2행 · 메일 도메인 6 미등록 · 구명 별칭 6 · 「하계휴가」 표시명 고정 · /find 표본 교체 등)도 전부 채택. 통합(Sonnet) 투입.
 - 10:04 UTC 통합 끝(Sonnet): 23 시드 542행 · 점검 (a)~(g) 통과 · 모의본과 차이 0. 등록 · 핀 · 리허설 · 전체 테스트(Sonnet r8-register) 투입.
+- 10:1x UTC 등록 끝(Sonnet): 핀 218/4,897/217/216 · 금융사 18 · 메일 그룹 4 + 전용 10 + @rejected 6 · 예외 37 · summer_leave 「하계휴가」 고정 · 동률 표본 uniform → visa_support · work_tools → housing_support · 리허설 4,897/218 · 운영 160사 행 증감 0 · run_tests ALL GREEN(1027 · 904 · 1286). 커밋 `3d8b4e6`(근거 사본 포함). 독립 검토(Opus review-w8) 투입.
+- 10:3x UTC **독립 검토 끝: HIGH 0 · MED 0 · LOW 3 · 머지 가능 · 가릴 곳 0**(`REVIEW-PR.md`). LOW-1 리허설 README 숫자 설명 · LOW-2 SNT모티브 42 「부채」 꼬리 문안 → Sonnet 반영 중 · LOW-3(등록 json 순서 — 화면이 다시 정렬) 안 함.
