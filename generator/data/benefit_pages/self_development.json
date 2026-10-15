@@ -37,6 +37,8 @@
   "overrides": [
     {"comp": "rainbow_robotics", "h": "6facafe12d", "mode": "allowance", "why": "원문 표기가 「자기개발비 지원」 — 같은 제도인데 규칙 정규식은 「계발」만 본다"},
     {"comp": "ibk", "h": "4977c2816b", "mode": "allowance", "why": "원문 표기가 「자기개발 비용」 — 같은 제도인데 규칙 정규식은 「계발」만 본다"},
-    {"comp": "daewoong_pharm", "h": "43680e2603", "mode": "allowance", "why": "원문 「리프레시 기간 동안 자기계발 교육이 필요한 경우 최대 100만 원까지 교육비를 지원」 — 자기계발 교육비를 돈으로 대 준다"}
+    {"comp": "daewoong_pharm", "h": "43680e2603", "mode": "allowance", "why": "원문 「리프레시 기간 동안 자기계발 교육이 필요한 경우 최대 100만 원까지 교육비를 지원」 — 자기계발 교육비를 돈으로 대 준다"},
+    {"comp": "foosung", "h": "19d4953e8e", "mode": "allowance", "why": "원문 「자기개발비 지원」 — 자기계발비와 같은 돈 지원인데 규칙이 「개발」 표기를 못 잡는다"},
+    {"comp": "daou_tech", "h": "efef7e8708", "mode": "allowance", "why": "첫 제도가 반기마다 주는 자기계발비(교육수강 · 운동 · 문화활동) — 자격증 응시료 지원은 덧붙은 둘째 제도"}
   ]
 }

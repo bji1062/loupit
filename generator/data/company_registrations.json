@@ -9,6 +9,35 @@
   ],
   "waves": [
     {
+      "date": "2026-10-24",
+      "label": "회사 확장 웨이브 8",
+      "companies": [
+        "daou_tech",
+        "dalba_global",
+        "dl_enc",
+        "doosan_fuelcell",
+        "foosung",
+        "haesung_ds",
+        "hanil_cement",
+        "hankuk_carbon",
+        "hanwha_inv_sec",
+        "iljin_electric",
+        "inbody",
+        "lotte_wellfood",
+        "mirae_asset_life",
+        "nice_info",
+        "posco_dx",
+        "samwha_capacitor",
+        "sd_biosensor",
+        "sfa",
+        "shift_up",
+        "shinyoung_sec",
+        "sk_gas",
+        "snt_motiv",
+        "stx_engine"
+      ]
+    },
+    {
       "date": "2026-10-17",
       "label": "회사 확장 웨이브 6 · 7",
       "companies": [
