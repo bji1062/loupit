@@ -982,3 +982,36 @@ def test_SRC12_추가_중간_인증서_파일이_컨텍스트에_실리고_없�
     assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname is True
     monkeypatch.setattr(sc, "EXTRA_INTERMEDIATES", tmp_path / "없음.pem")
     assert len(sc._ssl_context().get_ca_certs()) == base
+
+
+def test_SRC12_Visit_time_은_리다이렉트_목적지_호스트에도_선다(monkeypatch):
+    from datetime import datetime
+    a, b = "https://a.example.com", "https://b.example.com"
+    pages = {a + "/benefit": (301, {"Location": b + "/benefit"}, b""),
+             b + "/robots.txt": (200, {}, b"User-agent: *\nVisit-time: 0400-0845\n")}
+    monkeypatch.setattr(sc, "utc_now", lambda: datetime(2026, 10, 19, 0, 17))
+    results, web, _c = _run([_target(a + "/benefit")], pages)
+    assert results[0].result_cd == "robots"
+    assert "리다이렉트 목적지" in results[0].detail and "Visit-time 밖" in results[0].detail
+    assert b + "/benefit" not in web.urls()
+
+
+def test_SRC12_robots_가_다른_호스트로_튕기면_그_호스트에도_Crawl_delay_가_선다():
+    a, b = "https://a.example.com", "https://www.a.example.com"
+    pages = {a + "/robots.txt": (301, {"Location": b + "/robots.txt"}, b""),
+             b + "/robots.txt": (200, {}, b"User-agent: *\nCrawl-delay: 30\nDisallow: /x\n"),
+             b + "/y": (200, HTML, b"x")}
+    _r, web, _c = _run([_target(a + "/x"), _target(b + "/y", comp_id=2)], pages)
+    assert web.urls() == [a + "/robots.txt", b + "/robots.txt", b + "/y"]
+    assert web.calls[2]["start"] - web.calls[1]["end"] >= 30.0 - 1e-6
+
+
+def test_SRC12_묶음_밖_Crawl_delay_도_읽고_간격은_큰_값을_유지한다():
+    assert sc.parse_robots("Crawl-delay: 20\nUser-agent: *\nDisallow: /x\n").crawl_delay == 20.0
+    assert sc.parse_robots("Crawl-delay: 20\nUser-agent: *\nCrawl-delay: 5\n").crawl_delay == 5.0  # 묶음 값이 이긴다
+    assert sc.parse_robots("User-agent: *\nVisit-time: 2401-0100\n").visit_window is None
+    assert sc.parse_robots("User-agent: *\nVisit-time: 2200-2400\n").visit_window == (1320, 0)
+    p = sc.Pacer(lambda: 0.0, lambda s: None)
+    p.set_host_gap("h", 20.0)
+    p.set_host_gap("h", 15.0)
+    assert p._host_gap["h"] == 20.0

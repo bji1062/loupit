@@ -1,6 +1,6 @@
 # /etc/systemd/system/loupit-source-check.timer
 # 주 1회 월요일 04:17 UTC = **13:17 KST**. 서버 시간대는 UTC 다(timedatectl) — OnCalendar 도 UTC 로 해석된다.
-# 04:17 UTC 인 이유: GS리테일 이미지 서버 robots.txt 의 `Visit-time: 0400-0845`(UTC) 창 안에서 시작해 78곳을 다 돌게(약 10분~1시간).
+# 04:17 UTC 인 이유: GS리테일 이미지 서버 robots.txt 의 `Visit-time: 0400-0845`(UTC) 창 안에서 시작해 대상 전부(2026-10-12 157곳 18분)를 다 돌게 — 예산 90분을 다 써도 05:47 UTC.
 # 17분인 이유: 정각을 피한다 — 남의 서버에도 정각에는 크론이 몰린다.
 [Unit]
 Description=loupit 주 1회 출처 주소 점검 타이머

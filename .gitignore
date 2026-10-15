@@ -7,6 +7,7 @@
 .env.*
 !.env.example
 *.pem
+# 예외: 공개 CA 중간 인증서(비밀 아님) — 출처 점검기 TLS 체인 보강(server/source_check.py _ssl_context)
 !server/data/extra_intermediates.pem
 *.key
 secrets.*
