@@ -976,9 +976,10 @@ def test_SRC12_추가_중간_인증서_파일이_컨텍스트에_실리고_없�
     assert pem.is_file(), "server/data/extra_intermediates.pem 이 리포에 있어야 한다"
     text = pem.read_text(encoding="utf-8")
     assert "BEGIN CERTIFICATE" in text and "company.lottechilsung.co.kr" in text and "SHA-256" in text and "2029-03-18" in text
+    assert "www.dnautomotive.com" in text and "2027-11-02" in text
     base = len(ssl.create_default_context().get_ca_certs())
     ctx = sc._ssl_context()
-    assert len(ctx.get_ca_certs()) == base + 1
+    assert len(ctx.get_ca_certs()) == base + 2
     assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname is True
     monkeypatch.setattr(sc, "EXTRA_INTERMEDIATES", tmp_path / "없음.pem")
     assert len(sc._ssl_context().get_ca_certs()) == base
