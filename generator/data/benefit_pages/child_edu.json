@@ -99,5 +99,30 @@
   "notes": {
     "money": "금액이 적힌 원문 중에는 유치원비나 영유아 지원금, 양육비처럼 한 학교급이나 다른 쓰임에만 해당하는 금액이 있습니다."
   },
-  "overrides": []
+  "overrides": [
+    {
+      "comp": "innocean",
+      "h": "e6eb257f3d",
+      "facets_remove": [
+        "tenure"
+      ],
+      "why": "원문의 1년 이상은 직장어린이집 이용 기간 조건(직장어린이집 1년 이상 이용 시 제외)이지 근속 조건이 아니다"
+    },
+    {
+      "comp": "hyundai_elevator",
+      "h": "b0d29209fe",
+      "facets_remove": [
+        "tenure"
+      ],
+      "why": "원문 2026년부터 자녀 학자금 지원의 근속 제한 규정을 폐지는 근속 조건이 없어졌다는 문장이다"
+    },
+    {
+      "comp": "hanssem",
+      "h": "96c17c1ffe",
+      "facets_remove": [
+        "university"
+      ],
+      "why": "원문은 초등학교부터 대학교 입학까지 학자금 지원 — 대학 재학 중 학자금을 준다는 문장이 아니다"
+    }
+  ]
 }

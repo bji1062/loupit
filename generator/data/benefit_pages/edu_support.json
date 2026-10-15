@@ -156,6 +156,54 @@
         "external"
       ],
       "why": "「수강」은 사내 교육 플랫폼 Wink-A 수강이고 교양특강은 명사를 사내로 초청한 것 — 회사 밖 교육 지원이 아니다"
+    },
+    {
+      "comp": "lotte_fine_chem",
+      "h": "423eaf1876",
+      "facets_remove": [
+        "external"
+      ],
+      "why": "EZ러닝은 회사가 운영하는 온라인 플랫폼 무상 수강이고 LFC 스터디 그룹은 사내 학습모임이라 사외 교육비 지원이 아닌데 원문 낱말 수강이 external 을 켠다"
+    },
+    {
+      "comp": "hyundai_elevator",
+      "h": "45cd9dea27",
+      "facets_remove": [
+        "talk"
+      ],
+      "why": "원문 공통/직무 역량 강화를 위한 공개된 강좌는 자율 입과 교육 과정이지 특강·교양 강좌를 밝힌 문장이 아니다"
+    },
+    {
+      "comp": "kyobo_securities",
+      "h": "567cca5a06",
+      "facets_remove": [
+        "external"
+      ],
+      "why": "원문은 이러닝 상시 학습 제도와 구독형(HRD FLEX) 마이크로러닝 학습 시스템의 무제한 수강이라 사내 학습 플랫폼이지 사외 교육 지원이 아니다"
+    },
+    {
+      "comp": "fnf",
+      "h": "588fa973f2",
+      "facets_remove": [
+        "talk"
+      ],
+      "why": "원문 「IT·어학 강좌 수강료를 지원」의 「강좌」는 사외 강좌 수강료 지원이지 특강·교양 강좌가 아님"
+    },
+    {
+      "comp": "hanssem",
+      "h": "3030fd8150",
+      "facets_remove": [
+        "external"
+      ],
+      "why": "원문은 임직원 모두 자유롭게 수강 가능한 사내 통합 교육 플랫폼 — 회사 밖 교육 지원이 아니다(사외 교육은 conference 행)"
+    },
+    {
+      "comp": "korean_re",
+      "h": "30fa1cd786",
+      "facets_remove": [
+        "external"
+      ],
+      "why": "원문 「외부전문가 강연」은 회사가 여는 조찬 강연의 연사이지 사외 교육비 지원이 아니다"
     }
   ]
 }

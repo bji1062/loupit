@@ -181,6 +181,32 @@ WAVE6_ALIASES: dict[str, list[str]] = {
     "gs_retail": ["GS Retail", "지에스리테일"],
 }
 
+# 확장 웨이브 7(2026-10-17 서빙 반영) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름은 절대 금지.
+WAVE7_ALIASES: dict[str, list[str]] = {
+    "boryung": ["Boryung", "보령제약"],  # 2022-03 사명 변경 전 구명(보령제약 → 보령) — 같은 법인 · 보령홀딩스(지주) 이름 금지
+    "hk_inno_n": ["HK inno.N", "에이치케이이노엔", "CJ헬스케어"],  # 법인 국문 상호 · 2020-02 사명 변경 전 구명(씨제이헬스케어 → 에이치케이이노엔) — 한국콜마 · 콜마홀딩스 이름 금지
+    "sk_bioscience": ["SK bioscience", "에스케이바이오사이언스"],  # 법인 국문 상호 — SK케미칼(최대주주) 이름 금지
+    "kctech": ["KCTECH"],  # 분할 존속 법인 ㈜케이씨 · KC 그룹 이름 금지
+    "lotte_fine_chem": ["LOTTE Fine Chemical"],
+    "innocean": ["INNOCEAN"],
+    "hyundai_elevator": ["Hyundai Elevator"],
+    "kyobo_securities": ["Kyobo Securities"],  # 교보생명 등과 섞이지 않게 「교보」 단독은 쓰지 않는다
+    "fnf": ["에프앤에프"],  # 법인 국문 상호 — F&F홀딩스(지주) · F&F엔터테인먼트 이름 금지
+    "kyungdong_navien": ["KD Navien", "Kyungdong Navien"],  # 경동원 · 경동인베스트 이름 금지
+    "ahnlab": ["AhnLab"],
+    "doosan_tesna": ["Doosan Tesna", "TESNA"],  # 2022-04 두산 편입 전 법인명 테스나 — 같은 법인 · ㈜두산 이름 금지
+    "cheil_worldwide": ["Cheil Worldwide"],  # 「제일」 단독은 쓰지 않는다
+    "hana_materials": ["HANA Materials"],  # 하나마이크론 이름 금지
+    "cosmecca_korea": ["COSMECCA KOREA"],
+    "hanssem": ["HANSSEM"],
+    "lotte_chilsung": ["LOTTE CHILSUNG BEVERAGE"],
+    "lotte_rental": ["LOTTE RENTAL", "KT렌탈"],  # 2015 사명 변경 전 구명(케이티렌탈 → 롯데렌탈) — 같은 법인 · 최대주주 매각 진행 중이라 그룹 낱말은 넣지 않는다
+    "korean_re": ["Korean Re", "코리안리재보험"],  # 법인 국문 상호
+    "lx_international": ["LX International", "LG상사"],  # 2021 사명 변경 전 구명 — 같은 법인 · LX홀딩스 이름 금지
+    "kumho_tire": ["KUMHO TIRE"],  # 「금호」 단독 금지(금호석유화학 등 다른 그룹)
+    "komico": ["KoMiCo"],  # 미코 · 미코세라믹스 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -429,6 +455,10 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE6_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE7_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
