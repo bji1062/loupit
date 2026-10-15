@@ -118,7 +118,7 @@ sudo systemctl enable --now loupit-ops-digest.timer
 # 다른 질문이다 — 복원해 본 적 없는 백업은 백업이 아니라 백업이라는 믿음이다.
 # 결과는 일일 요약 메일에 실린다(server/ops.py 가 restore-drill.json 을 읽는다).
 sudo systemctl enable --now loupit-restore-drill.timer
-# 출처 주소 점검(주 1회 월요일 00:17 UTC = 09:17 KST, SC-1). 복지 출처 페이지가 사라지거나 옮겨 가면 운영 콘솔
+# 출처 주소 점검(주 1회 월요일 04:17 UTC = 13:17 KST, SC-1). 복지 출처 페이지가 사라지거나 옮겨 가면 운영 콘솔
 # 「출처 점검」 탭에 뜬다. ⚠ 전제: db/schema.sql 의 TSOURCE_CHECK 가 서빙 DB 에 있어야 한다(release [2/7]) —
 # 없으면 점검은 네트워크를 쓰기 전에 "표가 없다"로 실패한다(exit 1).
 sudo systemctl enable --now loupit-source-check.timer

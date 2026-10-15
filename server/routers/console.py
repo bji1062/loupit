@@ -1047,7 +1047,7 @@ function sourceDetail(s) {
 async function renderSources() {
   const d = await api('/source-checks');
   if (!d.last_run_dtm) {
-    root.appendChild($('div', 'empty', '아직 점검 기록이 없다 — 주 1회 타이머(월 09:17 KST)가 처음 돌면 채워진다.'));
+    root.appendChild($('div', 'empty', '아직 점검 기록이 없다 — 주 1회 타이머(월 13:17 KST)가 처음 돌면 채워진다.'));
     return;
   }
   const attention = d.total - d.counts.ok - d.counts.robots;
