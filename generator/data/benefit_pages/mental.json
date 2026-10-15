@@ -50,6 +50,10 @@
     {"comp": "paradise", "h": "c95ed5857b", "facets_add": ["remote"], "why": "원문 「온 · 오프라인 심리 상담 서비스」 — 온라인 상담을 밝혔는데 규칙 정규식은 「온오프라인」만 본다"},
     {"comp": "innocean", "h": "8f2cf75318", "facets_add": ["count"], "why": "원문 연간 최대 8회의 전문 상담 — 한 해 이용 횟수가 적혀 있으나 규칙 패턴(연 N회 · N회까지)이 연간 최대 N회 꼴을 못 잡는다"},
     {"comp": "hyundai_elevator", "h": "da88a21b7d", "mode": "external", "facets_add": ["count"], "why": "원문 Keapa 한국EAP협회/서울심리상담센터 · 지역 심리상담센터 연계 운영은 외부 기관 연계이고 연간 1인당 최대 7회 상담 지원은 횟수를 밝힌 문장이다"},
-    {"comp": "lotte_chilsung", "h": "2c639af1c6", "mode": "external", "why": "원문 「외부 전문 기관을 통한 심리상담센터(EAP)」 · 「외부심리상담센터(EAP) 운영」 — 회사 밖 기관인데 「상담센터」 낱말이 사내 규칙에 먼저 걸린다"}
+    {"comp": "lotte_chilsung", "h": "2c639af1c6", "mode": "external", "why": "원문 「외부 전문 기관을 통한 심리상담센터(EAP)」 · 「외부심리상담센터(EAP) 운영」 — 회사 밖 기관인데 「상담센터」 낱말이 사내 규칙에 먼저 걸린다"},
+    {"comp": "posco_dx", "h": "fdaf1b638d", "mode": "both", "why": "원문 「사내/외부 심리상담 지원」 · 보고서 「사내 상담실과 외부 전문 상담센터를 통해」 — 사내와 외부를 함께 운영한다"},
+    {"comp": "sd_biosensor", "h": "3dff2cc90a", "mode": "external", "facets_add": ["assessment"], "why": "원문 「보건관리대행업체를 통해 직무스트레스를 측정하고 상담을 제공」 — 회사 밖 대행업체 상담이고 측정이 검사에 해당하는데 업체 · 측정 낱말을 규칙이 못 잡는다"},
+    {"comp": "daou_tech", "h": "a03c7b64a1", "mode": "inhouse", "why": "회사가 운영하는 DAOU.M 센터에서 성격검사 · 직무 스트레스 검사 · 코칭 및 상담 — 원문에 사내 · 상담센터 낱말이 없어 규칙이 못 잡음"},
+    {"comp": "haesung_ds", "h": "1e1db2c034", "mode": "external", "why": "원문 「전문심리상담사가 상주하는 사외 심리상담센터를 운영합니다」 — 회사 밖 센터인데 상주 · 상담센터 패턴이 사내로 읽음"}
   ]
 }

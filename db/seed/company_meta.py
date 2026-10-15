@@ -207,6 +207,32 @@ WAVE7_ALIASES: dict[str, list[str]] = {
     "komico": ["KoMiCo"],  # 미코 · 미코세라믹스 이름 금지
 }
 
+# 확장 웨이브 8(2026-10-24 서빙 반영) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름은 절대 금지.
+WAVE8_ALIASES: dict[str, list[str]] = {
+    "hanil_cement": ["HANIL CEMENT"],  # 2018-07 인적분할 신설 법인 — 존속 지주 한일홀딩스 · 형제 한일현대시멘트 이름 금지
+    "daou_tech": ["Daou Technology"],  # 「다우」 단독 금지(다우데이타 · 다우키움 그룹 · 키움증권)
+    "doosan_fuelcell": ["Doosan Fuel Cell"],  # ㈜두산 · 두산에너빌리티 이름 금지
+    "sk_gas": ["SK Gas"],  # SK디스커버리(최대주주) 이름 금지
+    "stx_engine": ["STX Engine"],  # 2004 분할 전 쌍용중공업 · STX 는 다른 법인 계보라 넣지 않는다
+    "posco_dx": ["POSCO DX", "포스코디엑스", "포스코ICT", "포스코아이씨티"],  # 법인 국문 상호 · 2023-03 사명 변경 전 구명(포스코아이씨티 → 포스코디엑스) — POSCO홀딩스 · 포스코퓨처엠 이름 금지
+    "snt_motiv": ["SNT MOTIV", "에스앤티모티브", "S&T모티브"],  # 법인 국문 상호 · 사명 변경 전 구명(S&T모티브) — SNT홀딩스 · SNT다이내믹스 이름 금지
+    "lotte_wellfood": ["LOTTE WELLFOOD", "롯데제과"],  # 2023-04 사명 변경 전 구명(롯데제과 → 롯데웰푸드) — 같은 법인 · 롯데지주 이름 금지
+    "hankuk_carbon": ["HANKUK CARBON"],
+    "inbody": ["InBody", "바이오스페이스"],  # 2014-09 사명 변경 전 구명(바이오스페이스 → 인바디) — 같은 법인
+    "haesung_ds": ["HAESUNG DS"],  # 해성그룹 · 형제 이름 금지
+    "sd_biosensor": ["SD Biosensor", "SD바이오센서"],  # 영문 · 약칭 — 바이오노트(최대주주) 이름 금지
+    "shift_up": ["SHIFT UP"],
+    "shinyoung_sec": ["Shinyoung Securities"],  # 「신영」 단독 금지
+    "mirae_asset_life": ["MIRAE ASSET Life", "미래에셋생명보험", "SK생명"],  # 법인 국문 상호 · 1997~2005 구명(SK생명보험 → 미래에셋생명보험) — 같은 법인 · 미래에셋증권 등 형제 이름 금지
+    "iljin_electric": ["ILJIN Electric"],  # 일진홀딩스 · 일진다이아 이름 금지
+    "hanwha_inv_sec": ["Hanwha Investment & Securities", "한화증권"],  # 2012-09 사명 변경 전 구명(한화증권 → 한화투자증권) — 같은 법인 · ㈜한화 이름 금지
+    "sfa": ["SFA", "SFA Engineering"],  # DART corp_name 「SFA」(표시명과 다름 — 필수) · 자회사 SFA반도체 이름 금지
+    "samwha_capacitor": ["SAMWHA CAPACITOR"],  # 삼화전기 · 삼화전자 이름 금지
+    "dl_enc": ["DL E&C", "디엘이앤씨"],  # 법인 국문 상호 — 2021-01 인적분할 신설(구명 대림산업은 지주 DL㈜ 의 옛 이름이라 금지)
+    "nice_info": ["NICE Information Service", "나이스평가정보"],  # 법인 국문 상호 — NICE홀딩스 · NICE신용평가 이름 금지
+    "foosung": ["FOOSUNG"],  # 후성그룹 · 퍼스텍 · 한국내화 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -459,6 +485,10 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE7_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE8_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

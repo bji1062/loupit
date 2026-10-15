@@ -175,6 +175,9 @@
       "h": "064725641b",
       "mode": "both",
       "why": "원문이 「외식비 지원」(돈)과 「무료사내식당」(밥)을 함께 적었다"
-    }
+    },
+    {"comp": "hankuk_carbon", "h": "981ed7638b", "mode": "both", "why": "원문 「중식(비) 제공」과 같은 도메인 영문판 「Lunch provided (or meal allowance)」가 점심 제공 또는 중식비 지급을 함께 밝힌다 — 분류기는 「제공」으로 canteen 만 켠다"},
+    {"comp": "sd_biosensor", "h": "987e7c14b7", "mode": "both", "why": "원문이 구내식당과 식권대장·법인카드를 한 칸에 함께 적어 밥을 차려 주는 방식과 식대 결제가 섞여 있는데 규칙이 식권 낱말로 allowance 만 고른다"},
+    {"comp": "inbody", "h": "86148fe425", "mode": "both", "facets_add": ["dinner", "site"], "why": "원문이 본사는 조식 포인트, 천안공장은 3식 제공으로 사업장에 따라 포인트와 차린 밥을 나눠 적었고 3식에 저녁이 들어 있다"}
   ]
 }

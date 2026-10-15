@@ -199,6 +199,10 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "boryung", "hk_inno_n", "sk_bioscience", "kctech", "lotte_fine_chem", "innocean", "hyundai_elevator",
         "kyobo_securities", "fnf", "kyungdong_navien", "ahnlab", "doosan_tesna", "cheil_worldwide", "hana_materials",
         "cosmecca_korea", "hanssem", "lotte_chilsung", "lotte_rental", "korean_re", "lx_international", "kumho_tire", "komico",
+        # 확장 웨이브 8(2026-10-24, 23) — 신규 등록, 전부 실 URL 헤더
+        "hanil_cement", "daou_tech", "doosan_fuelcell", "sk_gas", "stx_engine", "dalba_global", "posco_dx", "snt_motiv",
+        "lotte_wellfood", "hankuk_carbon", "inbody", "haesung_ds", "sd_biosensor", "shift_up", "shinyoung_sec", "mirae_asset_life",
+        "iljin_electric", "hanwha_inv_sec", "sfa", "samwha_capacitor", "dl_enc", "nice_info", "foosung",
         # 재수집 R-1(2026-09-26, 9) — 구본 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
         "skt", "sk_innovation", "sk_hynix", "lig_nex1", "naver", "kakao_pay",
         "hyundai_motor", "s_oil", "lotte_chem",

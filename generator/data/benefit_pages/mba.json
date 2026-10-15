@@ -27,6 +27,7 @@
     {"text": "학위를 받은 뒤 정해진 기간 동안 회사에 남아야 하나요?", "answered_by": ["facet:obligation"]}
   ],
   "overrides": [
-    {"comp": "posco_futurem", "h": "7f462cd4f5", "facets_remove": ["abroad"], "why": "「직원 유학 프로그램」의 유학은 학교로 보내는 과정이라는 뜻이다(그래서 leave 는 남긴다) — 적힌 학위 과정은 포스텍·UNIST 등 국내 대학원과 국내 MBA 뿐이고, 해외는 학위가 아닌 지역 전문가 과정이다"}
+    {"comp": "posco_futurem", "h": "7f462cd4f5", "facets_remove": ["abroad"], "why": "「직원 유학 프로그램」의 유학은 학교로 보내는 과정이라는 뜻이다(그래서 leave 는 남긴다) — 적힌 학위 과정은 포스텍·UNIST 등 국내 대학원과 국내 MBA 뿐이고, 해외는 학위가 아닌 지역 전문가 과정이다"},
+    {"comp": "posco_dx", "h": "91d7607c72", "facets_remove": ["abroad"], "why": "원문 「국내 산학 석사과정 및 포스텍 친환경소재 대학원 과정」 · 「국내 최고의 대학원 유학 과정」 — 유학은 국내 대학원 전일 과정이고 해외가 아니다"}
   ]
 }

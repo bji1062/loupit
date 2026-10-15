@@ -112,5 +112,8 @@
         "facet:staff"
       ]
     }
+  ],
+  "overrides": [
+    {"comp": "posco_dx", "h": "454bd0108c", "facets_remove": ["specialty"], "why": "원문은 근골격계질환 예방 장비(Self 진단 키오스크 · 안마의자 · 수치료기)를 적었을 뿐 진료 과목은 적지 않았다"}
   ]
 }
