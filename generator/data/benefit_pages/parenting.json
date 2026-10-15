@@ -174,6 +174,8 @@
     {"comp": "mirae_asset_life", "h": "efb5a38250", "facets_add": ["cash"], "why": "만 5세 이하 자녀가 다니는 어린이집과 위탁계약을 맺고 위탁보육료를 회사가 낸다 — 돈으로 주는 보육 지원인데 규칙 낱말에 보육료가 없음"},
     {"comp": "lotte_shopping", "h": "cf9dee86fa", "facets_add": ["spouse"], "why": "「예비아빠 초음파 휴가」는 배우자 임신 중 초음파 검진 때 남성 직원이 쓰는 휴가인데 spouse 규칙(아빠 휴가)이 사이의 「초음파」에 막힌다"},
     {"comp": "youngone", "h": "e21bd66f6b", "facets_add": ["cash"], "why": "보고서 47쪽 만 6세 이하 자녀를 둔 임직원에게 월 20만 원의 육아수당을 지급"},
-    {"comp": "robostar", "h": "275c38bc22", "facets_add": ["gift"], "why": "원문 「초/중/고등학교 입학 시, LG gram 노트북을 지급」 — 입학 때 주는 물품"}
+    {"comp": "robostar", "h": "275c38bc22", "facets_add": ["gift"], "why": "원문 「초/중/고등학교 입학 시, LG gram 노트북을 지급」 — 입학 때 주는 물품"},
+    {"comp": "skc", "h": "323c88a9b9", "facets_add": ["leave_pay"], "why": "원문 「육아휴직 3개월 유급화」 — 휴직 중 3개월분을 회사가 유급으로 준다는 뜻"},
+    {"comp": "gst", "h": "dc45334e27", "facets_add": ["cash"], "why": "원문 「결혼 및 출산 축의금 지급」의 출산 축의금은 돈으로 주는 출산 지원인데 parenting cash 패턴에 「축의금」 낱말이 없어 켜지지 않는다"}
   ]
 }

@@ -1,0 +1,92 @@
+{
+ "LS머트리얼즈": {
+  "status": "000",
+  "induty_code": "26291",
+  "corp_cls": "K",
+  "hm_url": ""
+ },
+ "동원산업": {
+  "status": "000",
+  "induty_code": "64992",
+  "corp_cls": "Y",
+  "hm_url": "www.dongwon.com"
+ },
+ "SGC에너지": {
+  "status": "000",
+  "induty_code": "351",
+  "corp_cls": "Y",
+  "hm_url": "www.sgcenergy.co.kr"
+ },
+ "원익QnC": {
+  "status": "000",
+  "induty_code": "2312",
+  "corp_cls": "K",
+  "hm_url": "www.wonikqnc.com"
+ },
+ "효성티앤씨": {
+  "status": "000",
+  "induty_code": "2050",
+  "corp_cls": "Y",
+  "hm_url": "www.hyosungtnc.com"
+ },
+ "코스모신소재": {
+  "status": "000",
+  "induty_code": "204",
+  "corp_cls": "Y",
+  "hm_url": "www.cosmoamt.com"
+ },
+ "SKC": {
+  "status": "000",
+  "induty_code": "204",
+  "corp_cls": "Y",
+  "hm_url": "www.skc.kr"
+ },
+ "대주전자재료": {
+  "status": "000",
+  "induty_code": "2629",
+  "corp_cls": "K",
+  "hm_url": "www.daejoo.co.kr"
+ },
+ "한올바이오파마": {
+  "status": "000",
+  "induty_code": "212",
+  "corp_cls": "Y",
+  "hm_url": "www.hanall.co.kr"
+ },
+ "삼아알미늄": {
+  "status": "000",
+  "induty_code": "24222",
+  "corp_cls": "Y",
+  "hm_url": "www.sama-al.com"
+ },
+ "HD현대에너지솔루션": {
+  "status": "000",
+  "induty_code": "2612",
+  "corp_cls": "Y",
+  "hm_url": "www.hd-hyundaies.co.kr"
+ },
+ "성광벤드": {
+  "status": "000",
+  "induty_code": "24133",
+  "corp_cls": "K",
+  "hm_url": "www.skbend.com"
+ },
+ "씨에스윈드": {
+  "status": "000",
+  "induty_code": "2511",
+  "corp_cls": "Y",
+  "hm_url": "www.cswind.com"
+ },
+ "에코프로머티": {
+  "status": "000",
+  "induty_code": "28202",
+  "corp_cls": "Y",
+  "hm_url": "ecopromaterials.com/"
+ },
+ "GST": {
+  "status": "000",
+  "induty_code": "29271",
+  "corp_cls": "K",
+  "hm_url": "www.gst-in.com"
+ }
+}

@@ -29,6 +29,8 @@
   "overrides": [
     {"comp": "posco_futurem", "h": "7f462cd4f5", "facets_remove": ["abroad"], "why": "「직원 유학 프로그램」의 유학은 학교로 보내는 과정이라는 뜻이다(그래서 leave 는 남긴다) — 적힌 학위 과정은 포스텍·UNIST 등 국내 대학원과 국내 MBA 뿐이고, 해외는 학위가 아닌 지역 전문가 과정이다"},
     {"comp": "posco_dx", "h": "91d7607c72", "facets_remove": ["abroad"], "why": "원문 「국내 산학 석사과정 및 포스텍 친환경소재 대학원 과정」 · 「국내 최고의 대학원 유학 과정」 — 유학은 국내 대학원 전일 과정이고 해외가 아니다"},
-    {"comp": "cha_biotech", "h": "46f84d37e0", "facets_add": ["who"], "why": "원문이 지원 자격을 석사 학위를 보유한 근속 1년 이상 연구직(R&D 박사과정)과 선임급 이상 직원(차바이오 MBA)으로 정한다"}
+    {"comp": "cha_biotech", "h": "46f84d37e0", "facets_add": ["who"], "why": "원문이 지원 자격을 석사 학위를 보유한 근속 1년 이상 연구직(R&D 박사과정)과 선임급 이상 직원(차바이오 MBA)으로 정한다"},
+    {"comp": "dongwon_industries", "h": "b0e4bfb0e1", "facets_add": ["other_programs"], "why": "영문판 원문이 Dongwon MBA 와 함께 Global Regional Expert Program(현지 1년 체류)을 적었다 — 영문이라 지역전문가 규칙이 못 잡는다"},
+    {"comp": "cosmo_amt", "h": "22a3e63b81", "facets_add": ["who"], "why": "원문 「핵심인력교육 / Cyber – MBA과정」 — 대상이 핵심인력으로 정해진 과정인데 규칙 낱말(핵심 인재)과 표기만 달라 켜지지 않는다"}
   ]
 }

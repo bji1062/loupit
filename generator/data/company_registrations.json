@@ -9,6 +9,24 @@
   ],
   "waves": [
     {
+      "date": "2026-11-07",
+      "label": "회사 확장 웨이브 10",
+      "companies": [
+        "cosmo_amt",
+        "cs_wind",
+        "daejoo_electronic",
+        "dongwon_industries",
+        "ecopro_materials",
+        "gst",
+        "hanall_biopharma",
+        "hyosung_tnc",
+        "ls_materials",
+        "sgc_energy",
+        "skc",
+        "wonik_qnc"
+      ]
+    },
+    {
       "date": "2026-10-31",
       "label": "회사 확장 웨이브 9",
       "companies": [

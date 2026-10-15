@@ -258,6 +258,22 @@ WAVE9_ALIASES: dict[str, list[str]] = {
     "snt_dynamics": ["SNT DYNAMICS", "에스앤티다이내믹스", "S&T중공업", "SNT중공업"],  # 법인 국문 상호 · 구명(2005 S&T중공업 · 2021 SNT중공업 → 2023 SNT다이내믹스) — SNT홀딩스 · SNT모티브 이름 금지
 }
 
+# 확장 웨이브 10(2026-11-07 서빙 반영) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름은 절대 금지.
+WAVE10_ALIASES: dict[str, list[str]] = {
+    "dongwon_industries": ["DONGWON INDUSTRIES"],  # 2022-11 합병 전 지주 동원엔터프라이즈 · 동원F&B · 동원시스템즈 이름 금지
+    "sgc_energy": ["SGC Energy", "에스지씨에너지"],  # 법인 국문 상호 — 구명 삼광글라스는 유리사업을 물적분할한 형제 SGC솔루션의 사업 이름이라 넣지 않는다 · 흡수된 군장에너지는 다른 법인
+    "wonik_qnc": ["WONIK QnC", "원익큐엔씨", "원익쿼츠"],  # 법인 국문 상호 · 구명(원익쿼츠 → 원익큐엔씨) — ㈜원익 · 원익IPS · 원익홀딩스 이름 금지
+    "hyosung_tnc": ["Hyosung TNC"],  # 2018-06 분할 신설 · 상호 변경 없음 — ㈜효성 · 효성중공업 · HS효성 이름 금지
+    "ecopro_materials": ["에코프로머티", "ECOPRO MATERIALS", "에코프로지이엠"],  # DART 정식명(필수) · 영문 · 구명(2022-03 전 에코프로지이엠) — 에코프로 · 에코프로비엠 이름 금지
+    "cosmo_amt": ["COSMO ADVANCED MATERIALS & TECHNOLOGY", "새한미디어"],  # 영문 · 구명(1980 새한미디어 → 2011 코스모신소재) — 코스모화학 · 코스모앤컴퍼니 이름 금지
+    "skc": ["에스케이씨"],  # 법인 국문 상호 — SK㈜ · SK넥실리스 · ISC 등 SKC Family 이름 금지
+    "daejoo_electronic": ["Daejoo Electronic Materials", "대주교역"],  # 영문 · 구명(1981 대주교역 → 2003 대주전자재료)
+    "hanall_biopharma": ["HANALL BIOPHARMA", "한올제약"],  # 영문 · 구명(1987 한올제약 → 2010 한올바이오파마) — 1973 선경제약은 SK 옛 그룹명과 섞여 넣지 않는다 · 대웅 · 대웅제약 이름 금지
+    "gst": ["Global Standard Technology", "글로벌스탠다드테크놀로지"],  # 영문 · 법인 국문 상호
+    "cs_wind": ["CS Wind", "중산풍력"],  # 영문 · 구명(2006 중산풍력 → 2007 씨에스윈드) — CS베어링 등 계열 이름 금지
+    "ls_materials": ["LS Materials", "엘에스머트리얼즈"],  # 영문 · 법인 국문 상호 — 분할 전 LS엠트론 · LS ELECTRIC · LS 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -518,6 +534,10 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE9_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE10_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
