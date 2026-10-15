@@ -9,6 +9,25 @@
   ],
   "waves": [
     {
+      "date": "2026-10-17",
+      "label": "회사 확장 웨이브 6",
+      "companies": [
+        "bgf_retail",
+        "binggrae",
+        "daewoong_pharm",
+        "gs_retail",
+        "hj_heavy",
+        "hyundai_wia",
+        "isu_specialty_chemical",
+        "kumho_petrochemical",
+        "paradise",
+        "s1",
+        "sebang_battery",
+        "sfa_semicon",
+        "sk_chemicals"
+      ]
+    },
+    {
       "date": "2026-10-10",
       "label": "회사 확장 웨이브 5",
       "companies": [

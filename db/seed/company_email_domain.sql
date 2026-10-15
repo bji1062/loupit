@@ -67,14 +67,18 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- (shi.is@ · 그룹 채용문의 · sdsjobs@/joinsds@ · recruit.sena@)
                          'samsung_heavy','samsung_fire','samsung_sds','samsung_ena',
                          -- 확장 웨이브 3(2026-09-14): 삼성증권 관측 주소 ss.recruit@samsung.com(자기 도메인 경력채용·samsungcareers E40)
-                         'samsung_sec');
+                         'samsung_sec',
+                         -- 확장 웨이브 6(2026-10-17): 에스원 관측 주소가 전부 @samsung.com(samsungcareers E80 채용 문의 · 2025 보고서 IR 문의 — 역할 주소)
+                         's1');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'sk.com', TRUE FROM TCOMPANY
    WHERE COMP_ENG_NM IN ('sk_hynix','skt','sk_innovation',
                          -- 확장 웨이브 3(2026-09-14): SK바이오팜 관측 주소 skbp_comm@sk.com(skbp.com 푸터, MX spmail.sk.com)
-                         'sk_biopharm');
+                         'sk_biopharm',
+                         -- 확장 웨이브 6(2026-10-17): SK케미칼 2025 지속가능경영보고서 문의처 @sk.com(자기 도메인 skchemicals.com 의 MX 도 spmail.sk.com)
+                         'sk_chemicals');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -489,3 +493,31 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'kolmar.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kolmar_korea';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'cosmax.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'cosmax';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 6 (2026-10-17 서빙 반영, 13개사 중 전용 9사 + 그룹 줄 병합 2사)
+-- 근거는 각사 evidence(docs/handoff/2026-10-14-evidence/wave6/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서에 게시된 주소만.
+-- 그룹 줄 병합: 에스원 → 위 삼성 그룹 줄(samsung.com) · SK케미칼 → 위 SK 그룹 줄(sk.com).
+-- 미등록 2사: 이수스페셜티케미컬(게시 주소 0) · BGF리테일(관측 주소가 그룹 공용 도메인뿐 — 웹 도메인 bgfretail.com 은 MX 없음) — 수동 승인 폴백.
+-- @rejected: bgf.co.kr — BGF리테일. BGF그룹 지주 · 공용 도메인(보고서 ESG팀 주소) — 계열사 전 직원이 BGF리테일 재직자로 인증될 수 있음
+-- ⚠ daewoong.co.kr · paradian.com · kkpc.com 은 법인이 게시한 주소지만 지주 · 형제 법인(㈜대웅 · 대웅바이오 / 파라다이스시티 · 호텔 부산 /
+--    금호석유화학 계열사)도 쓸 수 있다 — 형제가 코퍼스에 들어오면 다시 본다(웨이브 5 orionworld.com · kolmar.co.kr 주석과 같은 처리).
+-- ⓘ s1.co.kr(에스원) · skchemicals.com(SK케미칼)은 MX 가 있으나 게시된 주소가 0이라 넣지 않았다.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hyundai-wia.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hyundai_wia';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'daewoong.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'daewoong_pharm';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'bing.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'binggrae';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hjsc.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hj_heavy';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'sfasemicon.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'sfa_semicon';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'gbattery.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'sebang_battery';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'paradian.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'paradise';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kkpc.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kumho_petrochemical';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'gsretail.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gs_retail';
