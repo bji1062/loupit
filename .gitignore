@@ -7,6 +7,7 @@
 .env.*
 !.env.example
 *.pem
+!server/data/extra_intermediates.pem
 *.key
 secrets.*
 server/.env

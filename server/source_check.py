@@ -7,7 +7,7 @@
 사이트 안쪽 링크만 보고 외부 `http(s)://` 는 건너뛴다. 롯데케미칼은 보고서 PDF 가 출처인데 파일 이름이 해마다
 바뀐다 — 작년 주소는 어느 날 조용히 404 가 된다.
 
-그래서 주 1회(`loupit-source-check.timer`, 월 09:17 KST) 주소마다 한 번 두드려 판정을 `TSOURCE_CHECK` 에 한 행씩
+그래서 주 1회(`loupit-source-check.timer`, 월 13:17 KST = 04:17 UTC) 주소마다 한 번 두드려 판정을 `TSOURCE_CHECK` 에 한 행씩
 남기고, 운영 콘솔 「출처 점검」 탭이 마지막 실행과 연속 실패를 보여 준다(사용자 결정 2026-09-27 「나 방식」).
 GitHub 이슈 자동 등록(「가 방식」)은 만들지 않았다 — 관리가 안 되면 그때 붙인다. 행이 구조화돼 있어(판정 코드·
 HTTP·최종 주소·시각) 붙이는 쪽은 이 표를 읽기만 하면 된다.
@@ -97,6 +97,7 @@ import zlib
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from urllib.parse import quote, urljoin, urlsplit, urlunsplit
 
 import pymysql
@@ -110,6 +111,8 @@ KEYWORDS = ("복리후생", "복지", "benefit", "welfare")
 
 GAP_SEC = 3.0             # 아무 두 요청 사이(리다이렉트 홉 포함)
 SAME_HOST_GAP_SEC = 10.0  # 같은 호스트 두 요청 사이
+EXTRA_INTERMEDIATES = Path(__file__).resolve().parent / "data" / "extra_intermediates.pem"
+MAX_CRAWL_DELAY_SEC = 60.0  # robots.txt `Crawl-delay` 를 따르되 이 이상은 기다리지 않는다(주소 78곳 예산 보호)
 TIMEOUT_SEC = 20.0        # 한 주소가 서버를 기다린 시간의 합(리다이렉트 포함, 간격 쉼 제외)
 MAX_REDIRECTS = 5
 #: 한 실행 전체의 시간 예산. 넘으면 남은 회사는 건너뛰고(판정 error) 결과를 쓴다 — systemd 가 끊어 그 주 결과가
@@ -357,6 +360,20 @@ class RobotsRules:
     """우리에게 적용되는 규칙 묶음 — `(허용?, 패턴)`. 비어 있으면 전부 허용."""
 
     rules: tuple[tuple[bool, str], ...] = ()
+    crawl_delay: float | None = None                    # `Crawl-delay:` 초(비표준이지만 흔하다) — 없거나 이상하면 None
+    visit_window: tuple[int, int] | None = None         # `Visit-time: HHMM-HHMM`(UTC) 를 하루 중 분으로 (시작, 끝)
+
+    def host_gap(self) -> float:
+        """같은 호스트 요청 간격 — 우리 기본값과 사이트가 청한 Crawl-delay 중 큰 쪽(상한 `MAX_CRAWL_DELAY_SEC`)."""
+        return max(SAME_HOST_GAP_SEC, min(self.crawl_delay or 0.0, MAX_CRAWL_DELAY_SEC))
+
+    def visit_ok(self, now: datetime) -> bool:
+        """지금(UTC)이 Visit-time 창 안인가. 창이 없으면 언제든. 자정을 넘는 창(2200-0300)도 된다."""
+        if self.visit_window is None:
+            return True
+        start, end = self.visit_window
+        minute = now.hour * 60 + now.minute
+        return start <= minute < end if start < end else (minute >= start or minute < end)
 
     def allows(self, url: str) -> bool:
         """RFC 9309 §2.2.2 — 맞는 규칙 중 **가장 긴** 것이 이긴다. 길이가 같으면 허용이 이긴다."""
@@ -373,6 +390,27 @@ class RobotsRules:
 ALLOW_ALL = RobotsRules()
 
 
+def _crawl_delay(value: str) -> float | None:
+    """`Crawl-delay:` 값 → 초. 숫자(소수 허용)만 — 음수·0·무한·글자는 무시한다."""
+    try:
+        sec = float(value)
+    except ValueError:
+        return None
+    return sec if 0 < sec < float("inf") else None
+
+
+def _visit_window(value: str) -> tuple[int, int] | None:
+    """`Visit-time: 0400-0845` → (240, 525). 모양이 틀리거나 시작=끝이면 무시한다."""
+    m = re.fullmatch(r"(\d{2})(\d{2})\s*-\s*(\d{2})(\d{2})", value)
+    if not m:
+        return None
+    h1, m1, h2, m2 = map(int, m.groups())
+    if h1 > 24 or h2 > 24 or m1 > 59 or m2 > 59:
+        return None
+    start, end = (h1 * 60 + m1) % 1440, (h2 * 60 + m2) % 1440
+    return None if start == end else (start, end)
+
+
 def parse_robots(text: str, agent: str = ROBOTS_AGENT) -> RobotsRules:
     """robots.txt → 우리 제품 토큰에 적용되는 규칙(RFC 9309 §2.1·2.2.1).
 
@@ -381,7 +419,7 @@ def parse_robots(text: str, agent: str = ROBOTS_AGENT) -> RobotsRules:
 
     **RFC 9309 와 일부러 다른 곳**: 첫 `User-agent` 줄 앞의 규칙(묶음 밖)은 `*` 묶음의 규칙으로 보고, 우리 토큰 묶음이
     따로 있으면 거기에도 붙인다(모듈 머리말 참고)."""
-    groups: list[tuple[list[str], list[tuple[bool, str]]]] = []
+    groups: list[tuple[list[str], list[tuple[bool, str]], dict]] = []
     preamble: list[tuple[bool, str]] = []  # 첫 `User-agent` 줄 앞의 규칙
     current = None
     in_rules = False
@@ -393,10 +431,16 @@ def parse_robots(text: str, agent: str = ROBOTS_AGENT) -> RobotsRules:
         key, value = key.strip().lower(), value.strip()
         if key == "user-agent":
             if current is None or in_rules:
-                current = ([], [])
+                current = ([], [], {})
                 groups.append(current)
                 in_rules = False
             current[0].append(value.split("/", 1)[0].strip().lower())
+        elif key in ("crawl-delay", "visit-time"):
+            if current is not None:
+                in_rules = True
+                parsed = _crawl_delay(value) if key == "crawl-delay" else _visit_window(value)
+                if parsed is not None:
+                    current[2].setdefault(key, parsed)
         elif key in ("allow", "disallow"):
             if current is not None:
                 in_rules = True
@@ -405,7 +449,9 @@ def parse_robots(text: str, agent: str = ROBOTS_AGENT) -> RobotsRules:
     token = agent.lower()
     chosen = [g for g in groups if token in g[0]] or [g for g in groups if "*" in g[0]]
     # 묶음 밖 규칙은 `*` 묶음의 것이다 — `*` 묶음이 없어도, 우리 토큰 묶음이 있어도 함께 선다(보수적).
-    return RobotsRules(tuple(preamble) + tuple(rule for g in chosen for rule in g[1]))
+    extras = {k: v for g in reversed(chosen) for k, v in g[2].items()}  # 같은 키면 먼저 나온 묶음이 이긴다
+    return RobotsRules(tuple(preamble) + tuple(rule for g in chosen for rule in g[1]),
+                       crawl_delay=extras.get("crawl-delay"), visit_window=extras.get("visit-time"))
 
 
 # ── 전송 — 요청 한 번(리다이렉트 안 따라감) ────────────────────────────────────────
@@ -478,10 +524,17 @@ def _ssl_context() -> ssl.SSLContext:
     (2026-09-27 dry-run — 같은 호스트에 `openssl s_client` 는 붙는다). 이 점검기는 공개 페이지의 상태만 본다 — 보내는
     비밀도 받는 비밀도 없어 FS 가 지킬 것이 없다.
 
+    **추가 중간 인증서**(`server/data/extra_intermediates.pem`): 서버가 중간 인증서를 빠뜨리거나 틀린 것을 보내는 호스트
+    (롯데칠성음료 `company.lottechilsung.co.kr`)는 공개 CA 의 올바른 중간 인증서를 파일로 리포에 두고 신뢰 저장소에 더한다.
+    모든 호스트에 같은 컨텍스트가 쓰이지만 그 인증서는 공개 루트로 이어지는 정상 중간 인증서라 다른 호스트의 검증이
+    느슨해지지 않는다. 파일이 없으면 그대로 동작한다.
+
     그 밖은 그대로다: 인증서 검증(CERT_REQUIRED)·호스트 이름 검증·TLS 1.2 이상. 가짜 서버가 「정상」을 꾸며 내지
     못하게 막는 것은 여전히 필요하다(SRC-10 이 지킨다). 앱의 다른 HTTPS 호출에는 이 컨텍스트를 쓰지 않는다."""
     ctx = ssl.create_default_context()
     ctx.set_ciphers("DEFAULT")
+    if EXTRA_INTERMEDIATES.is_file():  # 중간 인증서를 빠뜨리는 서버 몇 곳 — 신뢰 앵커가 하나 늘 뿐 검증은 그대로다
+        ctx.load_verify_locations(cafile=str(EXTRA_INTERMEDIATES))
     return ctx
 
 
@@ -524,13 +577,19 @@ class Pacer:
         self.clock, self.sleep = clock, sleep
         self._last_any: float | None = None
         self._last_host: dict[str, float] = {}
+        self._host_gap: dict[str, float] = {}  # robots.txt 의 Crawl-delay 로 늘어난 호스트별 간격
+
+    def set_host_gap(self, host: str, gap: float) -> None:
+        """그 호스트가 청한 간격을 기억한다 — 기본 `SAME_HOST_GAP_SEC` 보다 클 때만 의미가 있다."""
+        if gap > SAME_HOST_GAP_SEC:
+            self._host_gap[host] = gap
 
     def wait(self, host: str) -> None:
         due = []
         if self._last_any is not None:
             due.append(self._last_any + GAP_SEC)
         if host in self._last_host:
-            due.append(self._last_host[host] + SAME_HOST_GAP_SEC)
+            due.append(self._last_host[host] + self._host_gap.get(host, SAME_HOST_GAP_SEC))
         if due:
             delay = max(due) - self.clock()
             if delay > 0:
@@ -770,6 +829,10 @@ class RobotsCache:
             else:  # 4xx(와 그 밖) — RFC 9309 「unavailable」: 규칙 없음 = 허용
                 verdict = RobotsVerdict("rules")
         self._verdicts[origin] = verdict
+        if verdict.kind == "rules":  # robots.txt 를 읽은 뒤부터 — 본문 요청 사이에도 그 호스트의 Crawl-delay 를 지킨다
+            for o in (origin, landed):
+                if o:
+                    self.pacer.set_host_gap(urlsplit(o).hostname, verdict.rules.host_gap())
         if landed:  # 받은 것이 곧 그 origin 의 robots.txt 다 — http→https 리다이렉트 뒤 같은 파일을 또 받지 않는다
             self._verdicts.setdefault(landed, verdict)
         return verdict
@@ -822,6 +885,10 @@ def _check_target(target: Target, *, expect_keyword: bool, robots: RobotsCache, 
             raise CheckError(f"{where}robots.txt 에 닿지 못했다({verdict.reason}) — RFC 9309 에 따라 요청하지 않았다")
         if verdict.kind == "closed":
             raise NotChecked(f"{where}robots.txt 가 {verdict.reason} — RFC 9309 에 따라 전면 금지로 보고 요청하지 않았다")
+        if not verdict.rules.visit_ok(utc_now()):
+            lo, hi = verdict.rules.visit_window
+            raise NotChecked(f"{where}robots.txt 의 Visit-time 밖이라 요청하지 않았다"
+                             f"(허용 {lo // 60:02d}:{lo % 60:02d}-{hi // 60:02d}:{hi % 60:02d} UTC)")
         if not verdict.rules.allows(hop_url):
             raise NotChecked(f"{where}경로를 robots.txt 가 막는다 — 요청하지 않았다" if hop
                              else "robots.txt 가 이 경로를 막는다 — 요청하지 않았다")

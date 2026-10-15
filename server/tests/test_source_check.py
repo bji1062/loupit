@@ -489,8 +489,8 @@ def test_SRC7_예외를_던지는_사이트가_있어도_나머지를_점검한�
 
 # ── SRC-8: 주간 타이머 · 프로비저닝 ──────────────────────────────────────────────
 
-def test_SRC8_타이머는_월요일_09시17분_KST_에_ops_source_check_를_부른다():
-    """서버는 UTC 다 — 월 09:17 KST = 월 00:17 UTC. 유닛 글자가 곧 운영 설정이라 글자로 못박는다."""
+def test_SRC8_타이머는_월요일_13시17분_KST_에_ops_source_check_를_부른다():
+    """서버는 UTC 다 — 월 13:17 KST = 월 04:17 UTC(GS리테일 Visit-time 창 04:00-08:45 UTC 안). 유닛 글자가 곧 운영 설정이라 글자로 못박는다."""
     svc = (ROOT / "infra/systemd/loupit-source-check.service").read_text(encoding="utf-8")
     timer = (ROOT / "infra/systemd/loupit-source-check.timer").read_text(encoding="utf-8")
     for needed in ("Type=oneshot", "User=ubuntu", "WorkingDirectory=/home/ubuntu/loupit",
@@ -502,7 +502,7 @@ def test_SRC8_타이머는_월요일_09시17분_KST_에_ops_source_check_를_부
     # 제한이 먼저 오면 SIGTERM 으로 그 주 결과가 통째로 사라진다.
     m = re.search(r"^TimeoutStartSec=(\d+)h$", svc, re.M)
     assert m and int(m.group(1)) * 3600 - sc.RUN_BUDGET_SEC >= 30 * 60, "TimeoutStartSec 가 예산보다 30분 이상 길지 않다"
-    assert re.search(r"^OnCalendar=Mon \*-\*-\* 00:17:00$", timer, re.M)
+    assert re.search(r"^OnCalendar=Mon \*-\*-\* 04:17:00$", timer, re.M)
     assert re.search(r"^Persistent=true$", timer, re.M)
     prov = (ROOT / "infra/deploy/provision.sh").read_text(encoding="utf-8")
     for unit in ("loupit-source-check.service", "loupit-source-check.timer"):
@@ -897,3 +897,88 @@ def test_SRC2p_HTML_본문은_규칙을_만들지_않는다__오류_페이지를
             "<script>var allow = {disallow: true}; location.href='https://x.com/404';</script>\r\n"
             "</head><body><p>요청하신 페이지를 찾을 수 없습니다: /robots.txt</p></body></html>\r\n")
     assert sc.parse_robots(html).rules == ()
+
+
+# ── SRC-12: robots Crawl-delay · Visit-time · 추가 중간 인증서 (리드 판정 2026-10-15 (130)) ───────────────────
+
+def test_SRC12_Crawl_delay_는_우리_묶음에서_읽고_소수도_받고_이상값은_무시한다():
+    assert sc.parse_robots("User-agent: *\nCrawl-delay: 20\n").crawl_delay == 20.0
+    assert sc.parse_robots("User-agent: *\nCrawl-delay: 2.5\n").crawl_delay == 2.5
+    # 우리 제품 토큰 묶음이 있으면 `*` 묶음의 값은 보지 않는다
+    text = "User-agent: *\nCrawl-delay: 30\n\nUser-agent: loupit-source-check\nCrawl-delay: 15\n"
+    assert sc.parse_robots(text).crawl_delay == 15.0
+    assert sc.parse_robots("User-agent: Googlebot\nCrawl-delay: 30\n").crawl_delay is None
+    for bad in ("abc", "-5", "0", "inf", "nan", ""):
+        assert sc.parse_robots(f"User-agent: *\nCrawl-delay: {bad}\n").crawl_delay is None, bad
+    assert sc.parse_robots("User-agent: *\nDisallow: /a\n").crawl_delay is None
+
+
+def test_SRC12_같은_호스트_간격은_Crawl_delay_와_10초_중_큰_쪽이고_60초가_상한이다():
+    gap = lambda text: sc.parse_robots(text).host_gap()  # noqa: E731
+    assert gap("User-agent: *\nCrawl-delay: 20\n") == 20.0
+    assert gap("User-agent: *\nCrawl-delay: 3\n") == sc.SAME_HOST_GAP_SEC
+    assert gap("User-agent: *\nCrawl-delay: 9999\n") == sc.MAX_CRAWL_DELAY_SEC == 60.0
+    assert gap("") == sc.SAME_HOST_GAP_SEC
+
+
+def test_SRC12_Crawl_delay_간격이_robots_와_본문_사이에도_적용된다(monkeypatch):
+    host = "https://www.kkpc.example.com"
+    pages = {host + "/robots.txt": (200, {}, b"User-agent: *\nCrawl-delay: 20\n"), host + "/benefit": (200, HTML, b"x")}
+    results, web, _clock = _run([_target(host + "/benefit")], pages)
+    robots_call, body_call = web.calls
+    assert body_call["start"] - robots_call["end"] >= 20.0 - 1e-6, "robots 를 읽은 뒤부터 Crawl-delay 20초를 쉬어야 한다"
+    # Crawl-delay 가 없는 호스트는 그대로 10초
+    pages2 = {host + "/robots.txt": (404, {}, b""), host + "/benefit": (200, HTML, b"x")}
+    _r, web2, _c = _run([_target(host + "/benefit")], pages2)
+    gap2 = web2.calls[1]["start"] - web2.calls[0]["end"]
+    assert sc.SAME_HOST_GAP_SEC - 1e-6 <= gap2 < 20.0
+
+
+@pytest.mark.parametrize("value,expect", [
+    ("0400-0845", (240, 525)), ("2200-0300", (1320, 180)), ("0000-2400", None), ("0400-0400", None),
+    ("abc", None), ("0460-0800", None), ("04:00-08:45", None),
+])
+def test_SRC12_Visit_time_파싱(value, expect):
+    got = sc.parse_robots(f"User-agent: *\nVisit-time: {value}\n").visit_window
+    if value == "0000-2400":
+        assert got is None  # 시작=끝(하루 종일)은 제한이 아니다
+    else:
+        assert got == expect
+
+
+def test_SRC12_Visit_time_창_안_밖_자정_넘김():
+    from datetime import datetime
+    at = lambda h, m=0: datetime(2026, 10, 19, h, m)  # noqa: E731
+    day = sc.parse_robots("User-agent: *\nVisit-time: 0400-0845\n")
+    assert day.visit_ok(at(4, 0)) and day.visit_ok(at(8, 44))
+    assert not day.visit_ok(at(3, 59)) and not day.visit_ok(at(8, 45)) and not day.visit_ok(at(0, 17))
+    night = sc.parse_robots("User-agent: *\nVisit-time: 2200-0300\n")
+    assert night.visit_ok(at(23)) and night.visit_ok(at(2, 59)) and night.visit_ok(at(22, 0))
+    assert not night.visit_ok(at(3, 0)) and not night.visit_ok(at(12))
+    assert sc.ALLOW_ALL.visit_ok(at(12))
+
+
+def test_SRC12_Visit_time_밖이면_본문을_요청하지_않고_robots_판정으로_남긴다(monkeypatch):
+    from datetime import datetime
+    host = "https://hpimg.example.com"
+    pages = {host + "/robots.txt": (200, {}, b"User-agent: *\nVisit-time: 0400-0845\n"), host + "/benefit": (200, HTML, b"x")}
+    monkeypatch.setattr(sc, "utc_now", lambda: datetime(2026, 10, 19, 0, 17))
+    results, web, _clock = _run([_target(host + "/benefit")], pages)
+    assert results[0].result_cd == "robots" and "Visit-time 밖" in results[0].detail
+    assert web.urls() == [host + "/robots.txt"], "본문을 요청하면 안 된다"
+    monkeypatch.setattr(sc, "utc_now", lambda: datetime(2026, 10, 19, 4, 17))
+    results, web, _clock = _run([_target(host + "/benefit")], pages)
+    assert results[0].result_cd == "ok"
+
+
+def test_SRC12_추가_중간_인증서_파일이_컨텍스트에_실리고_없으면_그대로_동작한다(monkeypatch, tmp_path):
+    pem = sc.EXTRA_INTERMEDIATES
+    assert pem.is_file(), "server/data/extra_intermediates.pem 이 리포에 있어야 한다"
+    text = pem.read_text(encoding="utf-8")
+    assert "BEGIN CERTIFICATE" in text and "company.lottechilsung.co.kr" in text and "SHA-256" in text and "2029-03-18" in text
+    base = len(ssl.create_default_context().get_ca_certs())
+    ctx = sc._ssl_context()
+    assert len(ctx.get_ca_certs()) == base + 1
+    assert ctx.verify_mode == ssl.CERT_REQUIRED and ctx.check_hostname is True
+    monkeypatch.setattr(sc, "EXTRA_INTERMEDIATES", tmp_path / "없음.pem")
+    assert len(sc._ssl_context().get_ca_certs()) == base
