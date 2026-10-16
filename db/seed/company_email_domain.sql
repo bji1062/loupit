@@ -691,3 +691,18 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'gst-in.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gst';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lsmaterials.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ls_materials';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 11 붙여넣기 1차 (2026-10-16 서빙 반영, 5개사 중 전용 3사 3도메인 · 그룹 줄 병합 0)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-16-paste1/collect/ 의 이메일 도메인 관측 절 · 앞 웨이브 근거표) — 공식 페이지 · 보고서에 게시된 주소의 도메인만.
+-- 미등록 2사(수동 승인 폴백): 케이뱅크(게시된 주소 0 — 웹 kbanknow.com 은 MX 가 있으나 관측 0) · 한화손해보험(게시된 주소 0 — 웹 hwgeneralins.com 의 MX 는 자체 smtp.hwgeneralins.com).
+-- ⓘ 한화손해보험 · 쎄트렉아이는 한화 계열이지만 위 한화 그룹 줄(hanwha.com)에 넣지 않았다 — 두 회사 모두 hanwha.com 관측 0 · 쎄트렉아이 관측 주소는 자기 도메인 satreci.com(MX gw2023.satreci.com).
+-- ⓘ lghnh.com 은 LG 그룹 채용 사이트 개인정보 문의처 표의 LG생활건강 줄(부서 공용 메일함)에서 관측 · MX shield.lgcare.co.kr(lg.com 의 spam.lg.com 과 다른 메일 서버).
+-- ⚠ lghnh.com — LG생활건강 종속회사(코카콜라음료 등)가 같은 메일 도메인을 쓰는지는 확인하지 못했다.
+-- ⓘ ckdpharm.com 은 종근당 개인정보처리방침 관측 · MX sniper.ckdpharm.com(지주 종근당홀딩스 ckd-holdings.com 의 sniper.ckd-holdings.com 과 다른 메일 서버).
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'ckdpharm.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'chongkundang';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lghnh.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lg_hnh';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'satreci.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'satrec_i';
