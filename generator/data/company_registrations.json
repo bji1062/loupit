@@ -10,7 +10,7 @@
   "waves": [
     {
       "date": "2026-10-16",
-      "label": "회사 확장 웨이브 6 ~ 10",
+      "label": "회사 확장 웨이브 6 ~ 11",
       "companies": [
         "ahnlab",
         "bgf_retail",
@@ -103,7 +103,12 @@
         "ls_materials",
         "sgc_energy",
         "skc",
-        "wonik_qnc"
+        "wonik_qnc",
+        "chongkundang",
+        "hanwha_general_ins",
+        "kbank",
+        "lg_hnh",
+        "satrec_i"
       ]
     },
     {

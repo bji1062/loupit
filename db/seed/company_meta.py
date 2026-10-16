@@ -274,6 +274,15 @@ WAVE10_ALIASES: dict[str, list[str]] = {
     "ls_materials": ["LS Materials", "엘에스머트리얼즈"],  # 영문 · 법인 국문 상호 — 분할 전 LS엠트론 · LS ELECTRIC · LS 이름 금지
 }
 
+# 확장 웨이브 11(2026-10-16 서빙 반영 · 붙여넣기 1차) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름은 절대 금지.
+WAVE11_ALIASES: dict[str, list[str]] = {
+    "chongkundang": ["Chong Kun Dang Pharmaceutical", "CKD Pharm"],  # 영문 명칭 · 약호 — 지주 종근당홀딩스 · 종근당바이오 · 경보제약 · 종근당건강 이름 금지(2013-11 인적분할 신설 · 상호 변경 없음)
+    "kbank": ["Kbank", "케이뱅크은행"],  # 영문 · 구명(2016-12 ~ 2021-09 케이뱅크은행) — KT · 비씨카드 이름 금지
+    "lg_hnh": ["LG H&H", "엘지생활건강", "LG Household & Health Care"],  # 영문 · 법인 국문 상호 · 옛 영문 상호(2022-03 전) — LG · 코카콜라음료 · 해태htb 이름 금지
+    "hanwha_general_ins": ["Hanwha General Insurance", "한화손보"],  # 영문 · 약칭(자기 페이지 제목) — 한화 · 한화생명 등 한화 계열 이름 금지
+    "satrec_i": ["Satrec Initiative"],  # 영문 약식 표기 — 최대주주 한화에어로스페이스 · 자회사 SIIS · SIA 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -538,6 +547,10 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE10_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+
+    for eng, extra_aliases in WAVE11_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
