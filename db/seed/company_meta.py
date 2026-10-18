@@ -283,7 +283,7 @@ WAVE11_ALIASES: dict[str, list[str]] = {
     "satrec_i": ["Satrec Initiative"],  # 영문 약식 표기 — 최대주주 한화에어로스페이스 · 자회사 SIIS · SIA 이름 금지
 }
 
-# 확장 웨이브 12(2026-10-23 서빙 반영 · 후보 풀 3차 첫 웨이브) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름·상표는 절대 금지.
+# 확장 웨이브 12(2026-10-18 서빙 반영 · 후보 풀 3차 첫 웨이브) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름·상표는 절대 금지.
 WAVE12_ALIASES: dict[str, list[str]] = {
     "hanatour": ["Hanatour"],  # 영문(DART HANATOUR SERVICE INC.) — 계열 · 자회사 이름 금지
     "sm_entertainment": ["에스엠", "에스엠엔터테인먼트", "SM Entertainment"],  # DART 목록 이름 · 법인 국문 상호 · 영문 — 카카오 · SM C&C 등 계열 이름 금지
