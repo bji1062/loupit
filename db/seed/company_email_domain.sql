@@ -378,7 +378,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- @lottechem.com, 임직원 실계정은 @lotte.net 에 있다(자사 e-Sales 처리방침 게시).
 -- 그룹 단위 인증(사용자 2026-10-14) · ⚠ 롯데렌탈은 최대주주 지분 매각 계약(2026-08-11 · 종결 전) — 종결되면 이 IN 목록에서 뺀다.
 -- 확장 웨이브 9(2026-10-31): 롯데쇼핑(채용 FAQ · 보고서 문의처) · 롯데에너지머티리얼즈(보고서 제보 메일) 관측 주소가 @lotte.net. 롯데관광개발은 롯데그룹이 아니다 — 이 줄에 넣지 않는다.
--- 확장 웨이브 12(2026-10-23): 롯데하이마트(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net · 웹 himart.co.kr 의 MX 도 antispam.lotte.net.
+-- 확장 웨이브 12(2026-10-18): 롯데하이마트(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net · 웹 himart.co.kr 의 MX 도 antispam.lotte.net.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY
    WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials','lotte_himart');
@@ -709,7 +709,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'satreci.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'satrec_i';
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- 확장 웨이브 12 (2026-10-23 서빙 반영, 18개사 중 전용 14사 14도메인 + 그룹 줄 병합 1사)
+-- 확장 웨이브 12 (2026-10-18 서빙 반영, 18개사 중 전용 14사 14도메인 + 그룹 줄 병합 1사)
 -- 근거는 각사 evidence(loupit-evidence/2026-10-18-wave12/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 공고에 게시된 주소의 도메인만.
 -- 그룹 줄 병합: 롯데하이마트 → 위 롯데 그룹 줄(lotte.net — 2025 지속가능경영보고서 문의처 관측 · 웹 himart.co.kr 의 MX 도 antispam.lotte.net 을 거친다).
 -- 미등록 3사(수동 승인 폴백): 매일유업 · 트리니티항공(게시된 주소 0 — maeil.com · trinityairways.com · twayair.com 은 MX 만 있음) ·
