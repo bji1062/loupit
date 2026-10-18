@@ -1,0 +1,635 @@
+[
+ {
+  "name": "제주항공",
+  "dart_name": "(주)제주항공",
+  "market": "KOSPI",
+  "rank_common": 305,
+  "stock_code": "089590",
+  "corp_code": "00555874",
+  "employees": 3233,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 2911,
+  "emp_rcept_no": "20260318001439",
+  "induty_code": "511",
+  "est_dt": "20050125",
+  "hm_url": "www.jejuair.net",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "에이케이홀딩스(주) 50.4%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "제주항공 채용"
+   ]
+  ],
+  "market_value_eok": 4484
+ },
+ {
+  "name": "트리니티항공",
+  "dart_name": "(주)트리니티항공",
+  "market": "KOSPI",
+  "rank_common": 409,
+  "stock_code": "091810",
+  "corp_code": "00671376",
+  "employees": 3380,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 3056,
+  "emp_rcept_no": "20260430001376",
+  "induty_code": "511",
+  "est_dt": "20030701",
+  "hm_url": "www.twayair.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)소노인터내셔널 43.6%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "트리니티항공 채용"
+   ],
+   [
+    "티웨이항공 채용",
+    "티웨이 채용"
+   ]
+  ],
+  "market_value_eok": 2532
+ },
+ {
+  "name": "진에어",
+  "dart_name": "주식회사 진에어",
+  "market": "KOSPI",
+  "rank_common": 368,
+  "stock_code": "272450",
+  "corp_code": "00653024",
+  "employees": 2382,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1986,
+  "emp_rcept_no": "20260318000946",
+  "induty_code": "511",
+  "est_dt": "20080123",
+  "hm_url": "www.jinair.com",
+  "fin_2025": "OFS",
+  "financial": false,
+  "group": "한진",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)대한항공 54.9% — 상장사",
+  "notes": [
+   "그룹 한진(기등록 형제 있음: 대한항공)"
+  ],
+  "datalab_keywords": [
+   [
+    "진에어 채용"
+   ]
+  ],
+  "market_value_eok": 3111
+ },
+ {
+  "name": "KG모빌리티",
+  "dart_name": "케이지모빌리티(주)",
+  "market": "KOSPI",
+  "rank_common": 286,
+  "stock_code": "003620",
+  "corp_code": "00138242",
+  "employees": 4126,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 3995,
+  "emp_rcept_no": "20260318000964",
+  "induty_code": "301",
+  "est_dt": "19621206",
+  "hm_url": "www.kg-mobility.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "KG 에코솔루션(주) 54.4% — 상장사",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "KG모빌리티 채용",
+    "KGM 채용",
+    "케이지모빌리티 채용"
+   ],
+   [
+    "쌍용자동차 채용",
+    "쌍용차 채용"
+   ]
+  ],
+  "market_value_eok": 5191
+ },
+ {
+  "name": "넥센타이어",
+  "dart_name": "넥센타이어(주)",
+  "market": "KOSPI",
+  "rank_common": 270,
+  "stock_code": "002350",
+  "corp_code": "00173874",
+  "employees": 4255,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 4177,
+  "emp_rcept_no": "20260318001435",
+  "induty_code": "221",
+  "est_dt": "19580411",
+  "hm_url": "www.nexentire.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)넥센 46.5% — 상장사",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "넥센타이어 채용"
+   ]
+  ],
+  "market_value_eok": 5753
+ },
+ {
+  "name": "대상",
+  "dart_name": "대상(주)",
+  "market": "KOSPI",
+  "rank_common": 261,
+  "stock_code": "001680",
+  "corp_code": "00121941",
+  "employees": 5106,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 4884,
+  "emp_rcept_no": "20260327000936",
+  "induty_code": "108",
+  "est_dt": "19560131",
+  "hm_url": "www.daesang.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "대상홀딩스 39.3% — 상장사",
+  "notes": [
+   "⚠ 검색어 오염 위험: 「대상」은 일반어(채용 대상 · 지원 대상) — 표값 대부분이 일반어일 수 있음. 「청정원 채용」 단독 교차검증 권장"
+  ],
+  "datalab_keywords": [
+   [
+    "대상 채용",
+    "대상주식회사 채용",
+    "대상그룹 채용"
+   ],
+   [
+    "청정원 채용"
+   ]
+  ],
+  "market_value_eok": 6212
+ },
+ {
+  "name": "매일유업",
+  "dart_name": "매일유업 주식회사",
+  "market": "KOSDAQ",
+  "rank_common": 292,
+  "stock_code": "267980",
+  "corp_code": "01234507",
+  "employees": 1921,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1850,
+  "emp_rcept_no": "20260319001065",
+  "induty_code": "104",
+  "est_dt": "20170501",
+  "hm_url": "www.maeil.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "매일홀딩스 (주) 31.8% — 상장사",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "매일유업 채용"
+   ]
+  ],
+  "market_value_eok": 2667
+ },
+ {
+  "name": "남양유업",
+  "dart_name": "남양유업(주)",
+  "market": "KOSPI",
+  "rank_common": 422,
+  "stock_code": "003920",
+  "corp_code": "00107598",
+  "employees": 1649,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1512,
+  "emp_rcept_no": "20260319001235",
+  "induty_code": "104",
+  "est_dt": "19640313",
+  "hm_url": "www.namyangi.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "한앤코유업홀딩스 유한회사 63.2%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "남양유업 채용"
+   ]
+  ],
+  "market_value_eok": 2303
+ },
+ {
+  "name": "롯데하이마트",
+  "dart_name": "롯데하이마트(주)",
+  "market": "KOSPI",
+  "rank_common": 512,
+  "stock_code": "071840",
+  "corp_code": "00158307",
+  "employees": 3776,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 3662,
+  "emp_rcept_no": "20260311004061",
+  "induty_code": "47320",
+  "est_dt": "19870701",
+  "hm_url": "company.himart.co.kr",
+  "fin_2025": "OFS",
+  "financial": false,
+  "group": "롯데",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "롯데쇼핑㈜ 65.2% — 상장사",
+  "notes": [
+   "그룹 롯데(기등록 형제 있음: 롯데케미칼 · 롯데쇼핑 등 7사)"
+  ],
+  "datalab_keywords": [
+   [
+    "롯데하이마트 채용",
+    "하이마트 채용"
+   ]
+  ],
+  "market_value_eok": 1398
+ },
+ {
+  "name": "웅진씽크빅",
+  "dart_name": "(주)웅진씽크빅",
+  "market": "KOSPI",
+  "rank_common": 643,
+  "stock_code": "095720",
+  "corp_code": "00628189",
+  "employees": 1532,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1282,
+  "emp_rcept_no": "20260318001421",
+  "induty_code": "85120",
+  "est_dt": "20070509",
+  "hm_url": "www.wjthinkbig.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "㈜웅진 58.8% — 상장사",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "웅진씽크빅 채용",
+    "웅진싱크빅 채용"
+   ]
+  ],
+  "market_value_eok": 682
+ },
+ {
+  "name": "메가스터디교육",
+  "dart_name": "메가스터디교육(주)",
+  "market": "KOSDAQ",
+  "rank_common": 207,
+  "stock_code": "215200",
+  "corp_code": "01074862",
+  "employees": 2002,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1490,
+  "emp_rcept_no": "20260318000849",
+  "induty_code": "85503",
+  "est_dt": "20000712",
+  "hm_url": "www.megastudy.net",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "개인 15.5%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "메가스터디교육 채용",
+    "메가스터디 채용"
+   ]
+  ],
+  "market_value_eok": 4027
+ },
+ {
+  "name": "대교",
+  "dart_name": "(주)대교",
+  "market": "KOSPI",
+  "rank_common": 660,
+  "stock_code": "019680",
+  "corp_code": "00108913",
+  "employees": 2359,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 2267,
+  "emp_rcept_no": "20260609000080",
+  "induty_code": "851",
+  "est_dt": "19861220",
+  "hm_url": "www.daekyo.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "㈜대교홀딩스 54.5%",
+  "notes": [
+   "⚠ 검색어 오염 위험: 「대교」는 일반어(다리 · 교량 이름)"
+  ],
+  "datalab_keywords": [
+   [
+    "대교 채용"
+   ],
+   [
+    "눈높이 채용"
+   ]
+  ],
+  "market_value_eok": 614
+ },
+ {
+  "name": "하나투어",
+  "dart_name": "(주)하나투어",
+  "market": "KOSPI",
+  "rank_common": 303,
+  "stock_code": "039130",
+  "corp_code": "00269940",
+  "employees": 1337,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1278,
+  "emp_rcept_no": "20260319001345",
+  "induty_code": "75210",
+  "est_dt": "19931101",
+  "hm_url": "www.hanatour.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "하모니아1호 유한회사 17.3%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "하나투어 채용"
+   ]
+  ],
+  "market_value_eok": 4523
+ },
+ {
+  "name": "DB하이텍",
+  "dart_name": "주식회사 DB하이텍",
+  "market": "KOSPI",
+  "rank_common": 97,
+  "stock_code": "000990",
+  "corp_code": "00160843",
+  "employees": 2221,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 2188,
+  "emp_rcept_no": "20260601001661",
+  "induty_code": "2611",
+  "est_dt": "19530428",
+  "hm_url": "www.dbhitek.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "DB",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)DB Inc. 19.5%",
+  "notes": [
+   "그룹 DB(기등록 형제 있음: DB손해보험)"
+  ],
+  "datalab_keywords": [
+   [
+    "DB하이텍 채용"
+   ],
+   [
+    "동부하이텍 채용"
+   ]
+  ],
+  "market_value_eok": 46332
+ },
+ {
+  "name": "LX하우시스",
+  "dart_name": "(주)엘엑스하우시스",
+  "market": "KOSPI",
+  "rank_common": 386,
+  "stock_code": "108670",
+  "corp_code": "00759513",
+  "employees": 2728,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 2712,
+  "emp_rcept_no": "20260316001555",
+  "induty_code": "2222",
+  "est_dt": "20090402",
+  "hm_url": "www.lxhausys.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "LX",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)LX홀딩스 30.1% — 상장사",
+  "notes": [
+   "그룹 LX(기등록 형제 있음: LX인터내셔널)"
+  ],
+  "datalab_keywords": [
+   [
+    "LX하우시스 채용"
+   ],
+   [
+    "LG하우시스 채용"
+   ]
+  ],
+  "market_value_eok": 2811
+ },
+ {
+  "name": "동아에스티",
+  "dart_name": "동아에스티(주)",
+  "market": "KOSPI",
+  "rank_common": 354,
+  "stock_code": "170900",
+  "corp_code": "00956930",
+  "employees": 1685,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1670,
+  "emp_rcept_no": "20260318001313",
+  "induty_code": "212",
+  "est_dt": "20130304",
+  "hm_url": "www.donga.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "동아쏘시오홀딩스 26.2%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "동아에스티 채용",
+    "동아ST 채용"
+   ]
+  ],
+  "market_value_eok": 3376
+ },
+ {
+  "name": "에스엠",
+  "dart_name": "(주)에스엠엔터테인먼트",
+  "market": "KOSDAQ",
+  "rank_common": 42,
+  "stock_code": "041510",
+  "corp_code": "00260930",
+  "employees": 765,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 709,
+  "emp_rcept_no": "20260317000781",
+  "induty_code": "59201",
+  "est_dt": "19950214",
+  "hm_url": "smentertainment.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "카카오",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)카카오 21.6% — 상장사",
+  "notes": [
+   "그룹 카카오(기등록 형제 있음: 카카오 · 카카오뱅크 · 카카오페이 · 카카오게임즈)",
+   "⚠ 검색어 오염 위험: 「에스엠 · SM」 약어 — 다른 뜻과 섞임"
+  ],
+  "datalab_keywords": [
+   [
+    "에스엠 채용",
+    "SM엔터테인먼트 채용",
+    "SM엔터 채용"
+   ]
+  ],
+  "market_value_eok": 19483
+ },
+ {
+  "name": "신세계인터내셔날",
+  "dart_name": "(주)신세계인터내셔날",
+  "market": "KOSPI",
+  "rank_common": 331,
+  "stock_code": "031430",
+  "corp_code": "00234412",
+  "employees": 1084,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 979,
+  "emp_rcept_no": "20260316001380",
+  "induty_code": "4741",
+  "est_dt": "19801025",
+  "hm_url": "www.sikorea.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "신세계",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)신세계 39.3% — 상장사",
+  "notes": [
+   "그룹 신세계(기등록 형제 있음: 이마트)",
+   "⚠ 검색어 오염 위험: 「신세계」 그룹 전체 오염 — 단독으로"
+  ],
+  "datalab_keywords": [
+   [
+    "신세계인터내셔날 채용",
+    "신세계인터내셔널 채용",
+    "SI 채용"
+   ]
+  ],
+  "market_value_eok": 3841
+ },
+ {
+  "name": "쿠쿠홈시스",
+  "dart_name": "쿠쿠홈시스 주식회사",
+  "market": "KOSPI",
+  "rank_common": 278,
+  "stock_code": "284740",
+  "corp_code": "01267684",
+  "employees": 987,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 604,
+  "emp_rcept_no": "20260318001337",
+  "induty_code": "762",
+  "est_dt": "20171204",
+  "hm_url": "www,cuckoo.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "쿠쿠홀딩스(주) 40.5% — 상장사",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "쿠쿠홈시스 채용"
+   ],
+   [
+    "쿠쿠 채용"
+   ]
+  ],
+  "market_value_eok": 5385
+ },
+ {
+  "name": "애경산업",
+  "dart_name": "애경산업(주)",
+  "market": "KOSPI",
+  "rank_common": 376,
+  "stock_code": "018250",
+  "corp_code": "00139454",
+  "employees": 943,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 869,
+  "emp_rcept_no": "20260318001405",
+  "induty_code": "20422",
+  "est_dt": "19850425",
+  "hm_url": "www.aekyung.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "에이케이홀딩스(주) 45.1%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "애경산업 채용"
+   ]
+  ],
+  "market_value_eok": 2945
+ }
+]

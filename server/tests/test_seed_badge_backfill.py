@@ -212,6 +212,10 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         "daejoo_electronic", "hanall_biopharma", "gst", "cs_wind", "ls_materials",
         # 확장 웨이브 11(2026-10-16, 5) — 신규 등록(사용자 붙여넣기 1차), 전부 실 URL 헤더
         "chongkundang", "kbank", "lg_hnh", "hanwha_general_ins", "satrec_i",
+        # 확장 웨이브 12(2026-10-23, 18) — 신규 등록(후보 풀 3차 첫 웨이브), 전부 실 URL 헤더
+        "hanatour", "sm_entertainment", "woongjin_thinkbig", "maeil_dairies", "kg_mobility", "namyang_dairy",
+        "daekyo", "megastudy_edu", "lx_hausys", "lotte_himart", "jeju_air", "aekyung_industrial",
+        "trinity_air", "dong_a_st", "nexen_tire", "shinsegae_intl", "db_hitek", "daesang",
         # 재수집 R-1(2026-09-26, 9) — 구본 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
         "skt", "sk_innovation", "sk_hynix", "lig_nex1", "naver", "kakao_pay",
         "hyundai_motor", "s_oil", "lotte_chem",

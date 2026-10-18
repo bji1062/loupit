@@ -283,6 +283,28 @@ WAVE11_ALIASES: dict[str, list[str]] = {
     "satrec_i": ["Satrec Initiative"],  # 영문 약식 표기 — 최대주주 한화에어로스페이스 · 자회사 SIIS · SIA 이름 금지
 }
 
+# 확장 웨이브 12(2026-10-23 서빙 반영 · 후보 풀 3차 첫 웨이브) — 구명·영문·약칭·법인 국문 상호만. 지주·형제 법인 이름·상표는 절대 금지.
+WAVE12_ALIASES: dict[str, list[str]] = {
+    "hanatour": ["Hanatour"],  # 영문(DART HANATOUR SERVICE INC.) — 계열 · 자회사 이름 금지
+    "sm_entertainment": ["에스엠", "에스엠엔터테인먼트", "SM Entertainment"],  # DART 목록 이름 · 법인 국문 상호 · 영문 — 카카오 · SM C&C 등 계열 이름 금지
+    "woongjin_thinkbig": ["Woongjin Thinkbig"],  # 영문 — 지주 웅진 · 웅진북센 등 계열 이름 금지
+    "maeil_dairies": ["Maeil Dairies"],  # 영문 — 지주 매일홀딩스 이름 금지(2017-05 분할 신설)
+    "kg_mobility": ["쌍용자동차", "케이지모빌리티", "KG Mobility", "KGM"],  # 구명(2023-03 사명 변경) · 법인 국문 상호 · 영문 · 약칭(공식 홈 og:site_name) — KG 그룹 · KG모빌리티플랫폼 이름 금지
+    "namyang_dairy": ["Namyang Dairy Products"],  # 영문 — 최대주주 한앤코 이름 금지
+    "daekyo": ["Daekyo"],  # 영문 약식 표기 — 지주 대교홀딩스 · 브랜드 눈높이 금지
+    "megastudy_edu": ["MegaStudyEdu"],  # 영문 — 별개 법인 메가스터디(주) 이름 금지
+    "lx_hausys": ["LG하우시스", "엘엑스하우시스", "LX Hausys"],  # 구명(2021-07 상호 변경) · 법인 국문 상호 · 영문 — LX홀딩스 · LX인터내셔널 이름 금지
+    "lotte_himart": ["LOTTE Himart"],  # 영문 — 롯데쇼핑 등 롯데 계열 이름 금지
+    "jeju_air": ["Jeju Air"],  # 영문(DART JEJUAIR) — AK홀딩스 · 애경 계열 이름 금지
+    "aekyung_industrial": ["Aekyung Industrial"],  # 영문 — AK홀딩스 · 애경케미칼 · 제주항공 이름 금지
+    "trinity_air": ["티웨이항공", "Trinity Airways"],  # 구명(2010-08 ~ 2026-03-31 (주)티웨이항공) · 영문 — 소노인터내셔널 등 최대주주 이름 금지
+    "dong_a_st": ["동아ST", "Dong-A ST"],  # 약식 표기(DART 「Dong-A ST」 · 자기 보고서 제목 동아ST) — 동아쏘시오홀딩스 · 동아제약 · 에스티팜 이름 금지
+    "nexen_tire": ["Nexen Tire"],  # 영문 — 지주 (주)넥센 이름 금지
+    "shinsegae_intl": ["Shinsegae International"],  # 영문 — 신세계 · 이마트 등 그룹 이름 금지
+    "db_hitek": ["동부하이텍", "DB HiTek"],  # 구명((주)동부하이텍 · 2017 DB하이텍) · 영문 약식 — DB손해보험 · DB Inc. 이름 금지
+    "daesang": ["대상주식회사", "Daesang Corporation"],  # 법인 국문 상호 · 영문 — 대상홀딩스 · 브랜드 청정원 · 종가 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -551,6 +573,9 @@ def build_company_meta() -> dict:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 
     for eng, extra_aliases in WAVE11_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE12_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

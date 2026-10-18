@@ -158,6 +158,8 @@
     {"comp": "sfa", "h": "b275f4cfd7", "mode": "external", "why": "원문 「삼성웰빙클럽 멤버십 월회비 지원」 — 외부 클럽 멤버십 회비를 회사가 지원하는 방식"},
     {"comp": "hotel_shilla", "h": "80e3df4dbf", "mode": "external", "why": "원문 「외부 피트니스 업체 법인권으로 이용가능」 — 회사 밖 업체 법인권인데 「외부」 · 「법인권」이 external 규칙(제휴 · 회원권 · 사외)에 없어 unknown 으로 떨어진다"},
     {"comp": "youngone", "h": "bbd291889b", "facets_add": ["site"], "why": "보고서 42쪽 사내체육시설 칸이 명동/만리동/상대원동에 체육시설 운영이라고 사업장 이름을 적었다"},
-    {"comp": "sampyo_cement", "h": "65cea7dbf9", "mode": "both", "why": "복지관 내 헬스장 및 사우나 운영(회사 시설)과 체련비 지급(운동비)을 함께 적은 행"}
+    {"comp": "sampyo_cement", "h": "65cea7dbf9", "mode": "both", "why": "복지관 내 헬스장 및 사우나 운영(회사 시설)과 체련비 지급(운동비)을 함께 적은 행"},
+    {"comp": "hanatour", "h": "fba0b61b2c", "mode": "external", "why": "ESG 페이지 신체 건강 세부 프로그램 「체력단련비」는 운동 비용을 돈으로 대는 지원이다 — 「체력단련비」 낱말이 운동비 규칙에 없어 unknown 으로 떨어진다"},
+    {"comp": "aekyung_industrial", "h": "013abf56db", "mode": "unknown", "why": "원문은 체력 측정 · 걷기 챌린지 프로그램이고 사내 헬스장 · 체육시설을 적지 않았다 — 「주요 사업장을 대상으로」 범위 낱말이 시설 규칙에 걸렸다"}
   ]
 }
