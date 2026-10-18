@@ -173,7 +173,7 @@ def test_SI7_no_duplicate_alias_per_company(seeded_db):
 # ── SI-8: 200-seed 미등록 — 회사 수 = 95 (≠ 200) ──
 def test_SI8_company_count_not_200(seeded_db):
     count = _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY")
-    assert count == 257  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-16) + 확장 웨이브 7 22개사(2026-10-16) + 확장 웨이브 8 23개사(2026-10-16) + 확장 웨이브 9 22개사(2026-10-16) + 확장 웨이브 10 12개사(2026-10-16) + 확장 웨이브 11 5개사(2026-10-16)
+    assert count == 275  # 138 + 확장 웨이브 4 12개사(2026-09-20) − LG · LS 지주 · HPSP 등록 해제(2026-10-01 · 2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-16) + 확장 웨이브 7 22개사(2026-10-16) + 확장 웨이브 8 23개사(2026-10-16) + 확장 웨이브 9 22개사(2026-10-16) + 확장 웨이브 10 12개사(2026-10-16) + 확장 웨이브 11 5개사(2026-10-16) + 확장 웨이브 12 18개사(2026-10-23)
     assert count != 200
 
 
@@ -577,6 +577,8 @@ def test_SI13c_real_companies_cond_is_pinned():
         "lotte_tour": {"flex": ["조건부"]},
         "hanall_biopharma": {"flex": ["조건부"], "remote": ["조건부"]},
         "kbank": {"remote": ["조건부"]},
+        "maeil_dairies": {"flex": ["조건부"]},
+        "daesang": {"flex": ["부서별"]},
     }
     for eng in ("db_insurance", "hyundai_glovis", "hyundai_wia", "sk_bioscience", "lotte_fine_chem", "innocean", "hanssem", "lotte_chilsung"):
         assert ws[eng]["remote"] is True and "cond" not in ws[eng], f"{eng}: 「재택근무 포함」 · 신청형은 맨 칩 유지"

@@ -189,6 +189,7 @@
       "why": "독신·단신부임자 기숙사와 사택(임대아파트 680세대)을 함께 적었다"
     },
     {"comp": "inbody", "h": "0d28d42ac4", "mode": "both", "why": "원문 「기숙사, 사택 지원 (천안공장)」이 기숙사와 사택을 함께 적었다"},
-    {"comp": "snt_dynamics", "h": "17f3195d12", "mode": "both", "why": "원문이 사택 및 기숙사 운영을 함께 적음"}
+    {"comp": "snt_dynamics", "h": "17f3195d12", "mode": "both", "why": "원문이 사택 및 기숙사 운영을 함께 적음"},
+    {"comp": "aekyung_industrial", "h": "340ab4ae26", "mode": "both", "why": "원문이 「연구소 사택 및 공장 기숙사 지원」으로 사택과 기숙사를 함께 적었다"}
   ]
 }

@@ -9,6 +9,30 @@
   ],
   "waves": [
     {
+      "date": "2026-10-23",
+      "label": "회사 확장 웨이브 12",
+      "companies": [
+        "aekyung_industrial",
+        "daekyo",
+        "daesang",
+        "db_hitek",
+        "dong_a_st",
+        "hanatour",
+        "jeju_air",
+        "kg_mobility",
+        "lotte_himart",
+        "lx_hausys",
+        "maeil_dairies",
+        "megastudy_edu",
+        "namyang_dairy",
+        "nexen_tire",
+        "shinsegae_intl",
+        "sm_entertainment",
+        "trinity_air",
+        "woongjin_thinkbig"
+      ]
+    },
+    {
       "date": "2026-10-16",
       "label": "회사 확장 웨이브 6 ~ 11",
       "companies": [
