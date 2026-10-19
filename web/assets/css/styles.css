@@ -1446,6 +1446,7 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 /* 한 줄에 하나씩 쌓이는 목록(비교 예시) — 순위표와 달리 값을 오른쪽 끝으로 밀지 않는다.
    1040px 폭에서 `space-between` 을 쓰면 「반도체 경쟁사」가 회사 이름과 한 화면 떨어져 앉는다. */
 .home-list { margin-top:var(--sp-3); font-size:var(--fs-sm); line-height:1.9; }
+.home-list a { word-break:keep-all; }   /* 좁은 폭에서 회사 이름이 음절 중간에서 꺾이지 않게(어절 단위) */
 
 /* 칩 — 복지 카테고리·코드. 탭 대상이므로 최소 높이를 준다. */
 .home-chips { display:flex; flex-wrap:wrap; gap:var(--sp-2); margin-top:var(--sp-3); }

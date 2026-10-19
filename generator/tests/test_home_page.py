@@ -380,3 +380,98 @@ def test_home_body_is_readable_without_js(fake_bundle, fake_now, fake_combinatio
     body = re.sub(r"<(script|style)\b.*?</\1>", " ", body, flags=re.S | re.I)
     chars = len(re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", body)).strip())
     assert chars >= 1500, f"무JS 가시 본문 {chars}자 — 1,500자 미만"
+
+
+# ── 「이렇게 비교해 보세요」 — 같은 업종 제안(2026-10-19) ───────────────────────
+
+
+def _suggest_ctx(rows, finance=None):
+    """rows = [(comp_id, eng, 이름, 업종, 항목 수)] — 항목 수만큼 복지 행을 가진 최소 회사."""
+    from types import SimpleNamespace
+
+    def comp(i, eng, nm, ind, n):
+        return {"comp_id": i, "comp_eng_nm": eng, "comp_nm": nm, "industry_nm": ind,
+                "benefits": [{"benefit_cd": f"x{k}", "badge_cd": "official"} for k in range(n)]}
+    return SimpleNamespace(companies=[comp(*r) for r in rows], finance=finance or {})
+
+
+SUGGEST_ROWS = [
+    (1, "a1", "가가", "반도체", 5), (2, "a2", "나나", "반도체", 4), (3, "a3", "다다", "반도체", 3),
+    (4, "b1", "라라", "은행", 2), (5, "b2", "마마", "은행", 2),
+    (6, "c1", "바바", "외톨이", 9),
+    (7, "d1", "사사", "", 1), (8, "d2", "아아", "", 1),
+]
+
+
+def test_suggest_pairs_same_sector_one_pair_each_and_no_singletons():
+    out = home._suggest_pairs(_suggest_ctx(SUGGEST_ROWS), [])
+    assert [(s["industry"], s["label"]) for s in out] == [("반도체", "가가 vs 나나"), ("은행", "라라 vs 마마")]
+    assert out[0]["href"] == "/compare?a=a1&b=a2"
+
+
+def test_suggest_pairs_skips_static_report_pair_and_fills_with_next_company():
+    out = home._suggest_pairs(_suggest_ctx(SUGGEST_ROWS), [("a2", "a1")])
+    assert out[0]["label"] == "가가 vs 다다"
+
+
+def test_suggest_pairs_skips_same_entity_and_fills_with_next_company():
+    fin = {1: {"stock_cd": "000001"}, 2: {"stock_cd": "000001"}}
+    out = home._suggest_pairs(_suggest_ctx(SUGGEST_ROWS, fin), [])
+    assert out[0]["label"] == "가가 vs 다다"
+
+
+def test_suggest_pairs_company_once_limit_and_determinism():
+    ctx = _suggest_ctx(SUGGEST_ROWS + [(9, "e1", "자자", "은행", 7)])
+    out = home._suggest_pairs(ctx, [])
+    assert [s["industry"] for s in out] == ["반도체", "은행"], "회사 수 같으면 업종 이름 오름차순"
+    assert out[1]["label"] == "자자 vs 라라"  # 항목 수 많은 쪽이 앞, 동률은 가나다
+    names = [n for s in out for n in s["label"].split(" vs ")]
+    assert len(names) == len(set(names))
+    assert len(home._suggest_pairs(ctx, [], limit=1)) == 1
+    assert out == home._suggest_pairs(ctx, [])
+
+
+def test_home_suggest_section_renders_links_without_ranking_words(fake_bundle, fake_now, fake_combinations_path):
+    # 픽스처의 같은 업종 쌍(삼성전자·SK하이닉스)은 이미 정적 리포트라, 셋째 회사를 같은 업종에 넣어 남는 쌍을 만든다
+    fake_bundle["companies"][2]["industry_nm"] = "반도체"
+    page, ctx = _render(fake_bundle, fake_now)
+    main = _main(page.html)
+    sec = main[main.index('id="home-vs"'):]
+    sec = sec[:sec.index("</section>")]
+    assert "이렇게 비교해 보세요" in sec and "<h3>비교 리포트</h3>" in sec and "<h3>같은 업종끼리</h3>" in sec
+    assert "비교 예시" not in main
+    links = re.findall(r'href="/compare\?a=([^&"]+)&amp;b=([^&"]+)"', sec)
+    assert links, "제안 링크가 없다"
+    for a, b in links:
+        assert a in ctx.by_eng and b in ctx.by_eng and a != b
+    for word in ("인기", "TOP"):
+        assert word not in sec
+    suggest_html = sec[sec.index("<h3>같은 업종끼리</h3>"):]
+    assert not re.search(r"\d", re.sub(r"<[^>]*>", "", suggest_html)), "제안 목록에 숫자가 있다"
+    for c in home.build_view(ctx)["combos"]:
+        assert f'<a href="{c["href"]}">{c["label"]}</a>' in sec
+
+
+def test_home_without_combos_and_suggestions_has_no_compare_section(fake_bundle, fake_now, fake_combinations_path):
+    for c in fake_bundle["companies"]:
+        c["industry_nm"] = None
+    page, _ = _render(fake_bundle, fake_now, pairs=[])
+    assert 'id="home-vs"' not in page.html
+
+
+def test_suggest_pairs_rank_by_countable_items_not_all_rows(monkeypatch):
+    """법정 · 표시 행은 항목 수에 안 센다 — 전체 행 수로 줄 세우면 가가(5행, 그중 3 표시)가 앞서 버린다."""
+    from generator import marks
+    monkeypatch.setattr(marks, "row_mark", lambda eng, cd, nm: "legal" if cd in ("x0", "x1", "x2") and eng == "a1" else None)
+    out = home._suggest_pairs(_suggest_ctx(SUGGEST_ROWS), [])
+    assert out[0]["label"] == "나나 vs 다다", "가가는 셀 수 있는 항목 2 — 나나(4) · 다다(3) 뒤"
+
+
+def test_home_suggest_only_shows_section_without_report_subheading(fake_bundle, fake_now, fake_combinations_path):
+    fake_bundle["companies"][2]["industry_nm"] = "반도체"
+    page, _ = _render(fake_bundle, fake_now, pairs=[])
+    main = _main(page.html)
+    sec = main[main.index('id="home-vs"'):]
+    sec = sec[:sec.index("</section>")]
+    assert "<h3>같은 업종끼리</h3>" in sec and "/compare?a=" in sec
+    assert "비교 리포트" not in sec and "정적 리포트" not in sec
