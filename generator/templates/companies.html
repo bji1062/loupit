@@ -24,11 +24,11 @@
     <table class="benefit-table company-index-table">
       <caption id="idx-cap-{{ sec.key }}">{{ sec.label }} 회사 {{ sec.rows | length }}곳 — 최신 사업연도 실적(억원)</caption>
       <thead>
-        <tr><th scope="col">회사</th><th scope="col">업종</th><th scope="col">연도</th>{% for c in sec.columns %}<th scope="col">{{ c.name }}(억원)</th>{% endfor %}<th scope="col">기준</th></tr>
+        <tr><th scope="col">회사</th><th scope="col">업종</th><th scope="col">상장</th><th scope="col">연도</th>{% for c in sec.columns %}<th scope="col">{{ c.name }}(억원)</th>{% endfor %}<th scope="col">기준</th></tr>
       </thead>
       <tbody>
       {% for r in sec.rows %}
-        <tr><th scope="row"><a href="{{ r.href }}">{{ r.comp_nm }}</a></th><td class="index-industry">{{ r.industry_nm or '' }}</td><td>{{ r.year }}</td>{% for c in sec.columns %}<td class="finance-amt">{{ r[c.key] }}</td>{% endfor %}<td>{{ r.basis }}</td></tr>
+        <tr><th scope="row"><a href="{{ r.href }}">{{ r.comp_nm }}</a></th><td class="index-industry">{{ r.industry_nm or '' }}</td><td class="index-market">{{ r.market or '' }}</td><td>{{ r.year }}</td>{% for c in sec.columns %}<td class="finance-amt">{{ r[c.key] }}</td>{% endfor %}<td>{{ r.basis }}</td></tr>
       {% endfor %}
       </tbody>
     </table>
@@ -41,6 +41,7 @@
     <li>
       <a href="{{ it.href }}">{{ it.comp_nm }}</a>
       {%- if it.industry_nm %} <span class="index-industry">{{ it.industry_nm }}</span>{% endif %}
+      {%- if it.market %} <span class="index-market">{{ it.market }}</span>{% endif %}
     </li>
   {% endfor %}
   </ul>

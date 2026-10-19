@@ -16,6 +16,7 @@ from generator.finance import DART_VIEWER
 from generator.finance import company_view as finance_view
 from generator.format import amount_kind, badge_state, benefit_desc, iso_date, krw_manwon, work_style_items
 from generator.radar import fmt, radar_svg
+from generator.sector import load_markets, market_of
 from generator.slug import combo_slug
 
 # 관련 회사 링크 개수 상한 (FR-63 확장, 2026-07-19 고아 페이지 해소).
@@ -580,12 +581,15 @@ def render_all(env, ctx, combo_pairs=None, benefit_index: dict | None = None) ->
     # 페이지마다 다른 평균이 섞일 여지가 생긴다. ⚠ 회사가 하나 늘면 전 회사 페이지의 평균·순위가
     # 함께 움직인다 — 정적 재생성이 전량인 이유가 여기에도 하나 더 있다.
     corpus = corpus_mod.build(ctx.companies, CATEGORY_ORDER)
+    markets = load_markets()  # 상장 표시 — 시장 표(krx_sector.csv)는 빌드당 한 번만 읽는다
     pages: list[Page] = []
     for c in ctx.companies:
         eng = c["comp_eng_nm"]
         slug = ctx.slugs[eng]
         url = f"{CFG.site_origin}/company/{slug}"
         vm = _company_view(c, ctx, now, corpus, benefit_index)
+        # 재무 매핑이 통째로 없는 빌드는 종목코드를 몰라 전부 「비상장」이 된다 — 거짓이라 표시를 생략한다
+        vm["market_nm"] = market_of(ctx.finance.get(c["comp_id"]), markets) if ctx.finance else None
         seo = _company_seo(c, ctx, url)
         html = tpl.render(
             **vm,

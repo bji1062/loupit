@@ -31,7 +31,7 @@ from collections import Counter
 from generator import marks
 from generator.format import amount_kind, krw_eok
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER, benefit_anchor
-from generator.sector import UNLISTED, load_sectors, sector_of
+from generator.sector import UNLISTED, load_markets, load_sectors, sector_of
 from generator.treemap import nested_layout
 
 # 배치 캔버스(단위 = %). 가로 16:10 · 세로 3:4 — 템플릿의 aspect-ratio 와 짝(둘 다 폭 100).
@@ -86,14 +86,14 @@ def _latest_with_yoy(fin: dict | None):
     return {"year": latest["year"], "revenue": rev, "op_income": op, "yoy": (op - prev["op_income"]) / abs(prev["op_income"]) * 100}
 
 
-def _welfare_items(ctx, sectors):
+def _welfare_items(ctx, sectors, markets=None):
     items = []
     for c in ctx.companies:
         bens = marks.countable(c)  # 표시 행(법정 · 업무 교육)은 항목 수 · 카테고리 수에서 뺀다(SP-MARK)
         n = len(bens)
         amt = sum(int(b["benefit_amt"] or 0) for b in bens if not b.get("qual_yn"))
         cats = len({b["benefit_ctgr_cd"] for b in bens})
-        items.append({"c": c, "sector": sector_of(ctx.finance.get(c["comp_id"]), sectors), "weight": n,
+        items.append({"c": c, "sector": sector_of(ctx.finance.get(c["comp_id"]), sectors, markets), "weight": n,
                       "n": n, "amt": amt, "cats": cats})
     cuts = _quantile_cuts([i["amt"] for i in items])
     for i in items:
@@ -104,7 +104,7 @@ def _welfare_items(ctx, sectors):
     return items
 
 
-def _finance_items(ctx, sectors):
+def _finance_items(ctx, sectors, markets=None):
     items = []
     for c in ctx.companies:
         fin = ctx.finance.get(c["comp_id"])
@@ -114,7 +114,7 @@ def _finance_items(ctx, sectors):
         if not lt:
             continue
         step = yoy_step(lt["yoy"])
-        items.append({"c": c, "sector": sector_of(fin, sectors), "weight": lt["revenue"] / 1e8,
+        items.append({"c": c, "sector": sector_of(fin, sectors, markets), "weight": lt["revenue"] / 1e8,
                       "year": lt["year"], "yoy": lt["yoy"], "step": step, "cls": f"d{step}",
                       "sub": f"{krw_eok(lt['revenue'])} · {lt['yoy']:+.1f}%",
                       "tip": f"{lt['year']} 매출 {krw_eok(lt['revenue'])}억 · 영업이익 {krw_eok(lt['op_income'])}억 (전년 대비 {lt['yoy']:+.1f}%)"})
@@ -235,8 +235,9 @@ def _panel_layouts(items, ctx) -> dict:
 def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
     """페이지 뷰모델(순수 — 테스트가 직접 검사). 모드마다 `panels`(복지·실적은 1개, 카테고리는 9개).
     실적은 미적재면 빠진다."""
+    markets = load_markets() if sectors is None else None  # 주입된 업종표는 시장 표 없이(테스트)
     sectors = load_sectors() if sectors is None else sectors
-    wi = _welfare_items(ctx, sectors)
+    wi = _welfare_items(ctx, sectors, markets)
     modes = [{"key": "w", "label": "복지", "hint": "크기=항목 수, 색=금액 합계", "legend_kind": "steps",
               "legend": "금액 합계(만원, 7분위)", "lo": "적음", "hi": "많음",
               "note": "정성 복지(금액 없음)는 크기에만 반영", "steps": [f"c{i}" for i in range(7)],
@@ -244,7 +245,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
                           "layouts": _panel_layouts(wi, ctx)}],
               "count": len(ctx.companies)}]
     if ctx.finance_loaded:
-        fi = _finance_items(ctx, sectors)
+        fi = _finance_items(ctx, sectors, markets)
         if fi:
             year = max(i["year"] for i in fi)
             modes.append({"key": "f", "label": "실적", "hint": "크기=매출, 색=영업이익 증감", "legend_kind": "steps",

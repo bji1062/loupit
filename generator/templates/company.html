@@ -20,12 +20,17 @@
     <div>
       <h1>{{ comp_nm }}</h1>
       <p class="company-sub">
-        {%- set bits = [] -%}
-        {%- if industry_nm %}{% set _ = bits.append(industry_nm) %}{% endif -%}
-        {%- if comp_tp_nm %}{% set _ = bits.append(comp_tp_nm) %}{% endif -%}
-        {%- set _ = bits.append('복지 ' ~ card.counts.total ~ '항목') -%}
-        {%- if card.amount_text %}{% set _ = bits.append('등록 금액 합 ' ~ card.amount_text ~ ('(전부 추정)' if card.all_est else ('(추정 포함)' if card.counts.est else ''))) %}{% endif -%}
-        {{ bits | join(' · ') }}
+        {#- 상장 표시(market_nm)는 회사 유형 바로 뒤. 🚨 `lm:skip` 으로 감싼다 — lastmod 규칙은 「그 회사의 복지나
+            재무가 실제로 바뀐 날」뿐인데, 이 문구는 시장 표(krx_sector.csv)에서 오므로 표시 규칙을 고치면 회사
+            페이지 전부가 한꺼번에 「바뀜」이 된다(release._content_fingerprint). 구분점은 `join` 문자열에 섞지 않는다
+            (자동 이스케이프가 주석을 깬다) — 앞뒤 묶음을 따로 join 한다. -#}
+        {%- set head = [] -%}
+        {%- if industry_nm %}{% set _ = head.append(industry_nm) %}{% endif -%}
+        {%- if comp_tp_nm %}{% set _ = head.append(comp_tp_nm) %}{% endif -%}
+        {%- set tail = [] -%}
+        {%- set _ = tail.append('복지 ' ~ card.counts.total ~ '항목') -%}
+        {%- if card.amount_text %}{% set _ = tail.append('등록 금액 합 ' ~ card.amount_text ~ ('(전부 추정)' if card.all_est else ('(추정 포함)' if card.counts.est else ''))) %}{% endif -%}
+        {{ head | join(' · ') }}{% if market_nm %}<!--lm:skip-->{% if head %} · {{ market_nm }}{% else %}{{ market_nm }} · {% endif %}<!--/lm:skip-->{% if head %} · {% endif %}{% elif head %} · {% endif %}{{ tail | join(' · ') }}
       </p>
     </div>
     <p class="cta cta-inline"><a href="{{ compare_href }}">이 회사로 비교하기</a></p>

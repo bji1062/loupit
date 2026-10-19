@@ -29,7 +29,7 @@ from generator.format import iso_date, krw_manwon
 from generator.pages import combo as combo_mod
 from generator.pages.company import CATEGORY_LABEL, CATEGORY_ORDER
 from generator.pages.find import derive_codes
-from generator.sector import load_sectors, sector_of
+from generator.sector import load_markets, load_sectors, sector_of
 from generator.slug import combo_slug
 from generator.trust import welfare_totals
 
@@ -40,7 +40,7 @@ NAVER_SITE_VERIFICATION = "db7956bfac6b387b3c03f707dd526a763d420a7d"
 
 # 브랜드가 첫 어절이어야 한다 — 구글 사이트 이름 신호는 홈 한 장의 h1·title·JSON-LD 에서만 읽힌다.
 TITLE = "잡초위키 — 회사 복지를 로그인 없이 열람·비교"
-SITE_DESCRIPTION = "로그인 없이 열람하는 한국 상장사 복지·연봉·재무 위키"
+SITE_DESCRIPTION = "로그인 없이 열람하는 한국 기업 복지·연봉·재무 위키"
 
 SECTOR_TOP = 5            # 업종 묶음마다 싣는 회사 수(복지 항목 수 상위)
 OTHER_SECTOR = "그 밖"     # 회사 1곳짜리 묶음만 여기로 합친다 — 나머지는 KRX 분류(히트맵과 같은 체계) 그대로
@@ -99,10 +99,10 @@ def _sector_groups(ctx) -> list[dict]:
     회사 1곳짜리 묶음만 「그 밖」으로 합친다. 임의로 더 합치면 히트맵과 다른 업종 체계가 둘이 되고,
     둘 중 어느 쪽이 맞는지 아무도 모르게 된다(1단계 검증 결정).
     """
-    sectors = load_sectors()
+    sectors, markets = load_sectors(), load_markets()
     by_sector: dict[str, list] = {}
     for c in ctx.companies:
-        by_sector.setdefault(sector_of(ctx.finance.get(c["comp_id"]), sectors), []).append(c)
+        by_sector.setdefault(sector_of(ctx.finance.get(c["comp_id"]), sectors, markets), []).append(c)
     groups, misc = [], []
     for name, members in by_sector.items():
         if len(members) < 2:
