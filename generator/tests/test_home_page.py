@@ -457,3 +457,21 @@ def test_home_without_combos_and_suggestions_has_no_compare_section(fake_bundle,
         c["industry_nm"] = None
     page, _ = _render(fake_bundle, fake_now, pairs=[])
     assert 'id="home-vs"' not in page.html
+
+
+def test_suggest_pairs_rank_by_countable_items_not_all_rows(monkeypatch):
+    """법정 · 표시 행은 항목 수에 안 센다 — 전체 행 수로 줄 세우면 가가(5행, 그중 3 표시)가 앞서 버린다."""
+    from generator import marks
+    monkeypatch.setattr(marks, "row_mark", lambda eng, cd, nm: "legal" if cd in ("x0", "x1", "x2") and eng == "a1" else None)
+    out = home._suggest_pairs(_suggest_ctx(SUGGEST_ROWS), [])
+    assert out[0]["label"] == "나나 vs 다다", "가가는 셀 수 있는 항목 2 — 나나(4) · 다다(3) 뒤"
+
+
+def test_home_suggest_only_shows_section_without_report_subheading(fake_bundle, fake_now, fake_combinations_path):
+    fake_bundle["companies"][2]["industry_nm"] = "반도체"
+    page, _ = _render(fake_bundle, fake_now, pairs=[])
+    main = _main(page.html)
+    sec = main[main.index('id="home-vs"'):]
+    sec = sec[:sec.index("</section>")]
+    assert "<h3>같은 업종끼리</h3>" in sec and "/compare?a=" in sec
+    assert "비교 리포트" not in sec and "정적 리포트" not in sec
