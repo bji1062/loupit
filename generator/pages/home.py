@@ -49,6 +49,7 @@ SALARY_MIN_HEAD = 1000    # 평균연봉 순위 문턱 — 소인원 지주사�
 EMPLOY_YEAR_COVERAGE = 0.8  # 직원 순위 연도 = 직원 데이터를 가진 회사의 80% 이상이 보유한 최신 연도(부분 수집 가드)
 TOP_CODES = 12            # 복지 조건 칩(항목) 수
 RECENT_WAVES = 2          # 「새로 등록된 회사」에 싣는 최근 웨이브 수
+SUGGEST_PAIRS = 6         # 「같은 업종끼리」 제안 쌍 수(업종당 한 쌍)
 
 
 def _benefits(c: dict) -> list:
@@ -157,6 +158,52 @@ def _combos(ctx, pairs) -> list[dict]:
             "href": f"/vs/{path}",
             "note": notes.get(frozenset((a, b)), ""),
         })
+    return out
+
+
+def _same_entity(a: dict, b: dict, ctx) -> bool:
+    """같은 법인인가 — 재무 매핑의 종목코드가 같거나 서로를 형제로 올린 경우(예: CJ ENM 두 회사)."""
+    fa, fb = ctx.finance.get(a["comp_id"]) or {}, ctx.finance.get(b["comp_id"]) or {}
+    code = (fa.get("stock_cd") or "").strip()
+    if code and code == (fb.get("stock_cd") or "").strip():
+        return True
+    return b["comp_id"] in (fa.get("siblings") or []) or a["comp_id"] in (fb.get("siblings") or [])
+
+
+def _suggest_pairs(ctx, combos, limit: int = SUGGEST_PAIRS) -> list[dict]:
+    """「같은 업종끼리」 제안 — 업종(`industry_nm`)마다 복지 항목 수 상위 두 회사 한 쌍. 숫자 순위가 아니다.
+
+    결정적: 업종 = 회사 수 내림차순 · 이름 오름차순, 업종 안 = 항목 수 내림차순 · 이름 가나다. 이미 정적 리포트로
+    있는 쌍(순서 무관) · 같은 법인 쌍은 건너뛰고 그 업종의 다음 회사로 채운다. 한 회사는 목록에 한 번만 나온다.
+    `combos` 는 `combo.load_pairs` 꼴 (eng, eng) 쌍 목록.
+    """
+    static = {frozenset(p) for p in combos or []}
+    by_ind: dict[str, list] = {}
+    for c in ctx.companies:
+        ind = " ".join((c.get("industry_nm") or "").split())
+        if ind:
+            by_ind.setdefault(ind, []).append(c)
+    used: set[int] = set()
+    out = []
+    for ind, members in sorted(by_ind.items(), key=lambda kv: (-len(kv[1]), kv[0])):
+        if len(members) < 2:
+            continue
+        ranked = [c for c in sorted(members, key=lambda c: (-len(marks.countable(c)), c["comp_nm"]))
+                  if c["comp_id"] not in used]
+        pair = next(((a, b) for i, a in enumerate(ranked) for b in ranked[i + 1:]
+                     if frozenset((a["comp_eng_nm"], b["comp_eng_nm"])) not in static
+                     and not _same_entity(a, b, ctx)), None)
+        if pair is None:
+            continue
+        a, b = pair
+        used.update((a["comp_id"], b["comp_id"]))
+        out.append({
+            "label": f"{a['comp_nm']} vs {b['comp_nm']}",
+            "industry": ind,
+            "href": f"/compare?a={a['comp_eng_nm']}&b={b['comp_eng_nm']}",
+        })
+        if len(out) == limit:
+            break
     return out
 
 
@@ -293,6 +340,7 @@ def build_view(ctx, pairs=None) -> dict:
         "year_range": _year_range(ctx),
         "latest_registration": recent[0]["date"] if recent else "",
         "combos": _combos(ctx, pairs),
+        "suggest": _suggest_pairs(ctx, pairs),
         "sectors": sectors,
         "has_other_sector": any(g["name"] == OTHER_SECTOR for g in sectors),
         "sector_top": SECTOR_TOP,

@@ -55,15 +55,32 @@
     <p class="home-intro">여러분들이 남긴 한 줄의 경험이 누군가의 더 나은 직장 선택을 만듭니다.</p>
   </section>
 
-{% if view.combos %}
+{% if view.combos or view.suggest %}
+  {#- 정적 비교 리포트(/vs/…) + 같은 업종 제안(/compare 프리필) — 절은 하나. 제안은 빌드 때 정해지고 숫자(비교 횟수·순위)를 싣지 않는다. #}
   <section class="home-sec" aria-labelledby="home-vs">
-    <h2 id="home-vs">비교 예시</h2>
+    <h2 id="home-vs">이렇게 비교해 보세요</h2>
+{% if view.combos %}
+    <div class="home-grp">
+      <h3>비교 리포트</h3>
     <p class="home-note">두 회사를 나란히 본 정적 리포트입니다.</p>
     <ul class="home-list">
 {% for c in view.combos %}
       <li><a href="{{ c.href }}">{{ c.label }}</a>{% if c.note %} <span class="home-c">{{ c.note }}</span>{% endif %}</li>
 {% endfor %}
     </ul>
+    </div>
+{% endif %}
+{% if view.suggest %}
+    <div class="home-grp">
+      <h3>같은 업종끼리</h3>
+    <p class="home-note">같은 업종 회사를 둘씩 묶었습니다. 누르면 두 회사가 채워진 비교 화면이 열립니다.</p>
+    <ul class="home-list">
+{% for s in view.suggest %}
+      <li><a href="{{ s.href }}">{{ s.label }}</a> <span class="home-c">{{ s.industry }}</span></li>
+{% endfor %}
+    </ul>
+    </div>
+{% endif %}
   </section>
 {% endif %}
 
