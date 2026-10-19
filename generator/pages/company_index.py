@@ -57,7 +57,8 @@ def render(env, ctx, cfg=CFG) -> Page:
             "comp_id": c["comp_id"],
             "comp_nm": c["comp_nm"],
             "industry_nm": c.get("industry_nm"),
-            "market": _market_short(market_of(ctx.finance.get(c["comp_id"]), markets)),
+            # 재무 매핑이 통째로 없으면 None — 전부 「비상장」이라 찍는 것은 거짓이다(context.py 의 「공시 데이터 없음」과 같은 원칙)
+            "market": _market_short(market_of(ctx.finance.get(c["comp_id"]), markets)) if ctx.finance else None,
             "href": f"/company/{ctx.slugs[c['comp_eng_nm']]}",
         }
         for c in companies

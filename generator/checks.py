@@ -115,8 +115,9 @@ def check_market_rows(ctx, markets: dict[str, str] | None = None) -> None:
     행이 없으면 `market_of` 가 그 회사를 「비상장」으로 찍는다 — 상장사 페이지에 **거짓 표시**가 에러 없이
     나간다. 웨이브마다 등록 PR 이 CSV 행을 더하는 것이 계약이고(`sector.py` 머리말), 빠뜨리면 여기서 멈춘다.
     페이지가 아니라 컨텍스트(재무 매핑)를 보므로 `run_generated_checks` 가 아니라 빌드가 렌더 전에 부른다.
-    재무가 실리지 않은 빌드는 종목코드를 몰라 검사할 것이 없다."""
-    if not getattr(ctx, "finance_loaded", False):
+    재무 매핑이 없는 빌드는 종목코드를 몰라 검사할 것이 없다(표시도 생략된다).
+    ⚠ `finance_loaded`(수치 적재)가 아니라 매핑 유무로 가른다 — 매핑만 있고 수치 0건이어도 표시는 찍힌다."""
+    if not ctx.finance:  # 매핑이 하나도 없으면 종목코드를 몰라 검사할 것이 없다(표시도 생략된다)
         return
     markets = load_markets() if markets is None else markets
     missing = []

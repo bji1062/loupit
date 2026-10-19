@@ -588,7 +588,8 @@ def render_all(env, ctx, combo_pairs=None, benefit_index: dict | None = None) ->
         slug = ctx.slugs[eng]
         url = f"{CFG.site_origin}/company/{slug}"
         vm = _company_view(c, ctx, now, corpus, benefit_index)
-        vm["market_nm"] = market_of(ctx.finance.get(c["comp_id"]), markets)
+        # 재무 매핑이 통째로 없는 빌드는 종목코드를 몰라 전부 「비상장」이 된다 — 거짓이라 표시를 생략한다
+        vm["market_nm"] = market_of(ctx.finance.get(c["comp_id"]), markets) if ctx.finance else None
         seo = _company_seo(c, ctx, url)
         html = tpl.render(
             **vm,
