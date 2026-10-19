@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import copy
+import functools
 import io
 import json
 import os
@@ -26,7 +27,7 @@ from generator import build as build_module
 from generator import indexnow
 from generator.config import CFG, GenConfig
 from generator.context import Page
-from generator.pages import sitemap
+from generator.pages import benefit, sitemap
 from generator.release import LASTMOD_SCHEME, _content_fingerprint, lastmod_index, write_manifest
 from generator.render import make_env
 
@@ -305,21 +306,31 @@ def _company_fingerprints(out) -> dict[str, str]:
     return {p.name: _content_fingerprint(p.read_text(encoding="utf-8")) for p in (out / "company").glob("*.html")}
 
 
-def test_company_page_fingerprint_ignores_other_companies(tmp_path, fake_bundle, fake_combinations_path):
-    """회사를 하나 늘려도(평균 · 순위 · 등록 N개사 · 관련 목록이 전부 움직인다) 기존 회사 지문은 그대로."""
+def test_company_page_fingerprint_ignores_other_companies(tmp_path, fake_bundle, fake_combinations_path, monkeypatch):
+    """회사를 하나 늘려도(평균 · 순위 · 등록 N개사 · 관련 목록이 전부 움직인다) 기존 회사 지문은 그대로.
+
+    픽스처 회사는 3곳이라 복지 항목 페이지 문턱(`MIN_COMPANIES`)을 못 넘어 「이 복지가 있는 회사 N곳」이
+    안 그려진다 — 문턱을 낮춰야 led-more skip 이 검증된다. 관련 비교 목록은 다른 회사 이름이 바뀔 때만
+    움직이므로 sk_hynix 이름도 바꾼다."""
+    monkeypatch.setattr(benefit, "render_all", functools.partial(benefit.render_all, min_companies=1, log=io.StringIO()))
     out1, out2 = tmp_path / "d1", tmp_path / "d2"
     assert build_module.run(str(out1), fake_bundle, lastmod="2026-08-01") == 0
     extra = copy.deepcopy(fake_bundle["companies"][0])
     extra.update(comp_id=99, comp_eng_nm="samsung_clone", comp_nm="삼성클론")
     extra["benefits"] = extra["benefits"][:1]  # 평균이 움직이도록 항목 수를 다르게
     fake_bundle["companies"].append(extra)
+    for c in fake_bundle["companies"]:
+        if c["comp_eng_nm"] == "sk_hynix":
+            c["comp_nm"] = "SK하이닉스(개명)"
     assert build_module.run(str(out2), fake_bundle, lastmod="2026-08-01") == 0
 
     raw1 = (out1 / "company" / "samsung-elec.html").read_text(encoding="utf-8")
     raw2 = (out2 / "company" / "samsung-elec.html").read_text(encoding="utf-8")
     assert raw1 != raw2, "전제: 다른 회사가 늘면 원본 HTML 은 달라진다(아니면 이 테스트는 아무것도 증명하지 않는다)"
     assert "<!--lm:skip-->" in raw1
+    assert 'class="led-more"' in raw1 and 'related-combos' in raw1, "전제: led-more · 관련 비교가 그려져야 그 skip 을 검증한다"
     f1, f2 = _company_fingerprints(out1), _company_fingerprints(out2)
+    f1.pop("sk-hynix.html"); f2.pop("sk-hynix.html")  # 개명한 회사 자기 페이지는 바뀌는 게 맞다
     assert f1 and all(f1[k] == f2[k] for k in f1), {k for k in f1 if f1[k] != f2[k]}
 
 

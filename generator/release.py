@@ -93,6 +93,8 @@ def _content_fingerprint(html: str) -> str:
     ⚠ skip 표시 계약 — **다른 회사 데이터로 바뀌는 값은 전부 skip 안에, 그 회사 자기 데이터는 skip 밖에
       최소 한 번**. 표시를 지우면 매 공개마다 전 회사 lastmod 가 바뀌고, 자기 값을 skip 에 넣으면 진짜로
       바뀐 날을 놓친다. 표시는 템플릿에 있다(`_stat_card.html` · `_benefit_table.html` · `company.html`).
+    ⚠ 지문은 `<main>` 만 본다 — head 의 JSON-LD `alternateName`(별칭)만 바뀌면 lastmod 는 그대로다. 별칭은
+      드물게 바뀌므로 감수한다.
     """
     m = _MAIN_RE.search(html)
     body = m.group(0) if m else html
