@@ -10,14 +10,21 @@
 
    ⓘ `| safe` 는 레이더 SVG 한 곳뿐이고 대상은 `generator/radar.py` 가 만든 문자열이다. 그 모듈은
      텍스트를 `html.escape` 로 내보내고 좌표는 숫자다 — 사용자 데이터가 이스케이프 없이 지나가는
-     경로가 없다(NFR21). 새 값을 SVG 에 넣고 싶다면 템플릿이 아니라 그 모듈에서 넣어야 한다. #}
+     경로가 없다(NFR21). 새 값을 SVG 에 넣고 싶다면 템플릿이 아니라 그 모듈에서 넣어야 한다.
+
+   🚨 `<!--lm:skip-->…<!--/lm:skip-->` 는 **다른 회사 데이터에 따라 바뀌는 값**(평균 · 순위 · 등록 N개사 ·
+      평균 대비 비교 문장)에 두른 표시다. 사이트맵 lastmod 지문(`release._content_fingerprint`)이 이
+      구간을 빼고 계산한다. 이 표시를 지우면 회사가 1곳 늘 때마다 전 회사의 lastmod·IndexNow 가
+      바뀐다. 이 회사 자기 값(카테고리별 항목 수 · 항목 이름 · 금액)은 skip 밖 카테고리 목록에 남아 있다.
+      레이더 SVG 는 속성(aria-label)에 평균이 섞여 있어 통째로 두른다 — 자기 항목 수는 카테고리 머리
+      「N항목」이 같은 값으로 갖는다. #}
 {% macro stat_card(card, comp_tp_nm, industry_nm, work_style, metrics) -%}
 <section class="stat-card" aria-label="복지 요약">
   <div class="sc-left">
-    {{ card.radar | safe }}
+    <!--lm:skip-->{{ card.radar | safe }}<!--/lm:skip-->
     <p class="sc-legend">
       <span class="sc-key sc-key-you"></span>이 회사 카테고리별 항목 수
-      <span class="sc-key sc-key-avg"></span>등록 {{ card.rank.total }}개사 평균
+      <!--lm:skip--><span class="sc-key sc-key-avg"></span>등록 {{ card.rank.total }}개사 평균<!--/lm:skip-->
     </p>
     {% if industry_nm or comp_tp_nm %}
     <p class="sc-pill">{{ [industry_nm, comp_tp_nm] | select | join(' · ') }}</p>
@@ -40,7 +47,7 @@
         (실측: SK텔레콤 27항목 = LG CNS 27항목). -#}
     <dl class="sc-rank">
       <div><dt>등록 복지 항목</dt><dd><strong>{{ card.rank.item_count }}</strong>
-        <span>· {{ card.rank.total }}개사 중 {% if card.rank.items_tied %}공동 {% endif %}{{ card.rank.items_rank }}번째</span></dd></div>
+        <!--lm:skip--><span>· {{ card.rank.total }}개사 중 {% if card.rank.items_tied %}공동 {% endif %}{{ card.rank.items_rank }}번째</span><!--/lm:skip--></dd></div>
       <div><dt>등록 금액 합 {% if card.all_est %}<span>전부 추정</span>{% elif card.counts.est %}<span>추정 포함</span>{% endif %}</dt>
         <dd><strong>{{ card.amount_text or '—' }}</strong></dd></div>
     </dl>
@@ -136,13 +143,13 @@
       <p class="sc-note"><a href="/disclaimer">밴드 설명</a></p>
     </div>
     {% if card.top_ratio %}
-    <div class="sc-block">
+    <!--lm:skip--><div class="sc-block">
       <h2>평균 대비 배율 상위 {{ card.top_ratio | length }}개 카테고리 <span class="sc-h2-sub">항목 수 / 평균</span></h2>
       <ul class="sc-chips">
       {% for t in card.top_ratio %}<li>{{ t.label }} {{ t.count }}<span>/ {{ t.avg }}</span></li>{% endfor %}
       </ul>
       <p class="sc-note">{% if card.above_all %}{{ card.counts.category_total }}개 카테고리 모두 등록 {{ card.rank.total }}개사 평균보다 많습니다.{% elif card.above_count %}{{ card.above_count }}개 카테고리가 등록 {{ card.rank.total }}개사 평균보다 많습니다.{% else %}등록 {{ card.rank.total }}개사 평균보다 많은 카테고리는 없습니다.{% endif %}</p>
-    </div>
+    </div><!--/lm:skip-->
     {% endif %}
   </aside>
 </section>
