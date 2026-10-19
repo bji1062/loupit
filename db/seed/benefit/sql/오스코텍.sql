@@ -1,13 +1,15 @@
 -- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 -- 오스코텍 복리후생 데이터
 -- 출처: AI 파싱 (2026-10-02)
--- URL: https://oscotec.co.kr/notice/11153
+-- URL: https://oscotec.com/ko/410652/410652/
 -- badge: est
 --
 -- 참고:
 --   정본은 법인 자기 도메인(oscotec.co.kr, Rhymix 서버 렌더) 헤더 메뉴 회사소개 > 공지사항의
 --     2025 ESG FACT Book 발간 게시글(2026-09-28, 작성 전략기획팀)이다. 행 근거는 그 글의 첨부
 --     오스코텍 ESG FactBook_2025_260930-2.pdf(27쪽, 회사 자기 발행 보고서) 15쪽 · 20쪽 · 22쪽.
+--   2026-10-19 회사가 사이트를 oscotec.com 으로 옮겨 옛 글 주소(oscotec.co.kr/notice/11153)가 공지 목록으로 넘어간다
+--     → 같은 게시글의 새 주소로 바꿈. 새 사이트의 첨부 PDF 는 수집 때 받은 증거본과 sha256 이 같다(bf55a7d7…).
 --   인재채용 상시 페이지(/Careers)는 연구원 모집 공고 표뿐이고 복리후생 문구가 없다. 외부 ATS 없음(지원은 자기 도메인 게시판).
 --   보조: OpenDART 2025 사업보고서(접수 20260319001005) · 2026 반기보고서(접수 20260814003016)
 --     직원 등 현황 57명 · 유연근무제 활용 · 시차출퇴근제 사용자 수 — flex_work 보조 근거.
@@ -27,13 +29,13 @@
 INSERT IGNORE INTO TCOMPANY (COMP_ENG_NM, COMP_NM, COMP_TP_ID, INDUSTRY_NM, LOGO_NM, CAREERS_BENEFIT_URL)
 VALUES ('oscotec', '오스코텍',
         (SELECT COMP_TP_ID FROM TCOMPANY_TYPE WHERE COMP_TP_CD = 'mid'),
-        '바이오/제약', 'O', 'https://oscotec.co.kr/notice/11153');
+        '바이오/제약', 'O', 'https://oscotec.com/ko/410652/410652/');
 
 -- 2) COMP_ID 조회
 SET @comp_id = (SELECT COMP_ID FROM TCOMPANY WHERE COMP_ENG_NM = 'oscotec');
 
 -- 3) 기존 행의 CAREERS_BENEFIT_URL 갱신 (INSERT IGNORE 로는 안 바뀐다)
-UPDATE TCOMPANY SET CAREERS_BENEFIT_URL = 'https://oscotec.co.kr/notice/11153'
+UPDATE TCOMPANY SET CAREERS_BENEFIT_URL = 'https://oscotec.com/ko/410652/410652/'
  WHERE COMP_ID = @comp_id;
 
 -- 4) 기존 추정 데이터 삭제 (official 보존)
