@@ -114,8 +114,8 @@ def test_index_plain_list_shows_market_when_mapping_exists_but_no_figures(fake_b
     """매핑만 있고 수치가 없는 빌드(= ul 목록)에서는 업종 옆에 표시가 나온다."""
     mapping = {cid: {"stock_cd": f["stock_cd"]} for cid, f in fake_finance.items() if cid in (1, 2, 3)}
     ctx = build_context(fake_bundle, now=fake_now, finance=mapping)
-    if ctx.finance_loaded:  # 수치 없이 매핑만 → 표가 아니라 ul 이어야 이 테스트의 뜻이 선다
-        pytest.skip("finance_loaded 판정이 매핑만으로도 참 — ul 경로 없음")
+    # 수치 없이 매핑만 → 표가 아니라 ul 이어야 이 테스트의 뜻이 선다(판정이 바뀌면 조용히 빠지지 말고 실패)
+    assert not ctx.finance_loaded
     html = company_index.render(make_env(), ctx, CFG).html
     assert html.count('class="index-market">코스피</span>') == 2  # 삼성전자 · 네이버(픽스처에 재무 2곳)
     assert html.count('class="index-market">비상장</span>') == 1  # 매핑 없는 SK하이닉스
