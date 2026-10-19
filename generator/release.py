@@ -7,6 +7,7 @@ import gzip as gzip_module
 import hashlib
 import json
 import os
+import re
 import shutil
 from datetime import datetime, timezone
 
@@ -70,6 +71,36 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+# lastmod 지문 방식 버전 — 지문을 계산하는 방법이 바뀌면 올린다(`lastmod_index` 의 이관 규칙 참고).
+#   1(표시 없음) = 페이지 HTML 전체의 sha256 · 2 = `_content_fingerprint`(main 안, skip 구간 제외)
+LASTMOD_SCHEME = 2
+
+_MAIN_RE = re.compile(r"<main\b.*?</main>", re.DOTALL)
+_SKIP_RE = re.compile(r"<!--lm:skip-->.*?<!--/lm:skip-->", re.DOTALL)
+
+
+def _content_fingerprint(html: str) -> str:
+    """페이지의 **자기 내용** 지문 — sitemap lastmod · IndexNow 의 「바뀜」 판정용(2026-10-19).
+
+    왜 HTML 전체가 아닌가 — 회사 페이지에는 **다른 회사에 따라 바뀌는 값**(전체 회사 평균 · 순위 ·
+    「등록 N개사」 · 복지별 「이 복지가 있는 회사 N곳」 · 관련 회사 목록)이 박혀 있다. 전체를 해시하면 회사가
+    1곳만 늘어도 275개 페이지 전부가 「바뀜」이 되어 lastmod 가 전부 같은 날이 되고(실측 2026-10-18),
+    구글은 그런 lastmod 를 믿지 않는다. IndexNow 도 매번 275개를 통보한다.
+
+    규칙: `<main>`…`</main>` 안에서(없으면 HTML 전체) `<!--lm:skip-->`…`<!--/lm:skip-->` 구간을 지운
+    나머지의 sha256. head(자산 버전 해시 · 메타) · 헤더 · 푸터는 main 밖이라 빠진다.
+
+    ⚠ skip 표시 계약 — **다른 회사 데이터로 바뀌는 값은 전부 skip 안에, 그 회사 자기 데이터는 skip 밖에
+      최소 한 번**. 표시를 지우면 매 공개마다 전 회사 lastmod 가 바뀌고, 자기 값을 skip 에 넣으면 진짜로
+      바뀐 날을 놓친다. 표시는 템플릿에 있다(`_stat_card.html` · `_benefit_table.html` · `company.html`).
+    ⚠ 지문은 `<main>` 만 본다 — head 의 JSON-LD `alternateName`(별칭)만 바뀌면 lastmod 는 그대로다. 별칭은
+      드물게 바뀌므로 감수한다.
+    """
+    m = _MAIN_RE.search(html)
+    body = m.group(0) if m else html
+    return _sha256(_SKIP_RE.sub("", body).encode("utf-8"))
+
+
 def lastmod_index(out_dir: str, pages: list[Page], extra_sources: dict[str, str | None],
                   today: str) -> dict[str, dict]:
     """sitemap 에 실을 URL 마다 **내용이 실제로 바뀐 날**을 정한다(2026-08-29, 크롤 예산 대응).
@@ -92,19 +123,32 @@ def lastmod_index(out_dir: str, pages: list[Page], extra_sources: dict[str, str 
     ⚠ 이 함수는 **스왑 전**에 부른다(sitemap 을 그리려면 날짜가 먼저 있어야 한다). 그래서 이전
       매니페스트는 아직 `out_dir` 에 있는 **직전 빌드의 것**이다.
     ⚠ 첫 실행(이전 매니페스트에 `urls` 없음)은 전부 `today` 가 된다 — 한 번은 피할 수 없다.
+
+    페이지 지문은 HTML 전체가 아니라 `_content_fingerprint`(자기 내용만)다. `extra_sources`(SPA 셸 원본)는
+    기존대로 바이트 그대로다.
+
+    ⚠ 방식 전환 이관(1회) — 직전 매니페스트의 `lastmod_scheme` 이 지금(`LASTMOD_SCHEME`)과 다르면(없음
+      포함) 지문을 비교하지 않고 **직전 lastmod 를 그대로 두고 새 지문만 받아들인다**(`changed=False`).
+      옛 방식은 「더 자주 바뀜」으로만 틀렸으므로 직전 날짜는 실제 마지막 변경일보다 늦거나 같다 — 미래를
+      지어내지 않는다. 직전에 없던 URL 은 기존대로 `today`. 그래서 이 방식을 싣는 배포는 **데이터 변경
+      없이 단독으로** 해야 한다(같이 실으면 그 변경이 이관에 먹혀 lastmod 에 안 드러난다).
     """
-    prev = _read_manifest(out_dir).get("urls", {})
+    prev_manifest = _read_manifest(out_dir)
+    prev = prev_manifest.get("urls", {})
+    migrating = prev_manifest.get("lastmod_scheme") != LASTMOD_SCHEME
     out: dict[str, dict] = {}
 
     def _entry(url: str, digest: str | None) -> dict:
         before = prev.get(url) or {}
+        if migrating and digest and before.get("lastmod"):
+            return {"sha256": digest, "lastmod": before["lastmod"], "changed": False}
         if digest and before.get("sha256") == digest and before.get("lastmod"):
             return {"sha256": digest, "lastmod": before["lastmod"], "changed": False}
         return {"sha256": digest, "lastmod": today, "changed": True}
 
     for pg in pages:
         if pg.in_sitemap:
-            out[pg.url] = _entry(pg.url, _sha256(pg.html.encode("utf-8")))
+            out[pg.url] = _entry(pg.url, _content_fingerprint(pg.html))
     for url, src in extra_sources.items():
         digest = None
         if src and os.path.isfile(src):
@@ -162,6 +206,7 @@ def write_manifest(out_dir: str, manifest: dict, urls: dict | None = None) -> No
     payload = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "files": manifest,
+        "lastmod_scheme": LASTMOD_SCHEME,
         "urls": {u: {"sha256": v.get("sha256"), "lastmod": v["lastmod"]} for u, v in (urls or {}).items()},
     }
     _ensure_parent(os.path.join(out_dir, _MANIFEST_NAME))

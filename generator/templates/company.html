@@ -60,21 +60,23 @@
   {#- 내부 링크(FR-63 확장, 2026-07-19): 회사·조합 페이지가 sitemap 외 진입 경로가
       없는 고아 상태였다. 관련 회사는 같은 업종 우선 + 가나다순 인접 폴백이라 전
       회사가 하나의 링크 체인으로 이어진다. -#}
+  {#- ⚠ 두 목록은 다른 회사 데이터로 정해진다 — skip 표시를 지우면 회사가 늘 때마다 전 회사 lastmod 가
+      바뀐다(`release._content_fingerprint`). -#}
   {% if related_companies %}
-  <section class="related-companies" aria-label="관련 회사">
+  <!--lm:skip--><section class="related-companies" aria-label="관련 회사">
     <h2>다른 회사 복지도 확인해 보세요</h2>
     <ul>
     {% for label, href in related_companies %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}
     </ul>
-  </section>
+  </section><!--/lm:skip-->
   {% endif %}
   {% if related_combos %}
-  <section class="related-combos" aria-label="관련 비교">
+  <!--lm:skip--><section class="related-combos" aria-label="관련 비교">
     <h2>이 회사가 포함된 비교</h2>
     <ul>
     {% for label, href in related_combos %}<li><a href="{{ href }}">{{ label }}</a></li>{% endfor %}
     </ul>
-  </section>
+  </section><!--/lm:skip-->
   {% endif %}
   {% include "partials/_disclaimer.html" %}
   {{ ad_slot("content_bottom") }}

@@ -13,6 +13,8 @@
 """
 from __future__ import annotations
 
+import copy
+import functools
 import io
 import json
 import os
@@ -25,8 +27,8 @@ from generator import build as build_module
 from generator import indexnow
 from generator.config import CFG, GenConfig
 from generator.context import Page
-from generator.pages import sitemap
-from generator.release import lastmod_index, write_manifest
+from generator.pages import benefit, sitemap
+from generator.release import LASTMOD_SCHEME, _content_fingerprint, lastmod_index, write_manifest
 from generator.render import make_env
 
 
@@ -267,3 +269,106 @@ def test_indexnow_failure_does_not_fail_the_build(tmp_path, fake_bundle, fake_co
     assert build_module.run(str(out), fake_bundle, indexnow_opener=_opener(raise_exc=http403)) == 0
     assert (out / "sitemap.xml").exists(), "스왑은 이미 끝났다 — 통보 실패가 라이브를 되돌리지 않는다"
     assert "IndexNow 실패" in capsys.readouterr().err
+
+
+# ── 5. 지문은 「자기 내용」만 (2026-10-19) ─────────────────────────────────────
+
+def _doc(head: str, main: str, foot: str = "푸터") -> str:
+    return f"<html><head>{head}</head><body><header>헤더</header><main id=\"m\">{main}</main><footer>{foot}</footer></body></html>"
+
+
+def test_fingerprint_ignores_skip_spans_and_everything_outside_main():
+    a = _doc("<link href=/a.css?v=1>", "<p>자기 내용</p><!--lm:skip-->평균 1.5 · 257개사<!--/lm:skip-->", "푸터 A")
+    b = _doc("<link href=/a.css?v=2>", "<p>자기 내용</p><!--lm:skip-->평균 1.6 · 275개사<!--/lm:skip-->", "푸터 B")
+    assert _content_fingerprint(a) == _content_fingerprint(b)
+
+
+def test_fingerprint_changes_when_own_content_changes():
+    a = _doc("", "<p>자기 내용</p><!--lm:skip-->x<!--/lm:skip-->")
+    b = _doc("", "<p>자기 내용 수정</p><!--lm:skip-->x<!--/lm:skip-->")
+    assert _content_fingerprint(a) != _content_fingerprint(b)
+
+
+def test_fingerprint_skip_spans_are_non_greedy():
+    """두 skip 사이의 자기 내용은 지문에 남아야 한다(탐욕 매칭이면 통째로 지워진다)."""
+    a = _doc("", "<!--lm:skip-->1<!--/lm:skip-->자기<!--lm:skip-->2<!--/lm:skip-->")
+    b = _doc("", "<!--lm:skip-->9<!--/lm:skip-->다른<!--lm:skip-->8<!--/lm:skip-->")
+    assert _content_fingerprint(a) != _content_fingerprint(b)
+
+
+def test_fingerprint_without_main_hashes_the_whole_html():
+    import hashlib
+    html = "<h1>A</h1>"
+    assert _content_fingerprint(html) == hashlib.sha256(html.encode("utf-8")).hexdigest()
+
+
+def _company_fingerprints(out) -> dict[str, str]:
+    return {p.name: _content_fingerprint(p.read_text(encoding="utf-8")) for p in (out / "company").glob("*.html")}
+
+
+def test_company_page_fingerprint_ignores_other_companies(tmp_path, fake_bundle, fake_combinations_path, monkeypatch):
+    """회사를 하나 늘려도(평균 · 순위 · 등록 N개사 · 관련 목록이 전부 움직인다) 기존 회사 지문은 그대로.
+
+    픽스처 회사는 3곳이라 복지 항목 페이지 문턱(`MIN_COMPANIES`)을 못 넘어 「이 복지가 있는 회사 N곳」이
+    안 그려진다 — 문턱을 낮춰야 led-more skip 이 검증된다. 관련 비교 목록은 다른 회사 이름이 바뀔 때만
+    움직이므로 sk_hynix 이름도 바꾼다."""
+    monkeypatch.setattr(benefit, "render_all", functools.partial(benefit.render_all, min_companies=1, log=io.StringIO()))
+    out1, out2 = tmp_path / "d1", tmp_path / "d2"
+    assert build_module.run(str(out1), fake_bundle, lastmod="2026-08-01") == 0
+    extra = copy.deepcopy(fake_bundle["companies"][0])
+    extra.update(comp_id=99, comp_eng_nm="samsung_clone", comp_nm="삼성클론")
+    extra["benefits"] = extra["benefits"][:1]  # 평균이 움직이도록 항목 수를 다르게
+    fake_bundle["companies"].append(extra)
+    for c in fake_bundle["companies"]:
+        if c["comp_eng_nm"] == "sk_hynix":
+            c["comp_nm"] = "SK하이닉스(개명)"
+    assert build_module.run(str(out2), fake_bundle, lastmod="2026-08-01") == 0
+
+    raw1 = (out1 / "company" / "samsung-elec.html").read_text(encoding="utf-8")
+    raw2 = (out2 / "company" / "samsung-elec.html").read_text(encoding="utf-8")
+    assert raw1 != raw2, "전제: 다른 회사가 늘면 원본 HTML 은 달라진다(아니면 이 테스트는 아무것도 증명하지 않는다)"
+    assert "<!--lm:skip-->" in raw1
+    assert 'class="led-more"' in raw1 and 'related-combos' in raw1, "전제: led-more · 관련 비교가 그려져야 그 skip 을 검증한다"
+    f1, f2 = _company_fingerprints(out1), _company_fingerprints(out2)
+    f1.pop("sk-hynix.html"); f2.pop("sk-hynix.html")  # 개명한 회사 자기 페이지는 바뀌는 게 맞다
+    assert f1 and all(f1[k] == f2[k] for k in f1), {k for k in f1 if f1[k] != f2[k]}
+
+
+def test_company_page_fingerprint_follows_own_benefit_row(tmp_path, fake_bundle, fake_combinations_path):
+    out1, out2, out3 = tmp_path / "d1", tmp_path / "d2", tmp_path / "d3"
+    assert build_module.run(str(out1), fake_bundle, lastmod="2026-08-01") == 0
+    desc = copy.deepcopy(fake_bundle)
+    desc["companies"][0]["benefits"][2]["qual_desc_ctnt"] = "3년 근속마다 3주 부여"
+    assert build_module.run(str(out2), desc, lastmod="2026-08-01") == 0
+    amt = copy.deepcopy(fake_bundle)
+    amt["companies"][0]["benefits"][0]["benefit_amt"] = 123456
+    assert build_module.run(str(out3), amt, lastmod="2026-08-01") == 0
+    base = _company_fingerprints(out1)
+    for other in (out2, out3):
+        fp = _company_fingerprints(other)
+        assert fp["samsung-elec.html"] != base["samsung-elec.html"]
+
+
+# ── 6. 방식 전환 이관 ─────────────────────────────────────────────────────────
+
+def test_scheme_change_keeps_previous_lastmod_and_marks_unchanged(tmp_path):
+    out = str(tmp_path / "dist"); os.makedirs(out)
+    a = _page("company/a.html", "<h1>A</h1>")
+    # 방식 버전 없는 직전 매니페스트(옛 방식: HTML 전체 지문)
+    with open(os.path.join(out, ".manifest.json"), "w", encoding="utf-8") as f:
+        json.dump({"files": {}, "urls": {a.url: {"sha256": "옛방식지문", "lastmod": "2026-10-18"}}}, f)
+    idx = lastmod_index(out, [a, _page("company/new.html", "<h1>N</h1>")], {}, "2026-10-19")
+    assert idx[a.url]["lastmod"] == "2026-10-18" and idx[a.url]["changed"] is False
+    assert idx[a.url]["sha256"] == _content_fingerprint(a.html), "새 지문은 받아들인다"
+    new = [v for u, v in idx.items() if u != a.url][0]
+    assert new["lastmod"] == "2026-10-19" and new["changed"] is True, "직전에 없던 URL 은 오늘"
+
+
+def test_same_scheme_with_different_fingerprint_is_changed(tmp_path):
+    out = str(tmp_path / "dist"); os.makedirs(out)
+    a = _page("company/a.html", "<main>A</main>")
+    write_manifest(out, {}, urls=lastmod_index(out, [a], {}, "2026-10-18"))
+    assert json.load(open(os.path.join(out, ".manifest.json")))["lastmod_scheme"] == LASTMOD_SCHEME
+    a2 = _page("company/a.html", "<main>A 수정</main>")
+    idx = lastmod_index(out, [a2], {}, "2026-10-19")
+    assert idx[a2.url]["lastmod"] == "2026-10-19" and idx[a2.url]["changed"] is True
