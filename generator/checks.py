@@ -12,6 +12,7 @@ from __future__ import annotations
 import re
 
 from generator import benefit_rules
+from generator.sector import load_markets
 from generator.context import Page
 from generator.slug import BuildError
 
@@ -106,6 +107,25 @@ def _check_benefit_reachable(pages: list[Page]) -> None:
             raise BuildError(f"GC-30: {route} 가 sitemap 에 없다")
         if f'href="{route}"' not in find.html:
             raise BuildError(f"GC-30: {route} 로 가는 링크가 /find 에 없다(고아 페이지)")
+
+
+def check_market_rows(ctx, markets: dict[str, str] | None = None) -> None:
+    """GC-31 — 종목코드가 있는 회사는 전부 `krx_sector.csv` 에 행이 있다.
+
+    행이 없으면 `market_of` 가 그 회사를 「비상장」으로 찍는다 — 상장사 페이지에 **거짓 표시**가 에러 없이
+    나간다. 웨이브마다 등록 PR 이 CSV 행을 더하는 것이 계약이고(`sector.py` 머리말), 빠뜨리면 여기서 멈춘다.
+    페이지가 아니라 컨텍스트(재무 매핑)를 보므로 `run_generated_checks` 가 아니라 빌드가 렌더 전에 부른다.
+    재무가 실리지 않은 빌드는 종목코드를 몰라 검사할 것이 없다."""
+    if not getattr(ctx, "finance_loaded", False):
+        return
+    markets = load_markets() if markets is None else markets
+    missing = []
+    for c in ctx.companies:
+        code = ((ctx.finance.get(c["comp_id"]) or {}).get("stock_cd") or "").strip()
+        if code and code not in markets:
+            missing.append(f"{c['comp_nm']}({code})")
+    if missing:
+        raise BuildError("GC-31: 종목코드가 있는데 krx_sector.csv 에 행이 없다(비상장으로 잘못 표시됨) — " + ", ".join(missing))
 
 
 def run_generated_checks(out_dir: str, pages: list[Page]) -> None:

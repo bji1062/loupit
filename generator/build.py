@@ -19,6 +19,7 @@ from generator.bundle import (
 )
 from generator.employ import coverage as employ_coverage
 from generator.employ import is_loaded as employ_is_loaded
+from generator.checks import check_market_rows
 from generator.config import CFG
 from generator.context import build_context
 from generator.pages import about_data, benefit, combo, company, company_index, find, guide_index, guide_legal, guide_report, guide_total_comp, heatmap, home, policy
@@ -62,6 +63,7 @@ def run(
     """
     env = make_env()
     ctx = build_context(bundle, finance=finance, employ=employ)  # 인덱스·slug 충돌 검증(BuildError, SP-GEN-3)
+    check_market_rows(ctx)  # GC-31 — 종목코드 있는 회사는 시장 표(csv)에 행이 있어야 한다(렌더 전에 멈춘다)
     # 조합 쌍은 한 번만 로드해 양쪽에 전달한다 — 회사 페이지의 /vs/ 링크와 실제
     # 생성되는 조합 페이지가 같은 목록에서 나와야 죽은 링크가 생기지 않는다(GC-20).
     combo_pairs = combo.load_pairs(ctx)

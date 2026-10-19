@@ -14,12 +14,18 @@ from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
 from generator.context import Page
 from generator.finance import index_row, metric_columns
+from generator.sector import load_markets, market_of
 
 # 섹션 순서·라벨(SP-FIN-5). 금융을 갈라 두는 이유는 **세 번째 지표가 다르기 때문**이다 — 일반은
 # 매출, 금융은 자산총계(SP-MET-2). 한 표에 섞으면 같은 열에 뜻이 다른 두 숫자가 앉는다.
 # ⛔ "금융은 매출·영업이익 계정이 없다"는 구 판본의 설명은 절반이 틀렸다: 없는 것은 단일 매출
 #   계정뿐이고 영업이익은 7/7 로 있다(2026-08-28 DART 전수 실측, SP-MET-2).
 _SECTIONS = (("general", "일반"), ("financial", "금융"))
+
+
+def _market_short(label: str) -> str:
+    """회사 페이지의 「코스피 상장」 → 목록 열의 「코스피」(열 머리가 이미 「상장」). 「비상장」은 그대로."""
+    return label[: -len(" 상장")] if label.endswith(" 상장") else label
 
 
 def _finance_sections(items: list[dict], ctx) -> list[dict]:
@@ -45,11 +51,13 @@ def _finance_sections(items: list[dict], ctx) -> list[dict]:
 def render(env, ctx, cfg=CFG) -> Page:
     """등록 회사 전량을 가나다순으로 링크하는 단일 인덱스 페이지."""
     companies = sorted(ctx.companies, key=lambda c: (c["comp_nm"], c["comp_eng_nm"]))
+    markets = load_markets()
     items = [
         {
             "comp_id": c["comp_id"],
             "comp_nm": c["comp_nm"],
             "industry_nm": c.get("industry_nm"),
+            "market": _market_short(market_of(ctx.finance.get(c["comp_id"]), markets)),
             "href": f"/company/{ctx.slugs[c['comp_eng_nm']]}",
         }
         for c in companies
