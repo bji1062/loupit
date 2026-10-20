@@ -1,0 +1,388 @@
+[
+ {
+  "name": "비바리퍼블리카",
+  "dart_name": "(주)비바리퍼블리카",
+  "market": "비상장",
+  "rank_common": null,
+  "stock_code": "",
+  "corp_code": "01212921",
+  "employees": 1986,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1493,
+  "emp_rcept_no": "20260331003713",
+  "induty_code": "63120",
+  "est_dt": "20130423",
+  "hm_url": "https://toss.im/",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "개인 15.4%",
+  "notes": [
+   "⚠ 검색어 오염 위험: 브랜드 「토스」는 일반어(toss) · 계열(토스뱅크 · 토스증권)과 섞임"
+  ],
+  "datalab_keywords": [
+   [
+    "비바리퍼블리카 채용"
+   ],
+   [
+    "토스 채용"
+   ]
+  ],
+  "market_value_eok": null
+ },
+ {
+  "name": "무신사",
+  "dart_name": "주식회사 무신사",
+  "market": "비상장",
+  "rank_common": null,
+  "stock_code": "",
+  "corp_code": "01137727",
+  "employees": 1870,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1740,
+  "emp_rcept_no": "20260331003116",
+  "induty_code": "4791",
+  "est_dt": "20120625",
+  "hm_url": "https://newsroom.musinsa.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "개인 52.0%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "무신사 채용"
+   ]
+  ],
+  "market_value_eok": null
+ },
+ {
+  "name": "컬리",
+  "dart_name": "주식회사 컬리",
+  "market": "비상장",
+  "rank_common": null,
+  "stock_code": "",
+  "corp_code": "01153956",
+  "employees": 2902,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1959,
+  "emp_rcept_no": "20260327000997",
+  "induty_code": "4791",
+  "est_dt": "20141231",
+  "hm_url": "www.kurly.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "MKG Asia Ltd. 13.4%",
+  "notes": [
+   "⚠ 검색어 오염 위험: 두 글자 — 일반어(컬리 · 곱슬)"
+  ],
+  "datalab_keywords": [
+   [
+    "컬리 채용",
+    "마켓컬리 채용"
+   ]
+  ],
+  "market_value_eok": null
+ },
+ {
+  "name": "GS칼텍스",
+  "dart_name": "GS칼텍스(주)",
+  "market": "비상장",
+  "rank_common": null,
+  "stock_code": "",
+  "corp_code": "00165459",
+  "employees": 3120,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 2972,
+  "emp_rcept_no": "20260331004120",
+  "induty_code": "19210",
+  "est_dt": "19670519",
+  "hm_url": "www.gscaltex.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "GS",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "지에스에너지(주) 50.0%",
+  "notes": [
+   "그룹 GS(기등록 형제 있음: GS건설 · GS리테일)",
+   "1-9 언급(GS 형제 — 각자 자기 출처만)"
+  ],
+  "datalab_keywords": [
+   [
+    "GS칼텍스 채용",
+    "지에스칼텍스 채용"
+   ]
+  ],
+  "market_value_eok": null
+ },
+ {
+  "name": "에스케이온",
+  "dart_name": "에스케이온 주식회사",
+  "market": "비상장",
+  "rank_common": null,
+  "stock_code": "",
+  "corp_code": "01592447",
+  "employees": 3822,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 3741,
+  "emp_rcept_no": "20260316001423",
+  "induty_code": "28202",
+  "est_dt": "20211001",
+  "hm_url": "www.sk-on.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "SK",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "SK이노베이션㈜ 90.3% — 상장사",
+  "notes": [
+   "그룹 SK(기등록 형제 있음: SK하이닉스 · SK텔레콤 · SK이노베이션 등 9사)",
+   "1-9 언급(SK 형제 — 각자 자기 출처만)",
+   "상장사 SK이노베이션㈜ 자회사(90.3%)"
+  ],
+  "datalab_keywords": [
+   [
+    "SK온 채용",
+    "에스케이온 채용"
+   ]
+  ],
+  "market_value_eok": null
+ },
+ {
+  "name": "현대엔지니어링",
+  "dart_name": "현대엔지니어링(주)",
+  "market": "비상장",
+  "rank_common": null,
+  "stock_code": "",
+  "corp_code": "00349927",
+  "employees": 6770,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 4901,
+  "emp_rcept_no": "20260331003081",
+  "induty_code": "72121",
+  "est_dt": "20010117",
+  "hm_url": "www.hec.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "현대차",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "현대건설 38.6% — 상장사",
+  "notes": [
+   "그룹 현대차(기등록 형제 있음: 현대자동차 · 기아 · 현대모비스 등 10사)",
+   "1-9 언급(현대차 형제 — 각자 자기 출처만)"
+  ],
+  "datalab_keywords": [
+   [
+    "현대엔지니어링 채용"
+   ]
+  ],
+  "market_value_eok": null
+ },
+ {
+  "name": "LX세미콘",
+  "dart_name": "(주)엘엑스세미콘",
+  "market": "KOSPI",
+  "rank_common": 281,
+  "stock_code": "108320",
+  "corp_code": "00525934",
+  "employees": 1417,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1355,
+  "emp_rcept_no": "20260318001308",
+  "induty_code": "2612",
+  "est_dt": "19991111",
+  "hm_url": "www.lxsemicon.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "LX",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "㈜LX홀딩스 33.1% — 상장사",
+  "notes": [
+   "그룹 LX(기등록 형제 있음: LX인터내셔널)"
+  ],
+  "datalab_keywords": [
+   [
+    "LX세미콘 채용"
+   ],
+   [
+    "실리콘웍스 채용"
+   ]
+  ],
+  "market_value_eok": 5286
+ },
+ {
+  "name": "한섬",
+  "dart_name": "(주)한섬",
+  "market": "KOSPI",
+  "rank_common": 307,
+  "stock_code": "020000",
+  "corp_code": "00188089",
+  "employees": 1563,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 1458,
+  "emp_rcept_no": "20260313001074",
+  "induty_code": "14112",
+  "est_dt": "19870525",
+  "hm_url": "www.handsome.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "현대백화점",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)현대홈쇼핑 40.5% — 상장사",
+  "notes": [
+   "그룹 현대백화점(기등록 형제 있음: 현대백화점)",
+   "⚠ 검색어 오염 위험: 두 글자 — 동명 상호 · 일반어와 섞일 수 있음"
+  ],
+  "datalab_keywords": [
+   [
+    "한섬 채용"
+   ]
+  ],
+  "market_value_eok": 4478
+ },
+ {
+  "name": "현대그린푸드",
+  "dart_name": "주식회사 현대그린푸드",
+  "market": "KOSPI",
+  "rank_common": 254,
+  "stock_code": "453340",
+  "corp_code": "01721809",
+  "employees": 6543,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 6186,
+  "emp_rcept_no": "20260316001009",
+  "induty_code": "471",
+  "est_dt": "20230302",
+  "hm_url": "hyundaigreenfood.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "현대백화점",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)현대지에프홀딩스 39.3% — 상장사",
+  "notes": [
+   "합계 의심(푸드서비스 3,215 ≈ 나머지 3,328)",
+   "설립 2023-03-02 — 분할 · 합병 신설일 수 있음(재무 이력 확인)",
+   "그룹 현대백화점(기등록 형제 있음: 현대백화점)"
+  ],
+  "datalab_keywords": [
+   [
+    "현대그린푸드 채용"
+   ]
+  ],
+  "market_value_eok": 6390
+ },
+ {
+  "name": "하림",
+  "dart_name": "(주)하림",
+  "market": "KOSDAQ",
+  "rank_common": 278,
+  "stock_code": "136480",
+  "corp_code": "00857727",
+  "employees": 2564,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 2564,
+  "emp_rcept_no": "20260318000871",
+  "induty_code": "1012",
+  "est_dt": "20110104",
+  "hm_url": "-",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": "하림",
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "(주)하림지주 57.4% — 상장사",
+  "notes": [
+   "그룹 하림(기등록 형제 있음: 팬오션)",
+   "⚠ 검색어 오염 위험: 그룹 전체 이름(하림그룹 · 하림지주) — 계열 공채와 섞임"
+  ],
+  "datalab_keywords": [
+   [
+    "하림 채용"
+   ]
+  ],
+  "market_value_eok": 2836
+ },
+ {
+  "name": "OCI",
+  "dart_name": "OCI(주)",
+  "market": "KOSPI",
+  "rank_common": 266,
+  "stock_code": "456040",
+  "corp_code": "01760738",
+  "employees": 1680,
+  "emp_year": 2025,
+  "emp_method": "부문 합계행",
+  "employees_regular": 1591,
+  "emp_rcept_no": "20260313000943",
+  "induty_code": "20129",
+  "est_dt": "20230502",
+  "hm_url": "www.oci.co.kr",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "OCI 홀딩스㈜ 45.0% — 상장사",
+  "notes": [
+   "설립 2023-05-02 — 분할 · 합병 신설일 수 있음(재무 이력 확인)",
+   "⚠ 검색어 오염 위험: 짧은 영문 약어 · 그룹 전체 이름(OCI홀딩스 계열과 섞임)"
+  ],
+  "datalab_keywords": [
+   [
+    "OCI 채용"
+   ]
+  ],
+  "market_value_eok": 5900
+ },
+ {
+  "name": "비상교육",
+  "dart_name": "(주)비상교육",
+  "market": "KOSPI",
+  "rank_common": 653,
+  "stock_code": "100220",
+  "corp_code": "00520887",
+  "employees": 1056,
+  "emp_year": 2025,
+  "emp_method": "행 합",
+  "employees_regular": 999,
+  "emp_rcept_no": "20260625000299",
+  "induty_code": "5811",
+  "est_dt": "20020121",
+  "hm_url": "www.visang.com",
+  "fin_2025": "CFS",
+  "financial": false,
+  "group": null,
+  "rule_excluded": false,
+  "rule_excluded_reason": "",
+  "top_holder": "개인 42.8%",
+  "notes": [],
+  "datalab_keywords": [
+   [
+    "비상교육 채용"
+   ]
+  ],
+  "market_value_eok": 645
+ }
+]

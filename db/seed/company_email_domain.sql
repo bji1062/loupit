@@ -90,7 +90,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 9(2026-10-31): SK네트웍스 개인정보처리방침 · 보고서 문의처 @sk.com · 자기 웹 도메인 sknetworks.co.kr 의 MX 도 spmail.sk.com
                          'sk_networks',
                          -- 확장 웨이브 10(2026-11-07): SKC 2026 지속가능경영보고서 문의처 @sk.com · 자기 웹 도메인 skc.kr · skc.co.kr 의 MX 도 spmail.sk.com
-                         'skc');
+                         'skc',
+                         -- 확장 웨이브 13(2026-10-25): SK온 공식 홈 개인정보 관련 담당자 표 관측 주소 @sk.com · 자기 웹 도메인 sk-on.com 의 MX 도 spmail.sk.com
+                         'sk_on');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -748,3 +750,35 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'dbhitek.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'db_hitek';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'daesang.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'daesang';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 13 (2026-10-25 서빙 반영, 11개사 중 전용 10사 10도메인 + 그룹 줄 병합 1사)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-20-wave13/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 공고에 게시된 주소의 도메인만.
+-- 그룹 줄 병합: SK온 → 위 SK 그룹 줄(sk.com — 공식 홈 개인정보 관련 담당자 표 관측 · 자기 웹 sk-on.com 의 MX 도 spmail.sk.com).
+-- 미등록 0.
+-- ⓘ 웹 도메인과 메일 도메인이 다른 곳: 컬리(웹 kurly.com · 메일 kurlycorp.com) · 한섬(웹 handsome.co.kr · 메일 thehandsome.com — handsome.co.kr 도 MX 는 있으나 게시된 주소 0).
+-- ⓘ gscaltex.co.kr(DART 홈 칸 도메인)도 MX 가 있으나 게시된 주소는 gscaltex.com 뿐이라 그것만 넣었다.
+-- ⓘ halim.com — 하림 개인정보처리방침의 옛 개정본 담당자 · 수탁업체 줄에만 보인다(지금 담당 부서 · 보고서 문의처는 harim.com) — 넣지 않았다.
+-- ⓘ oci.co.kr 의 MX 는 OCI 그룹 메일 게이트웨이(ocigw.net)로 지주 OCI홀딩스 웹 도메인 oci-holdings.co.kr 와 같은 게이트웨이다. 도메인은 OCI 법인 웹 · 보고서 문의처 도메인이고 지주는 도메인이 따로라 그대로 넣었다.
+-- ⚠ toss.im · musinsa.com · kurlycorp.com — 같은 브랜드 아래 계열 법인(토스 커뮤니티 · 무신사 종속회사 · 컬리 자회사)이 같은 메일 도메인을 쓰는지는 확인하지 못했다.
+-- ⚠ hyundaigreenfood.com · oci.co.kr — 분할 전 옛 법인(지금 지주 현대지에프홀딩스 · OCI홀딩스)이 쓰던 도메인이라 지주 직원이 같은 도메인을 쓰는지는 확인하지 못했다.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'toss.im', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'toss';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'musinsa.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'musinsa';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'kurlycorp.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kurly';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'gscaltex.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'gs_caltex';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lxsemicon.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lx_semicon';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'thehandsome.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'handsome';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hyundaigreenfood.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hyundai_greenfood';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'harim.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'harim';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'oci.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'oci';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'visang.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'visang_edu';

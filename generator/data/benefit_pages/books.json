@@ -41,6 +41,7 @@
     {"comp": "samsung_fire", "h": "87857f7bd2", "mode": "both", "why": "교보문고 제휴 e북 열람(전자도서관)과 매년 도서 구입비 지원을 함께 적었다"},
     {"comp": "daewoong_pharm", "h": "2f5a0d6adc", "facets_remove": ["limit"], "why": "「무제한」은 사내/외 교육·사이버연수원·도서지원·사내북카페를 묶은 학습 환경 전체에 붙은 말이고 책값 한도를 밝힌 문장이 아니다"},
     {"comp": "foosung", "h": "41b541d254", "facets_add": ["scope"], "why": "원문 「업무용 도서 지원」 — 업무 도서 범위를 밝혔으나 규칙이 「업무용」을 못 잡는다"},
-    {"comp": "daou_tech", "h": "8fff570036", "mode": "buy", "facets_add": ["scope"], "why": "신청 받은 직무 관련 도서를 회사가 제공 — 구입 낱말 없이 책값 부담 · 범위는 직무 관련 도서"}
+    {"comp": "daou_tech", "h": "8fff570036", "mode": "buy", "facets_add": ["scope"], "why": "신청 받은 직무 관련 도서를 회사가 제공 — 구입 낱말 없이 책값 부담 · 범위는 직무 관련 도서"},
+    {"comp": "toss", "h": "a975d58076", "mode": "buy", "why": "원문 「도서, 워크샵, 세미나 등 업무 교육비 100% 지원」 — 도서 비용을 교육비로 대 줌"}
   ]
 }
