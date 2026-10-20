@@ -305,6 +305,21 @@ WAVE12_ALIASES: dict[str, list[str]] = {
     "daesang": ["대상주식회사", "Daesang Corporation"],  # 법인 국문 상호 · 영문 — 대상홀딩스 · 브랜드 청정원 · 종가 금지
 }
 
+# 확장 웨이브 13(2026-10-25 서빙 반영 · 후보 풀 3차 둘째 · 비상장 첫 웨이브) — 구명·영문·약칭·법인 국문 상호·DART 목록 이름만. 지주·형제 법인 이름·상표는 절대 금지.
+WAVE13_ALIASES: dict[str, list[str]] = {
+    "toss": ["비바리퍼블리카", "토스", "Viva Republica"],  # DART 목록 이름(표시명 괄호 꼴 · 리드 판정 163) · 브랜드 별칭(163) · 영문 — 토스뱅크 · 토스증권 · 토스페이먼츠 등 계열 이름 금지
+    "musinsa": ["MUSINSA"],  # 영문(DART MUSINSA Co., Ltd.) — 29CM · 무신사페이먼츠 등 종속회사 · 브랜드 이름 금지
+    "kurly": ["Kurly"],  # 영문(DART Kurly Inc.) — 서비스 상표 마켓컬리 · 자회사 컬리넥스트마일 이름 금지
+    "gs_caltex": ["GS Caltex"],  # 영문 약식(DART GS Caltex Corporation) — 지에스에너지 · GS 계열 이름 금지
+    "sk_on": ["에스케이온", "SK On"],  # DART 목록 이름 · 영문 — SK이노베이션 · SK엔무브 등 계열 이름 금지
+    "lx_semicon": ["실리콘웍스", "엘엑스세미콘", "LX Semicon"],  # 구명(2021-07 상호 변경) · 법인 국문 상호 · 영문 — LX홀딩스 · LX인터내셔널 · LX하우시스 이름 금지
+    "handsome": ["Handsome"],  # 영문(DART HANDSOME CORPORATION) — 현대백화점그룹 · 현대홈쇼핑 · 브랜드 이름 금지
+    "hyundai_greenfood": ["Hyundai Greenfood"],  # 영문(DART HYUNDAIGREENFOOD CO., LTD) — 지주 현대지에프홀딩스 · 현대백화점 이름 금지
+    "harim": ["Harim"],  # 영문(DART Harim Co., Ltd.) — 하림지주 · 팬오션 · 올품 이름 금지
+    "oci": ["오씨아이", "OCI Company"],  # 법인 국문 명칭(오씨아이 주식회사) · 영문 — 지주 OCI홀딩스 · OCI 계열 이름 금지
+    "visang_edu": ["Visang Education"],  # 영문(DART VISANG EDUCATION INC) — 계열 비상캠퍼스 · 비상교과서 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -576,6 +591,9 @@ def build_company_meta() -> dict:
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
     for eng, extra_aliases in WAVE12_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE13_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

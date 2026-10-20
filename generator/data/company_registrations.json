@@ -9,6 +9,23 @@
   ],
   "waves": [
     {
+      "date": "2026-10-25",
+      "label": "회사 확장 웨이브 13",
+      "companies": [
+        "gs_caltex",
+        "handsome",
+        "harim",
+        "hyundai_greenfood",
+        "kurly",
+        "lx_semicon",
+        "musinsa",
+        "oci",
+        "sk_on",
+        "toss",
+        "visang_edu"
+      ]
+    },
+    {
       "date": "2026-10-18",
       "label": "회사 확장 웨이브 12",
       "companies": [
