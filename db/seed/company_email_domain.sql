@@ -91,7 +91,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          'sk_networks',
                          -- 확장 웨이브 10(2026-11-07): SKC 2026 지속가능경영보고서 문의처 @sk.com · 자기 웹 도메인 skc.kr · skc.co.kr 의 MX 도 spmail.sk.com
                          'skc',
-                         -- 확장 웨이브 13(2026-10-25): SK온 공식 홈 개인정보 관련 담당자 표 관측 주소 @sk.com · 자기 웹 도메인 sk-on.com 의 MX 도 spmail.sk.com
+                         -- 확장 웨이브 13(2026-10-20): SK온 공식 홈 개인정보 관련 담당자 표 관측 주소 @sk.com · 자기 웹 도메인 sk-on.com 의 MX 도 spmail.sk.com
                          'sk_on');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -752,7 +752,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'daesang.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'daesang';
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- 확장 웨이브 13 (2026-10-25 서빙 반영, 11개사 중 전용 10사 10도메인 + 그룹 줄 병합 1사)
+-- 확장 웨이브 13 (2026-10-20 서빙 반영, 11개사 중 전용 10사 10도메인 + 그룹 줄 병합 1사)
 -- 근거는 각사 evidence(loupit-evidence/2026-10-20-wave13/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 공고에 게시된 주소의 도메인만.
 -- 그룹 줄 병합: SK온 → 위 SK 그룹 줄(sk.com — 공식 홈 개인정보 관련 담당자 표 관측 · 자기 웹 sk-on.com 의 MX 도 spmail.sk.com).
 -- 미등록 0.

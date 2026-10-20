@@ -57,7 +57,7 @@ def test_FN1_seed_populates_mapping_at_last_step(seeded_db):
     """`load.main(fresh=True)` 만으로 TCORP·TCOMPANY_CORP 가 채워진다(재시드 후 매핑 소실 방지)."""
     rows = load_corp.read_map()
     mapped = [r for r in rows if r["status"] != "UNMAPPED"]
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 285  # − LG · LS 지주 · HPSP 등록 해제(2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-16) + 확장 웨이브 7 22개사(2026-10-16) + 확장 웨이브 8 23개사(2026-10-16) + 확장 웨이브 9 22개사(2026-10-16) + 확장 웨이브 10 12개사(2026-10-16) + 확장 웨이브 11 5개사(2026-10-16) + 확장 웨이브 12 18개사(2026-10-18) + 확장 웨이브 13 11개사(2026-10-25)
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 285  # − LG · LS 지주 · HPSP 등록 해제(2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-16) + 확장 웨이브 7 22개사(2026-10-16) + 확장 웨이브 8 23개사(2026-10-16) + 확장 웨이브 9 22개사(2026-10-16) + 확장 웨이브 10 12개사(2026-10-16) + 확장 웨이브 11 5개사(2026-10-16) + 확장 웨이브 12 18개사(2026-10-18) + 확장 웨이브 13 11개사(2026-10-20)
     assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 284
     # 매핑된 회사는 전부 실재하는 TCOMPANY 를 가리킨다(고아 0)
     assert _scalar(

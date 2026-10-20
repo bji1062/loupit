@@ -180,7 +180,7 @@ describe('deriveCodes — 번들에서 코드 사전을 만든다', () => {
   test('실 번들 94종의 대표 이름·별칭이 파이썬과 같다(공유 픽스처)', () => {
     const cases = JSON.parse(readFileSync(new URL('../../../generator/tests/data/find_label_cases.json', import.meta.url), 'utf8'));
     const entries = Object.entries(cases.codes);
-    assert.equal(entries.length, 94, '픽스처가 실데이터 94종이 아니다'); // 2026-10-25 확장 웨이브 13 laundry 신설 +1 · 2026-10-31 확장 웨이브 9 family_onboard · barber_shop 신설 +2 · 2026-10-14 확장 웨이브 6 grocery_support · leave_buyout 신설 +2 · 2026-09-28 wedding 사용 회사 0 · 2026-10-04 long_service 사용 회사 0 · R-3 후속 정리 2 severance_plus 신설
+    assert.equal(entries.length, 94, '픽스처가 실데이터 94종이 아니다'); // 2026-10-20 확장 웨이브 13 laundry 신설 +1 · 2026-10-31 확장 웨이브 9 family_onboard · barber_shop 신설 +2 · 2026-10-14 확장 웨이브 6 grocery_support · leave_buyout 신설 +2 · 2026-09-28 wedding 사용 회사 0 · 2026-10-04 long_service 사용 회사 0 · R-3 후속 정리 2 severance_plus 신설
     // 행 하나 = 회사 하나. 회사 안에서 코드는 UNIQUE 라 빈도만큼 회사를 나눈다(파이썬 쪽과 같은 방식).
     const companies = [];
     for (const [code, info] of entries) {
