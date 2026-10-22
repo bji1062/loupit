@@ -19,7 +19,7 @@ prober.kr 주식 히트맵의 문법(업종 그룹 → 칸 크기 → 색 7단�
 
 첫 화면(정적 HTML)에는 **복지 지도만** 굽는다(2026-10-22). 실적 1 · 카테고리 9 패널은 14,000칸 · 6.3MB 라
 한 HTML 에 같이 구우면 휴대폰이 화면 요소 4만 개를 만드느라 탭이 한참 안 눌린다(10-21 실측). 그래서 이 패널들은
-패널마다 데이터 파일(`heatmap/<모드>-<패널>.json`)로 내고, `heatmap.js` 가 탭·칩을 처음 열 때 받아 같은 마크업으로
+패널마다 데이터 파일(`heatmap/<모드>-<패널>.<지문>.json`)로 내고, `heatmap.js` 가 탭·칩을 처음 열 때 받아 같은 마크업으로
 그린다. 같은 마크업이라는 보장은 `_hm_maps.html` 매크로 하나 + 픽스처 대조 테스트(`make_heatmap_cases.py`)다.
 
 표현은 **사실만**(DEC-B·SP-FIN): 색은 수치 구간이고 등급·전망 어휘를 쓰지 않는다. 재무가 안 실린
@@ -278,6 +278,7 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
 
 # ── 패널 데이터 파일 ─────────────────────────────────────────────────────────
 DATA_DIR = "heatmap"  # dist 안 폴더 — nginx `location ^~ /heatmap/` 이 서빙한다
+DATA_VERSION = 1  # 데이터 파일 형식 번호 — heatmap.js 가 같은 값만 그린다(형식이 바뀌면 둘을 함께 올린다)
 ORIENT_ORDER = ("landscape", "portrait")  # 템플릿 매크로의 순서와 같다(가로 먼저)
 
 
@@ -304,7 +305,7 @@ def panel_data(panel: dict) -> dict:
     tiles = [[t["nm"], t["industry"], t["gkey"], t["ckey"], t["cls"], t["sub"], t["tip"],
               f"#{t['anchor']}" if t["anchor"] else ""]
              for t in first["tiles"]]
-    out = {"v": 1, "groups": groups, "tiles": tiles}
+    out = {"v": DATA_VERSION, "groups": groups, "tiles": tiles}
     for o in ORIENT_ORDER:
         lay = lays[o]
         if {g["gkey"] for g in lay["groups"]} != set(gidx) or {t["i"] for t in lay["tiles"]} != set(tidx):
@@ -316,8 +317,9 @@ def panel_data(panel: dict) -> dict:
 
 def _data_pages(view: dict) -> list[Page]:
     """복지 모드를 뺀 패널마다 데이터 파일 Page 하나. 같은 스테이징 · gzip · 매니페스트 · 스왑을 탄다.
-    각 패널 dict 에 `src`(내용 지문 `?v=` 가 붙은 주소)를 달아 템플릿이 그릇에 심게 한다 — 지문이 주소에
-    있어 빌드 사이에 브라우저 캐시가 엇갈리지 않는다."""
+    각 패널 dict 에 `src` 를 달아 템플릿이 그릇에 심게 한다. **내용 지문이 파일 이름에 있다** — nginx 는 그 경로에 있는
+    파일을 그대로 내므로 `?v=` 방식이면 옛 페이지가 새 빌드의 내용을 옛 주소로 1년 캐시하고, 롤백 때 지문이 돌아와도
+    남는다. 파일 이름이면 옛 페이지는 404 를 받는다(JS 가 「새로고침」 안내를 띄운다)."""
     pages = []
     for m in view["modes"]:
         for p in m["panels"]:
@@ -326,8 +328,9 @@ def _data_pages(view: dict) -> list[Page]:
             continue
         for p in m["panels"]:
             body = json.dumps(panel_data(p), ensure_ascii=False, separators=(",", ":"))
-            path = f"{DATA_DIR}/{m['key']}-{p['key']}.json"
-            p["src"] = f"/{path}?v={hashlib.sha256(body.encode('utf-8')).hexdigest()[:10]}"
+            digest = hashlib.sha256(body.encode("utf-8")).hexdigest()[:10]
+            path = f"{DATA_DIR}/{m['key']}-{p['key']}.{digest}.json"
+            p["src"] = f"/{path}"
             pages.append(Page(path=path, url=f"{CFG.site_origin}/{path}", html=body, title=path, description="",
                               in_sitemap=False, content_type="application/json; charset=utf-8"))
     return pages

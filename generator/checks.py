@@ -1,4 +1,4 @@
-"""generator/checks.py — 생성물 검증 게이트 (SP-GEN-12, Tier-0 GC-2·GC-10·GC-28 · SP-BEN GC-29·GC-30).
+"""generator/checks.py — 생성물 검증 게이트 (SP-GEN-12, Tier-0 GC-2·GC-10·GC-28 · SP-BEN GC-29·GC-30 · SP-HEAT GC-32).
 
 `run_generated_checks(out_dir, pages)`는 pytest(RED→GREEN 테스트)와 릴리스
 게이트(SP-GEN-11 `stage_and_swap` 4단계)가 **동일 호출**한다(검증 로직
@@ -129,6 +129,30 @@ def check_market_rows(ctx, markets: dict[str, str] | None = None) -> None:
         raise BuildError("GC-31: 종목코드가 있는데 krx_sector.csv 에 행이 없다(비상장으로 잘못 표시됨) — " + ", ".join(missing))
 
 
+HEATMAP_HTML_GZ_MAX = 70_000   # /heatmap 첫 HTML 압축 상한(실측 2026-10-22 약 35KB) — 지도를 다시 구워 넣으면 여기서 멈춘다
+HEATMAP_DATA_GZ_MAX = 150_000  # 패널 데이터 파일 하나의 압축 상한(실측 최대 약 65KB)
+
+
+def _check_heatmap_weight(pages: list[Page]) -> None:
+    """GC-32(SP-HEAT-8) — 히트맵 첫 HTML 과 패널 데이터 파일이 가볍다.
+
+    첫 화면에 복지 지도만 굽는 구조(716KB → 35KB)는 누가 다른 패널을 템플릿에 되돌리거나 데이터 파일에 칸 설명을
+    두 배치마다 싣는 순간 조용히 무너진다 — 페이지는 여전히 뜨고 휴대폰만 느려지므로 실데이터 빌드의 게이트에서 막는다.
+    히트맵 페이지가 없는 빌드(부분 빌드·다른 테스트)는 건너뛴다."""
+    import gzip
+    for p in pages:
+        if p.path == "heatmap.html":
+            cap, label = HEATMAP_HTML_GZ_MAX, "/heatmap 첫 HTML"
+        elif p.path.startswith("heatmap/") and p.path.endswith(".json"):
+            cap, label = HEATMAP_DATA_GZ_MAX, f"히트맵 데이터 {p.path}"
+        else:
+            continue
+        size = len(gzip.compress(p.html.encode("utf-8"), compresslevel=9))
+        if size > cap:
+            raise BuildError(f"GC-32: {label} 압축 크기 {size:,}B 가 상한 {cap:,}B 를 넘는다 — 첫 화면에 지도를 되돌려 구웠거나 "
+                             f"데이터 파일이 부풀었다(SP-HEAT-8)")
+
+
 def run_generated_checks(out_dir: str, pages: list[Page]) -> None:
     """생성물 검증 게이트 — 실패 시 `BuildError`. `stage_and_swap` 4단계 소비."""
     _check_company_count(pages)
@@ -136,3 +160,4 @@ def run_generated_checks(out_dir: str, pages: list[Page]) -> None:
     _check_home_present(pages)
     _check_benefit_human_text()
     _check_benefit_reachable(pages)
+    _check_heatmap_weight(pages)

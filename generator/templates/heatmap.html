@@ -1,6 +1,6 @@
 {# heatmap.html — 복지·실적·카테고리 히트맵(SP-HEAT-4). 배치는 빌드 시점 %-좌표라 JS 없이 그려진다.
    정적 HTML 에는 복지 지도만 굽고(첫 화면), 실적·카테고리 지도는 패널마다 데이터 파일(`p.src`)로 낸다 —
-   heatmap.js 가 탭·칩을 처음 열 때 받아 같은 마크업으로 그린다(없으면 복지 지도만 보이고 나머지 자리에는 안내). page_type 미선언 = 광고 0. #}
+   heatmap.js 가 탭·칩을 처음 열 때 받아 같은 마크업으로 그린다(없으면 복지 지도만 보이고 나머지 자리에는 안내 — 스크립트가 못 돌 때도 같은 안내). page_type 미선언 = 광고 0. #}
 {% extends "base.html" %}
 {% block css_extra %}<link rel="stylesheet" href="/assets/v2/css/heatmap.css">{% endblock %}
 {% block main %}
@@ -32,7 +32,7 @@
           JS 가 채우며(정적 상태에서는 안내 문구), aria-live 로 스크린리더에도 읽힌다. -#}
       <p class="hm-readout" data-readout aria-live="polite">칸에 마우스를 올리면 그 회사와 같은 묶음이 함께 강조됩니다.</p>
       {% if p.src %}
-      <noscript><p class="hm-nojs">이 지도는 자바스크립트를 켜야 보입니다.</p></noscript>
+      <p class="hm-nojs">이 지도는 자바스크립트가 필요합니다. 새로고침하거나 최신 브라우저로 열어 주세요.</p>
       {% else %}
       {{ maps(p) }}
       {% endif %}
