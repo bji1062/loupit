@@ -11,6 +11,7 @@
 import { el } from './dom.js';
 import { pairTarget } from './benefits.js'; // 두 슬롯이 찼을 때의 목적지(SP-CMP-2) — 집은 하나다
 import { onSearchInput, selectCompany, clearSlot } from './search.js';
+import { slotSeq } from './company-store.js';
 import { tenureItems, exclusionSummary } from './calc.js'; // 근속 조건 항목 수(입력 보조문)·뺀 행 수 — 순수 함수, 결과 화면과 같은 판정
 
 
@@ -46,7 +47,13 @@ export function showDetailError(state, slot, info, hooks = {}) {
   const retry = el('button', { type: 'button', text: '다시 시도' });
   retry.addEventListener('click', () => {
     clearDetailError(slot);
-    selectCompany(state, slot, info.compId, hooks); // 다시 받아 이 슬롯에 반영 — 실패하면 같은 안내가 다시 선다
+    const p = selectCompany(state, slot, info.compId, hooks); // 다시 받아 이 슬롯에 반영 — 실패하면 같은 안내가 다시 선다
+    const mine = slotSeq(state, slot); // 이 시도의 순번
+    p.then((ok) => {
+      // 시도가 끝내 실패했고 그 사이 사용자가 손대지 않았다면, 부팅 때 쥔 원래 초안 값을 계속 지킨다(L-b)
+      const held = state.ui && state.ui.heldDraft && state.ui.heldDraft[slot];
+      if (!ok && held && slotSeq(state, slot) === mine) held.seq = mine;
+    });
   });
   row.append(retry);
   box.append(row);
@@ -133,6 +140,12 @@ export function reflectSearchUI(state, slot) {
   if (st === 'empty' || st === 'idle') clearCandidatesDom(slot);
 }
 
+// 조합 · 불러오기 실패 안내를 지운다(다른 경로의 성공 뒤에 낡은 안내가 남지 않게, 검토 L-a). 상자가 없으면 만들지 않는다.
+export function clearNotice() {
+  const box = byId('ui-notify');
+  if (box) box.textContent = '';
+}
+
 export function notify(msg) {
   let box = byId('ui-notify');
   if (!box && typeof document !== 'undefined') {
@@ -147,7 +160,7 @@ export function notify(msg) {
 export function searchHooks(state, deps) {
   return {
     reflectSlotLabel,
-    closeCandidates: (slot) => { clearCandidatesDom(slot); reflectSearchUI(state, slot); },
+    closeCandidates: (slot) => { clearCandidatesDom(slot); reflectSearchUI(state, slot); clearNotice(); }, // 회사 고르기 성공 때 불린다
     notify,
     // 회사 상세를 못 받았으면(info 있음) 그 회사 이름 + 다시 받기, 검색 상태 오류면 기존 검색 실패 안내
     showSlotError: (slot, _msg, info) => (info ? showDetailError(state, slot, info, searchHooks(state, deps)) : reflectSearchUI(state, slot)),

@@ -605,3 +605,83 @@ describe('L2 — 후보 목록 · 무결과를 그리면 받는 중이던 상세
     assert.match(document.getElementById('company-page').textContent, /검색 결과가 없습니다/);
   });
 });
+
+// ── 재검토 반영 ──────────────────────────────────────────────────────────────
+describe('N1 — 초안 실패 + URL 이 같은 칸을 다른 회사로 채우면 엉뚱한 안내가 뜨지 않는다', () => {
+  test('초안 a=KT(503) + ?a=naver(성공) → A=네이버 · 실패 안내 없음', async () => {
+    installFetch({ fail: [KT] });
+    loadShell('https://loupit.example/compare/?a=naver');
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    assert.equal(App.state.matched.a.comp_id, NAVER);
+    assert.equal(document.querySelector('.slot-detail-error'), null, '채워진 칸 아래에 낡은 안내를 띄우지 않는다');
+  });
+
+  test('같은 칸에 초안 실패와 URL 실패가 둘 다 있으면 URL 쪽만', async () => {
+    installFetch({ fail: [KT, NAVER] });
+    loadShell('https://loupit.example/compare/?a=naver');
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    const rows = document.querySelectorAll('.slot-detail-error[data-slot="a"]');
+    assert.equal(rows.length, 1);
+    assert.match(rows[0].textContent, /네이버/);
+  });
+
+  test('칸이 채워지면 그 칸 안내가 사라진다', async () => {
+    installFetch({ fail: [KT] });
+    loadShell();
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    assert.ok(document.querySelector('.slot-detail-error[data-slot="a"]'));
+    await selectCompany(App.state, 'a', NAVER, searchHooks(App.state, {}));
+    assert.equal(document.querySelector('.slot-detail-error[data-slot="a"]'), null);
+  });
+});
+
+describe('L-a — 조합 실패 안내는 다른 경로의 성공 뒤에도 사라진다', () => {
+  test('조합 실패 → 검색으로 회사 선택 성공 → 안내 지워짐', async () => {
+    installFetch({ fail: [NAVER] });
+    loadShell();
+    await boot(HOOKS);
+    await pickTrendingPairLoaded({ a_comp_id: KT, b_comp_id: NAVER }, { go: () => {} }, App.state);
+    assert.match(document.getElementById('ui-notify').textContent, /다시 눌러 주세요/);
+    await selectCompany(App.state, 'a', KT, searchHooks(App.state, {}));
+    assert.equal(document.getElementById('ui-notify').textContent, '');
+  });
+});
+
+describe('L-b — 「다시 시도」가 또 실패해도 원래 초안 값을 지킨다', () => {
+  test('재시도 실패 뒤에도 저장 때 원래 초안 값', async () => {
+    installFetch({ fail: [KT] });
+    loadShell();
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT, excluded: ['meal'] } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    document.querySelector('.slot-detail-error[data-slot="a"] button').click();
+    await settle(40);
+    assert.ok(document.querySelector('.slot-detail-error[data-slot="a"]'), '안내가 다시 섰다');
+    assert.deepEqual(snapshotInput(App.state).slots.a, { comp_id: KT, excluded: ['meal'] });
+  });
+});
+
+describe('L-c — 쌍을 바꾸는 행동 뒤에는 초안 원래 값이 되살아나지 않는다', () => {
+  test('held a=KT 인데 최근 비교를 불러와 a 가 비면 저장 때 KT 가 아니다', async () => {
+    installFetch({ fail: [KT] });
+    loadShell();
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    const record = { slots: { a: { comp_id: 9999 }, b: { comp_id: NAVER } }, input: {} }; // a 는 REF 밖
+    await restoreComparisonLoaded(record, { runReport: () => ({}), go: () => {} }, App.state);
+    assert.equal(App.state.matched.a, null);
+    assert.equal(snapshotInput(App.state).slots.a.comp_id, undefined);
+  });
+});

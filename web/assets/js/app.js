@@ -332,7 +332,12 @@ export async function boot(hooks = {}) {
   };
   deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
-  for (const f of detailFailed) { // 상세를 못 받은 슬롯 — 「<회사명> 정보를 불러오지 못했습니다」 + 그 회사 다시 받기(검토 M2a)
+  // 상세를 못 받은 슬롯 — 「<회사명> 정보를 불러오지 못했습니다」 + 그 회사 다시 받기(검토 M2a).
+  // 칸당 하나: 같은 칸에 URL 실패와 초안 실패가 다 있으면 URL 쪽만, 칸이 이미 다른 회사로 채워졌으면 안내하지 않는다(N1).
+  const toShow = new Map();
+  for (const f of detailFailed) if (!toShow.has(f.slot) || f.src === 'url') toShow.set(f.slot, f);
+  for (const f of toShow.values()) {
+    if (App.state.matched[f.slot]) continue;
     const c = (App.state.REF.companies || []).find((x) => x.comp_id === f.id);
     showDetailError(App.state, f.slot, { compId: f.id, compNm: c ? c.comp_nm : '' }, searchHooks(App.state, deps));
   }

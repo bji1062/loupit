@@ -86,9 +86,9 @@ class IndexCompany(BaseModel):
 
 
 class CategoryStats(BaseModel):
+    """9각형 · 나비 눈금 기준 — 평균이 아니라 **합**을 싣는다(JS categoryStats 와 같은 산술로 round2 하려고)."""
     model_config = ConfigDict(extra="forbid")
 
-    """9각형 · 나비 눈금 기준 — 평균이 아니라 **합**을 싣는다(JS categoryStats 와 같은 산술로 round2 하려고)."""
     total: int  # 분모 = 전체 등록 회사 수
     sums: dict[str, int]  # 카테고리 → 표시 행을 뺀 전 회사 항목 수의 합
     rmax: int  # 한 회사 · 한 카테고리의 최댓값(최소 1)

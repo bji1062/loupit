@@ -27,7 +27,11 @@ function seqBag(state) {
   return bag;
 }
 export function bumpSlot(state, slot) { return ++seqBag(state)[slot]; }
-export function bumpPair(state) { return ++seqBag(state).pair; }
+export function bumpPair(state) {
+  // 쌍을 바꾸는 행동이 시작되면 부팅 때 쥐어 둔 초안 원래 값은 더 이상 지키지 않는다(저장 때 되살아나지 않게, 검토 L-c).
+  if (state && state.ui && state.ui.heldDraft) state.ui.heldDraft = {};
+  return ++seqBag(state).pair;
+}
 export function slotSeq(state, slot) { return seqBag(state)[slot]; }
 export function seqSnapshot(state) { return { ...seqBag(state) }; }
 export function seqCurrent(state, snap, slots) {
