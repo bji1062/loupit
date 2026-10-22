@@ -169,6 +169,16 @@ export function pendingUpdateIds(requests) {
 // ── 이하 DOM 배선(브라우저 전용) — 편집 폼 루트가 있을 때만 초기화(테스트 import 안전) ──
 export function initEditPage() {
   const $ = (id) => document.getElementById(id);
+  // 캐시에 남은 옛 edit.html 에 새 edit.js 가 붙으면 새 칸이 없어 아래 배선이 던지고 화면이 빈다.
+  // 옛·새 HTML 에 모두 있는 #edit-card 안에 안내만 띄우고 멈춘다.
+  if (!$('f-search') || !$('req-section') || !$('code-results')) {
+    const card = $('edit-card');
+    const note = document.createElement('p');
+    note.className = 'auth-error'; note.setAttribute('role', 'alert');
+    note.textContent = '화면이 새로 바뀌었어요. 새로고침해 주세요.';
+    card.textContent = ''; card.append(note); card.hidden = false;
+    return;
+  }
   const state = {
     comp_id: null, comp_nm: '', benefits: new Map(), requests: [], mode: 'create', editingId: null,
     prefillDone: false,

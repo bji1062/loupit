@@ -681,3 +681,181 @@ def test_BR29_코드_목록은_서버와_생성기가_같은_규칙을_쓴다():
     assert [c["code"] for c in out] == ["transport", "a"]  # compensation 이 perks 보다 앞
     assert next(c for c in out if c["code"] == "a")["aliases"] == ["에이 둘"]  # 대표 이름은 별칭에서 뺀다
     assert next(c for c in out if c["code"] == "transport")["label"] == find.LABEL_OVERRIDE["transport"]
+
+
+# ── BR-30~: 검토 반영(2026-10-21) — stale 판정 · 요청자 상태 · 한도 경합 · 잃었던 커버리지 ─────────────────────
+
+async def _update_req(br, who="alice", name="수정안", amt=1) -> int:
+    r = await _put(br, who, {"base_dtm": await _token(br, who), "benefit_nm": name, "benefit_amt": amt})
+    assert r.status_code == 202, r.text
+    return r.json()["request"]["request_id"]
+
+
+@pytest.mark.asyncio
+async def test_BR30_시드_적재가_MOD_DTM_만_올려도_내용이_같으면_stale_이_아니다(br):
+    """load.py 는 공식 행의 배지를 official→est→official 로 오가며 내용이 같아도 MOD_DTM 을 올린다."""
+    rid = await _update_req(br)
+    await database.execute("UPDATE TCOMPANY_BENEFIT SET BADGE_CD='est' WHERE BENEFIT_ID=%s", (br["meal"],))
+    await database.execute("UPDATE TCOMPANY_BENEFIT SET BADGE_CD='official', MOD_DTM = UTC_TIMESTAMP() + INTERVAL 9 SECOND "
+                           "WHERE BENEFIT_ID=%s", (br["meal"],))
+    item = (await br["c"].get("/console/queues", cookies=br["ck"]["op"])).json()["benefit_requests"][0]
+    assert item["stale"] is False, "시각만 바뀐 행이 stale 로 보인다"
+    ok = await _approve(br, rid)
+    assert ok.status_code == 200, ok.text
+    assert (await database.fetch_one("SELECT BENEFIT_NM FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s",
+                                     (br["meal"],)))["BENEFIT_NM"] == "수정안"
+
+
+@pytest.mark.asyncio
+async def test_BR30b_내용이_실제로_바뀌면_stale_콘솔_표시와_승인_판정이_같다(br):
+    rid = await _update_req(br)
+    await database.execute("UPDATE TCOMPANY_BENEFIT SET BENEFIT_AMT=999 WHERE BENEFIT_ID=%s", (br["meal"],))
+    item = (await br["c"].get("/console/queues", cookies=br["ck"]["op"])).json()["benefit_requests"][0]
+    assert item["stale"] is True
+    r = await _approve(br, rid)
+    assert r.status_code == 409 and r.json()["detail"] == "stale"
+
+
+@pytest.mark.asyncio
+async def test_BR31_요청한_뒤_탈퇴한_회원의_요청은_승인할_수_없다(br):
+    rid_c = (await _post(br, "alice", {"benefit_cd": "gym", "benefit_nm": "헬스"})).json()["request"]["request_id"]
+    rid_u = await _update_req(br, "bob", "밥 수정")
+    for who in ("alice", "bob"):  # member.py 탈퇴: 소프트 삭제 + 재직 인증 삭제
+        await database.execute("UPDATE TMEMBER SET LOGIN_EMAIL_NM=NULL, STATUS_CD='withdrawn' WHERE MBR_ID=%s",
+                               (br["ids"][f"br-{who}"],))
+    await database.execute("DELETE FROM TEMPLOY_VERIFICATION WHERE MBR_ID=%s", (br["ids"]["br-bob"],))
+    items = {i["id"]: i for i in (await br["c"].get("/console/queues", cookies=br["ck"]["op"])).json()["benefit_requests"]}
+    assert items[rid_c]["requester"] == "withdrawn" and items[rid_u]["requester"] == "withdrawn"
+    before = await _bodies(br)
+    for rid, body in ((rid_c, {"benefit_cd": "gym"}), (rid_u, {})):
+        r = await _approve(br, rid, **body)
+        assert r.status_code == 409 and r.json()["detail"] == "requester_inactive", r.text
+    assert await _bodies(br) == before
+    assert (await _reject(br, rid_c, note="탈퇴")).status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_BR31b_재직_인증이_만료_폐기된_요청자도_승인할_수_없다(br):
+    rid1 = (await _post(br, "alice", {"benefit_cd": "gym", "benefit_nm": "헬스"})).json()["request"]["request_id"]
+    rid2 = (await _post(br, "bob", {"benefit_cd": "book", "benefit_nm": "도서"})).json()["request"]["request_id"]
+    await database.execute("UPDATE TEMPLOY_VERIFICATION SET EXPIRES_DTM = UTC_TIMESTAMP() - INTERVAL 1 DAY WHERE MBR_ID=%s",
+                           (br["ids"]["br-alice"],))
+    await database.execute("UPDATE TEMPLOY_VERIFICATION SET REVOKED_DTM = UTC_TIMESTAMP() WHERE MBR_ID=%s",
+                           (br["ids"]["br-bob"],))
+    items = {i["id"]: i for i in (await br["c"].get("/console/queues", cookies=br["ck"]["op"])).json()["benefit_requests"]}
+    assert items[rid1]["requester"] == "no_employment" and items[rid2]["requester"] == "no_employment"
+    for rid, cd in ((rid1, "gym"), (rid2, "book")):
+        r = await _approve(br, rid, benefit_cd=cd)
+        assert r.status_code == 409 and r.json()["detail"] == "requester_inactive"
+    assert await _count("TCOMPANY_BENEFIT", "COMP_ID=%s", (br["a"],)) == 1
+
+
+@pytest.mark.asyncio
+async def test_BR32_병렬_제출도_하루_한도를_넘지_못한다(br, monkeypatch):
+    from server.config import get_settings
+    monkeypatch.setattr(get_settings(), "daily_edit_limit", 2)
+    rs = await asyncio.gather(*[_post(br, "alice", {"benefit_nm": f"병렬 {i}"}) for i in range(6)])
+    codes = sorted(r.status_code for r in rs)
+    assert codes == [202, 202, 429, 429, 429, 429], codes
+    assert await _count("TBENEFIT_EDIT_REQUEST") == 2
+
+
+@pytest.mark.asyncio
+async def test_BR33_대기가_표시_상한을_넘으면_전체_건수를_따로_알린다(br):
+    from server.services import console_view
+    for i in range(3):
+        await _post(br, "alice", {"benefit_nm": f"대기 {i}"})
+    assert len(await console_view.list_pending_benefit_requests(limit=2)) == 2
+    assert await console_view.count_pending_benefit_requests() == 3
+    data = (await br["c"].get("/console/queues", cookies=br["ck"]["op"])).json()
+    assert data["benefit_requests_total"] == 3 and len(data["benefit_requests"]) == 3
+
+
+@pytest.mark.asyncio
+async def test_BR34_공개_이력_no_store_최신순_키셋_키_화이트리스트_닉네임_존치(br):
+    from server.tests.member_edit_support import approved_create
+    for cd in ("gym", "book", "snack"):
+        r = await approved_create(br["a"], br["ids"]["br-alice"], BenefitCreateIn(benefit_cd=cd, benefit_nm=cd), ctgr="perks")
+        assert r["result"] == "ok", r
+    await database.execute(
+        "INSERT INTO TBENEFIT_EDIT_LOG (COMP_ID, ACTOR_MBR_ID, ACTOR_KIND_CD, EDIT_TYPE_CD, EDIT_NOTE_CTNT) "
+        "VALUES (%s, NULL, 'operator', 'update', '운영자 정정')", (br["a"],))
+    r = await br["c"].get(f"/companies/{br['a']}/edits")
+    assert r.status_code == 200 and r.headers["cache-control"] == "no-store"
+    items = r.json()
+    assert len(items) == 4 and items[0]["nickname"] == "운영자"
+    ids = [i["edit_id"] for i in items]
+    assert ids == sorted(ids, reverse=True) and "EDIT_LOG_ID" not in r.text
+    assert set(items[0]) <= {"edit_id", "nickname", "actor_kind", "edit_type", "before", "after", "edit_note", "dtm"}
+    page1 = (await br["c"].get(f"/companies/{br['a']}/edits?limit=3")).json()
+    assert [i["edit_id"] for i in page1] == ids[:3]
+    page2 = (await br["c"].get(f"/companies/{br['a']}/edits?limit=3&before={page1[-1]['edit_id']}")).json()
+    assert [i["edit_id"] for i in page2] == ids[3:]
+    assert (await br["c"].get(f"/companies/{br['a']}/edits?before={ids[-1]}")).json() == []
+    # 탈퇴한 기여자의 닉네임은 이력에 남는다(닉네임은 존치, 이메일만 파기)
+    await database.execute("UPDATE TMEMBER SET LOGIN_EMAIL_NM=NULL, STATUS_CD='withdrawn' WHERE MBR_ID=%s",
+                           (br["ids"]["br-alice"],))
+    assert (await br["c"].get(f"/companies/{br['a']}/edits")).json()[1]["nickname"] == "br-alice"
+    assert (await br["c"].get("/companies/99999999/edits")).status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_BR35_승인_중_IntegrityError_는_롤백되어_요청은_대기_그대로다(br, monkeypatch):
+    """사전 확인을 건너뛰게 만들어 uq_comp_benefit 위반 경로(IntegrityError)를 탄다 — 본체 · 이력 · 요청 모두 무변화."""
+    from server.services import benefit_edit
+    rid = (await _post(br, "alice", {"benefit_cd": "gym", "benefit_nm": "헬스"})).json()["request"]["request_id"]
+    await _add_benefit(br["a"], "gym", "이미 있는 헬스", "health")  # 같은 코드가 이미 있다
+    before = await _bodies(br)
+    monkeypatch.setattr(benefit_edit, "_SQL_CODE_EXISTS", "SELECT 1 FROM TCOMPANY_BENEFIT WHERE 1=0 AND COMP_ID=%s AND BENEFIT_CD=%s")
+    r = await _approve(br, rid, benefit_cd="gym")
+    assert r.status_code == 409 and r.json()["detail"] == "duplicate"
+    assert await _bodies(br) == before
+    assert (await database.fetch_one("SELECT STATUS_CD, EDIT_LOG_ID FROM TBENEFIT_EDIT_REQUEST WHERE EDIT_REQUEST_ID=%s",
+                                     (rid,))) == {"STATUS_CD": "pending", "EDIT_LOG_ID": None}
+
+
+@pytest.mark.asyncio
+async def test_BR36_편집용_목록은_세션_재직이_없으면_401_403(br):
+    assert (await br["c"].get(f"/companies/{br['a']}/benefits")).status_code == 401
+    assert (await br["c"].get(f"/companies/{br['a']}/benefits", cookies=br["ck"]["carol"])).status_code == 403
+    assert (await br["c"].get(f"/companies/{br['b']}/benefits", cookies=br["ck"]["alice"])).status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_BR37_남의_회사_복지_ID_로_수정_요청하면_404_요청은_안_생긴다(br):
+    other = (await database.fetch_one("SELECT BENEFIT_ID FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s LIMIT 1", (br["b"],)))["BENEFIT_ID"]
+    r = await _put(br, "alice", {"base_dtm": "x", "benefit_nm": "침입", "benefit_amt": 1}, bid=other)
+    assert r.status_code == 404
+    assert await _count("TBENEFIT_EDIT_REQUEST") == 0
+
+
+@pytest.mark.asyncio
+async def test_BR38_수정_승인은_재검증_시각을_새로_찍고_출처를_user_report_로_바꾼다(br):
+    await database.execute(
+        "UPDATE TCOMPANY_BENEFIT SET VERIFIED_DTM = UTC_TIMESTAMP() - INTERVAL 400 DAY, "
+        "EXPIRES_DTM = UTC_TIMESTAMP() - INTERVAL 30 DAY, BADGE_SRC_CD='scrape_official' WHERE BENEFIT_ID=%s", (br["meal"],))
+    rid = await _update_req(br)
+    assert (await _approve(br, rid)).status_code == 200
+    row = await database.fetch_one(
+        "SELECT *, (VERIFIED_DTM > UTC_TIMESTAMP() - INTERVAL 1 DAY) AS fresh, "
+        "(EXPIRES_DTM > UTC_TIMESTAMP() + INTERVAL 17 MONTH) AS far FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s", (br["meal"],))
+    assert row["fresh"] == 1 and row["far"] == 1, "신선도가 리셋되지 않았다(만료 행이 밴드를 부당 확대한다)"
+    assert row["BADGE_SRC_CD"] == "user_report" and row["BADGE_CD"] == "verified"
+
+
+@pytest.mark.asyncio
+async def test_BR39_운영자_이력만으로는_재직자_수정_배지가_붙지_않는다(br):
+    from server.services.reference import build_reference_bundle
+    ins = ("INSERT INTO TBENEFIT_EDIT_LOG (BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, ACTOR_KIND_CD, EDIT_TYPE_CD) "
+           "VALUES (%s, %s, %s, %s, %s)")
+
+    async def origin(bid):
+        async with database.get_pool().acquire() as conn:
+            bundle = await build_reference_bundle(conn)
+        comp = next(c for c in bundle["companies"] if c["comp_id"] == br["a"])
+        return next(b for b in comp["benefits"] if b["benefit_cd"] == bid)["edit_origin"]
+
+    await database.execute(ins, (br["meal"], br["a"], None, "operator", "update"))
+    assert await origin("meal") == "seed", "운영자 정정만으로 「공식·재직자 수정」이 됐다"
+    await database.execute(ins, (br["meal"], br["a"], br["ids"]["br-alice"], "member", "update"))
+    assert await origin("meal") == "edited"

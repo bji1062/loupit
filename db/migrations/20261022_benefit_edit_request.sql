@@ -28,7 +28,7 @@ SET NAMES utf8mb4;
 CREATE TABLE IF NOT EXISTS TBENEFIT_EDIT_REQUEST (
   EDIT_REQUEST_ID  INT AUTO_INCREMENT PRIMARY KEY COMMENT '복지 등록·수정 확인 요청 PK',
   COMP_ID          INT          NOT NULL COMMENT '대상 회사 FK (TCOMPANY.COMP_ID, ON DELETE CASCADE)',
-  MBR_ID           INT          NOT NULL COMMENT '요청 회원 FK (TMEMBER.MBR_ID, ON DELETE CASCADE — 탈퇴하면 대기 요청도 사라진다)',
+  MBR_ID           INT          NOT NULL COMMENT '요청 회원 FK (TMEMBER.MBR_ID, ON DELETE CASCADE. 단 탈퇴는 소프트 삭제(STATUS_CD)라 CASCADE 는 타지 않는다 — 승인 때 요청 회원이 활성인지 다시 본다)',
   REQ_TYPE_CD      VARCHAR(8)   NOT NULL COMMENT '요청 유형 (create, update) — 값집합 SP-DB-17.8',
   BENEFIT_ID       INT          DEFAULT NULL COMMENT 'update 대상 복지 FK (TCOMPANY_BENEFIT.BENEFIT_ID). ON DELETE SET NULL — 대상이 지워지면 승인 시 target_gone',
   BENEFIT_CD       VARCHAR(30)  DEFAULT NULL COMMENT 'update = 대상 코드 / create = 회원이 고른 표준 코드 (목록에 없음이면 NULL)',

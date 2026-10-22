@@ -303,7 +303,9 @@ async def list_benefit_edits(limit: int, before: int | None) -> tuple[list[dict]
 SQL_PENDING_BENEFIT_REQUESTS = """
   SELECT r.EDIT_REQUEST_ID, r.COMP_ID, c.COMP_NM, r.MBR_ID, m.NICKNAME_NM, r.REQ_TYPE_CD, r.BENEFIT_ID,
          r.BENEFIT_CD, r.BENEFIT_NM, r.BENEFIT_AMT, r.QUAL_YN, r.NOTE_CTNT, r.EDIT_NOTE_CTNT,
-         r.BASE_TOKEN_VAL, r.BEFORE_VAL, r.INS_DTM
+         r.BASE_TOKEN_VAL, r.BEFORE_VAL, r.INS_DTM, m.STATUS_CD AS MBR_STATUS,
+         EXISTS(SELECT 1 FROM TEMPLOY_VERIFICATION v WHERE v.MBR_ID = r.MBR_ID AND v.COMP_ID = r.COMP_ID
+                AND v.REVOKED_DTM IS NULL AND (v.EXPIRES_DTM IS NULL OR v.EXPIRES_DTM > UTC_TIMESTAMP())) AS EMPLOYED
     FROM TBENEFIT_EDIT_REQUEST r
     LEFT JOIN TCOMPANY c ON c.COMP_ID = r.COMP_ID
     LEFT JOIN TMEMBER m ON m.MBR_ID = r.MBR_ID
@@ -316,6 +318,12 @@ SQL_CURRENT_BENEFITS = """
     FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID IN ({ids})"""
 SQL_COMPANY_CODES = "SELECT COMP_ID, BENEFIT_CD FROM TCOMPANY_BENEFIT WHERE COMP_ID IN ({ids})"
 PENDING_BENEFIT_REQUEST_LIMIT = 100
+
+
+async def count_pending_benefit_requests() -> int:
+    """대기 전체 건수 — 목록은 `PENDING_BENEFIT_REQUEST_LIMIT` 에서 잘리므로 화면이 「N건 중 앞 M건」을 말하게 한다."""
+    r = await database.fetch_one("SELECT COUNT(*) AS n FROM TBENEFIT_EDIT_REQUEST WHERE STATUS_CD='pending'")
+    return int(r["n"])
 
 
 async def list_pending_benefit_requests(limit: int = PENDING_BENEFIT_REQUEST_LIMIT) -> list[dict]:
@@ -346,7 +354,12 @@ async def list_pending_benefit_requests(limit: int = PENDING_BENEFIT_REQUEST_LIM
             "before": _parse_json(r["BEFORE_VAL"]) if is_update else None,
             "current": benefit_edit._snapshot(cur) if cur else None,
             "target_gone": is_update and cur is None,
-            "stale": bool(is_update and cur is not None and benefit_edit._version_token(cur) != r["BASE_TOKEN_VAL"]),
+            # 내용 비교 — 시드 적재가 MOD_DTM 만 올린 경우는 stale 이 아니다(승인 판정과 같은 함수).
+            "stale": bool(is_update and cur is not None
+                          and benefit_edit.content_changed(_parse_json(r["BEFORE_VAL"]), cur)),
+            # 승인 때 다시 보는 조건(탈퇴 · 재직 인증 폐기/만료)을 미리 표시한다 — ok | withdrawn | no_employment
+            "requester": ("withdrawn" if r["MBR_STATUS"] != "active"
+                          else "ok" if r["EMPLOYED"] else "no_employment"),
             "existing_codes": sorted(codes_by_comp.get(r["COMP_ID"], [])) if not is_update else [],
         })
     return items

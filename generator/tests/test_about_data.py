@@ -303,7 +303,7 @@ def test_who_and_not_sentences(fake_bundle, fake_now):
     v = about_data.build_view(build_context(fake_bundle, now=fake_now))
     assert v["who"][0]["text"].startswith("회사 공식 자료에서 확인한 항목입니다. 재직자가 고친 기록은 없습니다.")
     assert "위 금액 표시로 따로 봅니다" in v["who"][0]["text"]
-    assert v["who_note"].startswith("잡초위키 운영자 말고 복지를 고치거나 더할 수 있는 사람은 그 회사 재직 인증")
+    assert v["who_note"].startswith("복지를 고치거나 더해 달라고 요청할 수 있는 사람은 그 회사 재직 인증")
     assert len(v["nots"]) == 2 and not any("금액을 지어" in x for x in v["nots"])
 
 

@@ -91,6 +91,18 @@ def _snapshot(row: dict) -> dict:
     return snap
 
 
+def content_changed(before: dict | None, row: dict) -> bool:
+    """제출 때 스냅샷과 지금 행의 **내용**이 달라졌는가 — 승인 때 stale 판정과 콘솔 stale 표시가 함께 쓴다.
+
+    시각(MOD_DTM)은 보지 않는다: 시드 적재(load.py)가 공식 행의 배지를 official→est→official 로 오가며 내용이 같아도
+    MOD_DTM 을 올리므로, 토큰(시각 + 지문)으로 판정하면 웨이브 적재마다 대기 중인 수정이 전부 stale 이 된다.
+    사용자에게 뜻 있는 필드(`_FINGERPRINT_KEYS`)만 비교한다. 스냅샷이 없으면(옛 데이터) 바뀐 것으로 본다."""
+    if not isinstance(before, dict):
+        return True
+    a, b = _snapshot(before), _snapshot(row)
+    return any(a.get(k) != b.get(k) for k in _FINGERPRINT_KEYS)
+
+
 def _public_benefit(row: dict) -> dict:
     """편집 응답용 단일 복지 dict — 공개 계약 Benefit + 편집 전용 필드(base_dtm·benefit_id).
 
@@ -112,15 +124,21 @@ def _parse_json(v):
         return None
 
 
-async def _daily_count(mbr_id: int, comp_id: int) -> int:
+# 같은 SQL 을 등록 요청 제출과 승인이 함께 쓴다(그 회사에 이미 있는 코드).
+_SQL_CODE_EXISTS = "SELECT 1 FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD=%s"
+
+
+async def _daily_count(cur, mbr_id: int, comp_id: int) -> int:
     """최근 24시간 이 회원이 이 회사에 보낸 **요청 수**(일일 상한 게이트, FR-112).
 
-    승인으로 생기는 이력 행은 세지 않는다 — 한도는 회원이 누르는 횟수를 막는 장치이고 운영자의 승인은 무관하다."""
-    row = await database.fetch_one(
+    회원 행 잠금(`_lock_member`)을 쥔 **같은 트랜잭션 안에서** 센다 — 잠금 밖에서 세면 병렬 제출이 모두 한도 아래로
+    읽고 통과한다. 승인으로 생기는 이력 행은 세지 않는다 — 한도는 회원이 누르는 횟수를 막는 장치이고 운영자의 승인은 무관하다."""
+    await cur.execute(
         "SELECT COUNT(*) AS n FROM TBENEFIT_EDIT_REQUEST "
         "WHERE MBR_ID=%s AND COMP_ID=%s AND INS_DTM > UTC_TIMESTAMP() - INTERVAL 1 DAY",
         (mbr_id, comp_id),
     )
+    row = await cur.fetchone()
     return int(row["n"]) if row else 0
 
 
@@ -175,16 +193,14 @@ async def create_request(comp_id: int, mbr_id: int, payload, codes: dict[str, di
     cd = payload.benefit_cd
     if cd is not None and cd not in codes:
         return {"result": "unknown_code"}
-    if await _daily_count(mbr_id, comp_id) >= get_settings().daily_edit_limit:
-        return {"result": "rate_limited"}
-
     amt = None if payload.qual_yn else payload.benefit_amt
     async with database.transaction() as conn:
         async with conn.cursor() as cur:
             await _lock_member(cur, mbr_id)
+            if await _daily_count(cur, mbr_id, comp_id) >= get_settings().daily_edit_limit:
+                return {"result": "rate_limited"}
             if cd is not None:
-                await cur.execute(
-                    "SELECT 1 FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD=%s", (comp_id, cd))
+                await cur.execute(_SQL_CODE_EXISTS, (comp_id, cd))
                 if await cur.fetchone():
                     return {"result": "duplicate"}
             # 같은 대상 = 같은 회사 · 같은 코드. 코드가 없는 요청(목록에 없음)은 같은 이름으로 본다.
@@ -211,14 +227,13 @@ async def update_request(comp_id: int, benefit_id: int, mbr_id: int, payload) ->
 
     반환 result: ok(+request) / rate_limited(429) / not_found(404) / conflict(409·현재 행 동봉) /
     pending_exists(409·같은 항목에 이 회원의 대기 요청이 있음)."""
-    if await _daily_count(mbr_id, comp_id) >= get_settings().daily_edit_limit:
-        return {"result": "rate_limited"}
-
     amt = None if payload.qual_yn else payload.benefit_amt
     conflict_row = None
     async with database.transaction() as conn:
         async with conn.cursor() as cur:
             await _lock_member(cur, mbr_id)
+            if await _daily_count(cur, mbr_id, comp_id) >= get_settings().daily_edit_limit:
+                return {"result": "rate_limited"}
             await cur.execute(_SQL_ROW + " AND COMP_ID=%s", (benefit_id, comp_id))
             row = await cur.fetchone()
             if not row:
@@ -260,7 +275,7 @@ async def _fetch_my_request(req_id: int, mbr_id: int) -> dict:
 
 _SQL_LOCK_REQUEST = """
   SELECT EDIT_REQUEST_ID, COMP_ID, MBR_ID, REQ_TYPE_CD, BENEFIT_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT,
-         QUAL_YN, NOTE_CTNT, EDIT_NOTE_CTNT, BASE_TOKEN_VAL, STATUS_CD
+         QUAL_YN, NOTE_CTNT, EDIT_NOTE_CTNT, BASE_TOKEN_VAL, BEFORE_VAL, STATUS_CD
     FROM TBENEFIT_EDIT_REQUEST WHERE EDIT_REQUEST_ID=%s FOR UPDATE"""
 
 _SQL_MARK_APPROVED = (
@@ -274,6 +289,23 @@ _SQL_MARK_REJECTED = (
 )
 
 
+REQUESTER_ACTIVE_SQL_STATUS = "SELECT STATUS_CD FROM TMEMBER WHERE MBR_ID=%s"
+REQUESTER_ACTIVE_SQL_EMPLOY = (
+    "SELECT 1 FROM TEMPLOY_VERIFICATION WHERE MBR_ID=%s AND COMP_ID=%s AND REVOKED_DTM IS NULL "
+    "AND (EXPIRES_DTM IS NULL OR EXPIRES_DTM > UTC_TIMESTAMP()) LIMIT 1"
+)
+
+
+async def _requester_active(cur, mbr_id: int, comp_id: int) -> bool:
+    """요청 회원이 지금 활성이고 그 회사의 유효한 재직 인증(미폐기·미만료)을 가졌는가 — `employment.active_verification` 과 같은 규칙."""
+    await cur.execute(REQUESTER_ACTIVE_SQL_STATUS, (mbr_id,))
+    m = await cur.fetchone()
+    if not m or m["STATUS_CD"] != "active":
+        return False
+    await cur.execute(REQUESTER_ACTIVE_SQL_EMPLOY, (mbr_id, comp_id))
+    return await cur.fetchone() is not None
+
+
 async def approve_request(req_id: int, decided_by: int, benefit_cd: str | None, note: str | None,
                           codes: dict[str, dict]) -> dict:
     """요청 승인 → 본체 반영 + 편집 이력(편집자 = 요청 회원) + 요청 approved 를 **한 트랜잭션**으로.
@@ -283,7 +315,7 @@ async def approve_request(req_id: int, decided_by: int, benefit_cd: str | None, 
     update 는 대상 행을 잠그고 제출 때 토큰과 같을 때만 반영한다 — 다르면 `stale`(운영자는 거절로 처리).
 
     반환 result: approved(+benefit_id·edit_id) / not_pending / code_required / unknown_code / duplicate /
-    stale / target_gone."""
+    stale / target_gone / requester_inactive."""
     outcome: dict | None = None
     try:
         async with database.transaction() as conn:
@@ -293,6 +325,10 @@ async def approve_request(req_id: int, decided_by: int, benefit_cd: str | None, 
                 if not req or req["STATUS_CD"] != "pending":
                     return {"result": "not_pending"}
                 comp_id, mbr_id = req["COMP_ID"], req["MBR_ID"]
+                # 요청한 뒤 탈퇴했거나 재직 인증이 폐기·만료됐으면 승인하지 않는다. 탈퇴는 소프트 삭제(STATUS_CD)라
+                # FK CASCADE 가 안 탄다 — 여기서 다시 봐야 편집 게이트(require_employment)와 같은 규칙이 승인에도 걸린다.
+                if not await _requester_active(cur, mbr_id, comp_id):
+                    return {"result": "requester_inactive"}
                 amt = None if req["QUAL_YN"] else req["BENEFIT_AMT"]
                 amt_source = "estimated" if amt is not None else "none"  # 금액 유무로 판정(DC-9·DC-10·DEC-2)
                 if req["REQ_TYPE_CD"] == "create":
@@ -300,8 +336,7 @@ async def approve_request(req_id: int, decided_by: int, benefit_cd: str | None, 
                         return {"result": "code_required"}
                     if benefit_cd not in codes:
                         return {"result": "unknown_code"}
-                    await cur.execute(
-                        "SELECT 1 FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD=%s", (comp_id, benefit_cd))
+                    await cur.execute(_SQL_CODE_EXISTS, (comp_id, benefit_cd))
                     if await cur.fetchone():
                         return {"result": "duplicate"}
                     await cur.execute(
@@ -321,7 +356,8 @@ async def approve_request(req_id: int, decided_by: int, benefit_cd: str | None, 
                     row = await cur.fetchone()
                     if not row:
                         return {"result": "target_gone"}
-                    if _version_token(row) != req["BASE_TOKEN_VAL"]:
+                    # 내용 비교(시각 아님) — 시드 적재가 MOD_DTM 만 올린 경우는 stale 이 아니다(content_changed).
+                    if content_changed(_parse_json(req["BEFORE_VAL"]), row):
                         return {"result": "stale"}
                     benefit_id, before, applied_cd = req["BENEFIT_ID"], _snapshot(row), None
                     # 재직자 편집 = 재검증(신선도 리셋) — 미갱신 시 과거 만료행이 verified 강등돼도 만료 상태로

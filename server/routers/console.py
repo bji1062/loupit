@@ -172,10 +172,12 @@ async def queues(op: dict = Depends(require_operator), request: Request = None) 
     reports = await report_svc.list_pending_reports()  # SC15 신고 큐(FR-131) — 발췌·상세도 사용자 입력 원문
     # 복지 등록·수정 확인 큐(2026-10-21) — 회원 입력 원문(이름·금액·비고·편집 사유) + 승인 때 고를 표준 코드 94종.
     benefit_requests = await console_view.list_pending_benefit_requests()
+    benefit_requests_total = await console_view.count_pending_benefit_requests()
     codes = await benefit_codes.get_codes(_reference_cache(request))
     return {
         "operator": op["LOGIN_EMAIL_NM"],
         "benefit_requests": benefit_requests,
+        "benefit_requests_total": benefit_requests_total,
         "benefit_codes": codes,
         "reports": reports,
         "verifications": [
@@ -557,6 +559,7 @@ const CONFLICT = {
   busy: '같은 대상을 다른 처리가 동시에 잡고 있었다 — 새로고침한 뒤 다시 하라.',
   stale: '요청을 낸 뒤 대상 복지가 바뀌었다 — 승인할 수 없다. 거절하고 사유를 남겨라.',
   target_gone: '대상 복지가 이미 삭제됐다 — 거절하라.',
+  requester_inactive: '요청한 회원이 탈퇴했거나 재직 인증이 만료·폐기됐다 — 승인할 수 없다. 거절하라.',
   duplicate: '그 회사에 이미 있는 항목 코드다 — 다른 코드를 고르거나 거절하라.',
   code_required: '등록 승인에는 항목을 골라야 한다.',
   unknown_code: '표준 항목 목록에 없는 코드다.',
@@ -867,6 +870,12 @@ function benefitRequestItem(r, codes) {
 
   let sel = null;
   let blocked = false;
+  if (r.requester && r.requester !== 'ok') {
+    blocked = true;   // 승인 때 서버가 다시 보는 조건 — 미리 막아 둔다
+    el.appendChild($('div', 'warn', r.requester === 'withdrawn'
+      ? '탈퇴 회원이다 — 승인할 수 없다. 거절하라.'
+      : '재직 인증이 만료·폐기됐다 — 승인할 수 없다. 거절하라.'));
+  }
   if (isCreate) {
     const picked = (codes.find((c) => c.code === r.benefit_cd) || {}).label;
     el.appendChild($('div', 'meta', r.benefit_cd
@@ -911,6 +920,10 @@ async function renderQueues() {
   const data = await api('/queues');
   root.appendChild(rawWarning());
 
+  const shown = (data.benefit_requests || []).length;
+  if (data.benefit_requests_total > shown) {
+    root.appendChild($('div', 'warn', '대기 ' + data.benefit_requests_total + '건 중 앞 ' + shown + '건만 표시 — 처리하면 다음 건이 나온다.'));
+  }
   section('복지 등록·수정 확인', data.benefit_requests || [], (r) => benefitRequestItem(r, data.benefit_codes || []));
   root.appendChild($('div', 'meta',
     '승인하면 바로 반영된다 — 비교·복지검색은 즉시, 회사 페이지(정적)는 다음 배포 때. 이름·금액은 고치지 않는다(고칠 게 있으면 거절 + 사유).'));

@@ -47,14 +47,15 @@ _SQL_BENEFITS = """
 # 왜 컬럼이 아니라 파생인가: 근거는 이미 `TBENEFIT_EDIT_LOG`(append-only 감사 원장)에 있다.
 # 컬럼을 따로 두면 원장과 두 갈래가 되고, 어긋나는 날 어느 쪽이 참인지 알 수 없다.
 #
+# 운영자 이력(ACTOR_KIND_CD='operator' — CLI 정정·삭제)은 세지 않는다: 운영자 정정만으로는 「공식·재직자 수정」이 되면 안 된다.
 # 판정: `create` 이력이 있으면 **재직자 등록**(생성 기원이 이긴다 — 등록 후 수정해도 등록이다),
 #       `update` 만 있으면 **공식·재직자 수정**, 이력이 없으면 **공식**(시드 원본).
 # ⚠ 편집은 `require_employment` 게이트 뒤라 **그 회사 재직 인증자만** 남길 수 있다 —
 #   그래서 라벨이 '사용자'가 아니라 '재직자'다.
 _SQL_EDIT_ORIGIN = """
   SELECT BENEFIT_ID AS benefit_id,
-         MAX(EDIT_TYPE_CD = 'create') AS has_create,
-         MAX(EDIT_TYPE_CD = 'update') AS has_update
+         MAX(EDIT_TYPE_CD = 'create' AND ACTOR_KIND_CD = 'member') AS has_create,
+         MAX(EDIT_TYPE_CD = 'update' AND ACTOR_KIND_CD = 'member') AS has_update
     FROM TBENEFIT_EDIT_LOG WHERE BENEFIT_ID IS NOT NULL GROUP BY BENEFIT_ID"""
 
 

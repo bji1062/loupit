@@ -1003,3 +1003,16 @@ describe('edit.html + initEditPage — 운영자 확인 요청 흐름', () => {
     assert.equal($('benefit-list').querySelector('.ben-badge').textContent, '수정 확인 대기');
   });
 });
+
+// ── 캐시에 남은 옛 edit.html 에 새 edit.js 가 붙어도 빈 화면이 되지 않는다 ────────────────
+describe('initEditPage — 옛 HTML 호환', () => {
+  test('새 칸(#f-search 등)이 없으면 새로고침 안내를 보이고 멈춘다', () => {
+    const dom = new JSDOM('<main><div id="edit-card" hidden><form id="benefit-form"></form></div></main>', { url: 'http://x/edit' });
+    globalThis.document = dom.window.document;
+    globalThis.location = { href: 'http://x/edit', search: '' };
+    mockApi([]);
+    initEditPage();
+    assert.equal($('edit-card').hidden, false);
+    assert.match($('edit-card').textContent, /새로고침해 주세요/);
+  });
+});
