@@ -1373,6 +1373,8 @@ h4.benefit-name { font-family:var(--font-sans); font-size:var(--fs-base); font-w
 .find-hit-k.dim { color:var(--t3); }
 .find-hit-k.dim::before { background:var(--bg-4); }
 .find-hit-d { color:var(--t3); overflow:hidden; text-overflow:ellipsis; }
+.find-hit-d.dim { opacity:.65; } /* 설명이 오는 0.1초 안팎의 자리 표시(2026-10-22) */
+.find-note-retry { margin-left:var(--sp-2); padding:0 var(--sp-2); font:inherit; font-size:var(--fs-xs); color:var(--t2); background:var(--bg-1); border:var(--bw) solid var(--border-strong); border-radius:var(--r-pill); cursor:pointer; }
 .find-amt { white-space:nowrap; }
 .find-tag { display:inline-block; margin-left:var(--sp-1); padding:0 var(--sp-1); font-size:var(--fs-ad); font-weight:var(--fw-bold); border-radius:var(--r-xs); vertical-align:1px; }
 .find-tag-stated { background:var(--blue-dim); color:var(--blue); }

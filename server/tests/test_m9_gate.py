@@ -31,6 +31,8 @@ ANONYMOUS_GET_PATHS = {
     "/api/v1/reference/all",
     "/api/v1/reference/index",            # 2026-10-22 /compare 부팅용 가벼운 목록(익명 공개 GET)
     "/api/v1/reference/companies/{comp_id}",  # 2026-10-22 회사 한 곳의 상세(익명 공개 GET)
+    "/api/v1/reference/find",             # 2026-10-22 /find 부팅용 가벼운 묶음(익명 공개 GET)
+    "/api/v1/reference/notes/{benefit_cd}",  # 2026-10-22 /find 에서 고른 코드의 설명(익명 공개 GET)
     "/api/v1/companies/search",
     "/api/v1/companies/{comp_id}",
     "/api/v1/comparisons/trending",
