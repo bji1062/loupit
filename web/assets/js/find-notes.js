@@ -55,30 +55,32 @@ export function createNoteStore(ref, { fetchFn = getReferenceNotes } = {}) {
     return failed.has(b.benefit_cd) ? 'failed' : 'loading';
   }
 
+  // 화면에서 떨어진 칸은 정리하고, 상태가 바뀐 칸만 다시 채운다(그대로 실패인 칸의 버튼 노드·초점은 건드리지 않는다).
+  function pruneTracked() {
+    for (const [span] of tracked) if (!span.isConnected) tracked.delete(span);
+  }
+
   function refreshTracked() {
+    pruneTracked();
     for (const [span, t] of [...tracked]) {
-      if (!span.isConnected) { tracked.delete(span); continue; }
-      t.render(span, t.b);
-      if (state(t.b) === 'ok') tracked.delete(span);
+      const cur = state(t.b);
+      if (cur !== t.st) { t.render(span, t.b); t.st = cur; }
+      if (cur === 'ok') tracked.delete(span);
     }
   }
 
   function fetchCode(code) {
-    const p = (async () => {
-      try {
-        const res = await fetchFn(code);
-        const byComp = new Map(((res && res.notes) || []).map((n) => [n.comp_id, n]));
-        // 응답에 없는 회사의 그 코드 행은 「설명 없음」으로 ok(`—`). 응답의 모르는 comp_id 는 그냥 무시된다.
-        for (const { comp_id, b } of rowsByCode.get(code)) setNote(b, byComp.get(comp_id));
-        done.add(code);
-        failed.delete(code);
-      } catch {
-        failed.add(code);
-      } finally {
-        inflight.delete(code);
-      }
-      refreshTracked();
-    })();
+    const p = (async () => { // async 라 fetchFn 이 동기로 던져도 거절된 약속이 된다
+      const res = await fetchFn(code);
+      // 반영 전에 모양을 본다: 빈 응답 · 다른 코드의 응답이면 행이 「—」로 굳거나 엉뚱한 설명이 붙는다.
+      if (!res || res.benefit_cd !== code || !Array.isArray(res.notes)) throw new Error('NOTES_SHAPE');
+      const byComp = new Map(res.notes.map((n) => [n.comp_id, n]));
+      // 응답에 없는 회사의 그 코드 행은 「설명 없음」으로 ok(`—`). 응답의 모르는 comp_id 는 그냥 무시된다.
+      for (const { comp_id, b } of rowsByCode.get(code)) setNote(b, byComp.get(comp_id));
+    })().then(
+      () => { done.add(code); failed.delete(code); },
+      () => { failed.add(code); },
+    ).finally(() => { inflight.delete(code); refreshTracked(); });
     inflight.set(code, p);
     return p;
   }
@@ -96,14 +98,15 @@ export function createNoteStore(ref, { fetchFn = getReferenceNotes } = {}) {
   }
 
   function track(span, b, render) {
-    if (state(b) !== 'ok') tracked.set(span, { b, render });
+    if (state(b) !== 'ok') tracked.set(span, { b, render, st: state(b) });
   }
 
   function ensureTracked() {
+    pruneTracked();
     const codes = [];
     for (const [span, t] of tracked) if (span.isConnected && state(t.b) === 'loading') codes.push(t.b.benefit_cd);
     return ensure(codes);
   }
 
-  return { state, ensure, track, ensureTracked, refreshTracked, isDone: (code) => done.has(code) };
+  return { state, ensure, track, ensureTracked, refreshTracked, isDone: (code) => done.has(code), trackedSize: () => { pruneTracked(); return tracked.size; } };
 }

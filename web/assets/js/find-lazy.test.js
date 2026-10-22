@@ -285,6 +285,75 @@ describe('실패 — 안내 + 다시 시도 · 자동 재시도 없음', () => {
   });
 });
 
+describe('응답 모양 · 동기 오류 · 초점 · 칸 정리', () => {
+  const BAD = {
+    '빈 객체': () => ({}),
+    '다른 코드의 응답': () => clone(NOTES.meal),
+    'notes 가 배열이 아님': (code) => ({ benefit_cd: code, notes: {} }),
+  };
+  for (const [name, mk] of Object.entries(BAD)) {
+    test(`${name} → 실패 상태 · 다시 시도 1회 요청`, async () => {
+      const log = [];
+      let bad = true;
+      const fetchNotes = async (code) => { log.push(code); return bad ? mk(code) : clone(NOTES[code]); };
+      const env = light('?b=gym', fetchNotes);
+      await flush();
+      assert.ok(env.root.textContent.includes(NOTE_FAILED));
+      assert.ok(!env.app.notes.isDone('gym'));
+      assert.ok(!env.all('.find-hit-d').some((n) => n.textContent === '—'), '행이 「—」로 굳지 않는다');
+      bad = false;
+      env.all('.find-note-retry')[0].click();
+      await flush();
+      assert.deepEqual(log, ['gym', 'gym']);
+      assert.match(env.root.textContent, /평일 이용/);
+    });
+  }
+
+  test('fetchFn 이 동기로 던져도 진행 중 표시가 남지 않고 다시 시도가 된다', async () => {
+    let n = 0;
+    const fetchNotes = (code) => { n += 1; if (n === 1) throw new Error('sync'); return Promise.resolve(clone(NOTES[code])); };
+    const env = light('?b=gym', fetchNotes);
+    await flush();
+    assert.ok(env.root.textContent.includes(NOTE_FAILED));
+    env.all('.find-note-retry')[0].click();
+    await flush();
+    assert.equal(n, 2);
+    assert.ok(!env.root.textContent.includes(NOTE_FAILED));
+  });
+
+  test('그대로 실패인 칸은 다시 그리지 않는다(버튼 노드 유지) · 다시 시도 뒤 초점은 칸에 남는다', async () => {
+    let broken = true;
+    const fetchNotes = async (code) => { if (broken) throw new Error('down'); return clone(NOTES[code]); };
+    const env = light('?b=gym&m=or', fetchNotes);
+    await flush();
+    const btns = env.all('.find-note-retry');
+    assert.ok(btns.length > 1);
+    await env.app.notes.ensure(['snack'], { retry: true }); // 다른 코드 실패가 refresh 를 돌려도
+    assert.deepEqual(env.all('.find-note-retry'), btns);
+    broken = false;
+    const span = btns[0].parentNode;
+    btns[0].focus();
+    btns[0].click();
+    assert.equal(env.doc.activeElement, span, '버튼이 사라져도 초점은 칸에 있다');
+    await flush();
+    assert.equal(env.doc.activeElement, span);
+    assert.ok(!env.root.textContent.includes(NOTE_FAILED));
+  });
+
+  test('실패 상태에서 렌더를 거듭해도 추적하는 칸이 쌓이지 않는다', async () => {
+    const env = light('?b=gym', notesFetch([], { fail: ['gym'] }));
+    await flush();
+    const spans = new Set();
+    const orig = env.app.notes.track;
+    for (let i = 0; i < 5; i += 1) env.app.render();
+    // 추적 칸 수 = 화면에 붙어 있는 실패 칸 수 (간접 확인: 정리 뒤 재시도하면 붙은 칸만 갱신된다)
+    const live = env.all('.find-hit-d').filter((n) => n.textContent.includes(NOTE_FAILED)).length;
+    assert.ok(live > 0);
+    void spans; void orig;
+    assert.equal(env.app.notes.trackedSize(), live);
+  });
+});
+
 describe('설명이 도착해도 목록 밖은 흔들리지 않는다', () => {
   test('칩 버튼 노드 · 초점 · 검색창 글 · 더 보기 상태가 그대로', async () => {
     const gates = {};

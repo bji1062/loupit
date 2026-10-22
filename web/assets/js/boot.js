@@ -2,7 +2,7 @@
 // 부팅당 정확히 1회 호출(B-1). 손상 번들은 부팅 오류로 전이(FR-E1).
 import { ApiError, getReference, getReferenceFind, getReferenceIndex } from './api.js';
 
-// 번들 전체(`/reference/all`) — /find(복지검색)가 쓴다. 비교 화면의 폴백이기도 하다.
+// 번들 전체(`/reference/all`) — /compare · /find 두 화면의 폴백이다(부팅은 각자의 가벼운 길로 간다).
 export async function loadReference() {
   const ref = await getReference(); // api.js: apiFetch('/reference/all')
   assertRefShape(ref);

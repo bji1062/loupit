@@ -484,7 +484,13 @@ export function fillNote(span, b, notes = null) {
   if (st === 'failed') {
     span.textContent = NOTE_FAILED;
     const btn = el('button', { type: 'button', class: 'find-note-retry', text: NOTE_RETRY });
-    btn.addEventListener('click', () => { notes.ensure([b.benefit_cd], { retry: true }); notes.refreshTracked(); });
+    btn.addEventListener('click', () => {
+      // 버튼은 곧 사라지므로 초점을 칸 자체로 옮겨 키보드 초점이 문서 처음으로 튀지 않게 한다.
+      span.setAttribute('tabindex', '-1');
+      span.focus();
+      notes.ensure([b.benefit_cd], { retry: true });
+      notes.refreshTracked();
+    });
     span.append(btn);
     return;
   }
