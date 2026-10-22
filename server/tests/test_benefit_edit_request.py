@@ -409,7 +409,7 @@ async def test_BR14_제출_뒤_본체가_바뀌면_큐가_stale_삭제되면_tar
 @pytest.mark.asyncio
 async def test_BR15_등록_승인은_운영자가_고른_코드와_코드의_카테고리로_반영하고_이력의_편집자는_회원이다(br):
     cache = br["app"].state.reference_cache
-    cache.set("reference_all", b"sentinel")
+    cache.set("reference_cut", b"sentinel")
     r = await _post(br, "alice", {"benefit_cd": "book", "benefit_nm": "회사가 부르는 이름", "benefit_amt": 120,
                                   "qual_yn": False, "note_ctnt": "월 10만원", "edit_note": "복지몰 공지"})
     rid = r.json()["request"]["request_id"]
@@ -417,7 +417,7 @@ async def test_BR15_등록_승인은_운영자가_고른_코드와_코드의_카
     ok = await _approve(br, rid, benefit_cd="gym", note="확인함")
     assert ok.status_code == 200, ok.text
     assert ok.json()["result"] == "approved" and "다음 배포" in ok.json()["next"]
-    assert cache.get("reference_all") is None, "승인 뒤 참조 캐시를 비워야 비교·복지검색이 바로 새 값을 본다"
+    assert cache.get("reference_cut") is None, "승인 뒤 참조 캐시를 비워야 비교·복지검색이 바로 새 값을 본다"
 
     row = await database.fetch_one("SELECT * FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD='gym'", (br["a"],))
     assert row["BENEFIT_NM"] == "회사가 부르는 이름" and row["BENEFIT_CTGR_CD"] == "health"

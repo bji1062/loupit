@@ -11,6 +11,7 @@
 import { el } from './dom.js';
 import { pairTarget } from './benefits.js'; // 두 슬롯이 찼을 때의 목적지(SP-CMP-2) — 집은 하나다
 import { onSearchInput, selectCompany, clearSlot } from './search.js';
+import { slotSeq } from './company-store.js';
 import { tenureItems, exclusionSummary } from './calc.js'; // 근속 조건 항목 수(입력 보조문)·뺀 행 수 — 순수 함수, 결과 화면과 같은 판정
 
 
@@ -25,6 +26,38 @@ function qs(sel) {
 export function reflectSlotLabel(slot, name) {
   const input = byId('search-input-' + slot);
   if (input) input.value = name || '';
+  clearDetailError(slot); // 슬롯이 새 상태가 되면 「정보를 불러오지 못했습니다」는 낡았다
+}
+
+// ── 회사 상세 받기 실패 안내(2026-10-22 검토 M2a) ─────────────────────────────
+// 검색 실패(`.search-error`)와 다른 사건이다 — 검색한 적이 없고, 「다시 시도」는 검색이 아니라 **그 회사 상세를 다시 받아**
+// 그 슬롯에 반영해야 한다. 그래서 별도 안내 줄을 슬롯 머리에 만든다.
+export function clearDetailError(slot) {
+  const old = qs('.slot-detail-error[data-slot="' + slot + '"]');
+  if (old && typeof old.remove === 'function') old.remove();
+}
+
+export function showDetailError(state, slot, info, hooks = {}) {
+  const box = qs('.search-slot[data-slot="' + slot + '"]');
+  if (!box || !info) return null;
+  clearDetailError(slot);
+  const nm = info.compNm || '회사';
+  const row = el('p', { class: 'slot-detail-error', 'data-slot': slot, role: 'alert' });
+  row.append(el('span', { text: nm + ' 정보를 불러오지 못했습니다. ' }));
+  const retry = el('button', { type: 'button', text: '다시 시도' });
+  retry.addEventListener('click', () => {
+    clearDetailError(slot);
+    const p = selectCompany(state, slot, info.compId, hooks); // 다시 받아 이 슬롯에 반영 — 실패하면 같은 안내가 다시 선다
+    const mine = slotSeq(state, slot); // 이 시도의 순번
+    p.then((ok) => {
+      // 시도가 끝내 실패했고 그 사이 사용자가 손대지 않았다면, 부팅 때 쥔 원래 초안 값을 계속 지킨다(L-b)
+      const held = state.ui && state.ui.heldDraft && state.ui.heldDraft[slot];
+      if (!ok && held && slotSeq(state, slot) === mine) held.seq = mine;
+    });
+  });
+  row.append(retry);
+  box.append(row);
+  return row;
 }
 
 // 슬롯 검색 입력칸으로 커서를 옮긴다(+ 화면 가운데로 스크롤). "다음에 할 일은 여기"를
@@ -107,7 +140,13 @@ export function reflectSearchUI(state, slot) {
   if (st === 'empty' || st === 'idle') clearCandidatesDom(slot);
 }
 
-function notify(msg) {
+// 조합 · 불러오기 실패 안내를 지운다(다른 경로의 성공 뒤에 낡은 안내가 남지 않게, 검토 L-a). 상자가 없으면 만들지 않는다.
+export function clearNotice() {
+  const box = byId('ui-notify');
+  if (box) box.textContent = '';
+}
+
+export function notify(msg) {
   let box = byId('ui-notify');
   if (!box && typeof document !== 'undefined') {
     const app = byId('app');
@@ -121,9 +160,10 @@ function notify(msg) {
 export function searchHooks(state, deps) {
   return {
     reflectSlotLabel,
-    closeCandidates: (slot) => { clearCandidatesDom(slot); reflectSearchUI(state, slot); },
+    closeCandidates: (slot) => { clearCandidatesDom(slot); reflectSearchUI(state, slot); clearNotice(); }, // 회사 고르기 성공 때 불린다
     notify,
-    showSlotError: (slot) => reflectSearchUI(state, slot),
+    // 회사 상세를 못 받았으면(info 있음) 그 회사 이름 + 다시 받기, 검색 상태 오류면 기존 검색 실패 안내
+    showSlotError: (slot, _msg, info) => (info ? showDetailError(state, slot, info, searchHooks(state, deps)) : reflectSearchUI(state, slot)),
     onRendered: () => {},
     maybeAdvance: () => maybeAdvance(state, deps),
   };

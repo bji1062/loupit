@@ -241,7 +241,8 @@ describe('T-06.13.2 restoreFromPrefill', () => {
     //   입력 뷰 → **복지 비교**다. `/compare/?a=&b=`(해시 없음)가 곧 모드 A 의 주소이고,
     //   내 숫자를 넣는 화면은 사용자가 `#input`(또는 「이직 계산기 →」)로 명시할 때만 뜬다.
     const state = refState();
-    state.REF = { company_types: [], benefit_presets: {}, companies: [{ comp_id: 1, comp_nm: 'A' }, { comp_id: 2, comp_nm: 'B' }] };
+    // 복지 배열이 있어야 「상세 있는 회사」다(2026-10-22 경량화) — 없으면 프리필이 없는 회사로 본다(아래 company-store 테스트가 따로 잰다).
+    state.REF = { company_types: [], benefit_presets: {}, companies: [{ comp_id: 1, comp_nm: 'A', benefits: [] }, { comp_id: 2, comp_nm: 'B', benefits: [] }] };
     globalThis.location.search = '?a=1&b=2';
     let went = null;
     const focused = [];

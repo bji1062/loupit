@@ -6,7 +6,8 @@
 // (app.js가 이미 inputs.js를 import하므로) 순환 import가 발생해 SP-FE-1.2 규칙4를 위반한다.
 // 따라서 본 모듈의 함수는 App.state(또는 그 슬라이스)를 첫 인자로 받는다 — app.js가 호출 시
 // App.state를 그대로 넘긴다. 순수성이 높아져 단위 테스트도 App 전역 스텁 없이 가능하다.
-import { getCompany } from './api.js';
+import { getReferenceCompany } from './api.js';
+import { hasDetail, loadDetail, bumpSlot, seqSnapshot, seqCurrent } from './company-store.js';
 
 const CTGR9 = new Set([
   'compensation', 'flexibility', 'work_env', 'time_off',
@@ -99,26 +100,13 @@ export function blankWs() { return { ot: null, wage: null, remote: null, flex: n
 
 // 슬롯 해제(FR-15) — 초기값 복귀.
 export function clearSlot(state, slot, reflectSlotLabel) {
+  bumpSlot(state, slot); // 받는 중이던 이 슬롯의 선택 응답은 낡았다
   state.matched[slot] = null;
   state.benS[slot] = [];
   state.wsState[slot] = blankWs();
   state.chosenType[slot] = null;
   state.inputMode[slot] = 'company';
   if (typeof reflectSlotLabel === 'function') reflectSlotLabel(slot, '');
-}
-
-// 폴백 fetch 최신성 시퀀스(#9): state별로 슬롯 선택 호출 순번을 기록해, 연타 시 늦게 도착한
-// 이전 폴백 응답이 최신 선택을 덮지 못하게 막는다. state shape을 건드리지 않도록 WeakMap에 보관.
-const _selectSeq = new WeakMap();
-function bumpSelectSeq(state, slot) {
-  let bag = _selectSeq.get(state);
-  if (!bag) { bag = { a: 0, b: 0 }; _selectSeq.set(state, bag); }
-  bag[slot] = (bag[slot] || 0) + 1;
-  return bag[slot];
-}
-function currentSelectSeq(state, slot) {
-  const bag = _selectSeq.get(state);
-  return bag ? (bag[slot] || 0) : 0;
 }
 
 // ── SP-FE-8.1 selectCompany·sameCompanyGuard(FR-14·15·16, FR-D7·D11) ───────
@@ -133,17 +121,20 @@ export function sameCompanyGuard(state, slot, compId, notify) {
 }
 
 export async function selectCompany(state, slot, compId, hooks = {}) {
-  const { notify, reflectSlotLabel, closeCandidates, maybeAdvance, showSlotError, getCompanyFn = getCompany } = hooks;
-  const seq = bumpSelectSeq(state, slot); // 이 호출을 이 슬롯의 최신으로 등록(연타 폴백 방어, #9)
+  const { notify, reflectSlotLabel, closeCandidates, maybeAdvance, showSlotError, getCompanyFn = getReferenceCompany } = hooks;
+  bumpSlot(state, slot); // 이 호출을 이 슬롯의 최신으로 등록(연타 폴백 방어, #9)
+  const snap = seqSnapshot(state); // 받는 동안 이 슬롯이나 쌍이 다시 바뀌면 응답을 버린다(검토 M1)
   let raw = (state.REF && state.REF.companies || []).find((c) => c.comp_id === compId); // REF 인라인 우선(호출 0)
-  if (!raw) {
+  if (!raw || !hasDetail(raw)) { // 가벼운 목록(복지 행 없음)이거나 REF 밖 → 상세 API(FR-D7). 같은 회사 동시 요청은 하나로 합쳐진다
     try {
-      raw = await getCompanyFn(compId); // 폴백: 상세 API(FR-D7)
+      raw = await loadDetail(state, compId, getCompanyFn); // 받으면 REF 의 그 객체에 합쳐진다
     } catch {
-      if (typeof showSlotError === 'function') showSlotError(slot, '회사 정보를 불러올 수 없습니다.');
+      if (!seqCurrent(state, snap, [slot])) return false; // 이미 낡은 호출의 실패는 말하지 않는다
+      // 세 번째 인자 = 어느 회사였는지 — 슬롯이 「<회사명> 정보를 불러오지 못했습니다」 + 그 회사 다시 받기를 보여 준다
+      if (typeof showSlotError === 'function') showSlotError(slot, '회사 정보를 불러올 수 없습니다.', { compId, compNm: raw ? raw.comp_nm : '' });
       return false; // FR-D11: 미선택 유지
     }
-    if (seq !== currentSelectSeq(state, slot)) return false; // 더 최신 선택이 진행됨 → 늦은 응답 폐기(#9)
+    if (!seqCurrent(state, snap, [slot])) return false; // 더 최신 선택이 진행됨 → 늦은 응답 폐기(#9)
   }
   if (sameCompanyGuard(state, slot, compId, notify)) return false; // 양 슬롯 동일 회사 방지(FR-15)
 
@@ -160,6 +151,7 @@ export async function selectCompany(state, slot, compId, hooks = {}) {
 
 // ── T-06.8.5 setDirectType — 직접입력 모드 유형 선택(FR-17) ─────────────────
 export function setDirectType(state, slot, compTpCd) {
+  bumpSlot(state, slot);
   state.inputMode[slot] = 'direct';
   state.matched[slot] = null; // 회사와 상태 구분(N-4)
   state.chosenType[slot] = compTpCd;
