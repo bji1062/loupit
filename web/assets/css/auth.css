@@ -104,6 +104,11 @@
 .ben-badge { font-size:var(--fs-xs); padding:2px 8px; border-radius:var(--r-pill);
              background:var(--green-dim); color:var(--green); white-space:nowrap; }
 
+/* 확인 요청 상태(2026-10-21): 확인 대기 / 반영됨 / 반영 안 됨 · 수정 확인 대기 */
+.ben-badge--wait, .ben-badge--pending { background:var(--amber-dim); color:var(--amber); }
+.ben-badge--approved { background:var(--green-dim); color:var(--green); }
+.ben-badge--rejected { background:var(--red-dim); color:var(--red); }
+
 .amt-row { display:flex; align-items:flex-end; gap:var(--sp-4); flex-wrap:wrap; }
 .amt-col { flex:1; min-width:140px; }
 .qual-check { display:flex; align-items:center; gap:var(--sp-2); font-size:var(--fs-sm);

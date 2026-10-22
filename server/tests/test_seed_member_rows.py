@@ -39,6 +39,7 @@ import pymysql
 import pytest
 
 from server.tests.conftest import MIGRATIONS_DIR, _split_sql_statements
+from server.tests.member_edit_support import approved_create, approved_update
 
 ROOT = Path(__file__).resolve().parents[2]
 SEED_DIR = ROOT / "db" / "seed"
@@ -141,23 +142,23 @@ async def _service_edits(krafton, cj_com, resort, telecom, collide_cd, kim, lee)
             return {b["benefit_id"]: b["base_dtm"] for b in await svc.fetch_company_benefits(comp_id)}[benefit_id]
 
         # (가) 사고 1 재현 — 크래프톤 휴양시설: 금액을 비우고 「2회」로 고쳤다(EDIT_LOG #1 과 같은 값).
-        r = await svc.update_benefit(krafton, resort, kim, BenefitUpdateIn(
+        r = await approved_update(krafton, resort, kim, BenefitUpdateIn(
             base_dtm=await token(krafton, resort), benefit_nm="휴양시설 지원",
             benefit_amt=None, qual_yn=False, note_ctnt="2회"))
         assert r["result"] == "ok", r
         # (나) 사고 2 재현 — CJ ENM 커머스 통신비: 정성 → 월 5만원(연 60만원, EDIT_LOG #2 와 같은 값).
-        r = await svc.update_benefit(cj_com, telecom, lee, BenefitUpdateIn(
+        r = await approved_update(cj_com, telecom, lee, BenefitUpdateIn(
             base_dtm=await token(cj_com, telecom), benefit_nm="통신비 지원",
             benefit_amt=60, qual_yn=False, note_ctnt="1인당 월 5만원"))
         assert r["result"] == "ok", r
         # (다) 충돌 등록 — 시드에서 지운 코드를 재직자가 등록했다(다음 웨이브 시드가 그 코드를 새로 들고 오는 상황).
-        r = await svc.create_benefit(krafton, kim, BenefitCreateIn(
+        r = await approved_create(krafton, kim, BenefitCreateIn(
             benefit_cd=collide_cd, benefit_nm="재직자 등록 업무 장비 지원", benefit_ctgr_cd="perks",
             benefit_amt=12, qual_yn=False, note_ctnt="월 1만원 재직자 확인"))
         assert r["result"] == "ok", r
         collide_id = r["benefit"]["benefit_id"]
         # (라) 시드에 없는 코드를 재직자가 등록했다.
-        r = await svc.create_benefit(krafton, kim, BenefitCreateIn(
+        r = await approved_create(krafton, kim, BenefitCreateIn(
             benefit_cd="sk_member_only", benefit_nm="재직자만 아는 복지", benefit_ctgr_cd="leisure", qual_yn=True))
         assert r["result"] == "ok", r
         only_id = r["benefit"]["benefit_id"]
@@ -175,7 +176,7 @@ async def _member_update(comp_id: int, benefit_id: int, mbr_id: int, **fields) -
     await database.init_pool()
     try:
         token = {b["benefit_id"]: b["base_dtm"] for b in await svc.fetch_company_benefits(comp_id)}[benefit_id]
-        r = await svc.update_benefit(comp_id, benefit_id, mbr_id, BenefitUpdateIn(base_dtm=token, **fields))
+        r = await approved_update(comp_id, benefit_id, mbr_id, BenefitUpdateIn(base_dtm=token, **fields))
         assert r["result"] == "ok", r
     finally:
         await database.close_pool()

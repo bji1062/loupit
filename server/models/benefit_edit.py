@@ -1,6 +1,7 @@
 """SP-AUTH-9 복지 편집 요청 모델 — 등록(create)·수정(update) 입력 계약 (FR-108·109).
 
-배지·금액출처(BADGE_CD·AMT_SOURCE_CD)는 **서버가 강제**하므로 입력에 없다(사용자가
+회원의 등록·수정은 **바로 반영되지 않고 운영자 확인 요청이 된다**(2026-10-21 사용자 결정, 202).
+배지·금액출처(BADGE_CD·AMT_SOURCE_CD)는 승인 때 **서버가 강제**하므로 입력에 없다(사용자가
 official·stated 지정 불가). 정성(QUAL_YN) 불변식만 입력 단계에서 검증한다 —
 정성인데 금액이 있으면 422(DC-9 위반, SP-AUTH-9 규칙4). 저장은 파라미터 바인딩,
 표시 이스케이프는 표시 계층(SP-FE)이 담당한다(NFR21). 신규 의존성 0.
@@ -12,11 +13,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field, model_validator
 
-# 복지 카테고리 9종(SP-DB, test_data_contract.CATEGORIES_9와 동일). 그 외 값 → 422.
-_CATEGORIES_9 = {
-    "compensation", "flexibility", "work_env", "time_off",
-    "health", "family", "growth", "leisure", "perks",
-}
 # 복지 코드 — 소문자 스네이크(예: meal, welfare_point). 회사 내 유니크(uq_comp_benefit).
 _BENEFIT_CD_RE = re.compile(r"^[a-z][a-z0-9_]{1,29}$")
 
@@ -28,11 +24,15 @@ def _check_qual_invariant(qual_yn: bool, benefit_amt: int | None) -> None:
 
 
 class BenefitCreateIn(BaseModel):
-    """POST /companies/{comp_id}/benefits — 복지 등록(FR-108). 배지·금액출처는 서버 강제라 입력 없음."""
+    """POST /companies/{comp_id}/benefits — 복지 등록 확인 요청(FR-108).
 
-    benefit_cd: str = Field(..., max_length=30)
+    `benefit_cd` 는 선택이다 — 없으면 「목록에 없음」(이름만 적어 보냄)이고 운영자가 승인 때 94종 중 고른다.
+    있으면 표준 코드 목록 안이어야 한다(서비스가 판정, 밖이면 422). 카테고리는 코드에서 정해지므로
+    `benefit_ctgr_cd` 는 받아도 **무시한다**(캐시에 남은 옛 edit.js 가 보내도 깨지지 않게)."""
+
+    benefit_cd: str | None = Field(default=None, max_length=30)
     benefit_nm: str = Field(..., min_length=1, max_length=100)
-    benefit_ctgr_cd: str = Field(..., max_length=20)
+    benefit_ctgr_cd: str | None = Field(default=None, max_length=20)  # 호환용 — 값을 쓰지 않는다
     benefit_amt: int | None = Field(default=None, ge=0)  # 만원. 정성이면 null
     qual_yn: bool = False
     note_ctnt: str | None = Field(default=None, max_length=200)
@@ -40,11 +40,10 @@ class BenefitCreateIn(BaseModel):
 
     @model_validator(mode="after")
     def _validate(self) -> "BenefitCreateIn":
-        self.benefit_cd = self.benefit_cd.strip().lower()
-        if not _BENEFIT_CD_RE.match(self.benefit_cd):
+        cd = (self.benefit_cd or "").strip().lower()
+        if cd and not _BENEFIT_CD_RE.match(cd):
             raise ValueError("복지 코드 형식이 올바르지 않습니다(소문자·숫자·_ 2~30자).")
-        if self.benefit_ctgr_cd not in _CATEGORIES_9:
-            raise ValueError("복지 카테고리가 올바르지 않습니다.")
+        self.benefit_cd = cd or None
         self.benefit_nm = self.benefit_nm.strip()
         if not self.benefit_nm:  # 공백-only 는 min_length=1 을 통과하나 strip 후 빈 이름 금지
             raise ValueError("복지 이름은 공백일 수 없습니다.")
@@ -53,7 +52,7 @@ class BenefitCreateIn(BaseModel):
 
 
 class BenefitUpdateIn(BaseModel):
-    """PUT /companies/{comp_id}/benefits/{benefit_id} — 복지 수정(FR-109).
+    """PUT /companies/{comp_id}/benefits/{benefit_id} — 복지 수정 확인 요청(FR-109).
 
     `base_dtm`(읽은 행의 낙관적 동시성 토큰)은 필수 — 없으면 422(무조건 덮어쓰기 금지)."""
 
@@ -82,7 +81,8 @@ class EditLogItem(BaseModel):
     삭제·수정 라우트가 없어 노출이 쓰기 능력을 주지 않는다."""
 
     edit_id: int
-    nickname: str
+    nickname: str             # 운영자 편집은 「운영자」, 탈퇴한 회원은 「(탈퇴)」 (2026-10-21)
+    actor_kind: str = "member"  # ∈ {member, operator}
     edit_type: str            # ∈ {create, update, delete}
     before: dict | None = None
     after: dict | None = None

@@ -59,7 +59,7 @@ def test_CFG1_community_limits_defaults():
 # ── ops digest ──────────────────────────────────────────────────────────────
 
 def test_OD_R1_digest_counts_pending_reports():
-    conn = _FakeConn({"pending": [], "company": [], "suppressed": [], "reports": [4, 9]})
+    conn = _FakeConn({"pending": [], "company": [], "suppressed": [], "reports": [4, 9], "benefit_requests": []})
     d = ops.collect_digest(conn)
     assert d["reports"] == [4, 9]
     subject = ops.digest_subject(d)

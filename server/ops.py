@@ -17,8 +17,9 @@
 유지되며, 알림은 그 결정을 바꾸지 않고 공백만 메운다.
 
 명령:
-  digest [--send]                      큐 3종 요약 출력(기본) / 발송. 타이머가 일 1회 --send
+  digest [--send]                      큐 요약 출력(기본) / 발송. 타이머가 일 1회 --send
   source-check [--dry-run] [--limit N] [--only X]  출처 주소 점검(SC-1). 타이머가 주 1회 — 본체 server/source_check.py
+  list-benefit-requests [--all]        복지 등록·수정 확인 큐 조회(처리는 운영 콘솔)
   list-pending                         수동 승인 대기 큐 조회
   approve <req_id> [--by N] [--note S] 승인 → manual 재직 인증 생성(+employ_vrf_ttl_days)
   reject  <req_id> [--by N] [--note S] 거부(사유 기록)
@@ -279,11 +280,15 @@ _DIGEST_QUERIES = (
     # SC15 게시물 신고(2026-08-27). 처리는 콘솔(hide/dismiss)이고 CLI 는 조회만 — 판단 ① 그대로 ID 만.
     ("reports", "게시물 신고", "list-reports",
      "SELECT REPORT_ID AS id FROM TPOST_REPORT WHERE STATUS_CD='pending' ORDER BY REPORT_ID"),
+    # 복지 등록·수정 확인(2026-10-21). 회원의 등록·수정은 운영자가 콘솔에서 승인해야 반영되므로 쌓이면 알려야 한다.
+    # 처리는 콘솔이고 CLI 는 조회만 — 요청 내용(이름·금액·비고)은 사용자 입력이라 판단 ① 그대로 ID 만 싣는다.
+    ("benefit_requests", "복지 등록 및 수정 확인", "list-benefit-requests",
+     "SELECT EDIT_REQUEST_ID AS id FROM TBENEFIT_EDIT_REQUEST WHERE STATUS_CD='pending' ORDER BY EDIT_REQUEST_ID"),
 )
 
 
 def collect_digest(conn) -> dict[str, list[int]]:
-    """세 큐의 **대기 중 ID 목록**만 모은다(내용은 읽지 않는다 — 위 판단 ①)."""
+    """큐들의 **대기 중 ID 목록**만 모은다(내용은 읽지 않는다 — 위 판단 ①)."""
     out: dict[str, list[int]] = {}
     for key, _label, _cmd, sql in _DIGEST_QUERIES:
         with conn.cursor(pymysql.cursors.DictCursor) as cur:
@@ -409,6 +414,33 @@ def cmd_list_reports(conn, args) -> int:
     return 0
 
 
+def cmd_list_benefit_requests(conn, args) -> int:
+    """복지 등록·수정 확인 큐 조회(2026-10-21). **처리는 콘솔에서**(`/api/v1/console`, 승인 · 거절) — 여기엔 결정
+    명령을 두지 않는다. `--by` 로 손으로 넣는 자율신고 감사를 늘리지 않기 위해서다(SP-AUTH-19).
+
+    이름은 사용자 입력 원문이다. 터미널에 출력해 사람이 읽고 판단하는 것이 이 명령의 전부다."""
+    with conn.cursor(pymysql.cursors.DictCursor) as cur:
+        cur.execute(
+            "SELECT r.EDIT_REQUEST_ID, r.REQ_TYPE_CD, r.STATUS_CD, r.COMP_ID, c.COMP_NM, r.MBR_ID, m.NICKNAME_NM, "
+            "       r.BENEFIT_CD, r.BENEFIT_NM, r.INS_DTM "
+            "  FROM TBENEFIT_EDIT_REQUEST r "
+            "  LEFT JOIN TCOMPANY c ON c.COMP_ID = r.COMP_ID LEFT JOIN TMEMBER m ON m.MBR_ID = r.MBR_ID "
+            + ("" if args.all else "WHERE r.STATUS_CD='pending' ")
+            + "ORDER BY r.EDIT_REQUEST_ID LIMIT %s",
+            (args.limit,),
+        )
+        rows = cur.fetchall()
+    if not rows:
+        print("복지 등록·수정 요청 없음.")
+        return 0
+    print(f"복지 등록·수정 요청 {len(rows)}건 (처리는 운영 콘솔 — ssh -L 8000:127.0.0.1:8000 → /api/v1/console):")
+    for r in rows:
+        who = r["NICKNAME_NM"] or f"(탈퇴 회원 {r['MBR_ID']})"
+        print(f"  #{r['EDIT_REQUEST_ID']}  [{r['STATUS_CD']}]  {r['REQ_TYPE_CD']}  {r['COMP_NM'] or r['COMP_ID']}  "
+              f"{r['BENEFIT_NM']} ({r['BENEFIT_CD'] or '목록에 없음'})  — {who}  {r['INS_DTM']}")
+    return 0
+
+
 def cmd_digest(conn, args) -> int:
     """큐 요약 출력(기본) 또는 발송(`--send`).
 
@@ -474,7 +506,8 @@ def cmd_delete_benefit(conn, args) -> int:
     순서가 핵심: delete 이력을 **먼저** INSERT(BENEFIT_ID=대상)한 뒤 복지를 DELETE 하면,
     `TBENEFIT_EDIT_LOG.BENEFIT_ID ON DELETE SET NULL` 이 이력의 BENEFIT_ID 만 NULL 로 바꿔
     이력 자체(before 스냅샷·COMP_ID·기록시각)는 **존치**된다(CASCADE 였다면 이력도 소실).
-    편집자(ACTOR_MBR_ID)는 운영자라 회원이 아니므로 NULL — 맥락은 EDIT_NOTE_CTNT 로 남긴다."""
+    편집자(ACTOR_MBR_ID)는 운영자라 회원이 아니므로 NULL, ACTOR_KIND_CD 는 operator(공개 이력에 「운영자」로 보인다) —
+    맥락은 EDIT_NOTE_CTNT 로 남긴다."""
     with conn.cursor(pymysql.cursors.DictCursor) as cur:
         cur.execute(
             "SELECT BENEFIT_ID, COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_CTGR_CD, BENEFIT_AMT, "
@@ -488,8 +521,8 @@ def cmd_delete_benefit(conn, args) -> int:
         comp = row["COMP_ID"]
         cur.execute(
             "INSERT INTO TBENEFIT_EDIT_LOG "
-            "(BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, EDIT_TYPE_CD, BEFORE_VAL, AFTER_VAL, EDIT_NOTE_CTNT) "
-            "VALUES (%s, %s, NULL, 'delete', %s, NULL, %s)",
+            "(BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, ACTOR_KIND_CD, EDIT_TYPE_CD, BEFORE_VAL, AFTER_VAL, EDIT_NOTE_CTNT) "
+            "VALUES (%s, %s, NULL, 'operator', 'delete', %s, NULL, %s)",
             (args.benefit_id, comp, _benefit_snapshot(row), args.note or "운영자 삭제"),
         )
         cur.execute("DELETE FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID=%s", (args.benefit_id,))
@@ -543,7 +576,7 @@ def build_parser() -> argparse.ArgumentParser:
     lr.add_argument("--limit", type=int, default=50)
     lr.set_defaults(func=cmd_list_reports)
 
-    dg = sub.add_parser("digest", help="큐 4종 요약 출력(기본) / --send 로 운영자에게 발송")
+    dg = sub.add_parser("digest", help="큐 5종 요약 출력(기본) / --send 로 운영자에게 발송")
     dg.add_argument("--send", action="store_true", help="메일 발송(없으면 화면 출력만)")
     dg.add_argument("--to", default="", help="수신 주소(생략 시 OPS_DIGEST_TO)")
     dg.add_argument("--only-if-pending", action="store_true",
@@ -560,6 +593,11 @@ def build_parser() -> argparse.ArgumentParser:
     sc.add_argument("--only", action="append", default=None, metavar="COMP_ENG_NM",
                     help="이 회사만(여러 번 쓸 수 있다) — 시험용이라 DB 에 쓰지 않는다")
     sc.set_defaults(func=cmd_source_check)
+
+    lb = sub.add_parser("list-benefit-requests", help="복지 등록·수정 확인 큐 — 처리는 운영 콘솔에서")
+    lb.add_argument("--all", action="store_true", help="처리분까지 포함")
+    lb.add_argument("--limit", type=int, default=50)
+    lb.set_defaults(func=cmd_list_benefit_requests)
 
     cq = sub.add_parser("list-company-requests", help="회사 등록 요청 큐(검색에 없는 회사)")
     cq.add_argument("--all", action="store_true", help="처리분까지 포함")

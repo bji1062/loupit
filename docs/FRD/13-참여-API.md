@@ -37,8 +37,8 @@
 | **FR-105** | `POST /employment/verify-code` — 재직 코드 발송 | 도메인 매칭→회사 이메일 코드 발송 | UC-73 |
 | **FR-106** | `POST /employment/verify` — 재직 인증 생성 | 코드 검증·원문 파기·HMAC 보관 | UC-73 |
 | **FR-107** | `POST /employment/requests` — 수동 승인 요청 | 소명 제출·승인 큐 | UC-74 |
-| **FR-108** | `POST /companies/{comp_id}/benefits` — 복지 등록 | 재직 인증 게이트·verified 배지·이력 | UC-75 |
-| **FR-109** | `PUT /companies/{comp_id}/benefits/{benefit_id}` — 복지 수정 | base_dtm 동시성·409·이력 | UC-76 |
+| **FR-108** | `POST /companies/{comp_id}/benefits` — 복지 등록 **확인 요청**(202) | 재직 인증 게이트·운영자 승인 뒤 반영(verified 배지·이력) | UC-75 |
+| **FR-109** | `PUT /companies/{comp_id}/benefits/{benefit_id}` — 복지 수정 **확인 요청**(202) | base_dtm 동시성·409·승인 뒤 반영 | UC-76 |
 | **FR-110** | `GET /companies/{comp_id}/edits` — 편집 이력 | 공개 조회·닉네임 조인·no-store | UC-77 |
 | **FR-111** | 인증 데이터 at-rest·PII 최소 계약 | 해시/HMAC·원문 파기·PII 컬럼 한정 | UC-71·73(전제) |
 | **FR-112** | 발송·시도 리밋·계정 열거 방지 | rate limit·쿨다운·시도 상한·균일 응답 | UC-70·73(전제) |
@@ -324,24 +324,24 @@
 
 ---
 
-## [FR-108] `POST /api/v1/companies/{comp_id}/benefits` — 복지 등록
+## [FR-108] `POST /api/v1/companies/{comp_id}/benefits` — 복지 등록 확인 요청
 
-**설명**: 해당 회사 재직 인증 보유자가 신규 복지 항목을 등록한다. 서버가 배지 시맨틱을 강제하고 편집 이력을 append한다.
+**설명**: 해당 회사 재직 인증 보유자가 신규 복지 항목의 등록을 **요청**한다. 요청은 운영자가 승인해야 사이트에 반영된다(2026-10-21 사용자 결정). 승인할 때 서버가 배지 시맨틱을 강제하고 편집 이력을 append한다.
 
 **상세 동작**
-- 정상: 세션 + `require_employment(comp_id)` + `X-Loupit-Client` 검증 후 복지 행을 삽입한다. 서버가 배지를 강제: `BADGE_CD='verified'`(재직자 확인)·`AMT_SOURCE_CD='estimated'`·`BADGE_SRC_CD='user_report'`·`EXPIRES_DTM=+18개월`. 정성이면 `QUAL_YN=true`·금액 NULL. 같은 트랜잭션에서 TBENEFIT_EDIT_LOG(EDIT_TYPE=create, before=∅→after 스냅샷)를 append한다. 201 + 갱신된 복지 목록 반환. 참조 캐시 무효화.
+- 정상: 세션 + `require_employment(comp_id)` + `X-Loupit-Client` 검증 후 `TBENEFIT_EDIT_REQUEST` 에 요청 1행(pending)을 만든다 — **본체·이력은 건드리지 않는다**. **202** + `{request}`. 운영자가 콘솔에서 승인하면(운영자가 표준 항목 94종 중 코드를 고른다) 서버가 배지를 강제한다: `BADGE_CD='verified'`(재직자 확인)·`AMT_SOURCE_CD='estimated'`·`BADGE_SRC_CD='user_report'`·`EXPIRES_DTM=+18개월`. 정성이면 `QUAL_YN=true`·금액 NULL. 같은 트랜잭션에서 TBENEFIT_EDIT_LOG(EDIT_TYPE=create, 편집자=요청 회원, before=∅→after 스냅샷)를 append한다. 참조 캐시는 승인 때 무효화. 거절하면 본체·이력은 그대로이고 사유가 회원 편집 화면에 보인다. 회원의 이 회사 요청 목록은 `GET /companies/{comp_id}/benefits` 응답의 `requests[]`.
 - 예외(권한 없음): 세션·재직 인증 미보유 401/403. 미인증 로그인자는 "재직 인증하고 편집하기"로 유도.
 - 예외(CSRF 헤더 부재): 403(FR-113).
-- 예외(중복·상한): 동일 회사·코드 중복 409, 일일 편집 상한(30건) 초과 429.
+- 예외(중복·상한·코드): 그 회사에 이미 있는 코드 409, 같은 대상에 이미 확인 대기 중인 요청 409, 표준 항목 밖 코드 422, 일일 상한(30건, **요청 수** 기준) 초과 429.
 
 **입력**
 
 | 파라미터 | 위치 | 타입 | 널 | 제약 |
 |----------|------|------|----|------|
 | `comp_id` | path | int | N | 재직 인증 보유 회사 |
-| `benefit_cd` | body | string | N | 복지 코드(소문자 스네이크 `^[a-z][a-z0-9_]{1,29}$`, 회사 내 유니크 `uq_comp_benefit` — 중복 시 409) |
+| `benefit_cd` | body | string | Y | 표준 복지 항목 코드(`GET /benefit-codes` 의 `code`, 소문자 스네이크 `^[a-z][a-z0-9_]{1,29}$`). 없으면 「목록에 없음」 — 운영자가 승인 때 고른다. 그 회사에 이미 있으면 409 |
 | `benefit_nm` | body | string | N | 복지 표시명(이스케이프) |
-| `benefit_ctgr_cd` | body | string | N | 9카테고리 중 하나 |
+| `benefit_ctgr_cd` | body | string | Y | **받아도 무시한다**(카테고리는 승인 때 코드에서 정해진다 — 캐시에 남은 옛 화면 호환) |
 | `benefit_amt` | body | int\|null | Y | 금액(만원). 정성이면 null |
 | `qual_yn` | body | bool | N | 정성 여부(true면 금액 null 강제) |
 | `note_ctnt` | body | string\|null | Y | 비고(이스케이프) |
@@ -351,28 +351,31 @@
 
 | 상태 | 조건 | 본문 |
 |------|------|------|
-| 201 Created | 등록 성공 | `{benefit, benefits[]}` |
+| 202 Accepted | 확인 요청 접수(운영자 승인 전에는 사이트에 안 보인다) | `{request: {request_id, type, status, benefit_nm, …}}` |
 | 401/403 | 세션 없음 / 재직 인증·CSRF 헤더 없음 | 오류 envelope |
-| 409 Conflict | 동일 회사·코드 중복 | 오류 envelope |
-| 429 Too Many Requests | 일일 편집 상한 초과 | 오류 envelope |
+| 409 Conflict | 그 회사에 이미 있는 코드 / 이미 확인 대기 중 | 오류 envelope |
+| 422 | 정성 불변식 위반 / 표준 항목 밖 코드 | 오류 envelope |
+| 429 Too Many Requests | 일일 요청 상한 초과 | 오류 envelope |
 
 **검증·비즈니스 규칙**
 1. 배지는 서버가 강제(사용자가 official·stated 지정 불가). `BADGE_CD='verified'`는 신규 제3값(기존 official/est 게이트 불변, `est` 재사용 금지).
-2. 행 INSERT + 이력 INSERT는 **원자 트랜잭션**(SP-DB `transaction()`).
+2. 승인 때 행 INSERT + 이력 INSERT + 요청 approved 는 **원자 트랜잭션**(SP-DB `transaction()`).
 3. 편집자 = MBR_ID(감사컬럼 INS_ID/MOD_ID 활성화). calc.js 밴드 로직 무변경(표시 계층만 확장).
-4. 응답 `benefits[]`로 클라이언트 REF 인메모리 치환·재렌더. 정적 페이지 반영은 야간 재생성(신선도 고지).
+4. 승인 뒤 비교·복지검색은 다음 요청부터 새 값을 본다. 정적 회사 페이지 반영은 다음 배포(생성) 때(신선도 고지).
+5. 표준 항목 목록은 새 공개 API `GET /api/v1/benefit-codes`(세션 불필요, `{codes:[{code,label,ctgr,aliases}]}`) — /find 와 같은 이름 규칙.
 
 **추적**: SC14 / UC-75 / INV-1·INV-8·NFR21 / FR-113·FR-114 / SP-AUTH·SP-DB·SP-ENGINE(밴드 무변경).
 
 ---
 
-## [FR-109] `PUT /api/v1/companies/{comp_id}/benefits/{benefit_id}` — 복지 수정
+## [FR-109] `PUT /api/v1/companies/{comp_id}/benefits/{benefit_id}` — 복지 수정 확인 요청
 
-**설명**: 기존 복지 항목을 수정한다. 낙관적 동시성(`base_dtm`)으로 충돌을 감지한다.
+**설명**: 기존 복지 항목의 수정을 **요청**한다(운영자 승인 뒤 반영, 2026-10-21). 낙관적 동시성(`base_dtm`)으로 충돌을 감지한다.
 
 **상세 동작**
-- 정상: 세션 + `require_employment(comp_id)` + CSRF 검증 후, 요청의 `base_dtm`(읽은 행의 MOD_DTM)이 현재 행과 일치하면 행을 갱신하고 같은 트랜잭션에서 이력(EDIT_TYPE=update, before→after)을 append한다. 200 + 갱신 목록. official 행을 사용자가 수정하면 배지가 verified로 강등.
-- 예외(동시성 충돌): `base_dtm` 불일치 시 **409 + 현재 행 동봉**(클라이언트가 현재값 diff 표시 후 재편집).
+- 정상: 세션 + `require_employment(comp_id)` + CSRF 검증 후, 요청의 `base_dtm`(읽은 행의 토큰)이 현재 행과 일치하면 요청 1행(제출 때 스냅샷·토큰 포함)을 만든다 — **본체는 그대로**. **202** + `{request}`. 운영자가 승인하면 대상 행을 잠그고 토큰이 제출 때와 같을 때만 행을 갱신하고 같은 트랜잭션에서 이력(EDIT_TYPE=update, 편집자=요청 회원, before→after)을 append한다(다르면 `stale` 409 — 운영자는 거절로 처리). official 행이 승인되면 배지가 verified로 강등.
+- 예외(동시성 충돌): `base_dtm` 불일치 시 **409 + 현재 행 동봉**(클라이언트가 현재값 diff 표시 후 재편집, 요청은 만들지 않는다).
+- 예외(대기 중): 같은 회원이 같은 항목에 이미 확인 대기 중인 요청이 있으면 409.
 - 예외(권한·CSRF·상한): FR-108과 동일(401/403/429).
 
 **입력**
@@ -388,14 +391,15 @@
 
 | 상태 | 조건 | 본문 |
 |------|------|------|
-| 200 OK | 수정 성공 | `{benefit, benefits[]}` |
+| 202 Accepted | 수정 요청 접수 | `{request}` |
 | 409 Conflict | `base_dtm` 불일치(선점 수정) | `{current_benefit, benefits[]}`(현재값 동봉) |
+| 409 Conflict | 이미 확인 대기 중 | 오류 envelope |
 | 401/403/429 | 권한/CSRF/상한 | 오류 envelope |
 
 **검증·비즈니스 규칙**
 1. `base_dtm` 낙관적 동시성 — 버전 컬럼 없이 MOD_DTM 비교. 불일치는 409(현재 행 반환).
-2. 행 UPDATE + 이력 INSERT 원자 트랜잭션(`SELECT ... FOR UPDATE`).
-3. official→verified 강등은 사용자 편집 시 자동(신뢰도 시맨틱).
+2. 승인 때 행 UPDATE + 이력 INSERT + 요청 approved 원자 트랜잭션(`SELECT ... FOR UPDATE`).
+3. official→verified 강등은 승인 시 자동(신뢰도 시맨틱).
 4. v1은 사용자 DELETE 없음(운영자 CLI 전용, FR-115).
 
 **추적**: SC14 / UC-76 / INV-1·INV-8 / FR-108·FR-113·FR-114 / SP-AUTH·SP-DB.

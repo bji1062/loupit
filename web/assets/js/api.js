@@ -134,14 +134,17 @@ export const submitEmployRequest = (comp_id, evidence) =>
 export const submitCompanyRequest = (comp_nm, ref_url) =>
   apiSend('POST', '/employment/company-requests', { comp_nm, ref_url: ref_url || null });
 // 복지 편집(SP-AUTH-9·10, FR-108~110). 등록·수정·편집용 조회는 세션+재직 게이트(credentialed+CSRF);
-// 편집용 조회 응답은 base_dtm(낙관동시성 토큰)·benefit_id(PUT 대상 PK)를 행마다 동봉한다.
+// 편집용 조회 응답은 base_dtm(낙관동시성 토큰)·benefit_id(PUT 대상 PK)를 행마다 동봉하고, 이 회원의 요청 목록(requests)을 더한다.
 // 편집 이력 조회는 익명 공개 GET(무쿠키 apiFetch — 스크래핑 방어 헤더만 부착).
 export const getBenefitsForEdit = (comp_id) =>
   apiSend('GET', '/companies/' + encodeURIComponent(comp_id) + '/benefits'); // 401 무세션 / 403 재직 미보유
+// 2026-10-21: 등록·수정은 바로 반영되지 않고 **운영자 확인 요청**이 된다(202 + {request}).
 export const createBenefit = (comp_id, body) =>
-  apiSend('POST', '/companies/' + encodeURIComponent(comp_id) + '/benefits', body); // 201 / 409 코드중복 / 429 상한 / 422
+  apiSend('POST', '/companies/' + encodeURIComponent(comp_id) + '/benefits', body); // 202 / 409 이미 있는 항목·대기 중 / 429 상한 / 422
 export const updateBenefit = (comp_id, benefit_id, body) =>
-  apiSend('PUT', '/companies/' + encodeURIComponent(comp_id) + '/benefits/' + encodeURIComponent(benefit_id), body); // 200 / 409 선점(현재행 동봉) / 404 / 429 / 422
+  apiSend('PUT', '/companies/' + encodeURIComponent(comp_id) + '/benefits/' + encodeURIComponent(benefit_id), body); // 202 / 409 선점(현재행 동봉)·대기 중 / 404 / 429 / 422
+// 표준 복지 항목 목록(94종): 익명 공개 GET — 편집 화면의 「어떤 복지인가요?」 검색 고르기. 응답 {codes:[{code,label,ctgr,aliases}]}.
+export const getBenefitCodes = (opt) => apiFetch('/benefit-codes', opt);
 // 편집 이력: 익명 공개 GET · 404 미존재 회사. `before`=키셋 커서(그 edit_id 보다 오래된 페이지).
 export const getEdits = (comp_id, limit = 50, before = null, opt) =>
   apiFetch('/companies/' + encodeURIComponent(comp_id) + '/edits?limit=' + encodeURIComponent(limit)

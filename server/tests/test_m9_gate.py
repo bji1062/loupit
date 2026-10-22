@@ -32,6 +32,7 @@ ANONYMOUS_GET_PATHS = {
     "/api/v1/companies/search",
     "/api/v1/companies/{comp_id}",
     "/api/v1/comparisons/trending",
+    "/api/v1/benefit-codes",  # 2026-10-21: 표준 복지 코드 목록(익명 공개 GET — 편집 화면의 검색 고르기)
 }
 ANONYMOUS_WRITE_ROUTES = {("/api/v1/comparisons/log", "POST")}
 

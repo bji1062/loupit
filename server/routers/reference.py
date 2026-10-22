@@ -12,6 +12,7 @@ from fastapi import APIRouter, Request, Response
 from server.config import get_settings
 from server.database import get_pool
 from server.models.reference import ReferenceBundle  # OpenAPI 문서 + 런타임 계약 검증(H-1)
+from server.services import benefit_codes
 from server.services.reference import build_reference_bundle
 
 router = APIRouter(tags=["reference"])
@@ -46,4 +47,22 @@ async def reference_all(request: Request) -> Response:
         # 명시하지 않으면 charset 누락(FR-92 TR-2 요구: "application/json; charset=utf-8").
         media_type="application/json; charset=utf-8",
         headers={"Cache-Control": get_settings().reference_cache_control},
+    )
+
+
+#: 코드 목록은 참조 번들에서 파생되고 하루에 한두 번 바뀔까 하는 값이다 — 짧게 공개 캐시한다(프록시 5분).
+_CODES_CACHE_CONTROL = "public, max-age=300"
+
+
+@router.get("/benefit-codes")
+async def benefit_codes_list(request: Request) -> Response:
+    """표준 복지 코드 목록 `[{code, label, ctgr, aliases}]` — 세션 불필요(2026-10-21).
+
+    회원 편집 화면의 「어떤 복지인가요?」 검색 고르기가 쓴다. 이름을 부르는 규칙은 /find 와 같은
+    `generator/benefit_codes.py` 하나다. 인메모리 캐시는 참조 번들 캐시와 함께 비워진다."""
+    codes = await benefit_codes.get_codes(getattr(request.app.state, "reference_cache", None))
+    return Response(
+        content=json.dumps({"codes": codes}, ensure_ascii=False).encode("utf-8"),
+        media_type="application/json; charset=utf-8",
+        headers={"Cache-Control": _CODES_CACHE_CONTROL},
     )

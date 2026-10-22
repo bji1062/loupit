@@ -810,7 +810,7 @@ describe('edit.html + initEditPage — 항목 지목 프리필', () => {
   test('지목한 항목의 수정 폼이 열린다', async () => {
     await run('?comp=40&benefit=club', [{ comp_id: 40, comp_nm: '테스트사' }]);
     assert.equal($('benefit-form').hidden, false);
-    assert.equal($('form-title').textContent, '복지 수정');
+    assert.equal($('form-title').textContent, '복지 수정 요청');
     assert.equal($('f-name').value, '동호회');
   });
 
@@ -824,5 +824,195 @@ describe('edit.html + initEditPage — 항목 지목 프리필', () => {
     // pickCompany 가 유일 인증 회사(40)로 폴백하므로 회사는 40 이 되지만, 지목은 남의 것이다.
     await run('?comp=1&benefit=meal', [{ comp_id: 40, comp_nm: '테스트사' }]);
     assert.equal($('benefit-form').hidden, true, 'meal 은 거의 모든 회사에 있어 상시 오작동이 된다');
+  });
+});
+
+// ── 복지 편집 화면: 운영자 확인 요청 흐름(2026-10-21) ─────────────────────────────
+// 새 항목 = 표준 항목 검색 고르기(영문 코드 입력 없음) · 제출은 202 요청 · 내 요청 절(확인 대기 / 반영됨 / 반영 안 됨).
+describe('edit.html + initEditPage — 운영자 확인 요청 흐름', () => {
+  const VRF = [{ comp_id: 40, comp_nm: '테스트사' }];
+  const CODES = [
+    { code: 'meal', label: '구내식당·식대 지원', ctgr: 'compensation', aliases: ['사내식당'] },
+    { code: 'gym', label: '피트니스센터 지원', ctgr: 'health', aliases: ['헬스장 이용'] },
+  ];
+  const ROWS = [
+    { benefit_id: 11, benefit_cd: 'meal', benefit_nm: '구내식당', benefit_ctgr_cd: 'compensation',
+      benefit_amt: 432, qual_yn: false, note_ctnt: '', base_dtm: '2026-09-01T00:00:00:abc' },
+  ];
+  const input = (dom, id, value) => {
+    $(id).value = value;
+    $(id).dispatchEvent(new dom.window.Event('input', { bubbles: true }));
+  };
+
+  async function run({ requests = [], extra = [] } = {}) {
+    const dom = mountPage('edit.html', 'http://x/edit');
+    globalThis.location.search = '';
+    const calls = mockApi([
+      ['GET', '/members/me', { status: 200, body: { nickname: '직장인-1', verifications: VRF } }],
+      ['GET', '/benefit-codes', { status: 200, body: { codes: CODES } }],
+      ...extra,
+      ['GET', '/benefits', { status: 200, body: { benefits: ROWS, requests } }],
+    ]);
+    initEditPage();
+    await tick(30);
+    return { dom, calls };
+  }
+
+  test('새 항목 폼에는 영문 코드·카테고리 입력이 없다', async () => {
+    await run();
+    assert.equal($('f-code'), null);
+    assert.equal($('f-ctgr'), null);
+    assert.ok($('f-search'));
+    $('new-benefit').click();
+    await tick(30);
+    assert.equal($('benefit-form').hidden, false);
+    assert.equal($('form-title').textContent, '새 복지 등록 요청');
+    assert.equal($('f-pick-wrap').hidden, false);
+  });
+
+  test('이름으로 검색 → 후보를 고르면 이름 칸이 채워지고, 이름은 고칠 수 있다', async () => {
+    const { dom } = await run();
+    $('new-benefit').click();
+    await tick(30);
+    input(dom, 'f-search', '헬스장');
+    const li = $('code-results').querySelector('li');
+    assert.ok(li);
+    assert.match(li.textContent, /피트니스센터 지원/);
+    li.click();
+    assert.equal($('f-name').value, '피트니스센터 지원');
+    assert.equal($('code-picked').hidden, false);
+    assert.equal($('code-picked-label').textContent, '피트니스센터 지원');
+    assert.equal($('code-results').hidden, true);
+    // 사용자가 이름을 고친 뒤 다시 고르기 → 고친 이름은 덮어쓰지 않는다
+    $('f-name').value = '우리 회사 헬스장';
+    $('code-clear').click();
+    input(dom, 'f-search', '식대');
+    $('code-results').querySelector('li').click();
+    assert.equal($('f-name').value, '우리 회사 헬스장');
+  });
+
+  test('이미 이 회사에 있는 항목을 고르면 수정 요청으로 안내하고 제출을 막는다', async () => {
+    const { dom } = await run();
+    $('new-benefit').click();
+    await tick(30);
+    input(dom, 'f-search', '식대');
+    $('code-results').querySelector('li').click();
+    assert.equal($('code-exists').hidden, false);
+    assert.equal($('form-submit').disabled, true);
+    $('code-goto-edit').click();
+    assert.equal($('form-title').textContent, '복지 수정 요청');
+    assert.equal($('f-name').value, '구내식당');
+    assert.equal($('form-submit').disabled, false);
+  });
+
+  test('항목을 안 고르고 제출하면 막는다 — 「찾는 항목이 없어요」를 눌러야 이름만으로 보낼 수 있다', async () => {
+    const { dom, calls } = await run();
+    $('new-benefit').click();
+    await tick(30);
+    $('f-name').value = '특이한 복지';
+    submit(dom, 'benefit-form');
+    await tick();
+    assert.equal($('form-err').hidden, false);
+    assert.match($('form-err').textContent, /목록에서 골라/);
+    assert.equal(calls.filter((c) => c.method === 'POST').length, 0);
+  });
+
+  test('등록 제출: 코드는 고른 것만 보내고(카테고리 없음) 202 면 확인 요청 문구를 보인다', async () => {
+    const { dom, calls } = await run({
+      extra: [['POST', '/benefits', { status: 202, body: { request: { request_id: 1, status: 'pending' } } }]],
+    });
+    $('new-benefit').click();
+    await tick(30);
+    input(dom, 'f-search', '헬스');
+    $('code-results').querySelector('li').click();
+    $('f-amt').value = '120';
+    submit(dom, 'benefit-form');
+    await tick(30);
+    const post = calls.find((c) => c.method === 'POST');
+    const body = JSON.parse(post.opts.body);
+    assert.equal(body.benefit_cd, 'gym');
+    assert.equal(body.benefit_nm, '피트니스센터 지원');
+    assert.equal(body.benefit_amt, 120);
+    assert.equal('benefit_ctgr_cd' in body, false);
+    assert.equal($('edit-ok').hidden, false);
+    assert.equal($('edit-ok').textContent, '확인 요청을 보냈어요. 운영자가 확인하면 사이트에 반영돼요.');
+    assert.equal($('benefit-form').hidden, true);
+  });
+
+  test('「찾는 항목이 없어요」: 코드 없이 이름만 보낸다', async () => {
+    const { dom, calls } = await run({
+      extra: [['POST', '/benefits', { status: 202, body: { request: { request_id: 2, status: 'pending' } } }]],
+    });
+    $('new-benefit').click();
+    await tick(30);
+    $('code-none').click();
+    $('f-name').value = '특이한 복지';
+    $('f-qual').checked = true;
+    submit(dom, 'benefit-form');
+    await tick(30);
+    const body = JSON.parse(calls.find((c) => c.method === 'POST').opts.body);
+    assert.deepEqual(body, { benefit_nm: '특이한 복지', qual_yn: true });
+  });
+
+  test('수정 제출은 202 → 수정 요청 문구', async () => {
+    const { dom } = await run({
+      extra: [['PUT', '/benefits/11', { status: 202, body: { request: { request_id: 3, status: 'pending' } } }]],
+    });
+    $('benefit-list').querySelector('button').click();
+    assert.equal($('form-title').textContent, '복지 수정 요청');
+    submit(dom, 'benefit-form');
+    await tick(30);
+    assert.equal($('edit-ok').textContent, '수정 요청을 보냈어요. 운영자가 확인하면 반영돼요.');
+  });
+
+  test('이미 확인 대기 중이라는 409 는 선점 안내가 아니라 대기 안내로 보인다', async () => {
+    const { dom } = await run({
+      extra: [['PUT', '/benefits/11', { status: 409, body: { detail: '이미 확인 대기 중인 요청이 있습니다.' } }]],
+    });
+    $('benefit-list').querySelector('button').click();
+    submit(dom, 'benefit-form');
+    await tick(30);
+    assert.match($('form-err').textContent, /확인 대기 중/);
+    assert.equal($('conflict-note').hidden, true);
+  });
+
+  test('내 요청 절: 확인 대기 / 반영됨 / 반영 안 됨(사유) — 사유는 텍스트로만', async () => {
+    await run({
+      requests: [
+        { request_id: 3, type: 'create', status: 'pending', benefit_nm: '헬스장', benefit_id: null },
+        { request_id: 2, type: 'update', status: 'approved', benefit_nm: '구내식당', benefit_id: 11 },
+        { request_id: 1, type: 'create', status: 'rejected', benefit_nm: '간식', benefit_id: null,
+          decide_note: '<img src=x onerror=alert(1)> 공식 자료 필요' },
+      ],
+    });
+    assert.equal($('req-section').hidden, false);
+    const rows = [...$('req-list').querySelectorAll('li')];
+    assert.equal(rows.length, 3);
+    assert.deepEqual(rows.map((li) => li.querySelector('.ben-badge').textContent), ['확인 대기', '반영됨', '반영 안 됨']);
+    assert.match(rows[2].textContent, /사유: <img src=x onerror=alert\(1\)> 공식 자료 필요/);
+    assert.equal($('req-list').querySelector('img'), null, '사유가 HTML 로 해석됐다');
+  });
+
+  test('요청이 없으면 내 요청 절을 숨긴다', async () => {
+    await run({ requests: [] });
+    assert.equal($('req-section').hidden, true);
+  });
+
+  test('확인 대기 중인 수정이 있는 항목에는 「수정 확인 대기」 표시', async () => {
+    await run({ requests: [{ request_id: 5, type: 'update', status: 'pending', benefit_nm: '구내식당', benefit_id: 11 }] });
+    assert.equal($('benefit-list').querySelector('.ben-badge').textContent, '수정 확인 대기');
+  });
+});
+
+// ── 캐시에 남은 옛 edit.html 에 새 edit.js 가 붙어도 빈 화면이 되지 않는다 ────────────────
+describe('initEditPage — 옛 HTML 호환', () => {
+  test('새 칸(#f-search 등)이 없으면 새로고침 안내를 보이고 멈춘다', () => {
+    const dom = new JSDOM('<main><div id="edit-card" hidden><form id="benefit-form"></form></div></main>', { url: 'http://x/edit' });
+    globalThis.document = dom.window.document;
+    globalThis.location = { href: 'http://x/edit', search: '' };
+    mockApi([]);
+    initEditPage();
+    assert.equal($('edit-card').hidden, false);
+    assert.match($('edit-card').textContent, /새로고침해 주세요/);
   });
 });

@@ -69,6 +69,8 @@ class _FakeCursor:
             key = "suppressed"
         elif "TPOST_REPORT" in s:  # SC15 게시물 신고(2026-08-27)
             key = "reports"
+        elif "TBENEFIT_EDIT_REQUEST" in s:  # 복지 등록·수정 확인(2026-10-21)
+            key = "benefit_requests"
         else:
             raise AssertionError(f"예상 못 한 질의: {s}")
         self._rows = [{"id": i} for i in self._counts[key]]
@@ -101,12 +103,12 @@ class _FakeMailer:
 
 @pytest.fixture
 def empty_conn():
-    return _FakeConn({"pending": [], "company": [], "suppressed": [], "reports": []})
+    return _FakeConn({"pending": [], "company": [], "suppressed": [], "reports": [], "benefit_requests": []})
 
 
 @pytest.fixture
 def busy_conn():
-    return _FakeConn({"pending": [3, 7], "company": [1], "suppressed": [], "reports": []})
+    return _FakeConn({"pending": [3, 7], "company": [1], "suppressed": [], "reports": [], "benefit_requests": []})
 
 
 # ── OD-1: 건수 수집 ────────────────────────────────────────────────────────
@@ -311,3 +313,18 @@ class _FakeSettings:
 
     def __init__(self, ops_digest_to=""):
         self.ops_digest_to = ops_digest_to
+
+
+# ── OD-14: 복지 등록·수정 확인 큐(2026-10-21) ──────────────────────────────────────
+def test_OD14_복지_확인_큐가_제목과_본문에_건수와_ID_만으로_실린다():
+    conn = _FakeConn({"pending": [], "company": [], "suppressed": [], "reports": [], "benefit_requests": [5, 8]})
+    d = ops.collect_digest(conn)
+    assert d["benefit_requests"] == [5, 8]
+    subject, body = ops.digest_subject(d), ops.digest_body(d)
+    assert "복지 등록 및 수정 확인 2" in subject and ops.DIGEST_MARK in subject
+    assert "#5" in body and "#8" in body and "list-benefit-requests" in body
+    assert "@" not in body and "://" not in body
+    sql = next(q for k, _l, _c, q in ops._DIGEST_QUERIES if k == "benefit_requests")
+    assert "STATUS_CD='pending'" in sql and "EDIT_REQUEST_ID AS id" in sql
+    for col in ("BENEFIT_NM", "NOTE_CTNT", "EDIT_NOTE_CTNT", "NICKNAME_NM"):
+        assert col not in sql  # 내용은 메일에 실릴 수가 없다(OD-4 규약)
