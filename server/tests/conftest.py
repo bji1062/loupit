@@ -182,6 +182,8 @@ PARTICIPATION_CREATE_ORDER = [
     # 아직 존재하지 않는 회사를 요청하는 창구라서다(db/schema.sql 의 해당 절 참조).
     "TCOMPANY_REQUEST",
     "TBENEFIT_EDIT_LOG",
+    # 복지 등록·수정 확인 큐(2026-10-21). FK 부모 TCOMPANY · TMEMBER · TCOMPANY_BENEFIT · TBENEFIT_EDIT_LOG 가 모두 앞에 있다.
+    "TBENEFIT_EDIT_REQUEST",
     # ── SC15 커뮤니티 4테이블(SP-DB-18, 2026-08-27) — 참여 그룹 **끝**에 부모→자식 순서로 ──
     # FK 위상: TPOST(TMEMBER·TCOMPANY) → TPOST_COMMENT(TPOST·TMEMBER) → TPOST_REACTION(TPOST·TMEMBER)
     # → TPOST_REPORT(TMEMBER). 부모가 전부 이 목록 앞에 있으므로 SI-4 를 만족한다.
@@ -240,7 +242,7 @@ CORP_FINANCE_CREATE_ORDER = ["TCORP", "TCOMPANY_CORP", "TCORP_FINANCE", "TCORP_E
 # 만들어져 COMP_ID 가 새로 매겨지면 살아남은 점검 이력이 다른 회사의 연속 실패로 읽힌다(#15 동형).
 SOURCE_CHECK_CREATE_ORDER = ["TSOURCE_CHECK"]
 
-# 활성 격리 사이클 = 참조 6 + 참여(7 + 요청 1 + 커뮤니티 4) + 운영자 조치 이력 1 + 메일 3 + DART 법인 4 + 출처 점검 1.
+# 활성 격리 사이클 = 참조 6 + 참여(7 + 요청 1 + 복지 확인 요청 1 + 커뮤니티 4) + 운영자 조치 이력 1 + 메일 3 + DART 법인 4 + 출처 점검 1.
 # 참여가 뒤에 오는 것이 FK 부모→자식 순서를 만족한다(TMEMBER 는 무의존, 나머지는 TCOMPANY·TCOMPANY_BENEFIT·TMEMBER 를
 # 참조 — SI-4).
 TABLE_CREATE_ORDER = (

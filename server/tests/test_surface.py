@@ -69,8 +69,8 @@ def test_TS1_participation_surface_exact(app_instance):
         # 않는다 — 검색에 **없는** 회사가 대상이라 참조할 ID 가 아직 없다. 요청은 회사를
         # 만들지 않고 큐에만 들어간다(등록은 운영자 판단).
         ("/api/v1/employment/company-requests", "POST"),
-        ("/api/v1/companies/{comp_id}/benefits", "POST"),             # FR-108 복지 등록
-        ("/api/v1/companies/{comp_id}/benefits/{benefit_id}", "PUT"), # FR-109 복지 수정
+        ("/api/v1/companies/{comp_id}/benefits", "POST"),             # FR-108 복지 등록 확인 요청(202, 2026-10-21)
+        ("/api/v1/companies/{comp_id}/benefits/{benefit_id}", "PUT"), # FR-109 복지 수정 확인 요청(202)
         # P1-4(SP-AUTH-16): 제공자(Resend/Svix)가 호출하는 **공개 POST**. 참여 라우트가 아니고
         # M9 게이트 밖이며, `RESEND_WEBHOOK_SECRET` 이 있을 때만 등록된다(위 픽스처가 고정).
         # 인증은 세션·CSRF 헤더가 아니라 **HMAC 서명**이다 — 익명 쓰기가 하나 더 늘었다는 사실을
@@ -83,6 +83,9 @@ def test_TS1_participation_surface_exact(app_instance):
         ("/api/v1/console/verifications/{req_id}/approve", "POST"),
         ("/api/v1/console/verifications/{req_id}/reject", "POST"),
         ("/api/v1/console/company-requests/{req_id}/decide", "POST"),
+        # 2026-10-21 복지 등록·수정 확인: 승인(= 본체 반영, 한 트랜잭션)·거절. 결정자는 세션에서(본문 필드 없음).
+        ("/api/v1/console/benefit-requests/{req_id}/approve", "POST"),
+        ("/api/v1/console/benefit-requests/{req_id}/reject", "POST"),
         ("/api/v1/console/suppressions/{target_hash}/release", "POST"),
         # SC15 커뮤니티(FR-120, 2026-08-27): 세션 쓰기 7 + 신고 1 + 콘솔 결정 1 = 9. 전부 M9 게이트 안
         # (FK 가 TMEMBER), `require_csrf` → `require_member` 순서. 열람 GET 3종은 아래 expected_get_paths.
@@ -107,6 +110,7 @@ def test_TS1_participation_surface_exact(app_instance):
         "/api/v1/companies/search",
         "/api/v1/companies/{comp_id}",
         "/api/v1/comparisons/trending",
+        "/api/v1/benefit-codes",                 # 2026-10-21 표준 복지 코드 목록(익명 공개)
         "/api/v1/members/me",                    # FR-104 마이페이지(세션)
         "/api/v1/companies/{comp_id}/edits",     # FR-110 편집 이력 공개 열람
         "/api/v1/companies/{comp_id}/benefits",  # FR-109 편집용 조회(재직 게이트·base_dtm 부트스트랩)

@@ -23,6 +23,7 @@ import pymysql
 import pytest
 
 from server.tests.conftest import MIGRATIONS_DIR, _split_sql_statements
+from server.tests.member_edit_support import approved_create, approved_update
 
 ROOT = Path(__file__).resolve().parents[2]
 SEED_DIR = ROOT / "db" / "seed"
@@ -100,7 +101,7 @@ async def _edits(ids: dict, kim: int, lee: int) -> None:
 
     async def update(comp, bid, mbr, **kw):
         token = {b["benefit_id"]: b["base_dtm"] for b in await svc.fetch_company_benefits(comp)}[bid]
-        r = await svc.update_benefit(comp, bid, mbr, BenefitUpdateIn(base_dtm=token, **kw))
+        r = await approved_update(comp, bid, mbr, BenefitUpdateIn(base_dtm=token, **kw))
         assert r["result"] == "ok", r
 
     await database.init_pool()
@@ -119,14 +120,14 @@ async def _edits(ids: dict, kim: int, lee: int) -> None:
         await update(ids["krafton"], ids["commute"], kim, benefit_nm="야근 택시비 + 출근 버스",
                      benefit_amt=None, qual_yn=True, note_ctnt=None)
         # 충돌 등록 — 시드에서 지운 코드를 재직자가 다른 카테고리로 등록(등록 이력은 카테고리까지 되살린다)
-        r = await svc.create_benefit(ids["cj_enm_com"], lee, BenefitCreateIn(
+        r = await approved_create(ids["cj_enm_com"], lee, BenefitCreateIn(
             benefit_cd="leisure_ticket", benefit_nm="OTT 이용권", benefit_ctgr_cd="perks",
             benefit_amt=24, qual_yn=False, note_ctnt="연 24만원 상당"))
         assert r["result"] == "ok", r
         ids["ticket"] = r["benefit"]["benefit_id"]
         # 등록한 뒤 고친 행 — 마지막 이력은 수정이지만 재직자가 만든 행이라 카테고리·설명·출처 URL·정렬은
         # 등록이 쓴 그대로여야 한다(마지막 이력의 종류가 아니라 등록 이력의 유무로 갈린다)
-        r = await svc.create_benefit(ids["cj_enm_com"], lee, BenefitCreateIn(
+        r = await approved_create(ids["cj_enm_com"], lee, BenefitCreateIn(
             benefit_cd="edu_support", benefit_nm="자기계발비", benefit_ctgr_cd="compensation",
             benefit_amt=50, qual_yn=False, note_ctnt="연 50만원"))
         assert r["result"] == "ok", r

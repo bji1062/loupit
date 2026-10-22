@@ -174,21 +174,28 @@ def _truncate_source_check(cur) -> None:
 
 # ── SP-SEED-12 재직자 행 보존 (모듈 머리말 ①~⑥) ────────────────────────────────────
 
-def _member_data_counts(cur) -> tuple[int, int]:
-    """(편집 이력 행 수, 재직자 행 수). DROP 전에 부르므로 표 존재부터 본다 — 최초 적재면 (0, 0)."""
+def _member_data_counts(cur) -> tuple[int, int, int]:
+    """(편집 이력 행 수, 재직자 행 수, 복지 확인 요청 행 수). DROP 전에 부르므로 표 존재부터 본다 — 최초 적재면 (0, 0, 0).
+
+    확인 요청(TBENEFIT_EDIT_REQUEST, 2026-10-21)도 COMP_ID·BENEFIT_ID 를 가리킨다. --fresh 가 번호를 다시 매기면
+    대기 요청이 엉뚱한 회사·복지에 붙으므로 이력과 같은 이유로 센다."""
     cur.execute(
         "SELECT TABLE_NAME FROM information_schema.TABLES "
-        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME IN ('TBENEFIT_EDIT_LOG', 'TCOMPANY_BENEFIT')"
+        "WHERE TABLE_SCHEMA = DATABASE() "
+        "AND TABLE_NAME IN ('TBENEFIT_EDIT_LOG', 'TCOMPANY_BENEFIT', 'TBENEFIT_EDIT_REQUEST')"
     )
     present = {r[0] for r in cur.fetchall()}
-    n_log = n_member = 0
+    n_log = n_member = n_req = 0
+    if "TBENEFIT_EDIT_REQUEST" in present:
+        cur.execute("SELECT COUNT(*) FROM TBENEFIT_EDIT_REQUEST")
+        n_req = cur.fetchone()[0]
     if "TBENEFIT_EDIT_LOG" in present:
         cur.execute("SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG")
         n_log = cur.fetchone()[0]
     if "TCOMPANY_BENEFIT" in present:
         cur.execute("SELECT COUNT(*) FROM TCOMPANY_BENEFIT WHERE BADGE_CD = %s", (MEMBER_BADGE_CD,))
         n_member = cur.fetchone()[0]
-    return int(n_log), int(n_member)
+    return int(n_log), int(n_member), int(n_req)
 
 
 def _refuse_fresh_over_member_data(cur, discard_member_edits: bool) -> None:
@@ -208,11 +215,11 @@ def _refuse_fresh_over_member_data(cur, discard_member_edits: bool) -> None:
                 "받지 않는다.\n"
                 "      서빙에 시드 변경을 반영하려면 --fresh 없이 `python3 db/seed/load.py` 를 쓰라(SP-SEED-12)."
             )
-    n_log, n_member = _member_data_counts(cur)
-    if (n_log or n_member) and not discard_member_edits:
+    n_log, n_member, n_req = _member_data_counts(cur)
+    if (n_log or n_member or n_req) and not discard_member_edits:
         raise FreshRefusedError(
             f"--fresh 는 대상 [{_target_desc()}] 의 재직자 데이터(편집 이력 {n_log}건 · 재직자 행 "
-            f"{n_member}건)를 파괴한다.\n"
+            f"{n_member}건 · 복지 확인 요청 {n_req}건)를 파괴한다.\n"
             "      TCOMPANY_BENEFIT 을 DROP 하면 재직자가 등록·수정한 행이 사라지고, AUTO_INCREMENT 로 다시\n"
             "      매겨진 BENEFIT_ID 때문에 남은 편집 이력이 엉뚱한 행을 가리켜 그 행에 재직자 배지가 붙는다.\n"
             "      시드 변경은 --fresh 없이 `python3 db/seed/load.py` 로 반영하라"
@@ -225,6 +232,7 @@ def _clear_edit_log(cur) -> None:
     남은 이력은 엉뚱한 행에 재직자 배지를 붙이고 공개 편집 이력을 다른 회사 밑에 보인다(#15 TCOMPARE_LOG
     와 같은 뿌리). 폐기 허용이 없으면 _refuse_fresh_over_member_data 가 이미 멈췄으므로 여기 올 때 이력은
     비어 있거나 폐기가 허용된 것이다. TRUNCATE 가 아니라 DELETE — 이 표를 가리키는 FK 가 생겨도 깨지지 않게."""
+    cur.execute("DELETE FROM TBENEFIT_EDIT_REQUEST")  # 이력을 가리키는 쪽(EDIT_LOG_ID)을 먼저 — 요청도 같은 이유로 비운다
     cur.execute("DELETE FROM TBENEFIT_EDIT_LOG")
 
 

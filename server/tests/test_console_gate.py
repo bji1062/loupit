@@ -158,6 +158,9 @@ def test_CO10_표면은_정확히_이_집합이다(monkeypatch):
         ("/api/v1/console/verifications/{req_id}/approve", "POST"),
         ("/api/v1/console/verifications/{req_id}/reject", "POST"),
         ("/api/v1/console/company-requests/{req_id}/decide", "POST"),
+        # 2026-10-21 복지 등록·수정 확인: 승인(= 본체 반영, 한 트랜잭션)과 거절. 하드 삭제·되돌리기는 여전히 없다.
+        ("/api/v1/console/benefit-requests/{req_id}/approve", "POST"),
+        ("/api/v1/console/benefit-requests/{req_id}/reject", "POST"),
         ("/api/v1/console/suppressions/{target_hash}/release", "POST"),
         # SC15(2026-08-27): 신고 처리 — hide(대상 hidden, 되돌릴 수 있다)/dismiss 뿐. 하드 삭제 없음.
         ("/api/v1/console/reports/{report_id}/decide", "POST"),

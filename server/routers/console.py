@@ -32,7 +32,7 @@ import hashlib
 import re
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import HTMLResponse
 from fastapi.routing import APIRoute
 from pydantic import BaseModel, Field, field_validator
@@ -42,7 +42,7 @@ from starlette.routing import Match
 
 from server.deps import console_access_allowed, require_console_access, require_csrf, require_operator
 from server.models.post import DECIDE_ACTIONS
-from server.services import console_view, operator
+from server.services import benefit_codes, benefit_edit, console_view, operator
 from server.services import report as report_svc
 
 _SCOPE_KEY = "loupit.console_access"  # 한 요청 안에서 판정을 한 번만 하려는 캐시 키(ASGI scope 확장)
@@ -95,6 +95,12 @@ def _lock_conflict(exc: OperationalError) -> bool:
     return bool(exc.args) and exc.args[0] in _LOCK_CONFLICT
 
 
+def _reference_cache(request: Request | None):
+    """참조 번들 인메모리 캐시 — 앱 기동(lifespan)이 만든다. 없으면(요청이 없는 직접 호출 · lifespan 없는 테스트) None."""
+    app = getattr(request, "app", None)
+    return getattr(getattr(app, "state", None), "reference_cache", None)
+
+
 #: 목록 API 한 페이지 상한 — 폰에서 한 번에 그릴 만큼. 초과는 422(조용히 자르면 "다 봤다"로 오독한다).
 PAGE_MAX = 100
 PAGE_DEFAULT = 50
@@ -111,6 +117,15 @@ class DecisionIn(BaseModel):
 
 class CompanyDecisionIn(DecisionIn):
     approve: bool
+
+
+class BenefitApproveIn(DecisionIn):
+    """복지 등록·수정 요청 승인 입력(2026-10-21) — 결정자 필드는 부모와 같이 **없다**.
+
+    `benefit_cd` 는 등록(create) 승인에서만 쓴다: 운영자가 표준 코드 94종 중 고른 것이다(카테고리는 코드에서
+    정해진다). 수정(update) 승인에는 무시된다 — 수정은 대상 코드가 이미 정해져 있다."""
+
+    benefit_cd: str | None = Field(default=None, max_length=30)
 
 
 class ReportDecisionIn(DecisionIn):
@@ -142,8 +157,8 @@ class VisibilityIn(DecisionIn):
 
 
 @router.get("/queues")
-async def queues(op: dict = Depends(require_operator)) -> dict:
-    """대기 큐 4종(재직 승인·회사 등록·발송 억제 + SC15 게시물 신고)을 **구조화된 JSON** 으로 돌려준다.
+async def queues(op: dict = Depends(require_operator), request: Request = None) -> dict:
+    """대기 큐 5종(복지 등록·수정 확인·재직 승인·회사 등록·발송 억제 + SC15 게시물 신고)을 **구조화된 JSON** 으로 돌려준다.
 
     ⚠ 여기 담기는 `EVIDENCE_CTNT`·`REQ_COMP_NM`·`REF_URL_CTNT`·`NICKNAME_NM` 은 전부
     **사용자 입력 원문**이다. 서버는 값을 그대로 싣고, 그리는 쪽(`_PAGE`)이 노드
@@ -155,8 +170,13 @@ async def queues(op: dict = Depends(require_operator)) -> dict:
     companies = await operator.list_pending_company_requests()
     suppressed = await operator.list_suppressed()
     reports = await report_svc.list_pending_reports()  # SC15 신고 큐(FR-131) — 발췌·상세도 사용자 입력 원문
+    # 복지 등록·수정 확인 큐(2026-10-21) — 회원 입력 원문(이름·금액·비고·편집 사유) + 승인 때 고를 표준 코드 94종.
+    benefit_requests = await console_view.list_pending_benefit_requests()
+    codes = await benefit_codes.get_codes(_reference_cache(request))
     return {
         "operator": op["LOGIN_EMAIL_NM"],
+        "benefit_requests": benefit_requests,
+        "benefit_codes": codes,
         "reports": reports,
         "verifications": [
             {
@@ -292,6 +312,48 @@ async def reject_verification(
     _csrf: None = Depends(require_csrf), op: dict = Depends(require_operator),
 ) -> dict:
     if not await operator.reject_verification(req_id, op["MBR_ID"], body.note):
+        raise HTTPException(status_code=409, detail="not_pending")
+    return {"result": "rejected"}
+
+
+@router.post("/benefit-requests/{req_id}/approve", status_code=200)
+async def approve_benefit_request(
+    req_id: int, body: BenefitApproveIn, request: Request,
+    _csrf: None = Depends(require_csrf), op: dict = Depends(require_operator),
+) -> dict:
+    """복지 등록·수정 요청 승인 — 승인이 곧 사이트 반영이다(본체 + 편집 이력 + 요청 approved 한 트랜잭션).
+
+    `DECIDED_BY_ID` 는 `op["MBR_ID"]`(세션)에서 온다 — 본문에 그 필드가 없다. 편집 이력의 편집자는 요청한
+    회원이고 운영자는 결정자로 요청 행에만 남는다. 충돌은 전부 409 + 기계 토큰: `not_pending`(이미 처리) ·
+    `stale`(제출 뒤 대상이 바뀜 — 거절로 처리) · `target_gone`(대상이 지워짐) · `duplicate`(그 회사에 이미 있는 코드).
+    422: `code_required`(등록 승인엔 코드 필수) · `unknown_code`(표준 코드 밖)."""
+    codes = await benefit_codes.get_code_map(_reference_cache(request))
+    try:
+        out = await benefit_edit.approve_request(req_id, op["MBR_ID"], body.benefit_cd, body.note, codes)
+    except OperationalError as exc:  # 잠금 대기 초과 등 — `_LOCK_CONFLICT` 주석
+        if _lock_conflict(exc):
+            raise HTTPException(status_code=409, detail="busy") from exc
+        raise
+    if out["result"] == "approved":
+        cache = _reference_cache(request)
+        if cache is not None:
+            cache.clear()  # 비교·복지검색은 다음 요청부터 새 값을 본다
+        return {
+            "result": "approved", "benefit_id": out["benefit_id"],
+            "next": "비교·복지검색은 바로 반영된다. 회사 페이지(정적)는 다음 배포 때 반영된다.",
+        }
+    if out["result"] in ("code_required", "unknown_code"):
+        raise HTTPException(status_code=422, detail=out["result"])
+    raise HTTPException(status_code=409, detail=out["result"])
+
+
+@router.post("/benefit-requests/{req_id}/reject", status_code=200)
+async def reject_benefit_request(
+    req_id: int, body: DecisionIn,
+    _csrf: None = Depends(require_csrf), op: dict = Depends(require_operator),
+) -> dict:
+    """복지 등록·수정 요청 거절 — 본체·이력 무접촉. `note` 는 요청한 회원의 편집 화면에 사유로 보인다."""
+    if not await benefit_edit.reject_request(req_id, op["MBR_ID"], body.note):
         raise HTTPException(status_code=409, detail="not_pending")
     return {"result": "rejected"}
 
@@ -493,6 +555,11 @@ const CONFLICT = {
   not_active: '공개 상태가 아니라 숨길 수 없다(이미 숨김이거나 작성자가 삭제했다).',
   not_hidden: '숨김 상태가 아니라 복구할 것이 없다.',
   busy: '같은 대상을 다른 처리가 동시에 잡고 있었다 — 새로고침한 뒤 다시 하라.',
+  stale: '요청을 낸 뒤 대상 복지가 바뀌었다 — 승인할 수 없다. 거절하고 사유를 남겨라.',
+  target_gone: '대상 복지가 이미 삭제됐다 — 거절하라.',
+  duplicate: '그 회사에 이미 있는 항목 코드다 — 다른 코드를 고르거나 거절하라.',
+  code_required: '등록 승인에는 항목을 골라야 한다.',
+  unknown_code: '표준 항목 목록에 없는 코드다.',
 };
 
 // ── 표시 규약 ────────────────────────────────────────────────────────────────
@@ -718,6 +785,7 @@ async function renderOverview() {
     ['최근 7일 가입', d.members.new_7d], ['최근 30일 가입', d.members.new_30d]]));
   grid.appendChild(card('재직 인증', [['인증됨(유효)', d.verifications.active],
     ['수동 승인 대기', d.verifications.pending, true]]));
+  grid.appendChild(card('복지 등록·수정 확인', [['대기', d.benefit_requests.pending, true]]));
   grid.appendChild(card('회사 등록 요청', [['대기', d.company_requests.pending, true],
     ['처리됨', d.company_requests.decided]]));
   grid.appendChild(card('게시물', [['전체', d.posts.total], ['최근 7일', d.posts.new_7d], ['숨김', d.posts.hidden]]));
@@ -731,7 +799,7 @@ async function renderOverview() {
     ? [['확인 필요', sc.attention, true], ['robots 금지', sc.robots], ['점검한 곳', sc.total]]
     : [['점검 기록', '없음']]));
   root.appendChild(grid);
-  const todo = d.verifications.pending + d.company_requests.pending + d.reports.pending;
+  const todo = d.verifications.pending + d.company_requests.pending + d.reports.pending + d.benefit_requests.pending;
   const go = $('div', 'rowbtns');
   const btn = $('button', null, '처리 대기 열기 (' + todo + ')');
   btn.onclick = () => show('queues');
@@ -742,10 +810,110 @@ async function renderOverview() {
   root.appendChild(go);
 }
 
-// ── 탭 2: 처리 대기(기존 큐 4종) ─────────────────────────────────────────────
+// ── 탭 2: 처리 대기(큐 5종) ──────────────────────────────────────────────────
+// 복지 등록·수정 확인(2026-10-21): 회원이 보낸 요청은 승인해야 사이트에 반영된다. 승인 = 반영이라 첫 절이다.
+const BEN_CTGR_LABEL = {
+  compensation: '보상', flexibility: '유연성', work_env: '근무환경', time_off: '휴가',
+  health: '건강', family: '가족', growth: '성장', leisure: '여가', perks: '복리후생',
+};
+
+/** 회원이 요청한 값을 이력 스냅샷과 같은 모양으로 — diffList 가 전 → 후를 그리게 한다. */
+function requestedSnap(r) {
+  return { benefit_nm: r.name, benefit_amt: r.qual ? null : r.amount, qual_yn: r.qual, note_ctnt: r.note || null };
+}
+function pickSnap(s) {
+  if (!s) return {};
+  return Object.fromEntries(['benefit_nm', 'benefit_amt', 'qual_yn', 'note_ctnt']
+    .map((k) => [k, s[k] === undefined ? null : s[k]]));
+}
+
+/** 등록 승인용 항목 고르기 — 카테고리별로 묶고, 회원이 고른 코드를 미리 선택하며, 그 회사에 이미 있는 코드는 막는다. */
+function codePicker(codes, existing, preselect) {
+  const sel = $('select');
+  sel.setAttribute('aria-label', '표준 복지 항목');
+  const ph = $('option', null, '항목을 고르세요'); ph.value = ''; sel.appendChild(ph);
+  const taken = new Set(existing || []);
+  const groups = new Map();
+  codes.forEach((c) => { groups.set(c.ctgr, (groups.get(c.ctgr) || []).concat([c])); });
+  Object.keys(BEN_CTGR_LABEL).concat(Array.from(groups.keys()).filter((k) => !(k in BEN_CTGR_LABEL))).forEach((k) => {
+    if (!groups.has(k)) return;
+    const og = $('optgroup'); og.label = BEN_CTGR_LABEL[k] || k;
+    groups.get(k).forEach((c) => {
+      const o = $('option', null, c.label + ' (' + c.code + ')' + (taken.has(c.code) ? ' (이미 있음)' : ''));
+      o.value = c.code;
+      if (taken.has(c.code)) o.disabled = true;
+      else if (c.code === preselect) o.selected = true;
+      og.appendChild(o);
+    });
+    sel.appendChild(og);
+  });
+  return sel;
+}
+
+function benefitRequestItem(r, codes) {
+  const isCreate = r.type === 'create';
+  const el = $('div', 'item');
+  const h = $('div', 'head');
+  h.appendChild($('span', 'id', '#' + r.id));
+  h.appendChild(pill('pending', isCreate ? '등록 요청' : '수정 요청'));
+  h.appendChild($('span', null, r.company || ('(삭제된 회사 ' + r.company_id + ')')));
+  h.appendChild($('span', 'meta', (r.nickname || '(탈퇴 회원)') + ' (MBR ' + r.member_id + ') · ' + kst(r.at)));
+  el.appendChild(h);
+  const amt = r.qual ? '정성(금액 없음)' : (r.amount === null || r.amount === undefined ? '금액 미기재' : r.amount + '만원(연간)');
+  el.appendChild(rawBlock('요청한 이름(사용자 입력 원문)', r.name));
+  el.appendChild(rawBlock('금액', amt));
+  el.appendChild(rawBlock('비고(사용자 입력 원문)', r.note));
+  el.appendChild(rawBlock('편집 사유(사용자 입력 원문 — 승인하면 공개 이력에 남는다)', r.edit_note));
+
+  let sel = null;
+  let blocked = false;
+  if (isCreate) {
+    const picked = (codes.find((c) => c.code === r.benefit_cd) || {}).label;
+    el.appendChild($('div', 'meta', r.benefit_cd
+      ? '회원이 고른 항목: ' + (picked || r.benefit_cd) + ' (' + r.benefit_cd + ')'
+      : '회원이 「목록에 없음」으로 보냈다 — 맞는 항목을 직접 골라라.'));
+    sel = codePicker(codes, r.existing_codes, r.benefit_cd);
+    const row = $('div', 'rowbtns'); row.appendChild(sel); el.appendChild(row);
+  } else {
+    el.appendChild($('div', 'meta', '대상: ' + (r.benefit_cd || '?') + ' (복지 #' + r.benefit_id + ')'));
+    if (r.target_gone) {
+      blocked = true;
+      el.appendChild($('div', 'warn', '대상 복지가 삭제됐다 — 승인할 수 없다. 거절하라.'));
+    } else {
+      el.appendChild($('div', 'meta', '제출 때 → 요청'));
+      el.appendChild(diffList({ edit_type: 'update', before: pickSnap(r.before), after: requestedSnap(r) }));
+      if (r.stale) {
+        blocked = true;
+        el.appendChild($('div', 'warn',
+          '요청을 낸 뒤 이 복지가 바뀌었다 — 승인할 수 없다. 거절하고 사유를 남겨라. 제출 때 → 지금:'));
+        el.appendChild(diffList({ edit_type: 'update', before: pickSnap(r.before), after: pickSnap(r.current) }));
+      }
+    }
+  }
+  const btns = $('div', 'rowbtns');
+  const note = $('input'); note.type = 'text'; note.placeholder = '메모(거절하면 회원에게 보인다)';
+  note.maxLength = 500;
+  btns.appendChild(note);
+  const ok = actionButton('승인', () => {
+    if (isCreate && !sel.value) return Promise.reject(new Error('등록 승인에는 항목을 골라야 한다.'));
+    return api('/benefit-requests/' + r.id + '/approve',
+      { method: 'POST', body: JSON.stringify({ note: note.value || null, benefit_cd: isCreate ? sel.value : null }) });
+  });
+  if (blocked) ok.disabled = true;
+  btns.appendChild(ok);
+  btns.appendChild(actionButton('거절', () => api('/benefit-requests/' + r.id + '/reject',
+    { method: 'POST', body: JSON.stringify({ note: note.value || null }) })));
+  el.appendChild(btns);
+  return el;
+}
+
 async function renderQueues() {
   const data = await api('/queues');
   root.appendChild(rawWarning());
+
+  section('복지 등록·수정 확인', data.benefit_requests || [], (r) => benefitRequestItem(r, data.benefit_codes || []));
+  root.appendChild($('div', 'meta',
+    '승인하면 바로 반영된다 — 비교·복지검색은 즉시, 회사 페이지(정적)는 다음 배포 때. 이름·금액은 고치지 않는다(고칠 게 있으면 거절 + 사유).'));
 
   section('재직 수동 승인', data.verifications, (v) => {
     const el = $('div', 'item');
@@ -988,7 +1156,7 @@ async function renderEdits() {
     { label: '유형', cls: 'nw', get: (e) => lab(e.edit_type) },
     { label: '전 → 후', cls: 'txt', get: (e) => diffList(e) },
     { label: '편집 메모', cls: 'txt', get: (e) => e.note },
-    { label: '편집자', get: (e) => who(e.editor_nickname, e.editor_id) },
+    { label: '편집자', get: (e) => (e.editor_kind === 'operator' ? '운영자' : who(e.editor_nickname, e.editor_id)) },
   ], (before) => api('/benefit-edits' + qs({ before })), '이력 없음.'));
 }
 

@@ -20,6 +20,7 @@ import json
 from pymysql.err import ProgrammingError
 
 from server import database
+from server.services import benefit_edit
 from server.services import post as post_svc
 
 EXCERPT_LEN = 120  # 게시판 발췌 — 한 줄에서 무엇인지 알아볼 만큼만(원문 전체는 커뮤니티 상세에 있다)
@@ -72,6 +73,7 @@ SQL_OVERVIEW = """
     (SELECT COUNT(*) FROM TPOST_COMMENT WHERE INS_DTM >= UTC_TIMESTAMP() - INTERVAL 7 DAY) AS comments_7d,
     (SELECT COUNT(*) FROM TPOST_COMMENT WHERE STATUS_CD='hidden')                         AS comments_hidden,
     (SELECT COUNT(*) FROM TPOST_REPORT WHERE STATUS_CD='pending')                         AS reports_pending,
+    (SELECT COUNT(*) FROM TBENEFIT_EDIT_REQUEST WHERE STATUS_CD='pending')                AS benefit_req_pending,
     (SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG)                                              AS edits_total,
     (SELECT COUNT(*) FROM TBENEFIT_EDIT_LOG WHERE INS_DTM >= UTC_TIMESTAMP() - INTERVAL 30 DAY) AS edits_30d,
     (SELECT COUNT(*) FROM TMAIL_SUPPRESSION WHERE RELEASED_DTM IS NULL)                   AS suppressed_active,
@@ -91,6 +93,7 @@ async def overview() -> dict:
         "posts": {"total": r["posts_total"], "new_7d": r["posts_7d"], "hidden": r["posts_hidden"]},
         "comments": {"total": r["comments_total"], "new_7d": r["comments_7d"], "hidden": r["comments_hidden"]},
         "reports": {"pending": r["reports_pending"]},
+        "benefit_requests": {"pending": r["benefit_req_pending"]},
         "benefit_edits": {"total": r["edits_total"], "new_30d": r["edits_30d"]},
         "mail_suppression": {"active": r["suppressed_active"]},
         "source_check": await source_check_brief(),  # SP-AUTH-19.9 — 기록이 없거나 표가 없으면 None
@@ -258,7 +261,7 @@ async def list_comments(limit: int, before: int | None, status: str | None) -> t
 # 편집자 `MBR_ID` 를 함께 싣는다 — 회원 탭과 이어 보려면 식별자가 필요하다(운영자 전용 응답).
 # `COMP_ID` 에는 FK 가 없어(이력 존치 규약) 회사가 사라졌으면 이름이 NULL 이다.
 SQL_BENEFIT_EDITS = """
-  SELECT l.EDIT_LOG_ID, l.COMP_ID, c.COMP_NM, l.BENEFIT_ID, l.ACTOR_MBR_ID,
+  SELECT l.EDIT_LOG_ID, l.COMP_ID, c.COMP_NM, l.BENEFIT_ID, l.ACTOR_MBR_ID, l.ACTOR_KIND_CD,
          COALESCE(m.NICKNAME_NM, %s) AS NICKNAME, l.EDIT_TYPE_CD,
          l.BEFORE_VAL, l.AFTER_VAL, l.EDIT_NOTE_CTNT, l.INS_DTM
     FROM TBENEFIT_EDIT_LOG l
@@ -286,9 +289,67 @@ async def list_benefit_edits(limit: int, before: int | None) -> tuple[list[dict]
             "benefit_nm": snap.get("benefit_nm"), "edit_type": r["EDIT_TYPE_CD"],
             "before": before_val, "after": after_val, "note": r["EDIT_NOTE_CTNT"],
             "editor_id": r["ACTOR_MBR_ID"], "editor_nickname": r["NICKNAME"],
+            "editor_kind": r["ACTOR_KIND_CD"],
             "at": _dt(r["INS_DTM"]),
         })
     return items, next_before
+
+
+# ── 복지 등록·수정 확인 큐(2026-10-21) ────────────────────────────────────────────────────────
+#
+# 회원의 등록·수정 요청이 승인 전까지 머무는 곳(`TBENEFIT_EDIT_REQUEST`)을 **읽는다**. 승인·거절은
+# `benefit_edit.approve_request`·`reject_request` 다. 요청 이름·금액·비고·편집 사유는 사용자 입력 원문이다 —
+# 서버가 가공하지 않고, 콘솔 화면이 텍스트 노드로만 그린다(콘솔 XSS 규칙).
+SQL_PENDING_BENEFIT_REQUESTS = """
+  SELECT r.EDIT_REQUEST_ID, r.COMP_ID, c.COMP_NM, r.MBR_ID, m.NICKNAME_NM, r.REQ_TYPE_CD, r.BENEFIT_ID,
+         r.BENEFIT_CD, r.BENEFIT_NM, r.BENEFIT_AMT, r.QUAL_YN, r.NOTE_CTNT, r.EDIT_NOTE_CTNT,
+         r.BASE_TOKEN_VAL, r.BEFORE_VAL, r.INS_DTM
+    FROM TBENEFIT_EDIT_REQUEST r
+    LEFT JOIN TCOMPANY c ON c.COMP_ID = r.COMP_ID
+    LEFT JOIN TMEMBER m ON m.MBR_ID = r.MBR_ID
+   WHERE r.STATUS_CD='pending' ORDER BY r.EDIT_REQUEST_ID LIMIT %s"""
+# 제출 때 스냅샷과 비교할 **지금 행**(update 대상) — benefit_edit._SQL_ROW 와 같은 투영을 IN 목록으로.
+SQL_CURRENT_BENEFITS = """
+  SELECT BENEFIT_ID, BENEFIT_CD AS benefit_cd, BENEFIT_NM AS benefit_nm, BENEFIT_AMT AS benefit_amt,
+         BENEFIT_CTGR_CD AS benefit_ctgr_cd, BADGE_CD AS badge_cd, AMT_SOURCE_CD AS amt_source,
+         QUAL_YN AS qual_yn, NOTE_CTNT AS note_ctnt, INS_DTM, MOD_DTM
+    FROM TCOMPANY_BENEFIT WHERE BENEFIT_ID IN ({ids})"""
+SQL_COMPANY_CODES = "SELECT COMP_ID, BENEFIT_CD FROM TCOMPANY_BENEFIT WHERE COMP_ID IN ({ids})"
+PENDING_BENEFIT_REQUEST_LIMIT = 100
+
+
+async def list_pending_benefit_requests(limit: int = PENDING_BENEFIT_REQUEST_LIMIT) -> list[dict]:
+    """대기 중 요청(오래된 순) — update 는 제출 때 스냅샷과 지금 행, create 는 그 회사가 이미 가진 코드를 함께 싣는다."""
+    rows = await database.fetch_all(SQL_PENDING_BENEFIT_REQUESTS, (limit,))
+    bids = sorted({r["BENEFIT_ID"] for r in rows if r["REQ_TYPE_CD"] == "update" and r["BENEFIT_ID"]})
+    cids = sorted({r["COMP_ID"] for r in rows if r["REQ_TYPE_CD"] == "create"})
+    current: dict[int, dict] = {}
+    if bids:
+        found = await database.fetch_all(SQL_CURRENT_BENEFITS.format(ids=",".join(["%s"] * len(bids))), tuple(bids))
+        current = {r["BENEFIT_ID"]: r for r in found}
+    codes_by_comp: dict[int, list[str]] = {}
+    if cids:
+        found = await database.fetch_all(SQL_COMPANY_CODES.format(ids=",".join(["%s"] * len(cids))), tuple(cids))
+        for r in found:
+            codes_by_comp.setdefault(r["COMP_ID"], []).append(r["BENEFIT_CD"])
+    items = []
+    for r in rows:
+        is_update = r["REQ_TYPE_CD"] == "update"
+        cur = current.get(r["BENEFIT_ID"]) if is_update else None
+        items.append({
+            "id": r["EDIT_REQUEST_ID"], "type": r["REQ_TYPE_CD"],
+            "company_id": r["COMP_ID"], "company": r["COMP_NM"],
+            "member_id": r["MBR_ID"], "nickname": r["NICKNAME_NM"], "at": _dt(r["INS_DTM"]),
+            "benefit_id": r["BENEFIT_ID"], "benefit_cd": r["BENEFIT_CD"],
+            "name": r["BENEFIT_NM"], "amount": r["BENEFIT_AMT"], "qual": bool(r["QUAL_YN"]),
+            "note": r["NOTE_CTNT"], "edit_note": r["EDIT_NOTE_CTNT"],
+            "before": _parse_json(r["BEFORE_VAL"]) if is_update else None,
+            "current": benefit_edit._snapshot(cur) if cur else None,
+            "target_gone": is_update and cur is None,
+            "stale": bool(is_update and cur is not None and benefit_edit._version_token(cur) != r["BASE_TOKEN_VAL"]),
+            "existing_codes": sorted(codes_by_comp.get(r["COMP_ID"], [])) if not is_update else [],
+        })
+    return items
 
 
 # ── 출처 점검(SP-AUTH-19.9 · SP-DB-19, 2026-09-27) ─────────────────────────────────────────────

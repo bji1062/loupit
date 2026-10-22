@@ -119,7 +119,7 @@ export function verifyOutcome(err, ctx = {}) {
   if (s === 429) return { kind: 'throttled', msg: '시도가 너무 많아요. ‘인증 코드 받기’로 새 코드를 받아주세요.', clearCode: true, retryCode: false };
   if (s === 409) {
     return alreadyVerified
-      ? { kind: 'already_verified', msg: '이미 이 회사 재직 인증이 있어요. 바로 복지를 편집할 수 있어요.', clearCode: true, retryCode: false }
+      ? { kind: 'already_verified', msg: '이미 이 회사 재직 인증이 있어요. 복지 등록·수정을 요청할 수 있어요.', clearCode: true, retryCode: false }
       : { kind: 'email_in_use', msg: '이 회사 이메일은 이미 재직 인증에 사용됐어요 — 한 회사 이메일로는 한 곳만 인증할 수 있어요. 다른 회사 이메일로 인증 코드를 다시 받거나, 아래 수동 승인을 요청해주세요.', clearCode: true, retryCode: false };
   }
   return { kind: 'error', msg: '인증에 실패했어요. 잠시 후 다시 시도해주세요.', clearCode: false, retryCode: true };
@@ -433,7 +433,7 @@ export function initVerifyPage() {
   function editLink(doc, compId) {
     const a = doc.createElement('a');
     a.href = compId != null ? ('/edit?comp=' + encodeURIComponent(compId)) : '/edit';
-    a.textContent = '복지 편집하러 가기 →'; a.className = 'auth-link';
+    a.textContent = '복지 등록·수정 요청하러 가기 →'; a.className = 'auth-link';
     return a;
   }
 
@@ -443,7 +443,7 @@ export function initVerifyPage() {
     const ok = $('verify-ok');
     ok.textContent = '✅ ';
     const s = document.createElement('strong'); s.textContent = target.comp_nm; ok.append(s);
-    ok.append(' 재직 인증 완료! 이제 이 회사 복지를 편집할 수 있어요. ');
+    ok.append(' 재직 인증 완료! 이제 이 회사 복지 등록·수정을 요청할 수 있어요. ');
     ok.append(editLink(document, target.comp_id));
     ok.hidden = false;
   }

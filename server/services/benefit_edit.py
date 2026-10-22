@@ -1,11 +1,16 @@
-"""SP-AUTH-9 복지 편집 서비스 — 배지 서버 강제·낙관적 동시성·본체+이력 원자 트랜잭션.
+"""SP-AUTH-9 복지 편집 서비스 — 확인 요청 큐 · 배지 서버 강제 · 낙관적 동시성 · 본체+이력 원자 트랜잭션.
 
-서버가 배지 시맨틱을 강제하고(사용자는 official·stated 지정 불가), 본체 INSERT/UPDATE 와
-편집 이력 INSERT(TBENEFIT_EDIT_LOG)를 **한 트랜잭션**으로 원자화한다(SP-AUTH-9, FR-108·109).
+**회원의 등록·수정은 바로 반영되지 않는다**(2026-10-21 사용자 결정). 회원 쓰기는 `TBENEFIT_EDIT_REQUEST` 에
+요청 한 줄을 만들 뿐이고(`create_request`·`update_request`, 본체·이력 무접촉), 운영자가 콘솔에서 승인할 때
+`approve_request` 가 본체 INSERT/UPDATE 와 편집 이력 INSERT(TBENEFIT_EDIT_LOG)를 **한 트랜잭션**으로 원자화한다.
+`TCOMPANY_BENEFIT` 에 상태 칸을 넣지 않은 이유: 그 표를 읽는 곳(참조 번들·정적 생성·히트맵·적재·백필)이 전부
+걸러야 해서 하나만 빠뜨려도 대기 건이 공개된다 — 큐를 별도 표로 두면 승인 전에는 공개 경로가 보지 못한다.
 
-- 배지 강제: `BADGE_CD='verified'`(재직자 확인)·`BADGE_SRC_CD='user_report'`·`EXPIRES_DTM=+18개월`.
+- 배지 강제(승인 때): `BADGE_CD='verified'`(재직자 확인)·`BADGE_SRC_CD='user_report'`·`EXPIRES_DTM=+18개월`.
+  이력의 편집자(ACTOR)는 **요청한 회원**이다(운영자는 결정자로 요청 행에만 남는다).
 - 금액출처 분기(DC-9·DC-10, INV-5): 금액 행 `AMT_SOURCE_CD='estimated'`, 정성 행 `none`(금액 NULL).
-- 낙관적 동시성: 버전 컬럼 없이 `MOD_DTM`(없으면 `INS_DTM`) 토큰 비교 — 불일치 시 409(현재 행 동봉).
+- 낙관적 동시성: 버전 컬럼 없이 `MOD_DTM`(없으면 `INS_DTM`) 토큰 비교 — 제출 때 불일치 시 409(현재 행 동봉),
+  승인 때 제출 때 토큰과 다르면 `stale`(운영자는 거절로 처리).
 - 밴드·계산 무변경(INV-5): `AMT_SOURCE_CD`가 밴드를 정하고 `BADGE_CD`는 표시 전용 — calc.js 무변경.
 
 신규 의존성 0(stdlib json).
@@ -50,8 +55,9 @@ _SQL_LIST = """
 
 # 편집 이력 공개 조회(닉네임 조인·최신순·커서 페이지네이션). 편집자 이메일·MBR_ID 미노출(INV-8).
 _SQL_EDITS = """
-  SELECT l.EDIT_LOG_ID AS edit_id, COALESCE(m.NICKNAME_NM, '(탈퇴)') AS nickname,
-         l.EDIT_TYPE_CD AS edit_type,
+  SELECT l.EDIT_LOG_ID AS edit_id,
+         CASE WHEN l.ACTOR_KIND_CD = 'operator' THEN '운영자' ELSE COALESCE(m.NICKNAME_NM, '(탈퇴)') END AS nickname,
+         l.ACTOR_KIND_CD AS actor_kind, l.EDIT_TYPE_CD AS edit_type,
          l.BEFORE_VAL AS before_val, l.AFTER_VAL AS after_val, l.EDIT_NOTE_CTNT AS edit_note,
          l.INS_DTM AS dtm
     FROM TBENEFIT_EDIT_LOG l LEFT JOIN TMEMBER m ON m.MBR_ID = l.ACTOR_MBR_ID
@@ -107,10 +113,12 @@ def _parse_json(v):
 
 
 async def _daily_count(mbr_id: int, comp_id: int) -> int:
-    """최근 24시간 이 회원이 이 회사에 남긴 편집 수(일일 상한 게이트, FR-112)."""
+    """최근 24시간 이 회원이 이 회사에 보낸 **요청 수**(일일 상한 게이트, FR-112).
+
+    승인으로 생기는 이력 행은 세지 않는다 — 한도는 회원이 누르는 횟수를 막는 장치이고 운영자의 승인은 무관하다."""
     row = await database.fetch_one(
-        "SELECT COUNT(*) AS n FROM TBENEFIT_EDIT_LOG "
-        "WHERE ACTOR_MBR_ID=%s AND COMP_ID=%s AND INS_DTM > UTC_TIMESTAMP() - INTERVAL 1 DAY",
+        "SELECT COUNT(*) AS n FROM TBENEFIT_EDIT_REQUEST "
+        "WHERE MBR_ID=%s AND COMP_ID=%s AND INS_DTM > UTC_TIMESTAMP() - INTERVAL 1 DAY",
         (mbr_id, comp_id),
     )
     return int(row["n"]) if row else 0
@@ -125,93 +133,231 @@ async def fetch_company_benefits(comp_id: int) -> list[dict]:
     return [_public_benefit(r) for r in rows]
 
 
-async def create_benefit(comp_id: int, mbr_id: int, payload) -> dict:
-    """복지 등록 — 배지 강제·금액출처 분기·본체+이력 원자 트랜잭션.
+# 요청 행 한 줄을 회원에게 돌려주는 모양 — 남의 요청은 절대 안 나간다(MBR_ID 로 걸러 조회한다).
+def _request_summary(r: dict) -> dict:
+    return {
+        "request_id": r["EDIT_REQUEST_ID"], "type": r["REQ_TYPE_CD"], "status": r["STATUS_CD"],
+        "benefit_nm": r["BENEFIT_NM"], "benefit_id": r["BENEFIT_ID"], "benefit_cd": r["BENEFIT_CD"],
+        "decide_note": r["DECIDE_NOTE_CTNT"] if r["STATUS_CD"] == "rejected" else None,
+        "at": r["INS_DTM"].isoformat() if hasattr(r["INS_DTM"], "isoformat") else str(r["INS_DTM"]),
+        "decided_at": (r["DECIDED_DTM"].isoformat() if hasattr(r["DECIDED_DTM"], "isoformat")
+                       else (str(r["DECIDED_DTM"]) if r["DECIDED_DTM"] else None)),
+    }
 
-    반환 result: ok(+benefit·benefits) / rate_limited(429) / duplicate(409·동일 회사·코드)."""
+
+_SQL_MY_REQUESTS = """
+  SELECT EDIT_REQUEST_ID, REQ_TYPE_CD, STATUS_CD, BENEFIT_NM, BENEFIT_ID, BENEFIT_CD, DECIDE_NOTE_CTNT,
+         INS_DTM, DECIDED_DTM
+    FROM TBENEFIT_EDIT_REQUEST
+   WHERE MBR_ID=%s AND COMP_ID=%s
+     AND (STATUS_CD='pending' OR DECIDED_DTM > UTC_TIMESTAMP() - INTERVAL 30 DAY)
+   ORDER BY EDIT_REQUEST_ID DESC"""
+
+
+async def list_my_requests(comp_id: int, mbr_id: int) -> list[dict]:
+    """이 회원이 이 회사에 보낸 요청 — 대기 전부 + 최근 30일 결정분(유형·이름·상태·거절 사유·시각)."""
+    rows = await database.fetch_all(_SQL_MY_REQUESTS, (mbr_id, comp_id))
+    return [_request_summary(r) for r in rows]
+
+
+async def _lock_member(cur, mbr_id: int) -> None:
+    """같은 회원의 동시 제출을 직렬화한다(대기 중복 판정이 경합으로 뚫리지 않게). 행 하나를 잠글 뿐이다."""
+    await cur.execute("SELECT MBR_ID FROM TMEMBER WHERE MBR_ID=%s FOR UPDATE", (mbr_id,))
+    await cur.fetchone()
+
+
+async def create_request(comp_id: int, mbr_id: int, payload, codes: dict[str, dict]) -> dict:
+    """복지 등록 확인 요청 — 본체·이력은 건드리지 않는다.
+
+    반환 result: ok(+request) / rate_limited(429) / unknown_code(422·표준 코드 밖) /
+    duplicate(409·그 회사에 이미 있는 코드) / pending_exists(409·같은 대상 대기 중).
+    `codes` = `benefit_codes.get_code_map` 결과(표준 코드 94종)."""
+    cd = payload.benefit_cd
+    if cd is not None and cd not in codes:
+        return {"result": "unknown_code"}
     if await _daily_count(mbr_id, comp_id) >= get_settings().daily_edit_limit:
         return {"result": "rate_limited"}
 
     amt = None if payload.qual_yn else payload.benefit_amt
-    # 금액출처는 실제 금액 유무로 판정(DC-9·DC-10·DEC-2): 금액 있으면 estimated, 없으면 none.
-    # (정성이면 amt=None → none. 비정성이라도 금액 미기재면 none — NULL 금액에 estimated 금지.)
-    amt_source = "estimated" if amt is not None else "none"
+    async with database.transaction() as conn:
+        async with conn.cursor() as cur:
+            await _lock_member(cur, mbr_id)
+            if cd is not None:
+                await cur.execute(
+                    "SELECT 1 FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD=%s", (comp_id, cd))
+                if await cur.fetchone():
+                    return {"result": "duplicate"}
+            # 같은 대상 = 같은 회사 · 같은 코드. 코드가 없는 요청(목록에 없음)은 같은 이름으로 본다.
+            await cur.execute(
+                "SELECT 1 FROM TBENEFIT_EDIT_REQUEST WHERE MBR_ID=%s AND COMP_ID=%s AND REQ_TYPE_CD='create' "
+                "AND STATUS_CD='pending' AND BENEFIT_CD <=> %s AND (%s IS NOT NULL OR BENEFIT_NM=%s)",
+                (mbr_id, comp_id, cd, cd, payload.benefit_nm),
+            )
+            if await cur.fetchone():
+                return {"result": "pending_exists"}
+            await cur.execute(
+                "INSERT INTO TBENEFIT_EDIT_REQUEST "
+                "(COMP_ID, MBR_ID, REQ_TYPE_CD, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, QUAL_YN, NOTE_CTNT, "
+                " EDIT_NOTE_CTNT, INS_ID) VALUES (%s, %s, 'create', %s, %s, %s, %s, %s, %s, %s)",
+                (comp_id, mbr_id, cd, payload.benefit_nm, amt, payload.qual_yn, payload.note_ctnt,
+                 payload.edit_note, mbr_id),
+            )
+            req_id = cur.lastrowid
+    return {"result": "ok", "request": await _fetch_my_request(req_id, mbr_id)}
+
+
+async def update_request(comp_id: int, benefit_id: int, mbr_id: int, payload) -> dict:
+    """복지 수정 확인 요청 — 제출 때 토큰을 확인하고(불일치 409·현재 행 동봉) 요청만 만든다. 본체는 그대로.
+
+    반환 result: ok(+request) / rate_limited(429) / not_found(404) / conflict(409·현재 행 동봉) /
+    pending_exists(409·같은 항목에 이 회원의 대기 요청이 있음)."""
+    if await _daily_count(mbr_id, comp_id) >= get_settings().daily_edit_limit:
+        return {"result": "rate_limited"}
+
+    amt = None if payload.qual_yn else payload.benefit_amt
+    conflict_row = None
+    async with database.transaction() as conn:
+        async with conn.cursor() as cur:
+            await _lock_member(cur, mbr_id)
+            await cur.execute(_SQL_ROW + " AND COMP_ID=%s", (benefit_id, comp_id))
+            row = await cur.fetchone()
+            if not row:
+                return {"result": "not_found"}
+            if _version_token(row) != payload.base_dtm:
+                conflict_row = row  # 선점 수정 — 아무것도 쓰지 않는다
+            else:
+                await cur.execute(
+                    "SELECT 1 FROM TBENEFIT_EDIT_REQUEST WHERE MBR_ID=%s AND BENEFIT_ID=%s "
+                    "AND REQ_TYPE_CD='update' AND STATUS_CD='pending'", (mbr_id, benefit_id))
+                if await cur.fetchone():
+                    return {"result": "pending_exists"}
+                await cur.execute(
+                    "INSERT INTO TBENEFIT_EDIT_REQUEST "
+                    "(COMP_ID, MBR_ID, REQ_TYPE_CD, BENEFIT_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT, QUAL_YN, "
+                    " NOTE_CTNT, EDIT_NOTE_CTNT, BASE_TOKEN_VAL, BEFORE_VAL, INS_ID) "
+                    "VALUES (%s, %s, 'update', %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    (comp_id, mbr_id, benefit_id, row["benefit_cd"], payload.benefit_nm, amt, payload.qual_yn,
+                     payload.note_ctnt, payload.edit_note, payload.base_dtm,
+                     json.dumps(_snapshot(row), ensure_ascii=False), mbr_id),
+                )
+                req_id = cur.lastrowid
+    if conflict_row is not None:
+        return {"result": "conflict", "current_benefit": _public_benefit(conflict_row),
+                "benefits": await fetch_company_benefits(comp_id)}
+    return {"result": "ok", "request": await _fetch_my_request(req_id, mbr_id)}
+
+
+async def _fetch_my_request(req_id: int, mbr_id: int) -> dict:
+    row = await database.fetch_one(
+        "SELECT EDIT_REQUEST_ID, REQ_TYPE_CD, STATUS_CD, BENEFIT_NM, BENEFIT_ID, BENEFIT_CD, DECIDE_NOTE_CTNT, "
+        "INS_DTM, DECIDED_DTM FROM TBENEFIT_EDIT_REQUEST WHERE EDIT_REQUEST_ID=%s AND MBR_ID=%s",
+        (req_id, mbr_id),
+    )
+    return _request_summary(row)
+
+
+# ── 운영자 결정(콘솔) — 승인이 곧 본체 반영이다 ──────────────────────────────────────────
+
+_SQL_LOCK_REQUEST = """
+  SELECT EDIT_REQUEST_ID, COMP_ID, MBR_ID, REQ_TYPE_CD, BENEFIT_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_AMT,
+         QUAL_YN, NOTE_CTNT, EDIT_NOTE_CTNT, BASE_TOKEN_VAL, STATUS_CD
+    FROM TBENEFIT_EDIT_REQUEST WHERE EDIT_REQUEST_ID=%s FOR UPDATE"""
+
+_SQL_MARK_APPROVED = (
+    "UPDATE TBENEFIT_EDIT_REQUEST SET STATUS_CD='approved', DECIDED_BY_ID=%s, DECIDED_DTM=UTC_TIMESTAMP(), "
+    "DECIDE_NOTE_CTNT=%s, APPLIED_BENEFIT_CD=%s, RESULT_BENEFIT_ID=%s, EDIT_LOG_ID=%s, MOD_ID=%s "
+    "WHERE EDIT_REQUEST_ID=%s AND STATUS_CD='pending'"
+)
+_SQL_MARK_REJECTED = (
+    "UPDATE TBENEFIT_EDIT_REQUEST SET STATUS_CD='rejected', DECIDED_BY_ID=%s, DECIDED_DTM=UTC_TIMESTAMP(), "
+    "DECIDE_NOTE_CTNT=%s, MOD_ID=%s WHERE EDIT_REQUEST_ID=%s AND STATUS_CD='pending'"
+)
+
+
+async def approve_request(req_id: int, decided_by: int, benefit_cd: str | None, note: str | None,
+                          codes: dict[str, dict]) -> dict:
+    """요청 승인 → 본체 반영 + 편집 이력(편집자 = 요청 회원) + 요청 approved 를 **한 트랜잭션**으로.
+
+    `decided_by` 는 세션의 운영자 MBR_ID 다(요청 본문에서 받지 않는다 — 콘솔 규약).
+    create 는 운영자가 고른 `benefit_cd`(표준 코드 안, 그 회사에 없음)가 필수이고 카테고리는 코드에서 정한다.
+    update 는 대상 행을 잠그고 제출 때 토큰과 같을 때만 반영한다 — 다르면 `stale`(운영자는 거절로 처리).
+
+    반환 result: approved(+benefit_id·edit_id) / not_pending / code_required / unknown_code / duplicate /
+    stale / target_gone."""
+    outcome: dict | None = None
     try:
         async with database.transaction() as conn:
             async with conn.cursor() as cur:
-                await cur.execute(
-                    "INSERT INTO TCOMPANY_BENEFIT "
-                    "(COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_CTGR_CD, BENEFIT_AMT, QUAL_YN, NOTE_CTNT, "
-                    " BADGE_CD, AMT_SOURCE_CD, BADGE_SRC_CD, VERIFIED_DTM, EXPIRES_DTM, INS_ID) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, 'verified', %s, 'user_report', "
-                    "        UTC_TIMESTAMP(), UTC_TIMESTAMP() + INTERVAL 18 MONTH, %s)",
-                    (comp_id, payload.benefit_cd, payload.benefit_nm, payload.benefit_ctgr_cd,
-                     amt, payload.qual_yn, payload.note_ctnt, amt_source, mbr_id),
-                )
-                benefit_id = cur.lastrowid
-                await cur.execute(_SQL_ROW, (benefit_id,))
-                row = await cur.fetchone()
-                await cur.execute(
-                    "INSERT INTO TBENEFIT_EDIT_LOG "
-                    "(BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, EDIT_TYPE_CD, BEFORE_VAL, AFTER_VAL, EDIT_NOTE_CTNT) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (benefit_id, comp_id, mbr_id, "create", None,
-                     json.dumps(_snapshot(row), ensure_ascii=False), payload.edit_note),
-                )
-    except IntegrityError:  # uq_comp_benefit — 동일 회사·복지 코드 중복(원자 롤백, 이력 미기록)
-        return {"result": "duplicate"}
-
-    return {"result": "ok", "benefit": _public_benefit(row),
-            "benefits": await fetch_company_benefits(comp_id)}
-
-
-async def update_benefit(comp_id: int, benefit_id: int, mbr_id: int, payload) -> dict:
-    """복지 수정 — base_dtm 낙관적 동시성·official→verified 강등·본체+이력 원자 트랜잭션.
-
-    반환 result: ok / rate_limited(429) / not_found(404) / conflict(409·현재 행 동봉)."""
-    if await _daily_count(mbr_id, comp_id) >= get_settings().daily_edit_limit:
-        return {"result": "rate_limited"}
-
-    amt = None if payload.qual_yn else payload.benefit_amt
-    amt_source = "estimated" if amt is not None else "none"  # 금액 유무로 판정(DC-9·DC-10·DEC-2)
-    outcome, result_row = None, None
-    async with database.transaction() as conn:
-        async with conn.cursor() as cur:
-            await cur.execute(_SQL_ROW + " AND COMP_ID=%s FOR UPDATE", (benefit_id, comp_id))
-            row = await cur.fetchone()
-            if not row:
-                outcome = "not_found"
-            elif _version_token(row) != payload.base_dtm:
-                outcome, result_row = "conflict", row  # 선점 수정 — 아무것도 쓰지 않음
-            else:
-                before = _snapshot(row)
-                # 재직자 편집 = 재검증(신선도 리셋) — create 와 동일하게 VERIFIED_DTM·EXPIRES_DTM 갱신.
-                # 미갱신 시 과거 만료행이 verified 강등돼도 만료 상태로 남아 밴드가 부당 확대된다(INV-5).
-                await cur.execute(
-                    "UPDATE TCOMPANY_BENEFIT SET BENEFIT_NM=%s, BENEFIT_AMT=%s, QUAL_YN=%s, "
-                    "AMT_SOURCE_CD=%s, NOTE_CTNT=%s, BADGE_CD='verified', BADGE_SRC_CD='user_report', "
-                    "VERIFIED_DTM=UTC_TIMESTAMP(), EXPIRES_DTM=UTC_TIMESTAMP() + INTERVAL 18 MONTH, "
-                    "MOD_ID=%s, MOD_DTM=UTC_TIMESTAMP() WHERE BENEFIT_ID=%s AND COMP_ID=%s",
-                    (payload.benefit_nm, amt, payload.qual_yn, amt_source, payload.note_ctnt,
-                     mbr_id, benefit_id, comp_id),
-                )
+                await cur.execute(_SQL_LOCK_REQUEST, (req_id,))
+                req = await cur.fetchone()
+                if not req or req["STATUS_CD"] != "pending":
+                    return {"result": "not_pending"}
+                comp_id, mbr_id = req["COMP_ID"], req["MBR_ID"]
+                amt = None if req["QUAL_YN"] else req["BENEFIT_AMT"]
+                amt_source = "estimated" if amt is not None else "none"  # 금액 유무로 판정(DC-9·DC-10·DEC-2)
+                if req["REQ_TYPE_CD"] == "create":
+                    if not benefit_cd:
+                        return {"result": "code_required"}
+                    if benefit_cd not in codes:
+                        return {"result": "unknown_code"}
+                    await cur.execute(
+                        "SELECT 1 FROM TCOMPANY_BENEFIT WHERE COMP_ID=%s AND BENEFIT_CD=%s", (comp_id, benefit_cd))
+                    if await cur.fetchone():
+                        return {"result": "duplicate"}
+                    await cur.execute(
+                        "INSERT INTO TCOMPANY_BENEFIT "
+                        "(COMP_ID, BENEFIT_CD, BENEFIT_NM, BENEFIT_CTGR_CD, BENEFIT_AMT, QUAL_YN, NOTE_CTNT, "
+                        " BADGE_CD, AMT_SOURCE_CD, BADGE_SRC_CD, VERIFIED_DTM, EXPIRES_DTM, INS_ID) "
+                        "VALUES (%s, %s, %s, %s, %s, %s, %s, 'verified', %s, 'user_report', "
+                        "        UTC_TIMESTAMP(), UTC_TIMESTAMP() + INTERVAL 18 MONTH, %s)",
+                        (comp_id, benefit_cd, req["BENEFIT_NM"], codes[benefit_cd]["ctgr"], amt,
+                         req["QUAL_YN"], req["NOTE_CTNT"], amt_source, mbr_id),
+                    )
+                    benefit_id, before, applied_cd = cur.lastrowid, None, benefit_cd
+                else:
+                    if req["BENEFIT_ID"] is None:
+                        return {"result": "target_gone"}
+                    await cur.execute(_SQL_ROW + " AND COMP_ID=%s FOR UPDATE", (req["BENEFIT_ID"], comp_id))
+                    row = await cur.fetchone()
+                    if not row:
+                        return {"result": "target_gone"}
+                    if _version_token(row) != req["BASE_TOKEN_VAL"]:
+                        return {"result": "stale"}
+                    benefit_id, before, applied_cd = req["BENEFIT_ID"], _snapshot(row), None
+                    # 재직자 편집 = 재검증(신선도 리셋) — 미갱신 시 과거 만료행이 verified 강등돼도 만료 상태로
+                    # 남아 밴드가 부당 확대된다(INV-5).
+                    await cur.execute(
+                        "UPDATE TCOMPANY_BENEFIT SET BENEFIT_NM=%s, BENEFIT_AMT=%s, QUAL_YN=%s, "
+                        "AMT_SOURCE_CD=%s, NOTE_CTNT=%s, BADGE_CD='verified', BADGE_SRC_CD='user_report', "
+                        "VERIFIED_DTM=UTC_TIMESTAMP(), EXPIRES_DTM=UTC_TIMESTAMP() + INTERVAL 18 MONTH, "
+                        "MOD_ID=%s, MOD_DTM=UTC_TIMESTAMP() WHERE BENEFIT_ID=%s AND COMP_ID=%s",
+                        (req["BENEFIT_NM"], amt, req["QUAL_YN"], amt_source, req["NOTE_CTNT"],
+                         mbr_id, benefit_id, comp_id),
+                    )
                 await cur.execute(_SQL_ROW, (benefit_id,))
                 result_row = await cur.fetchone()
                 await cur.execute(
                     "INSERT INTO TBENEFIT_EDIT_LOG "
-                    "(BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, EDIT_TYPE_CD, BEFORE_VAL, AFTER_VAL, EDIT_NOTE_CTNT) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s)",
-                    (benefit_id, comp_id, mbr_id, "update", json.dumps(before, ensure_ascii=False),
-                     json.dumps(_snapshot(result_row), ensure_ascii=False), payload.edit_note),
+                    "(BENEFIT_ID, COMP_ID, ACTOR_MBR_ID, ACTOR_KIND_CD, EDIT_TYPE_CD, BEFORE_VAL, AFTER_VAL, "
+                    " EDIT_NOTE_CTNT) VALUES (%s, %s, %s, 'member', %s, %s, %s, %s)",
+                    (benefit_id, comp_id, mbr_id, req["REQ_TYPE_CD"],
+                     json.dumps(before, ensure_ascii=False) if before is not None else None,
+                     json.dumps(_snapshot(result_row), ensure_ascii=False), req["EDIT_NOTE_CTNT"]),
                 )
-                outcome = "ok"
+                edit_id = cur.lastrowid
+                await cur.execute(
+                    _SQL_MARK_APPROVED,
+                    (decided_by, note, applied_cd, benefit_id, edit_id, decided_by, req_id),
+                )
+                outcome = {"result": "approved", "benefit_id": benefit_id, "edit_id": edit_id}
+    except IntegrityError:  # uq_comp_benefit 경합 — 원자 롤백(요청은 대기 그대로)
+        return {"result": "duplicate"}
+    return outcome or {"result": "not_pending"}
 
-    if outcome == "not_found":
-        return {"result": "not_found"}
-    benefits = await fetch_company_benefits(comp_id)
-    if outcome == "conflict":
-        return {"result": "conflict", "current_benefit": _public_benefit(result_row), "benefits": benefits}
-    return {"result": "ok", "benefit": _public_benefit(result_row), "benefits": benefits}
+
+async def reject_request(req_id: int, decided_by: int, note: str | None) -> bool:
+    """요청 거절 — 본체·이력 무접촉. 사유(note)는 회원 편집 화면에 보인다. 대기가 아니면 False."""
+    return bool(await database.execute(_SQL_MARK_REJECTED, (decided_by, note, decided_by, req_id)))
 
 
 async def list_edits(comp_id: int, limit: int, before: int | None) -> list[dict]:
@@ -225,7 +371,8 @@ async def list_edits(comp_id: int, limit: int, before: int | None) -> list[dict]
     params.append(limit)
     rows = await database.fetch_all(sql, tuple(params))
     return [
-        {"edit_id": r["edit_id"], "nickname": r["nickname"], "edit_type": r["edit_type"],
+        {"edit_id": r["edit_id"], "nickname": r["nickname"], "actor_kind": r["actor_kind"],
+         "edit_type": r["edit_type"],
          "before": _parse_json(r["before_val"]), "after": _parse_json(r["after_val"]),
          "edit_note": r["edit_note"], "dtm": r["dtm"]}
         for r in rows
