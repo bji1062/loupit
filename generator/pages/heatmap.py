@@ -13,15 +13,22 @@ prober.kr 주식 히트맵의 문법(업종 그룹 → 칸 크기 → 색 7단�
 73건(11%)뿐이라 금액 색은 추정 상수를 줄 세우는 그림이 된다. 출처 색은 "무엇을 알고 무엇을 모르는지"를
 그대로 보여주고, 추정·정성 칸은 재직자 편집(SC14)의 유입구가 된다.
 
-그룹은 **KRX 업종 분류**(`generator/sector.py`). 배치는 빌드 시점 squarify(`generator/treemap.py`)라
-페이지는 JS 없이 완성된다 — JS(`heatmap.js`)는 두 모드를 탭으로 오가는 enhancement 뿐이다.
+그룹은 **KRX 업종 분류**(`generator/sector.py`). 배치는 빌드 시점 squarify(`generator/treemap.py`)다.
 가로(16:10)·세로(3:4) 두 배치를 모두 렌더하고 CSS 미디어쿼리가 하나만 보인다(모바일에서
 칸이 납작해지는 것을 막는다).
+
+첫 화면(정적 HTML)에는 **복지 지도만** 굽는다(2026-10-22). 실적 1 · 카테고리 9 패널은 14,000칸 · 6.3MB 라
+한 HTML 에 같이 구우면 휴대폰이 화면 요소 4만 개를 만드느라 탭이 한참 안 눌린다(10-21 실측). 그래서 이 패널들은
+패널마다 데이터 파일(`heatmap/<모드>-<패널>.<지문>.json`)로 내고, `heatmap.js` 가 탭·칩을 처음 열 때 받아 같은 마크업으로
+그린다. 같은 마크업이라는 보장은 `_hm_maps.html` 매크로 하나 + 픽스처 대조 테스트(`make_heatmap_cases.py`)다.
 
 표현은 **사실만**(DEC-B·SP-FIN): 색은 수치 구간이고 등급·전망 어휘를 쓰지 않는다. 재무가 안 실린
 빌드(수집 전)는 실적 모드를 아예 내지 않는다(102곳 전부 "없음"이 되는 거짓 방지, SP-FIN-5 규칙).
 """
 from __future__ import annotations
+
+import hashlib
+import json
 
 from generator.config import CFG
 from generator.content.policy import POLICY_FOOTER_LINKS
@@ -219,7 +226,8 @@ def _layout(items, ctx, orientation, gkeys=None):
                    "href": (f"/company/{ctx.slugs[t.obj['c']['comp_eng_nm']]}"
                             + (f"#{t.obj['anchor']}" if t.obj.get("anchor") else "")),
                    "industry": t.obj["c"].get("industry_nm") or "", "sector": t.obj["sector"],
-                   "gkey": gkeys[t.obj["sector"]], "ckey": ctx.slugs[t.obj["c"]["comp_eng_nm"]],
+                   "gkey": gkeys[t.obj["sector"]], "ckey": ctx.slugs[t.obj["c"]["comp_eng_nm"]], "i": t.obj["i"],
+                   "anchor": t.obj.get("anchor") or "",
                    "cls": t.obj["cls"], "size": _size_class(t.w * t.h), "sub": t.obj["sub"], "tip": t.obj["tip"],
                    "x": round(t.x, 3), "y": round(t.y * sy, 3), "w": round(t.w, 3), "h": round(t.h * sy, 3)}
                   for t in tiles],
@@ -228,6 +236,8 @@ def _layout(items, ctx, orientation, gkeys=None):
 
 def _panel_layouts(items, ctx) -> dict:
     """한 패널의 두 배치 — 그룹 키를 공유한다(위 `_group_keys` 주석)."""
+    for i, it in enumerate(items):
+        it["i"] = i  # 데이터 파일이 두 배치의 같은 칸을 한 번만 싣도록 칸의 정체(`panel_data`)
     gkeys = _group_keys(items)
     return {o: _layout(items, ctx, o, gkeys) for o in ORIENTATIONS}
 
@@ -266,8 +276,70 @@ def build_view(ctx, sectors: dict[str, str] | None = None) -> dict:
     return {"modes": modes, "sector_count": sector_count}
 
 
-def render(env, ctx, cfg=CFG) -> Page:
+# ── 패널 데이터 파일 ─────────────────────────────────────────────────────────
+DATA_DIR = "heatmap"  # dist 안 폴더 — nginx `location ^~ /heatmap/` 이 서빙한다
+DATA_VERSION = 1  # 데이터 파일 형식 번호 — heatmap.js 가 같은 값만 그린다(형식이 바뀌면 둘을 함께 올린다)
+ORIENT_ORDER = ("landscape", "portrait")  # 템플릿 매크로의 순서와 같다(가로 먼저)
+
+
+def _coords(o: dict) -> str:
+    """좌표 4개를 **템플릿이 찍는 글자 그대로** 공백으로 이은 한 문자열(`12.5 0.0 4.2 33.333`).
+    JS 는 이 조각을 그대로 style 에 붙인다 — 숫자로 파싱했다 다시 찍으면 `100.0` 이 `100` 이 되어
+    서버 그림과 글자가 갈린다."""
+    return f"{o['x']} {o['y']} {o['w']} {o['h']}"
+
+
+def panel_data(panel: dict) -> dict:
+    """한 패널의 지도를 브라우저가 다시 그리는 데 필요한 것 전부(`heatmap.js buildMaps` 가 읽는다).
+
+    `groups` = 그룹 표 `[gkey, 이름, 회사 수, 비상장 0/1]` — 두 배치가 같은 키·이름을 쓰므로 한 번만.
+    `tiles` = 칸 표 `[회사명, 업종, gkey, ckey, 색 클래스, 부제, 설명, 앵커(`#…` 또는 빈 글)]` — 두 배치가 같은 글을 쓰므로 한 번만
+    (설명이 용량의 대부분이다). 칸의 소속 업종 글자는 그룹 이름과 같아서 싣지 않는다.
+    배치 `landscape`/`portrait` = 그리는 순서대로 `g: [[그룹 표 번호, 좁음 0/1, 좌표]]` ·
+    `t: [[칸 표 번호, 크기 클래스, 좌표]]`. href 는 `/company/<ckey><앵커>` 로 JS 가 조립한다."""
+    lays = panel["layouts"]
+    first = lays[ORIENT_ORDER[0]]
+    gidx = {g["gkey"]: n for n, g in enumerate(first["groups"])}
+    groups = [[g["gkey"], g["name"], g["count"], 1 if g["unlisted"] else 0] for g in first["groups"]]
+    tidx = {t["i"]: n for n, t in enumerate(first["tiles"])}
+    tiles = [[t["nm"], t["industry"], t["gkey"], t["ckey"], t["cls"], t["sub"], t["tip"],
+              f"#{t['anchor']}" if t["anchor"] else ""]
+             for t in first["tiles"]]
+    out = {"v": DATA_VERSION, "groups": groups, "tiles": tiles}
+    for o in ORIENT_ORDER:
+        lay = lays[o]
+        if {g["gkey"] for g in lay["groups"]} != set(gidx) or {t["i"] for t in lay["tiles"]} != set(tidx):
+            raise ValueError(f"히트맵 패널 {panel['key']}: 가로·세로 배치의 그룹·칸 집합이 다르다")
+        out[o] = {"g": [[gidx[g["gkey"]], 1 if g["narrow"] else 0, _coords(g)] for g in lay["groups"]],
+                  "t": [[tidx[t["i"]], t["size"], _coords(t)] for t in lay["tiles"]]}
+    return out
+
+
+def _data_pages(view: dict) -> list[Page]:
+    """복지 모드를 뺀 패널마다 데이터 파일 Page 하나. 같은 스테이징 · gzip · 매니페스트 · 스왑을 탄다.
+    각 패널 dict 에 `src` 를 달아 템플릿이 그릇에 심게 한다. **내용 지문이 파일 이름에 있다** — nginx 는 그 경로에 있는
+    파일을 그대로 내므로 `?v=` 방식이면 옛 페이지가 새 빌드의 내용을 옛 주소로 1년 캐시하고, 롤백 때 지문이 돌아와도
+    남는다. 파일 이름이면 옛 페이지는 404 를 받는다(JS 가 「새로고침」 안내를 띄운다)."""
+    pages = []
+    for m in view["modes"]:
+        for p in m["panels"]:
+            p["src"] = ""  # 정적으로 굽는 패널(복지) — 템플릿이 src 유무로 가른다
+        if m["key"] == "w":
+            continue
+        for p in m["panels"]:
+            body = json.dumps(panel_data(p), ensure_ascii=False, separators=(",", ":"))
+            digest = hashlib.sha256(body.encode("utf-8")).hexdigest()[:10]
+            path = f"{DATA_DIR}/{m['key']}-{p['key']}.{digest}.json"
+            p["src"] = f"/{path}"
+            pages.append(Page(path=path, url=f"{CFG.site_origin}/{path}", html=body, title=path, description="",
+                              in_sitemap=False, content_type="application/json; charset=utf-8"))
+    return pages
+
+
+def render_all(env, ctx, cfg=CFG) -> list[Page]:
+    """`/heatmap` 페이지(첫 항목) + 패널 데이터 파일들."""
     view = build_view(ctx)
+    data_pages = _data_pages(view)
     url = f"{cfg.site_origin}/heatmap"
     total = len(ctx.companies)
     title = f"복지 히트맵 — 등록 회사 {total}곳을 업종별로 한눈에 | {cfg.site_name}"
@@ -279,4 +351,9 @@ def render(env, ctx, cfg=CFG) -> Page:
             "image": cfg.site_origin + cfg.default_og_image},
         cfg=cfg, footer_links=POLICY_FOOTER_LINKS, nav_active="/heatmap",
     )
-    return Page(path="heatmap.html", url=url, html=html, title=title, description=desc)
+    return [Page(path="heatmap.html", url=url, html=html, title=title, description=desc)] + data_pages
+
+
+def render(env, ctx, cfg=CFG) -> Page:
+    """`/heatmap` 페이지 하나(데이터 파일 제외) — 페이지 단위 테스트용. 빌드는 `render_all`."""
+    return render_all(env, ctx, cfg)[0]

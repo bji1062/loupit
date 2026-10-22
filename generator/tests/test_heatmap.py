@@ -7,7 +7,9 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
+from pathlib import Path
 
 import pytest
 
@@ -233,3 +235,126 @@ def test_page_emits_highlight_attributes_and_readout():
     assert 'data-g="g0"' in p.html and "data-c=" in p.html and "data-nm=" in p.html
     assert "data-group-nm" not in p.html  # 묶음 이름은 그룹 요소에만(칸 중복 출력 금지)
     assert 'data-readout' in p.html and 'aria-live="polite"' in p.html
+
+
+# ── 첫 화면 = 복지 지도만, 나머지는 패널별 데이터 파일(2026-10-22) ───────────────
+
+
+def _pages():
+    return heatmap.render_all(make_env(), _ctx(), CFG)
+
+
+def test_first_html_bakes_only_the_welfare_map_and_others_are_empty_vessels():
+    page = _pages()[0]
+    html = page.html
+    assert html.count('class="hm-map hm-landscape"') == 1 and html.count('class="hm-map hm-portrait"') == 1
+    panels = re.findall(r'<div class="hm-panel" data-panel="([^"]+)"( data-src="[^"]+")?>', html)
+    lazy = [k for k, src in panels if src]
+    assert lazy and len(lazy) == len(panels) - 1  # 복지 패널 하나만 src 가 없다(구운 쪽)
+    for m in re.finditer(r'<div class="hm-panel" data-panel="[^"]+" data-src="[^"]+">(.*?)\n    </div>', html, re.S):
+        assert "hm-t" not in m.group(1) and 'class="hm-nojs"' in m.group(1) and "자바스크립트가 필요합니다" in m.group(1)
+        assert "noscript" not in m.group(1)  # 안내가 기본으로 보인다 — JS 가 맡으면 걷는다(스크립트 로드 실패에도 빈 패널 금지)
+
+
+def test_welfare_panel_markup_and_link_count_unchanged():
+    """구운 복지 패널은 지금까지와 같은 칸 수 — 회사 수만큼(가로·세로 두 벌)."""
+    ctx = _ctx()
+    page = heatmap.render_all(make_env(), ctx, CFG)[0]
+    assert len(re.findall(r'<a class="hm-t ', page.html)) == 2 * len(ctx.companies)
+
+
+def test_data_pages_one_per_lazy_panel_with_fingerprint_url_and_json_type():
+    pages = _pages()
+    view = heatmap.build_view(_ctx(), SECTORS)
+    expected = sum(len(m["panels"]) for m in view["modes"] if m["key"] != "w")
+    data = pages[1:]
+    assert len(data) == expected and expected >= 2
+    for d in data:
+        assert d.path.startswith("heatmap/") and d.path.endswith(".json") and not d.in_sitemap
+        assert d.content_type.startswith("application/json")
+        assert json.loads(d.html)["v"] == 1
+        key = d.path.removeprefix("heatmap/").removesuffix(".json")
+        assert re.fullmatch(r"heatmap/[a-z]-[a-z_]+\.[0-9a-f]{10}\.json", d.path), key  # 내용 지문이 파일 이름에
+        assert f'data-src="/{d.path}"' in pages[0].html and "?v=" not in pages[0].html
+
+
+def test_data_url_fingerprint_follows_content():
+    ctx = _ctx()
+    a = heatmap.render_all(make_env(), ctx, CFG)[0].html
+    b = heatmap.render_all(make_env(), ctx, CFG)[0].html
+    assert a == b  # 결정적
+    ctx2 = _ctx()
+    ctx2.companies[0]["benefits"][0]["benefit_nm"] = "다른 이름"
+    c = heatmap.render_all(make_env(), ctx2, CFG)[0].html
+    assert re.findall(r'data-src="([^"]+)"', a) != re.findall(r'data-src="([^"]+)"', c)
+
+
+def test_panel_data_covers_both_orientations_with_same_tiles():
+    for m in heatmap.build_view(_ctx(), SECTORS)["modes"]:
+        for p in m["panels"]:
+            d = heatmap.panel_data(p)
+            n = len(d["tiles"])
+            for o in heatmap.ORIENT_ORDER:
+                assert sorted(t[0] for t in d[o]["t"]) == list(range(n)), (m["key"], p["key"], o)
+                assert len(d[o]["g"]) == len(d["groups"])
+
+
+# ── 서버 그림 = 브라우저 그림 픽스처 ─────────────────────────────────────────
+
+
+def test_panel_cases_fixture_matches_current_template_and_panel_data():
+    """`heatmap_panel_cases.json` 이 지금 템플릿·panel_data 가 내는 것과 같다 — JS 테스트(heatmap.test.js)가 같은
+    파일로 buildMaps 를 잰다. 다르면 `python3 generator/tests/data/make_heatmap_cases.py` 로 다시 뽑는다."""
+    import sys
+    from pathlib import Path
+    data_dir = Path(__file__).resolve().parent / "data"
+    sys.path.insert(0, str(data_dir))
+    try:
+        import make_heatmap_cases
+    finally:
+        sys.path.remove(str(data_dir))
+    want = make_heatmap_cases.build_cases()
+    have = json.loads((data_dir / "heatmap_panel_cases.json").read_text(encoding="utf-8"))
+    assert have == want, "heatmap_panel_cases.json 이 낡았다 — make_heatmap_cases.py 로 다시 뽑아라"
+    assert {p["mode"] for p in have["panels"]} >= {"w", "f", "c"}
+
+
+# ── 크기 상한 ────────────────────────────────────────────────────────────────
+
+
+def test_size_caps_first_html_and_data_files():
+    """상한은 실측(2026-10-22, 286사·6,475행)으로 정했다: 첫 HTML 압축 35KB(이전 716KB) · 데이터 파일 최대 65KB.
+    가짜 번들은 작아서 절대값으로는 못 잡는다 — 그래서 구조도 함께 잰다: 칸 설명은 한 번만(두 배치가 공유)."""
+    import gzip
+    pages = _pages()
+    assert len(gzip.compress(pages[0].html.encode("utf-8"))) <= 60_000
+    for d in pages[1:]:
+        assert len(gzip.compress(d.html.encode("utf-8"))) <= 100_000, d.path
+        data = json.loads(d.html)
+        assert len(data["tiles"]) == len(data["landscape"]["t"]) == len(data["portrait"]["t"])
+        assert d.html.count('"landscape"') == 1 and d.html.count('"portrait"') == 1
+
+
+def test_maps_have_no_static_aria_hidden():
+    """안 보이는 배치는 CSS(display:none)가 접근성 트리에서 뺀다 — 정적 aria-hidden 은 ≤640px 에서 보이는 세로 지도를 지운다."""
+    css = (Path(__file__).resolve().parents[2] / "web/assets/css/heatmap.css").read_text(encoding="utf-8")
+    assert ".hm-portrait { aspect-ratio:3 / 4; display:none; }" in css and ".hm-landscape { display:none; }" in css
+    assert "aria-hidden" not in _pages()[0].html.split('<article class="heatmap-page">')[1]
+
+
+def test_gc32_heatmap_weight_gate():
+    import os
+    from generator.checks import HEATMAP_DATA_GZ_MAX, HEATMAP_HTML_GZ_MAX, BuildError
+    from generator.context import Page
+    pages = _pages()
+    from generator.checks import _check_heatmap_weight
+    _check_heatmap_weight(pages)  # 정상 빌드는 통과
+    noise = os.urandom(HEATMAP_HTML_GZ_MAX).hex()  # 압축이 안 되는 글
+    big_html = Page(path="heatmap.html", url="u", html=noise, title="t", description="d")
+    with pytest.raises(BuildError, match="GC-32.*첫 HTML"):
+        _check_heatmap_weight([big_html])
+    big_data = Page(path="heatmap/c-perks.0123456789.json", url="u", html=os.urandom(HEATMAP_DATA_GZ_MAX).hex(),
+                    title="t", description="d", in_sitemap=False)
+    with pytest.raises(BuildError, match="GC-32.*c-perks"):
+        _check_heatmap_weight([pages[0], big_data])
+    assert HEATMAP_HTML_GZ_MAX == 70_000 and HEATMAP_DATA_GZ_MAX == 150_000

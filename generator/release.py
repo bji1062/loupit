@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 from generator.checks import run_generated_checks
 from generator.context import Page
 
-_COMPRESSIBLE_EXT = (".html", ".xml", ".txt")
+_COMPRESSIBLE_EXT = (".html", ".xml", ".txt", ".json")  # .json = 히트맵 패널 데이터 파일(SP-HEAT)
 _MANIFEST_NAME = ".manifest.json"
 
 

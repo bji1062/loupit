@@ -72,3 +72,6 @@
   margin:0 0 var(--sp-2); min-height:1.5em; font-size:var(--fs-sm); color:var(--t2);
   font-variant-numeric:tabular-nums; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
+/* 늦게 그리는 지도(SP-HEAT, 2026-10-22): 받는 중 · 받기 실패 · JS 없음 안내. 지도 자리를 비워 두지 않도록 높이를 준다 */
+.hm-status, .hm-nojs { margin:0; padding:var(--sp-6) var(--sp-3); text-align:center; font-size:var(--fs-sm); color:var(--t2);
+  background:var(--bg-1); border:var(--bw) solid var(--border); border-radius:var(--r-md); }
