@@ -16,7 +16,10 @@
 --   ALTER TABLE TBENEFIT_EDIT_LOG DROP COLUMN ACTOR_KIND_CD (코드 롤백이 선행되어야 한다).
 -- 멱등: CREATE TABLE IF NOT EXISTS · 칸은 information_schema 확인 뒤에만 ADD · 갱신은 이미 operator 인 행을 건너뛴다.
 --
--- ⚠ **API 재시작 전에** 적용한다 — 새 코드는 ACTOR_KIND_CD 를 읽고 새 표에 쓰므로, 없으면 편집 이력 조회가 500 이 된다.
+-- ⚠ **git pull 보다 먼저** 적용한다 (API 재시작 · 타이머 · 생성기가 새 코드를 돌리기 전).
+--   새 코드는 ACTOR_KIND_CD 를 읽고 새 표에 쓰므로, 없으면 편집 이력 조회만이 아니라 참조 번들
+--   /reference/all 이 500 (비교 · 복지검색 · 히트맵 전부 멈춤) 이고 release 의 정적 생성 단계도 실패한다.
+--   옛 코드는 이 칸 · 표를 모르고 칸에 기본값이 있어 먼저 적용해도 무해하다.
 --   LOUPIT 만 적용한다 (베타는 무시).
 --
 -- 적용 후 확인:
