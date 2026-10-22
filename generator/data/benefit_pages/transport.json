@@ -108,6 +108,8 @@
     {"comp": "youngone", "h": "4e2a615ead", "facets_add": ["target"], "why": "보고서 47쪽 임산부 교통비 100만원 지원 — 대상이 임산부로 정해짐"},
     {"comp": "lotte_tour", "h": "d6924ea917", "facets_remove": ["bus_too", "late"], "why": "원문 장거리 통근 교통비는 버스 운행이 아니라 현금 지급이고 업무상 택시비는 야근 귀가가 아니라 업무 이동 경비다"},
     {"comp": "hanwha_general_ins", "h": "cdb928637d", "facets_add": ["target"], "why": "원문 「무연고지 근무자 주거지원 / 주거보조비 및 귀성여비 지급」 — 귀성여비 대상이 무연고지 근무자로 정해져 있다"},
-    {"comp": "lg_hnh", "h": "2ef7e9b6e3", "facets_add": ["target"], "why": "원문 「영업사원 차량운영비 및 통신비 지급」 — 차량운영비를 받는 대상이 영업사원으로 정해져 있는데 target 패턴에 「영업」 낱말이 없다"}
+    {"comp": "lg_hnh", "h": "2ef7e9b6e3", "facets_add": ["target"], "why": "원문 「영업사원 차량운영비 및 통신비 지급」 — 차량운영비를 받는 대상이 영업사원으로 정해져 있는데 target 패턴에 「영업」 낱말이 없다"},
+    {"comp": "posco_enc", "h": "3286080402", "facets_add": ["target"], "why": "원문 「국내 시공현장, 분양사무소, 사무실 단신근무 직원 대상 가족방문 교통비」 — 대상이 정해져 있다"},
+    {"comp": "ls_cable", "h": "b0f4ec6399", "facets_remove": ["late"], "facets_add": ["target"], "why": "원문 「신규 입사자 첫 출근 택시비 지원」은 야근·심야 귀가 택시비가 아니라 입사 첫날 출근 교통비이고 「영업사원 교통비 실비 지급」은 대상이 영업사원으로 정해져 있다"}
   ]
 }
