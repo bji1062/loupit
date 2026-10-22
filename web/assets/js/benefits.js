@@ -135,6 +135,19 @@ export function categoryStats(companies, order = CATEGORY_ORDER) {
 }
 
 /**
+ * 가벼운 목록(`/reference/index`)의 눈금 통계 `{total, sums, rmax}` → `categoryStats` 와 같은 모양 `{total, avgs, rmax}`.
+ * 서버는 평균이 아니라 **합**을 보낸다 — 평균 · 반올림은 여기서 같은 `round2` 로 해야 번들로 센 값과 글자까지 같다
+ * (파이썬 `round` 는 은행가 반올림이라 서버에서 나누면 갈린다). 대조 픽스처: `generator/tests/data/compare_index_cases.json`.
+ */
+export function statsFromIndex(stats, order = CATEGORY_ORDER) {
+  const total = stats && Number.isInteger(stats.total) ? stats.total : 0;
+  const sums = (stats && stats.sums) || {};
+  const avgs = {};
+  for (const k of order) avgs[k] = total ? round2((sums[k] || 0) / total) : 0;
+  return { total, avgs, rmax: Math.max((stats && stats.rmax) || 0, 1) };
+}
+
+/**
  * 항목 대조표의 행 — `benefit_cd` 로 짝지은 **합집합**(SP-CMP-6). 한쪽만 있는 행을 숨기지 않는다:
  * 그 행이 곧 차별점이고, 숨기면 거짓 동률이 된다.
  *
@@ -796,7 +809,10 @@ export function buildViewModel(state, { now = Date.now(), order = CATEGORY_ORDER
   const sa = split('a'), sb = split('b');
   const ben = { a: sa.keep, b: sb.keep };
   const marked = [...sa.marked, ...sb.marked];
-  const stats = categoryStats((state.REF && state.REF.companies) || [], order);
+  // 가벼운 목록으로 부팅했으면 서버가 센 합으로, `/reference/all` 폴백 부팅이면 번들을 직접 센다(둘은 같은 값이다).
+  const stats = state.REF && state.REF.category_stats
+    ? statsFromIndex(state.REF.category_stats, order)
+    : categoryStats((state.REF && state.REF.companies) || [], order);
   const perA = perCategory(ben.a, order);
   const perB = perCategory(ben.b, order);
   const countsA = order.map((k) => perA[k]);

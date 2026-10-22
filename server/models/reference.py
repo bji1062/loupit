@@ -66,3 +66,32 @@ class ReferenceBundle(BaseModel):  # FR-D1 (최상위 정확히 3키)
     company_types: list[CompanyType]
     benefit_presets: dict[str, list[PresetBenefit]]  # {comp_tp_cd: [...]}
     companies: list[Company]
+
+
+# ── /compare 부팅용 가벼운 목록 + 회사별 상세 (2026-10-22) ─────────────────────────────────
+# 비교 화면은 번들 전체(복지 행 6천여 개 · 압축 약 700KB)를 부팅 때 받았지만 화면이 쓰는 상세는 고른 두 회사뿐이다.
+# 부팅은 아래 가벼운 목록을, 상세는 `GET /reference/companies/{id}`(= `Company` 그대로)를 필요한 순간에 받는다.
+# 🚨 번들과 마찬가지로 여기 선언하지 않은 필드는 조용히 떨어진다 — 목록에 필드를 더할 때 이 모델도 함께 고쳐라.
+class IndexCompany(BaseModel):
+    comp_id: int
+    comp_eng_nm: str
+    comp_nm: str
+    comp_tp_cd: str
+    industry_nm: str | None = None
+    logo_nm: str | None = None
+    aliases: list[str]
+    benefit_n: int  # 셀 수 있는 복지 수 = generator/marks.py countable(c) 길이 (JS marks.js::countable 과 같은 정의)
+
+
+class CategoryStats(BaseModel):
+    """9각형 · 나비 눈금 기준 — 평균이 아니라 **합**을 싣는다(JS categoryStats 와 같은 산술로 round2 하려고)."""
+    total: int  # 분모 = 전체 등록 회사 수
+    sums: dict[str, int]  # 카테고리 → 표시 행을 뺀 전 회사 항목 수의 합
+    rmax: int  # 한 회사 · 한 카테고리의 최댓값(최소 1)
+
+
+class ReferenceIndex(BaseModel):  # 최상위 정확히 4키
+    company_types: list[CompanyType]
+    benefit_presets: dict[str, list[PresetBenefit]]
+    companies: list[IndexCompany]
+    category_stats: CategoryStats

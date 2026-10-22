@@ -1,0 +1,1216 @@
+{
+ "_note": "서버 자르기(reference_cut)와 JS 셈(categoryStats · countable · rowMeta)이 같은 결과를 내는지 재는 픽스처. `bundle`(가짜 번들) · `index`(서버가 만든 가벼운 목록) · `details`(회사별 상세). server/tests/test_reference_cut.py 와 web/assets/js/compare-index.test.js 가 함께 읽는다. 서버 함수나 JS 셈을 바꾸면 generator/tests/data/make_compare_index_cases.py 로 다시 뽑아라 — 손으로 고치지 마라.",
+ "bundle": {
+  "company_types": [
+   {
+    "comp_tp_id": 1,
+    "comp_tp_cd": "large",
+    "comp_tp_nm": "대기업"
+   },
+   {
+    "comp_tp_id": 2,
+    "comp_tp_cd": "startup",
+    "comp_tp_nm": "스타트업"
+   }
+  ],
+  "benefit_presets": {
+   "large": [
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 200,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "est",
+     "default_checked_yn": true,
+     "sort_order_no": 1
+    }
+   ],
+   "startup": []
+  },
+  "companies": [
+   {
+    "comp_id": 1,
+    "comp_eng_nm": "kt",
+    "comp_nm": "KT",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "K",
+    "work_style_val": {
+     "remote": true,
+     "flex": false
+    },
+    "careers_benefit_url": "https://kt.example/careers",
+    "aliases": [
+     "KT",
+     "케이티",
+     "한국통신"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "parenting",
+      "benefit_nm": "출산/육아 지원",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "family",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "meal",
+      "benefit_nm": "식대",
+      "benefit_amt": 240,
+      "benefit_ctgr_cd": "compensation",
+      "badge_cd": "official",
+      "amt_source": "stated",
+      "qual_yn": false,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 2,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "gym",
+      "benefit_nm": "사내 체육관",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "health",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 3,
+      "edit_origin": "seed"
+     }
+    ]
+   },
+   {
+    "comp_id": 2,
+    "comp_eng_nm": "alteogen",
+    "comp_nm": "알테오젠",
+    "comp_tp_cd": "large",
+    "industry_nm": "바이오",
+    "logo_nm": "알",
+    "work_style_val": null,
+    "careers_benefit_url": "https://alteogen.example/careers",
+    "aliases": [
+     "알테오젠"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "edu_support",
+      "benefit_nm": "신입사원 교육",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "growth",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "snack",
+      "benefit_nm": "간식",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "ai_parse",
+      "badge_src_url_ctnt": null,
+      "sort_order_no": 2,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "edu_lang",
+      "benefit_nm": "어학 강좌",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "growth",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 3,
+      "edit_origin": "seed"
+     }
+    ]
+   },
+   {
+    "comp_id": 3,
+    "comp_eng_nm": "naver",
+    "comp_nm": "네이버",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "네",
+    "work_style_val": null,
+    "careers_benefit_url": "https://naver.example/careers",
+    "aliases": [
+     "NAVER",
+     "네이버"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "remote",
+      "benefit_nm": "원격근무",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "flexibility",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "edited"
+     },
+     {
+      "benefit_cd": "meal",
+      "benefit_nm": "식대",
+      "benefit_amt": 300,
+      "benefit_ctgr_cd": "compensation",
+      "badge_cd": "official",
+      "amt_source": "stated",
+      "qual_yn": false,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 2,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "health_chk",
+      "benefit_nm": "건강검진",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "health",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 3,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "lounge",
+      "benefit_nm": "휴게실",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "work_env",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 4,
+      "edit_origin": "seed"
+     }
+    ]
+   },
+   {
+    "comp_id": 4,
+    "comp_eng_nm": "cluster_co",
+    "comp_nm": "몰빵상사",
+    "comp_tp_cd": "startup",
+    "industry_nm": null,
+    "logo_nm": "몰",
+    "work_style_val": null,
+    "careers_benefit_url": "https://cluster_co.example/careers",
+    "aliases": [
+     "몰빵상사"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "p1",
+      "benefit_nm": "복리 1",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "p2",
+      "benefit_nm": "복리 2",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 2,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "p3",
+      "benefit_nm": "복리 3",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 3,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "p4",
+      "benefit_nm": "복리 4",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 4,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "p5",
+      "benefit_nm": "복리 5",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 5,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "p6",
+      "benefit_nm": "복리 6",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 6,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "p7",
+      "benefit_nm": "복리 7",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "perks",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 7,
+      "edit_origin": "seed"
+     }
+    ]
+   },
+   {
+    "comp_id": 5,
+    "comp_eng_nm": "tiny_co",
+    "comp_nm": "작은회사",
+    "comp_tp_cd": "startup",
+    "industry_nm": "IT",
+    "logo_nm": "작",
+    "work_style_val": null,
+    "careers_benefit_url": "https://tiny_co.example/careers",
+    "aliases": [
+     "작은회사",
+     "tiny"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "meal",
+      "benefit_nm": "식대",
+      "benefit_amt": 100,
+      "benefit_ctgr_cd": "compensation",
+      "badge_cd": "official",
+      "amt_source": "stated",
+      "qual_yn": false,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     }
+    ]
+   },
+   {
+    "comp_id": 6,
+    "comp_eng_nm": "sk_x",
+    "comp_nm": "SK엑스",
+    "comp_tp_cd": "large",
+    "industry_nm": "통신",
+    "logo_nm": "S",
+    "work_style_val": null,
+    "careers_benefit_url": "https://sk_x.example/careers",
+    "aliases": [
+     "SK엑스"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "leave",
+      "benefit_nm": "리프레시 휴가",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "time_off",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "family_day",
+      "benefit_nm": "가족 사랑의 날",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "family",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 2,
+      "edit_origin": "member"
+     }
+    ]
+   },
+   {
+    "comp_id": 7,
+    "comp_eng_nm": "dash_co",
+    "comp_nm": "대시-컴퍼니",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "대",
+    "work_style_val": null,
+    "careers_benefit_url": "https://dash_co.example/careers",
+    "aliases": [
+     "대시-컴퍼니"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "meal",
+      "benefit_nm": "식대",
+      "benefit_amt": 250,
+      "benefit_ctgr_cd": "compensation",
+      "badge_cd": "official",
+      "amt_source": "stated",
+      "qual_yn": false,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     }
+    ]
+   },
+   {
+    "comp_id": 8,
+    "comp_eng_nm": "last_co",
+    "comp_nm": "마지막상사",
+    "comp_tp_cd": "large",
+    "industry_nm": "바이오",
+    "logo_nm": "마",
+    "work_style_val": null,
+    "careers_benefit_url": "https://last_co.example/careers",
+    "aliases": [
+     "마지막상사"
+    ],
+    "benefits": [
+     {
+      "benefit_cd": "meal",
+      "benefit_nm": "식대",
+      "benefit_amt": 210,
+      "benefit_ctgr_cd": "compensation",
+      "badge_cd": "official",
+      "amt_source": "stated",
+      "qual_yn": false,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 1,
+      "edit_origin": "seed"
+     },
+     {
+      "benefit_cd": "gym",
+      "benefit_nm": "사내 체육관",
+      "benefit_amt": null,
+      "benefit_ctgr_cd": "health",
+      "badge_cd": "official",
+      "amt_source": "none",
+      "qual_yn": true,
+      "qual_desc_ctnt": null,
+      "note_ctnt": null,
+      "verified_dtm": "2026-10-01T00:00:00",
+      "expires_dtm": null,
+      "badge_src_cd": "scrape_official",
+      "badge_src_url_ctnt": "https://x.example/c",
+      "sort_order_no": 2,
+      "edit_origin": "seed"
+     }
+    ]
+   }
+  ]
+ },
+ "index": {
+  "company_types": [
+   {
+    "comp_tp_id": 1,
+    "comp_tp_cd": "large",
+    "comp_tp_nm": "대기업"
+   },
+   {
+    "comp_tp_id": 2,
+    "comp_tp_cd": "startup",
+    "comp_tp_nm": "스타트업"
+   }
+  ],
+  "benefit_presets": {
+   "large": [
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 200,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "est",
+     "default_checked_yn": true,
+     "sort_order_no": 1
+    }
+   ],
+   "startup": []
+  },
+  "companies": [
+   {
+    "comp_id": 1,
+    "comp_eng_nm": "kt",
+    "comp_nm": "KT",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "K",
+    "aliases": [
+     "KT",
+     "케이티",
+     "한국통신"
+    ],
+    "benefit_n": 2
+   },
+   {
+    "comp_id": 2,
+    "comp_eng_nm": "alteogen",
+    "comp_nm": "알테오젠",
+    "comp_tp_cd": "large",
+    "industry_nm": "바이오",
+    "logo_nm": "알",
+    "aliases": [
+     "알테오젠"
+    ],
+    "benefit_n": 2
+   },
+   {
+    "comp_id": 3,
+    "comp_eng_nm": "naver",
+    "comp_nm": "네이버",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "네",
+    "aliases": [
+     "NAVER",
+     "네이버"
+    ],
+    "benefit_n": 4
+   },
+   {
+    "comp_id": 4,
+    "comp_eng_nm": "cluster_co",
+    "comp_nm": "몰빵상사",
+    "comp_tp_cd": "startup",
+    "industry_nm": null,
+    "logo_nm": "몰",
+    "aliases": [
+     "몰빵상사"
+    ],
+    "benefit_n": 7
+   },
+   {
+    "comp_id": 5,
+    "comp_eng_nm": "tiny_co",
+    "comp_nm": "작은회사",
+    "comp_tp_cd": "startup",
+    "industry_nm": "IT",
+    "logo_nm": "작",
+    "aliases": [
+     "작은회사",
+     "tiny"
+    ],
+    "benefit_n": 1
+   },
+   {
+    "comp_id": 6,
+    "comp_eng_nm": "sk_x",
+    "comp_nm": "SK엑스",
+    "comp_tp_cd": "large",
+    "industry_nm": "통신",
+    "logo_nm": "S",
+    "aliases": [
+     "SK엑스"
+    ],
+    "benefit_n": 2
+   },
+   {
+    "comp_id": 7,
+    "comp_eng_nm": "dash_co",
+    "comp_nm": "대시-컴퍼니",
+    "comp_tp_cd": "large",
+    "industry_nm": "IT",
+    "logo_nm": "대",
+    "aliases": [
+     "대시-컴퍼니"
+    ],
+    "benefit_n": 1
+   },
+   {
+    "comp_id": 8,
+    "comp_eng_nm": "last_co",
+    "comp_nm": "마지막상사",
+    "comp_tp_cd": "large",
+    "industry_nm": "바이오",
+    "logo_nm": "마",
+    "aliases": [
+     "마지막상사"
+    ],
+    "benefit_n": 2
+   }
+  ],
+  "category_stats": {
+   "total": 8,
+   "sums": {
+    "compensation": 5,
+    "flexibility": 1,
+    "work_env": 1,
+    "time_off": 1,
+    "health": 3,
+    "family": 1,
+    "growth": 1,
+    "leisure": 0,
+    "perks": 8
+   },
+   "rmax": 7
+  }
+ },
+ "details": {
+  "1": {
+   "comp_id": 1,
+   "comp_eng_nm": "kt",
+   "comp_nm": "KT",
+   "comp_tp_cd": "large",
+   "industry_nm": "IT",
+   "logo_nm": "K",
+   "work_style_val": {
+    "remote": true,
+    "flex": false
+   },
+   "careers_benefit_url": "https://kt.example/careers",
+   "aliases": [
+    "KT",
+    "케이티",
+    "한국통신"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "parenting",
+     "benefit_nm": "출산/육아 지원",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "family",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 240,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "official",
+     "amt_source": "stated",
+     "qual_yn": false,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 2,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "gym",
+     "benefit_nm": "사내 체육관",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "health",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 3,
+     "edit_origin": "seed"
+    }
+   ]
+  },
+  "2": {
+   "comp_id": 2,
+   "comp_eng_nm": "alteogen",
+   "comp_nm": "알테오젠",
+   "comp_tp_cd": "large",
+   "industry_nm": "바이오",
+   "logo_nm": "알",
+   "work_style_val": null,
+   "careers_benefit_url": "https://alteogen.example/careers",
+   "aliases": [
+    "알테오젠"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "edu_support",
+     "benefit_nm": "신입사원 교육",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "growth",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "snack",
+     "benefit_nm": "간식",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "ai_parse",
+     "badge_src_url_ctnt": null,
+     "sort_order_no": 2,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "edu_lang",
+     "benefit_nm": "어학 강좌",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "growth",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 3,
+     "edit_origin": "seed"
+    }
+   ]
+  },
+  "3": {
+   "comp_id": 3,
+   "comp_eng_nm": "naver",
+   "comp_nm": "네이버",
+   "comp_tp_cd": "large",
+   "industry_nm": "IT",
+   "logo_nm": "네",
+   "work_style_val": null,
+   "careers_benefit_url": "https://naver.example/careers",
+   "aliases": [
+    "NAVER",
+    "네이버"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "remote",
+     "benefit_nm": "원격근무",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "flexibility",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "edited"
+    },
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 300,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "official",
+     "amt_source": "stated",
+     "qual_yn": false,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 2,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "health_chk",
+     "benefit_nm": "건강검진",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "health",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 3,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "lounge",
+     "benefit_nm": "휴게실",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "work_env",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 4,
+     "edit_origin": "seed"
+    }
+   ]
+  },
+  "4": {
+   "comp_id": 4,
+   "comp_eng_nm": "cluster_co",
+   "comp_nm": "몰빵상사",
+   "comp_tp_cd": "startup",
+   "industry_nm": null,
+   "logo_nm": "몰",
+   "work_style_val": null,
+   "careers_benefit_url": "https://cluster_co.example/careers",
+   "aliases": [
+    "몰빵상사"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "p1",
+     "benefit_nm": "복리 1",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "p2",
+     "benefit_nm": "복리 2",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 2,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "p3",
+     "benefit_nm": "복리 3",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 3,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "p4",
+     "benefit_nm": "복리 4",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 4,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "p5",
+     "benefit_nm": "복리 5",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 5,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "p6",
+     "benefit_nm": "복리 6",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 6,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "p7",
+     "benefit_nm": "복리 7",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "perks",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 7,
+     "edit_origin": "seed"
+    }
+   ]
+  },
+  "5": {
+   "comp_id": 5,
+   "comp_eng_nm": "tiny_co",
+   "comp_nm": "작은회사",
+   "comp_tp_cd": "startup",
+   "industry_nm": "IT",
+   "logo_nm": "작",
+   "work_style_val": null,
+   "careers_benefit_url": "https://tiny_co.example/careers",
+   "aliases": [
+    "작은회사",
+    "tiny"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 100,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "official",
+     "amt_source": "stated",
+     "qual_yn": false,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    }
+   ]
+  },
+  "6": {
+   "comp_id": 6,
+   "comp_eng_nm": "sk_x",
+   "comp_nm": "SK엑스",
+   "comp_tp_cd": "large",
+   "industry_nm": "통신",
+   "logo_nm": "S",
+   "work_style_val": null,
+   "careers_benefit_url": "https://sk_x.example/careers",
+   "aliases": [
+    "SK엑스"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "leave",
+     "benefit_nm": "리프레시 휴가",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "time_off",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "family_day",
+     "benefit_nm": "가족 사랑의 날",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "family",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 2,
+     "edit_origin": "member"
+    }
+   ]
+  },
+  "7": {
+   "comp_id": 7,
+   "comp_eng_nm": "dash_co",
+   "comp_nm": "대시-컴퍼니",
+   "comp_tp_cd": "large",
+   "industry_nm": "IT",
+   "logo_nm": "대",
+   "work_style_val": null,
+   "careers_benefit_url": "https://dash_co.example/careers",
+   "aliases": [
+    "대시-컴퍼니"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 250,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "official",
+     "amt_source": "stated",
+     "qual_yn": false,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    }
+   ]
+  },
+  "8": {
+   "comp_id": 8,
+   "comp_eng_nm": "last_co",
+   "comp_nm": "마지막상사",
+   "comp_tp_cd": "large",
+   "industry_nm": "바이오",
+   "logo_nm": "마",
+   "work_style_val": null,
+   "careers_benefit_url": "https://last_co.example/careers",
+   "aliases": [
+    "마지막상사"
+   ],
+   "benefits": [
+    {
+     "benefit_cd": "meal",
+     "benefit_nm": "식대",
+     "benefit_amt": 210,
+     "benefit_ctgr_cd": "compensation",
+     "badge_cd": "official",
+     "amt_source": "stated",
+     "qual_yn": false,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 1,
+     "edit_origin": "seed"
+    },
+    {
+     "benefit_cd": "gym",
+     "benefit_nm": "사내 체육관",
+     "benefit_amt": null,
+     "benefit_ctgr_cd": "health",
+     "badge_cd": "official",
+     "amt_source": "none",
+     "qual_yn": true,
+     "qual_desc_ctnt": null,
+     "note_ctnt": null,
+     "verified_dtm": "2026-10-01T00:00:00",
+     "expires_dtm": null,
+     "badge_src_cd": "scrape_official",
+     "badge_src_url_ctnt": "https://x.example/c",
+     "sort_order_no": 2,
+     "edit_origin": "seed"
+    }
+   ]
+  }
+ }
+}

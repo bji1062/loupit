@@ -130,12 +130,44 @@ function renderDetail(company, mountEl, deps, now = Date.now()) {
   return mountEl;
 }
 
+// ── 상세 열기: 복지 행이 있으면 바로 그리고, 없으면(가벼운 목록으로 부팅) 받은 뒤에 그린다 ──────
+// 🚨 복지 행 없는 회사를 renderDetail 에 넘기면 「등록된 복지 정보가 없습니다」로 **조용히** 그려진다 — 받은 뒤에만 그린다.
+// deps.loadDetail(company) 은 받아서 같은 객체에 합친 뒤 끝나는 약속(실패하면 던진다). 연타 · 늦은 응답은 마지막 요청만 그린다.
+export const LOAD_ERROR_TEXT = '회사 정보를 불러오지 못했습니다. 다시 눌러 주세요.';
+const _openSeq = new WeakMap();
+
+function openDetail(company, mountEl, deps, now, onFail) {
+  if (Array.isArray(company.benefits) || typeof deps.loadDetail !== 'function') {
+    _openSeq.set(mountEl, (_openSeq.get(mountEl) || 0) + 1); // 진행 중이던 요청의 응답은 이제 낡았다
+    return renderDetail(company, mountEl, deps, now);
+  }
+  const seq = (_openSeq.get(mountEl) || 0) + 1;
+  _openSeq.set(mountEl, seq);
+  const note = (text, cls) => {
+    const prev = mountEl.querySelector('.cp-status');
+    if (prev) prev.remove();
+    const p = el('p', { class: 'cp-status ' + cls, role: 'status', text });
+    (mountEl.querySelector('.cp-page') || mountEl).append(p);
+  };
+  if (onFail) note('불러오는 중…', 'cp-loading'); // 후보 목록 위에 한 줄(목록은 그대로 둔다)
+  else { mountEl.replaceChildren(); note('불러오는 중…', 'cp-loading'); }
+  Promise.resolve(deps.loadDetail(company)).then(() => {
+    if (_openSeq.get(mountEl) !== seq) return; // 더 최근에 누른 것이 있다 → 늦은 응답 폐기
+    renderDetail(company, mountEl, deps, now);
+  }, () => {
+    if (_openSeq.get(mountEl) !== seq) return;
+    if (onFail) onFail();
+    else { mountEl.replaceChildren(); note(LOAD_ERROR_TEXT, 'cp-error'); }
+  });
+  return mountEl;
+}
+
 // ── 렌더: 3상태(상세 / 후보 목록 / 무결과) ──────────────────────────────────
 export function renderCompanyView(result, mountEl, deps = {}, now = Date.now()) {
   if (!mountEl) return null;
   const { term = '', matches = [] } = result || {};
 
-  if (matches.length === 1) return renderDetail(matches[0], mountEl, deps, now);
+  if (matches.length === 1) return openDetail(matches[0], mountEl, deps, now, null);
 
   mountEl.replaceChildren();
   if (!matches.length) {
@@ -156,7 +188,11 @@ export function renderCompanyView(result, mountEl, deps = {}, now = Date.now()) 
     const btn = el('button', { type: 'button', class: 'cp-cand' });
     btn.append(el('span', { class: 'cp-cand-nm', text: c.comp_nm }));
     if (c.industry_nm) btn.append(el('span', { class: 'cp-cand-meta', text: c.industry_nm }));
-    btn.addEventListener('click', () => renderDetail(c, mountEl, deps, now));
+    btn.addEventListener('click', () => openDetail(c, mountEl, deps, now, () => {
+      const prev = mountEl.querySelector('.cp-status');
+      if (prev) prev.remove();
+      box.append(el('p', { class: 'cp-status cp-error', role: 'status', text: LOAD_ERROR_TEXT })); // 목록은 그대로 — 다시 누르면 된다
+    }));
     li.append(btn);
     ul.append(li);
   }

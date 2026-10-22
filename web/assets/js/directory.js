@@ -48,7 +48,9 @@ export function companyHref(compEngNm) {
 // ── 순수: 행 보조 정보("반도체 · 복지 12개") — 찾을 때 실제로 쓸모 있는 값만 ──
 // 복지 수는 세어서 나오는 사실이라 과장이 없다(금액 합계 같은 추정치를 여기 넣지 마라).
 export function rowMeta(company) {
-  const n = countable(company).length;
+  // 가벼운 목록(복지 행 없음)이면 서버가 미리 센 `benefit_n`(= countable 길이), 상세가 있으면 지금처럼 센다(같은 정의).
+  const n = company && !Array.isArray(company.benefits) && Number.isInteger(company.benefit_n)
+    ? company.benefit_n : countable(company).length;
   return [company && company.industry_nm, n > 0 ? '복지 ' + n + '개' : '']
     .filter(Boolean).join(' · ');
 }

@@ -6,7 +6,8 @@
 // (app.js가 이미 inputs.js를 import하므로) 순환 import가 발생해 SP-FE-1.2 규칙4를 위반한다.
 // 따라서 본 모듈의 함수는 App.state(또는 그 슬라이스)를 첫 인자로 받는다 — app.js가 호출 시
 // App.state를 그대로 넘긴다. 순수성이 높아져 단위 테스트도 App 전역 스텁 없이 가능하다.
-import { getCompany } from './api.js';
+import { getReferenceCompany } from './api.js';
+import { hasDetail, loadDetail } from './company-store.js';
 
 const CTGR9 = new Set([
   'compensation', 'flexibility', 'work_env', 'time_off',
@@ -133,12 +134,12 @@ export function sameCompanyGuard(state, slot, compId, notify) {
 }
 
 export async function selectCompany(state, slot, compId, hooks = {}) {
-  const { notify, reflectSlotLabel, closeCandidates, maybeAdvance, showSlotError, getCompanyFn = getCompany } = hooks;
+  const { notify, reflectSlotLabel, closeCandidates, maybeAdvance, showSlotError, getCompanyFn = getReferenceCompany } = hooks;
   const seq = bumpSelectSeq(state, slot); // 이 호출을 이 슬롯의 최신으로 등록(연타 폴백 방어, #9)
   let raw = (state.REF && state.REF.companies || []).find((c) => c.comp_id === compId); // REF 인라인 우선(호출 0)
-  if (!raw) {
+  if (!raw || !hasDetail(raw)) { // 가벼운 목록(복지 행 없음)이거나 REF 밖 → 상세 API(FR-D7). 같은 회사 동시 요청은 하나로 합쳐진다
     try {
-      raw = await getCompanyFn(compId); // 폴백: 상세 API(FR-D7)
+      raw = await loadDetail(state, compId, getCompanyFn); // 받으면 REF 의 그 객체에 합쳐진다
     } catch {
       if (typeof showSlotError === 'function') showSlotError(slot, '회사 정보를 불러올 수 없습니다.');
       return false; // FR-D11: 미선택 유지

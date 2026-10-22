@@ -107,7 +107,7 @@ export function reflectSearchUI(state, slot) {
   if (st === 'empty' || st === 'idle') clearCandidatesDom(slot);
 }
 
-function notify(msg) {
+export function notify(msg) {
   let box = byId('ui-notify');
   if (!box && typeof document !== 'undefined') {
     const app = byId('app');
