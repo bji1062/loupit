@@ -41,6 +41,9 @@
     {"comp": "foosung", "h": "19d4953e8e", "mode": "allowance", "why": "원문 「자기개발비 지원」 — 자기계발비와 같은 돈 지원인데 규칙이 「개발」 표기를 못 잡는다"},
     {"comp": "daou_tech", "h": "efef7e8708", "mode": "allowance", "why": "첫 제도가 반기마다 주는 자기계발비(교육수강 · 운동 · 문화활동) — 자격증 응시료 지원은 덧붙은 둘째 제도"},
     {"comp": "hyosung_tnc", "h": "b7f160e44d", "mode": "tuition", "why": "원문 「학사·학위 과정을 수강할 경우 최대 50%의 학비를 지원」 — 본인 학자금인데 「학자금」 낱말 대신 「학비」라 규칙이 못 잡는다"},
-    {"comp": "visang_edu", "h": "acb2908317", "mode": "allowance", "why": "원문 교육비상문화비(연 최대 120만원)지원 은 교육비 · 문화비를 돈으로 대는 자기계발비"}
+    {"comp": "visang_edu", "h": "acb2908317", "mode": "allowance", "why": "원문 교육비상문화비(연 최대 120만원)지원 은 교육비 · 문화비를 돈으로 대는 자기계발비"},
+    {"comp": "posco_enc", "h": "c2d9798ebc", "mode": "allowance", "why": "원문 본체는 「자기개발비 지원 … 지원금액 : 200만원/년」(현금 자기개발비)이고 규칙이 「계발」 철자만 알아 자격증 규칙이 먼저 걸렸다"},
+    {"comp": "sk_shieldus", "h": "afaf5991ac", "facets_add": ["work_link"], "why": "원문 「업무 유관 자격증 취득/갱신」 — 「유관」을 규칙(업무\\s*관련)이 못 잡는다"},
+    {"comp": "hotel_lotte", "h": "cf9d04002d", "facets_remove": ["cert_cost"], "why": "원문 「본인 야간학교 졸업 축하금 지원」은 학업 졸업 축하금이지 자격증 응시료 · 취득 비용 · 축하금이 아니다"}
   ]
 }

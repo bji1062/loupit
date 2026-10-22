@@ -247,9 +247,10 @@ def test_short_generic_name_wins_over_one_company_wording():
     # 2026-10-24 웨이브 8: uniform 은 「근무복 지급」이 2회가 돼 동률이 풀렸다 · work_tools 는 대표가 「듀얼 모니터」로 바뀌었다 → 지금 동률인 visa_support · housing_support 로 바꿨다.
     # 2026-10-31 웨이브 9: massage 는 SK네트웍스 「헬스키퍼 운영」이 들어와 2회가 돼 동률이 풀렸다 → 지금 6개 이름이 모두 1회인 travel_support(휴양프로그램)로 바꿨다.
     # 2026-11-07 웨이브 10: car_wash 는 원익QnC 「사내 세차」(더 짧은 일반명)가 들어와 대표가 「세차 서비스」에서 바뀌었다 → 지금 8개 이름이 모두 1회인 culture_day(컬쳐데이)로 바꿨다.
+    # 2026-10-27 웨이브 14: housing_support 는 한솔제지 「주거비 지원」이 들어와 2회가 돼 동률이 풀렸다 → 지금 동률인 barber_shop(사내 이용원)으로 바꿨다.
     for code, expect in (("sports_ticket", "스포츠 관람 지원"), ("visa_support", "비자 발급 지원"),
                          ("culture_day", "컬쳐데이"), ("promotion_gift", "승진 축하 선물"),
-                         ("travel_support", "휴양프로그램"), ("housing_support", "숙소지원금")):
+                         ("travel_support", "휴양프로그램"), ("barber_shop", "사내 이용원")):
         names = cases["codes"][code]["names"]
         assert expect in names, f"{code}: 픽스처에 {expect} 가 없다"
         top = max(names.values())

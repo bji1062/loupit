@@ -320,6 +320,28 @@ WAVE13_ALIASES: dict[str, list[str]] = {
     "visang_edu": ["Visang Education"],  # 영문(DART VISANG EDUCATION INC) — 계열 비상캠퍼스 · 비상교과서 이름 금지
 }
 
+# 확장 웨이브 14(2026-10-27 서빙 반영 · 후보 풀 3차 셋째 · 비상장 11 + 상장 7)
+WAVE14_ALIASES: dict[str, list[str]] = {
+    "posco": ["POSCO"],  # 영문(DART POSCO) — 지주 POSCO홀딩스 · 포스코DX 등 계열 이름 금지
+    "posco_enc": ["포스코건설", "POSCO E&C"],  # 구명(2023-03 상호 변경) · 영문 약칭 — 포스코 · 포스코홀딩스 이름 금지
+    "sk_shieldus": ["에스케이쉴더스", "SK shieldus", "SK인포섹", "ADT캡스"],  # DART 목록 이름 · 영문 · 구명(에스케이인포섹 · 2021 (주)에이디티캡스 거쳐 상호 변경 — 사업보고서) — SK스퀘어 · 캡스 상표 금지
+    "hotel_lotte": ["Hotel Lotte"],  # 영문(DART Hotel Lotte Co., Ltd.) — 롯데호텔 · 롯데면세점 · 롯데월드 사업부 상표 금지
+    "lotte_innovate": ["롯데정보통신", "LOTTE INNOVATE"],  # 구명 · 영문 — 롯데지주 · 계열 이름 금지
+    "hyundai_transys": ["현대다이모스", "Hyundai Transys"],  # 구명(2019 현대파워텍 흡수합병 뒤 상호 변경 — 존속법인) · 영문 — 현대파워텍(소멸법인) · 현대자동차 이름 금지
+    "dongwon_fnb": ["Dongwon F&B"],  # 영문(DART DONGWON F & B) — 동원산업 · 동원그룹 이름 금지
+    "osstem": ["오스템", "Osstem Implant"],  # 약칭 · 영문 — 덴티스트리인베스트먼트 이름 금지
+    "eland_world": ["Eland World"],  # 영문 — 이랜드(그룹) · 이랜드리테일 · 스파오 등 브랜드 금지
+    "shinsegae_food": ["Shinsegae Food"],  # 영문 — 이마트 · 신세계 이름 금지
+    "ls_cable": ["LS Cable & System", "LS Cable"],  # 영문(DART LS Cable & System Ltd.) · 약칭 — ㈜LS · 가온전선 이름 금지
+    "korea_seven": ["코리아세븐", "세븐일레븐", "Korea Seven"],  # DART 목록 이름(표시명 괄호 꼴 · 판정 163) · 브랜드 별칭(163) · 영문 — 롯데지주 · 미니스톱 이름 금지
+    "samlip": ["SPC삼립", "에스피씨삼립", "Samlip"],  # 구명(2026-03 상호 변경 — 반기보고서) · 영문 — 상미당홀딩스 · 파리크라상 · SPC 그룹 이름 금지
+    "hanjin": ["Hanjin"],  # 영문(DART HANJIN Logistics Corporation) — 한진칼 · 대한항공 이름 금지
+    "dongkuk_steel": ["Dongkuk Steel"],  # 영문(DART DONGKUK STEEL MILL) — 동국홀딩스 · 동국씨엠 이름 금지
+    "shinsegae_inc": ["신세계아이앤씨", "신세계I&C", "Shinsegae I&C"],  # 법인 국문 상호 · DART 목록 이름 · 영문 — 이마트 · 신세계 이름 금지
+    "kolon_global": ["Kolon Global"],  # 영문 — ㈜코오롱 · 코오롱인더스트리 이름 금지
+    "hansol_paper": ["Hansol Paper"],  # 영문(DART Hansol Paper Co., Ltd) — 한솔홀딩스 · 한솔케미칼 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -594,6 +616,9 @@ def build_company_meta() -> dict:
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
     for eng, extra_aliases in WAVE13_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE14_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

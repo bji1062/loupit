@@ -161,6 +161,7 @@
     {"comp": "sampyo_cement", "h": "65cea7dbf9", "mode": "both", "why": "복지관 내 헬스장 및 사우나 운영(회사 시설)과 체련비 지급(운동비)을 함께 적은 행"},
     {"comp": "hanatour", "h": "fba0b61b2c", "mode": "external", "why": "ESG 페이지 신체 건강 세부 프로그램 「체력단련비」는 운동 비용을 돈으로 대는 지원이다 — 「체력단련비」 낱말이 운동비 규칙에 없어 unknown 으로 떨어진다"},
     {"comp": "aekyung_industrial", "h": "013abf56db", "mode": "unknown", "why": "원문은 체력 측정 · 걷기 챌린지 프로그램이고 사내 헬스장 · 체육시설을 적지 않았다 — 「주요 사업장을 대상으로」 범위 낱말이 시설 규칙에 걸렸다"},
-    {"comp": "toss", "h": "06fc0a4f61", "mode": "external", "why": "원문 「매월 체력단련비, 통신비 지원」 — 체력단련 비용을 돈으로 대는 지원(hanatour 체력단련비 선례와 같은 꼴)"}
+    {"comp": "toss", "h": "06fc0a4f61", "mode": "external", "why": "원문 「매월 체력단련비, 통신비 지원」 — 체력단련 비용을 돈으로 대는 지원(hanatour 체력단련비 선례와 같은 꼴)"},
+    {"comp": "posco", "h": "436ece6119", "facets_add": ["coach"], "why": "원문 「운동처방 및 그룹 운동 코칭」 · 「운동처방사가 현장에 방문하여 … 실습 교육」은 강습 · 코칭이다"}
   ]
 }

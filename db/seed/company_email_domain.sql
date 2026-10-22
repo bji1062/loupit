@@ -381,9 +381,10 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 그룹 단위 인증(사용자 2026-10-14) · ⚠ 롯데렌탈은 최대주주 지분 매각 계약(2026-08-11 · 종결 전) — 종결되면 이 IN 목록에서 뺀다.
 -- 확장 웨이브 9(2026-10-31): 롯데쇼핑(채용 FAQ · 보고서 문의처) · 롯데에너지머티리얼즈(보고서 제보 메일) 관측 주소가 @lotte.net. 롯데관광개발은 롯데그룹이 아니다 — 이 줄에 넣지 않는다.
 -- 확장 웨이브 12(2026-10-18): 롯데하이마트(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net · 웹 himart.co.kr 의 MX 도 antispam.lotte.net.
+-- 확장 웨이브 14(2026-10-27): 호텔롯데(2025 지속가능성 보고서 ESG 문의처) · 롯데이노베이트(보고서 문의처 · 채용 문의 대표 주소) · 코리아세븐(개인정보처리방침 보호 책임자 · 담당 부서) 관측 주소가 @lotte.net.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY
-   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials','lotte_himart');
+   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials','lotte_himart','hotel_lotte','lotte_innovate','korea_seven');
 
 -- ── 확장 웨이브 1 (2026-09-01, 11개사 신규 등록 중 관측 6사) ─────────────────────
 -- 근거: 각사 공식 페이지 실관측(docs/handoff/2026-09-01-evidence/wave1/ 각 evidence).
@@ -782,3 +783,30 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'oci.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'oci';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'visang.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'visang_edu';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 14 (2026-10-27 서빙 반영, 18개사 중 전용 5사 5도메인 + 롯데 그룹 줄 병합 3사)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-22-wave14/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 처리방침에 게시된 주소의 도메인만.
+-- 그룹 줄 병합: 호텔롯데 · 롯데이노베이트 · 코리아세븐 → 위 롯데 그룹 줄(lotte.net — 보고서 문의처 · 처리방침 관측).
+-- 미등록 10: 포스코(posco.com 은 위 보류 목록 — 그룹 도메인이라 등록 안 함) · SK쉴더스(게시 주소 0 · MX spmail.sk.com 이지만 SK 기업집단 계열제외라 SK 그룹 줄에 넣지 않음) ·
+--   동원F&B · 이랜드월드 · 신세계푸드 · 신세계 I&C · 삼립 · 동국제강(아래 보류 — 그룹 공용) · 코오롱글로벌 · 한솔제지(kolon.com · hansol.com 은 위 보류 목록) → 수동 승인 폴백.
+-- ⓘ poscoenc.com 은 포스코 그룹 메일 게이트웨이(antispam.posco.net)를 거치지만 주소 도메인은 법인 고유다(웨이브 7 poscodx.com 과 같은 처리).
+-- ⓘ lscns.com 은 LS 그룹 메일 호스팅(smtp.lsworkplace.com)을 거치지만 주소 도메인은 법인 고유다(웨이브 9 lsms.co.kr 과 같은 처리) · 웹 lscns.co.kr 은 MX 없음.
+-- ⓘ hanjin.com 은 웹 도메인과 같다(MX 구글 호스팅) · 형제 대한항공은 koreanair.com 이라 겹치지 않는다.
+-- ⓘ 코오롱글로벌 웹 kolonglobal.com · 한솔제지 웹 hansolpaper.co.kr · 동국제강 웹 dongkuksteel.com · 신세계 두 곳 웹 도메인은 게시 주소 0(MX 도 없음) — 넣지 않았다.
+-- @rejected: dongwon.com — 동원F&B. 동원그룹 공용 도메인(형제 동원산업 웹 도메인 · 보고서 문의처) — 동원 계열 전 직원이 동원F&B 재직자로 인증될 수 있음
+-- @rejected: eland.co.kr — 이랜드월드. 이랜드 그룹 공용 도메인(이랜드리테일 공고 문의처도 같은 도메인) — 코퍼스 이랜드 계열 1사
+-- @rejected: shinsegae.com — 신세계푸드 · 신세계 I&C. 신세계그룹 공용 메일 도메인(처리방침 · 보고서 문의처 · 두 법인 웹 도메인은 MX 없음) — 그룹 단위 인증 결정 없음
+-- @rejected: spc.co.kr — 삼립. SPC 그룹 공용 도메인(보고서 ESG 문의처 · 웹 spcsamlip.co.kr 은 MX 없음) — 코퍼스 SPC 계열 1사
+-- @rejected: dongkuk.com — 동국제강. 동국제강그룹 공용 도메인(보고서 문의처 · 그룹 윤리경영 신고 도메인 · 웹 dongkuksteel.com 은 MX 없음) — 코퍼스 동국제강 계열 1사
+-- 코오롱글로벌(kolon.com) · 한솔제지(hansol.com) 는 위 기존 보류 줄과 같은 사유(그룹 공용)라 새 보류 줄을 더하지 않는다.
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'poscoenc.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'posco_enc';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hyundai-transys.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hyundai_transys';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'osstem.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'osstem';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lscns.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ls_cable';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'hanjin.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hanjin';

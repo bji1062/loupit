@@ -116,6 +116,7 @@
   "overrides": [
     {"comp": "posco_dx", "h": "454bd0108c", "facets_remove": ["specialty"], "why": "원문은 근골격계질환 예방 장비(Self 진단 키오스크 · 안마의자 · 수치료기)를 적었을 뿐 진료 과목은 적지 않았다"},
     {"comp": "pan_ocean", "h": "0f2a6ba0e4", "mode": "room", "why": "원문은 보건상담실에 간호사 경력 의료진을 둔다는 문장이라 의사 진료 의원이 아니다"},
-    {"comp": "lx_hausys", "h": "893fadaef4", "facets_remove": ["specialty"], "why": "원문은 주 1회 근골격계 통증 호소자에 대한 운동처방사 운동처방이지 진료 과목이 아니다"}
+    {"comp": "lx_hausys", "h": "893fadaef4", "facets_remove": ["specialty"], "why": "원문은 주 1회 근골격계 통증 호소자에 대한 운동처방사 운동처방이지 진료 과목이 아니다"},
+    {"comp": "posco", "h": "07c58d2db9", "mode": "room", "why": "원문의 사내 의료 인력은 공장 · 섹션을 찾아가는 전담 간호사 · 물리치료사이고 「전문의」는 앱 데이터를 분석하는 혈당관리 서비스 몫이다 — 의사가 진료하는 사내 의원은 원문에 없다"}
   ]
 }

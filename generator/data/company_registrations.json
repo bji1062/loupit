@@ -9,6 +9,30 @@
   ],
   "waves": [
     {
+      "date": "2026-10-27",
+      "label": "회사 확장 웨이브 14",
+      "companies": [
+        "dongkuk_steel",
+        "dongwon_fnb",
+        "eland_world",
+        "hanjin",
+        "hansol_paper",
+        "hotel_lotte",
+        "hyundai_transys",
+        "kolon_global",
+        "korea_seven",
+        "lotte_innovate",
+        "ls_cable",
+        "osstem",
+        "posco",
+        "posco_enc",
+        "samlip",
+        "shinsegae_food",
+        "shinsegae_inc",
+        "sk_shieldus"
+      ]
+    },
+    {
       "date": "2026-10-20",
       "label": "회사 확장 웨이브 13",
       "companies": [
