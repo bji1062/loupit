@@ -16,9 +16,10 @@ import { JSDOM } from 'jsdom';
 
 import {
   App, createInitialState, boot, runReport, restoreFromPrefill, restoreInputDraft, pickTrendingPair, restoreComparison,
-  pickTrendingPairLoaded, restoreComparisonLoaded, showCompanyPage, resolveFullCompany, bootCompanyIds,
+  pickTrendingPairLoaded, restoreComparisonLoaded, showCompanyPage, resolveFullCompany, bootCompanyIds, snapshotInput, swapSlots,
 } from './app.js';
-import { selectCompany } from './inputs.js';
+import { selectCompany, clearSlot, setDirectType } from './inputs.js';
+import { searchHooks } from './ui.js';
 import { hasDetail } from './company-store.js';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -162,8 +163,9 @@ describe('부팅', () => {
     assert.equal(App.state.matched.a.benefits.length, expectedN(KT));
     assert.equal(App.state.matched.b, null, '상세 없는 회사는 없는 회사와 같다');
     assert.equal(App.state.benS.b.length, 0);
-    assert.equal(document.querySelector('.search-error[data-slot="b"]').hidden, false, '기존 슬롯 오류 안내');
-    assert.equal(document.querySelector('.search-error[data-slot="a"]').hidden, true);
+    assert.match(document.querySelector('.slot-detail-error[data-slot="b"]').textContent, /네이버 정보를 불러오지 못했습니다\./, '검색 실패가 아니라 회사 이름이 든 안내');
+    assert.equal(document.querySelector('.search-error[data-slot="b"]').hidden, true, '검색한 적 없으니 검색 실패 문구는 뜨지 않는다');
+    assert.equal(document.querySelector('.slot-detail-error[data-slot="a"]'), null);
     assert.equal(App.state.ui.screen, 'search', '한 슬롯만 찼으니 검색 뷰');
     assert.ok(log.includes('company:3'));
   });
@@ -175,7 +177,7 @@ describe('부팅', () => {
     await boot(HOOKS);
     assert.equal(App.state.matched.a, null);
     assert.equal(App.state.matched.b.comp_id, NAVER);
-    assert.equal(document.querySelector('.search-error[data-slot="a"]').hidden, false);
+    assert.match(document.querySelector('.slot-detail-error[data-slot="a"]').textContent, /KT 정보를 불러오지 못했습니다/);
   });
 
   test('목록이 404 → /reference/all 폴백 부팅이 예전과 같다(상세 요청 0)', async () => {
@@ -419,5 +421,187 @@ describe('GNB 검색 → 회사 복지 페이지', () => {
     assert.deepEqual(log, ['company:1']);
     assert.equal(App.state.matched.a.benefits.length, expectedN(KT), '복지 0개 회사가 아니다');
     assert.equal(went, 'search');
+  });
+});
+
+// ── 검토 반영(2026-10-22) ───────────────────────────────────────────────────
+describe('H1 — 최근 비교 복원에서 상세 하나만 못 받아도 반쪽 리포트를 그리지 않는다', () => {
+  test('#report 부팅 + 네이버 503 → 리포트로 가지 않고 검색 뷰(강등) · 슬롯 비어 있음 · 슬롯 오류 안내도 없음', async () => {
+    const log = installFetch({ fail: [NAVER] });
+    loadShell('https://loupit.example/compare/#report');
+    seedRecent();
+    await boot(HOOKS);
+    assert.ok(log.includes('company:3'));
+    assert.equal(App.state.ui.screen, 'search');
+    assert.equal(App.state.matched.a, null, '일부만 복원하지 않는다');
+    assert.equal(App.state.matched.b, null);
+    assert.equal(document.getElementById('report-body').children.length, 0, '복지 0개 리포트가 그려지지 않았다');
+    assert.equal(document.querySelector('.slot-detail-error'), null, '사용자가 고른 적 없는 슬롯에 오류를 띄우지 않는다');
+  });
+
+  test('restoreComparison 은 상세 없는 슬롯을 만나면 상태를 건드리기 전에 false', () => {
+    const s = createInitialState();
+    s.REF = clone(REF_INDEX);
+    s.matched.a = { comp_id: 9, comp_nm: '기존' };
+    s.salS = { a: { low: 1, high: 2 } };
+    const record = { slots: { a: { comp_id: KT }, b: { comp_id: NAVER } }, input: { salS: { a: { low: 7000, high: 8000 } } } };
+    assert.equal(restoreComparison(record, { runReport: () => assert.fail('리포트를 돌리면 안 된다') }, s), false);
+    assert.equal(s.matched.a.comp_id, 9);
+    assert.deepEqual(s.salS, { a: { low: 1, high: 2 } });
+  });
+});
+
+describe('M1 — 늦은 응답이 사용자의 더 늦은 행동을 덮지 못한다', () => {
+  async function booted(opts) {
+    installFetch(opts);
+    loadShell();
+    await boot(HOOKS);
+  }
+
+  test('조합 클릭(느림) → 그 사이 A 칸에서 다른 회사 선택 → 늦은 조합 응답은 버려진다', async () => {
+    await booted({ wait: { [KT]: 50 } });
+    const pick = pickTrendingPairLoaded({ a_comp_id: KT, b_comp_id: NAVER }, { go: () => assert.fail('이동하면 안 된다') }, App.state);
+    await selectCompany(App.state, 'a', 2, {});
+    assert.equal(await pick, false);
+    assert.equal(App.state.matched.a.comp_id, 2, '사용자가 나중에 고른 A 가 남는다');
+    assert.equal(App.state.matched.b, null);
+  });
+
+  test('불러오기(느림) → 조합 클릭(빠름) → 늦은 복원이 덮지 않고 report 로 가지 않는다', async () => {
+    await booted({ wait: { [KT]: 50 } });
+    seedRecent();
+    const { recent } = await import('./store.js');
+    const record = recent.list()[0];
+    const went = [];
+    const restore = restoreComparisonLoaded(record, { go: (s) => went.push('restore:' + s), runReport: () => went.push('runReport') }, App.state);
+    const pick = pickTrendingPairLoaded({ a_comp_id: 2, b_comp_id: 5 }, { go: (s) => went.push('pick:' + s) }, App.state);
+    assert.equal(await pick, true);
+    assert.equal(await restore, false);
+    assert.deepEqual(went, ['pick:benefits']);
+    assert.equal(App.state.matched.a.comp_id, 2);
+  });
+
+  test('회사 고르기(느림) → 슬롯 비우기 · 직접 입력 유형 · A/B 바꾸기 중 어느 것이든 늦은 선택은 버려진다', async () => {
+    for (const act of [(s) => clearSlot(s, 'a', () => {}), (s) => setDirectType(s, 'a', 'large'), (s) => swapSlots(s, {})]) {
+      await booted({ wait: { [KT]: 40 } });
+      const sel = selectCompany(App.state, 'a', KT, {});
+      act(App.state);
+      assert.equal(await sel, false);
+      assert.notEqual(App.state.matched.a && App.state.matched.a.comp_id, KT);
+    }
+  });
+
+  test('두 칸을 연달아 고르면 서로 취소하지 않는다(둘 다 사용자가 고른 것)', async () => {
+    await booted({ wait: { [KT]: 30 } });
+    const a = selectCompany(App.state, 'a', KT, {});
+    const b = selectCompany(App.state, 'b', NAVER, {});
+    assert.deepEqual([await a, await b], [true, true]);
+  });
+});
+
+describe('M2 — 실패 안내', () => {
+  async function booted(opts, url) {
+    const log = installFetch(opts);
+    loadShell(url);
+    await boot(HOOKS);
+    return log;
+  }
+
+  test('부팅 실패 슬롯의 「다시 시도」 = 그 회사 상세를 다시 받아 그 슬롯에 반영', async () => {
+    const fail = [NAVER];
+    const log = await booted({ fail }, 'https://loupit.example/compare/?a=kt&b=naver');
+    const row = document.querySelector('.slot-detail-error[data-slot="b"]');
+    fail.length = 0; // 서버 복구
+    row.querySelector('button').click();
+    await settle(40);
+    assert.equal(App.state.matched.b.comp_id, NAVER);
+    assert.equal(App.state.matched.b.benefits.length, expectedN(NAVER));
+    assert.equal(document.querySelector('.slot-detail-error[data-slot="b"]'), null, '성공하면 안내가 사라진다');
+    assert.equal(log.filter((x) => x === 'company:3').length, 2, '정말로 다시 받았다');
+    assert.equal(document.getElementById('search-input-b').value, '네이버');
+  });
+
+  test('selectCompany 실패도 같은 안내(회사 이름 + 다시 시도) · 다시 실패하면 안내가 다시 선다', async () => {
+    await booted({ fail: [KT] });
+    const hooks = searchHooks(App.state, {});
+    assert.equal(await selectCompany(App.state, 'a', KT, hooks), false);
+    const row = document.querySelector('.slot-detail-error[data-slot="a"]');
+    assert.match(row.textContent, /KT 정보를 불러오지 못했습니다\./);
+    row.querySelector('button').click();
+    await settle(30);
+    assert.equal(document.querySelectorAll('.slot-detail-error[data-slot="a"]').length, 1);
+  });
+
+  test('검색 상태 오류의 기존 문구는 그대로(검색 실패에만)', () => {
+    loadShell();
+    App.state = createInitialState();
+    searchHooks(App.state, {}).showSlotError('a'); // info 없음 = 검색 쪽
+    assert.equal(document.querySelector('.slot-detail-error'), null);
+  });
+
+  test('조합 클릭 실패 안내는 다음 성공 뒤에 사라진다', async () => {
+    const fail = [NAVER];
+    await booted({ fail });
+    await pickTrendingPairLoaded({ a_comp_id: KT, b_comp_id: NAVER }, { go: () => {} }, App.state);
+    assert.match(document.getElementById('ui-notify').textContent, /다시 눌러 주세요/);
+    fail.length = 0;
+    assert.equal(await pickTrendingPairLoaded({ a_comp_id: KT, b_comp_id: NAVER }, { go: () => {} }, App.state), true);
+    assert.equal(document.getElementById('ui-notify').textContent, '');
+  });
+});
+
+describe('L1 — 일시 장애가 입력 손실이 되지 않는다', () => {
+  test('초안 슬롯 상세 실패 → 저장 때 원래 초안 값(회사 · 뺀 복지)을 그대로 다시 쓴다', async () => {
+    installFetch({ fail: [KT] });
+    loadShell();
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT, excluded: ['meal'] }, b: { comp_id: NAVER } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    assert.equal(App.state.matched.a, null);
+    const snap = snapshotInput(App.state);
+    assert.deepEqual(snap.slots.a, { comp_id: KT, excluded: ['meal'] });
+    assert.equal(snap.slots.b.comp_id, NAVER);
+  });
+
+  test('사용자가 그 슬롯을 직접 바꾸면 그때부터 새 값', async () => {
+    installFetch({ fail: [KT] });
+    loadShell();
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    setDirectType(App.state, 'a', 'large');
+    assert.equal(snapshotInput(App.state).slots.a.comp_tp_cd, 'large');
+    assert.equal(snapshotInput(App.state).slots.a.comp_id, undefined);
+  });
+
+  test('초안 a=KT + ?a=naver 에서 naver 상세가 실패하면 A 칸은 비고(KT 로 떨어지지 않는다) 안내가 선다', async () => {
+    installFetch({ fail: [NAVER] });
+    loadShell('https://loupit.example/compare/?a=naver');
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    assert.equal(App.state.matched.a, null);
+    assert.equal(document.getElementById('search-input-a').value, '');
+    assert.match(document.querySelector('.slot-detail-error[data-slot="a"]').textContent, /네이버 정보를 불러오지 못했습니다/);
+    assert.equal(snapshotInput(App.state).slots.a.comp_id, KT, '원래 초안의 KT 는 저장 때 지켜진다');
+  });
+});
+
+describe('L2 — 후보 목록 · 무결과를 그리면 받는 중이던 상세 응답은 낡는다', () => {
+  test('상세(느림) → 새 검색 결과 목록 → 늦은 상세가 목록을 덮지 않는다', async () => {
+    installFetch({ wait: { [KT]: 50 } });
+    loadShell();
+    await boot(HOOKS);
+    showCompanyPage('KT', {}, App.state); // 상세 받는 중
+    showCompanyPage('상사', {}, App.state); // 후보 목록
+    await settle(90);
+    assert.equal(document.getElementById('company-page').querySelectorAll('.cp-cand').length, 2);
+    showCompanyPage('KT', {}, App.state);
+    showCompanyPage('없는회사xyz', {}, App.state); // 무결과
+    await settle(90);
+    assert.match(document.getElementById('company-page').textContent, /검색 결과가 없습니다/);
   });
 });

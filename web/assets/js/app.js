@@ -5,10 +5,9 @@ import { el } from './dom.js'; // 덱 이름표도 데이터 문자열이다(회
 import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReferenceIndex } from './boot.js';
-import { hasDetail, loadDetail, ensureCompanies } from './company-store.js'; // 복지 행(상세)은 쓰는 순간 그 회사만 받는다(2026-10-22)
-import { setSearchState } from './search.js';
-import { normalizeCompany, fillBenefits, initWsState, blankWs } from './inputs.js';
-import { mountUI, notify, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, condHints, syncExclusionNote, clearExclusions } from './ui.js';
+import { hasDetail, loadDetail, ensureCompanies, bumpPair, seqSnapshot, seqCurrent, slotSeq } from './company-store.js'; // 복지 행(상세)은 쓰는 순간 그 회사만 받는다(2026-10-22)
+import { normalizeCompany, fillBenefits, initWsState, blankWs, clearSlot } from './inputs.js';
+import { mountUI, notify, showDetailError, searchHooks, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, condHints, syncExclusionNote, clearExclusions } from './ui.js';
 import { rowMark } from './marks.js'; // 표시 행(법정 · 업무 교육) — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5 · SP-MARK)
 import { mountAds } from './ads.js';
 import { mountTrending, sendCompareLog } from './trending.js';
@@ -44,6 +43,8 @@ export function createInitialState() {
       // URL(`?a=`·`?b=`)이 채운 슬롯. 「회사 바꾸기」가 **어느 칸에 커서를 둘지**를 정하는 데만
       // 쓴다 — 사용자가 고르지 않은 쪽(초안·레코드가 채운 쪽)을 먼저 가리켜야 한다(SP-CMP-8).
       prefilledSlots: [],
+      // 부팅 때 상세를 못 받은 초안 슬롯의 원래 초안 값 `{slot: {entry, seq}}` — 일시 장애가 입력 손실이 되지 않게 저장 때 그대로 다시 쓴다(snapshotInput).
+      heldDraft: {},
       searchTimers: { a: null, b: null },
       searchAborts: { a: null, b: null },
       searchState: { a: 'idle', b: 'idle' },
@@ -276,7 +277,8 @@ export async function boot(hooks = {}) {
   // 🚨 아래 복원 경로(초안 · 프리필 · 최근 비교)는 동기로 회사 상세(복지 행)를 쓴다. 가벼운 목록으로 부팅했으면
   //   그 경로들이 쓸 회사(많아야 6곳)의 상세를 **먼저** 받아 둔다 — 안 받고 돌리면 복지 0개 회사로 조용히 그려진다.
   //   받지 못한 회사는 상세 없는 회사와 같은 갈래(없는 회사처럼 그 슬롯 비움)로 가고 슬롯에 오류 안내를 띄운다.
-  const failedSlots = await ensureBootCompanies(App.state, { fresh });
+  const failedBoot = await ensureBootCompanies(App.state, { fresh });
+  const originalDraft = fresh ? null : inputDraft.load(); // 못 받은 슬롯의 원래 값을 지키려고 복원 전에 쥔다
   const draftRestored = fresh ? false : restoreInputDraft();
   // 🚩 2026-09-13(사용자 결정): 이직 계산기로 들어왔으면(`#input` — 대문 「이직 계산기」 카드 · `/vs` 「내 연봉으로
   //   계산하기」, 또는 `#report`) 처음부터 계산기 흐름이다. 두 회사를 고르면 복지 비교를 거치지 않고 입력 뷰로
@@ -292,6 +294,16 @@ export async function boot(hooks = {}) {
   // reflectSlotLabel 훅을 넘긴다: 프리필이 검색 뷰에 남을 수 있게 된 뒤로, 훅이 없으면
   // 상태에는 A 가 들어 있는데 #search-input-a 는 비어 보인다(사용자에겐 프리필 실패로 읽힌다).
   const prefilled = restoreFromPrefill(App.state, { reflectSlotLabel }); // SP-FE-11 URL → 슬롯 프리필
+  // 상세를 못 받은 초안 · URL 슬롯 처리(검토 L1): URL 이 지정한 슬롯이 실패하면 초안 값으로 떨어지지 않게 비우고,
+  // 실패한 슬롯의 원래 초안 값은 저장 때 그대로 다시 쓰도록 쥔다(사용자가 그 슬롯을 직접 바꾸면 그때부터 새 값).
+  const detailFailed = failedBoot.filter((f) => f.src !== 'recent');
+  for (const f of detailFailed) {
+    if (f.src === 'url' && App.state.matched[f.slot]) clearSlot(App.state, f.slot, reflectSlotLabel);
+    const entry = originalDraft && originalDraft.slots && originalDraft.slots[f.slot];
+    if (entry && Number.isInteger(entry.comp_id)) {
+      App.state.ui.heldDraft[f.slot] = { entry: { comp_id: entry.comp_id, excluded: Array.isArray(entry.excluded) ? entry.excluded : [] }, seq: slotSeq(App.state, f.slot) };
+    }
+  }
   if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
     const appEl = document.getElementById('app');
     if (appEl) appEl.hidden = false;
@@ -320,7 +332,10 @@ export async function boot(hooks = {}) {
   };
   deps.showCompany = (term) => showCompanyPage(term, deps); // GNB 검색 → 회사 복지 페이지
   mountUI(App.state, deps);
-  for (const slot of failedSlots) setSearchState(App.state, slot, 'error'); // 상세를 못 받은 슬롯 — 기존 슬롯 오류 안내(검색 뷰)
+  for (const f of detailFailed) { // 상세를 못 받은 슬롯 — 「<회사명> 정보를 불러오지 못했습니다」 + 그 회사 다시 받기(검토 M2a)
+    const c = (App.state.REF.companies || []).find((x) => x.comp_id === f.id);
+    showDetailError(App.state, f.slot, { compId: f.id, compNm: c ? c.comp_nm : '' }, searchHooks(App.state, deps));
+  }
   bindBenefitsView(App.state, deps); // 모드 A 덱 배선(렌더는 go('benefits') 가 한다)
   try { mountAdsFn(); } catch { /* 광고 마운트 실패 무손상(MON6) */ } // page_type별 광고 배선(랜딩 등, #12)
   // "많이 찾아본 조합" 위젯(우측 레일) — 실패 무해(mountTrending 내부 방어), await 안 함(부팅 비차단).
@@ -441,31 +456,31 @@ export function resolveFullCompany(token, state = App.state) {
 // 최근 비교는 `resolveBootScreen` 이 `#report` 에서만 복원하므로 그때만 센다(그 밖에는 받을 이유가 없다).
 export function bootCompanyIds(state = App.state, { fresh = false } = {}) {
   const found = [];
-  const add = (slot, id) => { if (Number.isInteger(id)) found.push({ slot, id }); };
+  const add = (slot, id, src) => { if (Number.isInteger(id)) found.push({ slot, id, src }); };
   if (!fresh) {
     const draft = inputDraft.load();
-    for (const slot of ['a', 'b']) add(slot, draft && draft.slots && draft.slots[slot] && draft.slots[slot].comp_id);
+    for (const slot of ['a', 'b']) add(slot, draft && draft.slots && draft.slots[slot] && draft.slots[slot].comp_id, 'draft');
   }
   const search = typeof location !== 'undefined' ? (location.search || '') : '';
   const p = new URLSearchParams(search);
   for (const slot of ['a', 'b']) {
     const token = p.get(slot);
     const comp = token ? resolveCompanyToken(token, state) : null;
-    if (comp) add(slot, comp.comp_id);
+    if (comp) add(slot, comp.comp_id, 'url');
   }
   if (parseHash() === 'report') {
     const rec = recent.list()[0];
-    for (const slot of ['a', 'b']) add(slot, rec && rec.slots && rec.slots[slot] && rec.slots[slot].comp_id);
+    for (const slot of ['a', 'b']) add(slot, rec && rec.slots && rec.slots[slot] && rec.slots[slot].comp_id, 'recent');
   }
   return found;
 }
 
-// 부팅 복원 전에 상세를 받는다. 돌려주는 값 = 상세를 못 받은 슬롯 목록(중복 없음).
+// 부팅 복원 전에 상세를 받는다. 돌려주는 값 = 상세를 못 받은 항목 `{slot, id, src}` 목록.
 export async function ensureBootCompanies(state = App.state, { fresh = false, ensureFn = ensureCompanies } = {}) {
   const found = bootCompanyIds(state, { fresh });
   if (!found.length) return [];
   const failed = new Set(await ensureFn(state, found.map((f) => f.id)));
-  return [...new Set(found.filter((f) => failed.has(f.id)).map((f) => f.slot))];
+  return found.filter((f) => failed.has(f.id));
 }
 
 export function restoreFromPrefill(state = App.state, hooks = {}) {
@@ -529,6 +544,12 @@ export function snapshotInput(state = App.state) {
   for (const slot of ['a', 'b']) {
     const m = state.matched && state.matched[slot];
     const entry = {};
+    // 부팅 때 상세를 못 받아 비어 있는 초안 슬롯은, 사용자가 손대지 않았다면(순번 그대로) 원래 초안 값을 그대로 다시 쓴다(L1).
+    const held = state.ui && state.ui.heldDraft && state.ui.heldDraft[slot];
+    if (held && !m && !(state.chosenType && state.chosenType[slot]) && slotSeq(state, slot) === held.seq) {
+      slots[slot] = { comp_id: held.entry.comp_id, excluded: [...held.entry.excluded] };
+      continue;
+    }
     if (m && Number.isInteger(m.comp_id)) entry.comp_id = m.comp_id;
     const tp = state.chosenType && state.chosenType[slot];
     if (typeof tp === 'string' && tp) entry.comp_tp_cd = tp;
@@ -664,24 +685,29 @@ export function pickTrendingPair(item, deps = {}, state = App.state) {
 // 표시는 따로 두지 않았다 — 한 곳당 압축 수 KB 라 0.1초 안팎이고, 버튼 비활성 · 문구 깜빡임이 더 거슬린다.
 // 실패하면 상태를 바꾸지 않고 짧은 안내만 띄운다(다시 누르면 된다).
 const LOAD_FAIL_NOTICE = '회사 정보를 불러오지 못했습니다. 다시 눌러 주세요.';
-const _pickSeq = { trend: 0, restore: 0 };
 
-async function withDetails(kind, ids, state, run) {
-  const seq = ++_pickSeq[kind];
+// 순번은 company-store.js 의 사용자 행동 순번 하나다(검토 M1): 이 함수가 쌍 순번을 올리고, 응답이 도착했을 때 그 사이
+// 어떤 슬롯 · 쌍 행동(회사 고르기 · 비우기 · 다른 조합 · 불러오기 · 바꾸기)이 있었다면 버린다.
+async function withDetails(ids, state, run) {
+  bumpPair(state);
+  const snap = seqSnapshot(state);
   const failed = await ensureCompanies(state, ids);
-  if (seq !== _pickSeq[kind]) return false; // 더 최근에 누른 것이 있다 → 늦은 응답 폐기
+  if (!seqCurrent(state, snap, ['a', 'b'])) return false; // 더 최근 행동이 있다 → 늦은 응답 폐기
   if (failed.length) { try { notify(LOAD_FAIL_NOTICE); } catch { /* 안내 실패는 무해 */ } return false; }
+  // 성공하면 앞선 실패 안내를 지운다(검토 M2b). 안내 상자가 없으면 만들지 않는다.
+  const box = typeof document !== 'undefined' && document.getElementById ? document.getElementById('ui-notify') : null;
+  if (box) box.textContent = '';
   return run();
 }
 
 export function pickTrendingPairLoaded(item, deps = {}, state = App.state) {
-  return withDetails('trend', [item.a_comp_id, item.b_comp_id], state, () => pickTrendingPair(item, deps, state));
+  return withDetails([item.a_comp_id, item.b_comp_id], state, () => pickTrendingPair(item, deps, state));
 }
 
 export function restoreComparisonLoaded(record, deps = {}, state = App.state) {
   const slots = (record && record.slots) || {};
   const ids = ['a', 'b'].map((s) => slots[s] && slots[s].comp_id);
-  return withDetails('restore', ids, state, () => restoreComparison(record, deps, state));
+  return withDetails(ids, state, () => restoreComparison(record, deps, state));
 }
 
 // ── 모드 A 「복지 비교」 배선 (SP-CMP-2·8) ───────────────────────────────────
@@ -762,6 +788,7 @@ export function renderBenefitsView(state = App.state, deps = {}) {
  * 회사에 딸린 상태만 바꾼다 — 연봉·상승률은 **내 숫자**라 슬롯이 아니라 사람을 따라간다.
  */
 export function swapSlots(state = App.state, deps = {}) {
+  bumpPair(state); // 받는 중이던 선택 · 조합 · 불러오기 응답은 바뀐 자리에 맞지 않는다
   for (const key of ['matched', 'benS', 'wsState', 'chosenType', 'inputMode', 'cmtS']) {
     const box = state[key];
     if (!box) continue;
@@ -995,6 +1022,13 @@ export function saveCurrentComparison(state = App.state, report) {
 // (전체 체크). REF에 없는 comp_id(직접입력 등)는 슬롯 미선택으로 복원한다.
 export function restoreComparison(record, deps = {}, state = App.state) {
   if (!record || !record.input) return false;
+  // 🚨 REF 에는 있는데 상세를 못 받은 슬롯이 있으면 **상태를 건드리기 전에** 물러난다 — 그 슬롯을 비운 채 리포트를 돌리면
+  //   복지 0개 회사와 비교한 리포트가 그려진다(검토 H1). REF 에 아예 없는 회사는 예전처럼 슬롯을 비우고 계속한다.
+  for (const slot of ['a', 'b']) {
+    const sl = record.slots && record.slots[slot];
+    const known = (sl && sl.comp_id != null) ? resolveCompanyToken(String(sl.comp_id), state) : null;
+    if (known && !hasDetail(known)) return false;
+  }
   const inp = record.input;
   state.salS = inp.salS || { a: { low: null, high: null } };
   state.selectedRate = inp.selectedRate ?? null;

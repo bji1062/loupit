@@ -168,6 +168,7 @@ export function renderCompanyView(result, mountEl, deps = {}, now = Date.now()) 
   const { term = '', matches = [] } = result || {};
 
   if (matches.length === 1) return openDetail(matches[0], mountEl, deps, now, null);
+  _openSeq.set(mountEl, (_openSeq.get(mountEl) || 0) + 1); // 후보 목록 · 무결과를 그리면 받는 중이던 상세 응답은 낡았다
 
   mountEl.replaceChildren();
   if (!matches.length) {

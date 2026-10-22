@@ -18,7 +18,10 @@ import pytest
 from generator import corpus as corpus_mod
 from generator.pages.company import CATEGORY_ORDER
 from server.models.reference import IndexCompany, ReferenceBundle, ReferenceIndex
-from server.services.reference_cut import category_stats, cut_bundle
+from pydantic import ValidationError
+
+from server.models.reference import CategoryStats
+from server.services.reference_cut import build_index, category_stats, cut_bundle
 
 _DATA = Path(__file__).resolve().parents[2] / "generator" / "tests" / "data"
 
@@ -212,3 +215,16 @@ async def test_benefit_codes_와_캐시_키가_충돌하지_않는다(client, cu
     from server.routers import reference as reference_router
 
     assert reference_router._CACHE_KEY != benefit_codes.CACHE_KEY
+
+
+def test_build_index_출력_키는_모델_필드와_정확히_같다():
+    """반대 방향 대조(검토 L3): 자르기 함수가 모델에 없는 키를 더하면 조용히 떨어지지 않고 터진다."""
+    dump = ReferenceBundle.model_validate(_bundle()).model_dump()
+    index = build_index(dump)
+    assert set(index) == set(ReferenceIndex.model_fields)
+    assert set(index["category_stats"]) == set(CategoryStats.model_fields)
+    for c in index["companies"]:
+        assert set(c) == set(IndexCompany.model_fields)
+    index["companies"][0]["새_키"] = 1
+    with pytest.raises(ValidationError):
+        ReferenceIndex.model_validate(index)

@@ -5,7 +5,7 @@
 """
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CompanyType(BaseModel):  # FR-D2 / TCOMPANY_TYPE
@@ -73,6 +73,8 @@ class ReferenceBundle(BaseModel):  # FR-D1 (최상위 정확히 3키)
 # 부팅은 아래 가벼운 목록을, 상세는 `GET /reference/companies/{id}`(= `Company` 그대로)를 필요한 순간에 받는다.
 # 🚨 번들과 마찬가지로 여기 선언하지 않은 필드는 조용히 떨어진다 — 목록에 필드를 더할 때 이 모델도 함께 고쳐라.
 class IndexCompany(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # 자르기 함수가 모델에 없는 키를 만들면 조용히 떨구지 않고 터진다(반대 방향 대조)
+
     comp_id: int
     comp_eng_nm: str
     comp_nm: str
@@ -84,6 +86,8 @@ class IndexCompany(BaseModel):
 
 
 class CategoryStats(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     """9각형 · 나비 눈금 기준 — 평균이 아니라 **합**을 싣는다(JS categoryStats 와 같은 산술로 round2 하려고)."""
     total: int  # 분모 = 전체 등록 회사 수
     sums: dict[str, int]  # 카테고리 → 표시 행을 뺀 전 회사 항목 수의 합
@@ -91,6 +95,8 @@ class CategoryStats(BaseModel):
 
 
 class ReferenceIndex(BaseModel):  # 최상위 정확히 4키
+    model_config = ConfigDict(extra="forbid")
+
     company_types: list[CompanyType]
     benefit_presets: dict[str, list[PresetBenefit]]
     companies: list[IndexCompany]

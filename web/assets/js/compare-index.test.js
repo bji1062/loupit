@@ -18,6 +18,7 @@ import { bundleFallbackSearch } from './search.js';
 import { normalizeCompany, fillBenefits } from './inputs.js';
 import { hasDetail, loadDetail, ensureCompanies } from './company-store.js';
 import { assertRefShape, loadReferenceIndex } from './boot.js';
+import { ApiError } from './api.js';
 
 const CASES = JSON.parse(readFileSync(fileURLToPath(new URL('../../../generator/tests/data/compare_index_cases.json', import.meta.url)), 'utf8'));
 const clone = (x) => JSON.parse(JSON.stringify(x));
@@ -181,13 +182,26 @@ describe('부팅 로더 loadReferenceIndex · assertRefShape', () => {
     assert.equal(ref.category_stats.total, 8);
   });
 
-  test('index 가 실패(404 · 네트워크 · 손상)하면 /reference/all 로 한 번 되돌아간다', async () => {
-    for (const indexFn of [async () => { throw new Error('API 404'); }, async () => ({ companies: [] })]) {
+  test('index 가 404 · 네트워크 오류(응답 없음)면 /reference/all 로 한 번 되돌아간다', async () => {
+    for (const err of [new ApiError(404, '/reference/index'), new TypeError('Failed to fetch')]) {
       let all = 0;
-      const ref = await loadReferenceIndex({ indexFn, allFn: async () => { all += 1; return clone(bundle); } });
+      const ref = await loadReferenceIndex({ indexFn: async () => { throw err; }, allFn: async () => { all += 1; return clone(bundle); } });
       assert.equal(all, 1);
       assert.equal(ref.companies.every(hasDetail), true, '폴백 부팅은 모든 회사가 이미 상세를 가진다');
     }
+  });
+
+  test('429 · 5xx · 시간 초과 · 손상은 되돌아가지 않고 부팅 오류로 던진다(검토 L5)', async () => {
+    const abort = Object.assign(new Error('aborted'), { name: 'AbortError' });
+    const cases = [new ApiError(429, '/reference/index'), new ApiError(500, '/reference/index'), new ApiError(503, '/reference/index'), abort];
+    for (const err of cases) {
+      let all = 0;
+      await assert.rejects(() => loadReferenceIndex({ indexFn: async () => { throw err; }, allFn: async () => { all += 1; return clone(bundle); } }));
+      assert.equal(all, 0, String(err.status || err.name));
+    }
+    let all = 0;
+    await assert.rejects(() => loadReferenceIndex({ indexFn: async () => ({ companies: [] }), allFn: async () => { all += 1; return clone(bundle); } }), /REF_SHAPE/);
+    assert.equal(all, 0);
   });
 
   test('둘 다 실패하면 던진다(부팅 오류 전이)', async () => {

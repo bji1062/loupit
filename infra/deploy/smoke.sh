@@ -50,6 +50,14 @@ assert isinstance(d.get('benefit_presets'),dict), 'benefit_presets 없음'
 \" || exit 1; done"
 
 # ── 스크래핑 방어 회귀 가드(2026-07-21) ──
+# SM-16b: /compare 부팅용 가벼운 목록(2026-10-22) — 200 + 최상위 정확히 4키 + 회사에 복지 행 없음.
+chk "SM-16b ref index 4키" "curl -s -H 'X-Loupit-Client: web' ${BASE}/api/v1/reference/index -o ${SMOKE_TMP}/idx.json && python3 -c \"
+import json
+d=json.load(open('${SMOKE_TMP}/idx.json'))
+assert sorted(d)==['benefit_presets','category_stats','companies','company_types'], sorted(d)
+assert len(d['companies'])>0 and 'benefits' not in d['companies'][0]
+\""
+
 # SM-17: Layer A — 사이트 헤더 없는 맨 curl은 reference/all에서 403(벌크 덤프 차단).
 #   ⚠ 이게 200이면 "1회 호출 = 600KB 전체"가 다시 열린 것. SM-4·16은 헤더를 보내니 별개.
 chk "SM-17 A: 무헤더 ref → 403" "[ \"\$(code ${BASE}/api/v1/reference/all)\" = 403 ]"

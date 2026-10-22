@@ -25,6 +25,32 @@ function qs(sel) {
 export function reflectSlotLabel(slot, name) {
   const input = byId('search-input-' + slot);
   if (input) input.value = name || '';
+  clearDetailError(slot); // 슬롯이 새 상태가 되면 「정보를 불러오지 못했습니다」는 낡았다
+}
+
+// ── 회사 상세 받기 실패 안내(2026-10-22 검토 M2a) ─────────────────────────────
+// 검색 실패(`.search-error`)와 다른 사건이다 — 검색한 적이 없고, 「다시 시도」는 검색이 아니라 **그 회사 상세를 다시 받아**
+// 그 슬롯에 반영해야 한다. 그래서 별도 안내 줄을 슬롯 머리에 만든다.
+export function clearDetailError(slot) {
+  const old = qs('.slot-detail-error[data-slot="' + slot + '"]');
+  if (old && typeof old.remove === 'function') old.remove();
+}
+
+export function showDetailError(state, slot, info, hooks = {}) {
+  const box = qs('.search-slot[data-slot="' + slot + '"]');
+  if (!box || !info) return null;
+  clearDetailError(slot);
+  const nm = info.compNm || '회사';
+  const row = el('p', { class: 'slot-detail-error', 'data-slot': slot, role: 'alert' });
+  row.append(el('span', { text: nm + ' 정보를 불러오지 못했습니다. ' }));
+  const retry = el('button', { type: 'button', text: '다시 시도' });
+  retry.addEventListener('click', () => {
+    clearDetailError(slot);
+    selectCompany(state, slot, info.compId, hooks); // 다시 받아 이 슬롯에 반영 — 실패하면 같은 안내가 다시 선다
+  });
+  row.append(retry);
+  box.append(row);
+  return row;
 }
 
 // 슬롯 검색 입력칸으로 커서를 옮긴다(+ 화면 가운데로 스크롤). "다음에 할 일은 여기"를
@@ -123,7 +149,8 @@ export function searchHooks(state, deps) {
     reflectSlotLabel,
     closeCandidates: (slot) => { clearCandidatesDom(slot); reflectSearchUI(state, slot); },
     notify,
-    showSlotError: (slot) => reflectSearchUI(state, slot),
+    // 회사 상세를 못 받았으면(info 있음) 그 회사 이름 + 다시 받기, 검색 상태 오류면 기존 검색 실패 안내
+    showSlotError: (slot, _msg, info) => (info ? showDetailError(state, slot, info, searchHooks(state, deps)) : reflectSearchUI(state, slot)),
     onRendered: () => {},
     maybeAdvance: () => maybeAdvance(state, deps),
   };

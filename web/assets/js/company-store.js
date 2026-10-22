@@ -15,6 +15,26 @@ export function hasDetail(c) { return !!c && Array.isArray(c.benefits); }
 // 실패는 기억하지 않아 다음에 다시 시도한다.
 const _inflight = new WeakMap();
 
+// ── 사용자 행동 순번(2026-10-22 검토 M1) ─────────────────────────────────────
+// 슬롯 · 쌍을 바꾸는 모든 행동(회사 고르기 · 슬롯 비우기 · 직접 입력 유형 · 조합 클릭 · 불러오기 · A/B 바꾸기)이 여기 순번을 올린다.
+// 받는 중이던 비동기 반영은 시작 때 찍어 둔 순번(`seqSnapshot`)이 도착 때도 같을 때만 반영한다 — 늦은 응답이
+// 사용자의 더 늦은 행동을 덮지 못한다. 슬롯별(a · b)과 쌍(pair) 두 종류다: 한 칸을 고르는 일은 다른 칸의 받는 중
+// 선택을 취소하지 않지만(둘 다 사용자가 고른 것), 쌍을 통째로 바꾸는 행동은 둘 다 취소하고 받는 중이던 한 칸 선택도 취소한다.
+const _seq = new WeakMap();
+function seqBag(state) {
+  let bag = _seq.get(state);
+  if (!bag) { bag = { a: 0, b: 0, pair: 0 }; _seq.set(state, bag); }
+  return bag;
+}
+export function bumpSlot(state, slot) { return ++seqBag(state)[slot]; }
+export function bumpPair(state) { return ++seqBag(state).pair; }
+export function slotSeq(state, slot) { return seqBag(state)[slot]; }
+export function seqSnapshot(state) { return { ...seqBag(state) }; }
+export function seqCurrent(state, snap, slots) {
+  const now = seqBag(state);
+  return now.pair === snap.pair && slots.every((s) => now[s] === snap[s]);
+}
+
 /**
  * 회사 하나의 상세를 받아 REF 의 그 회사 객체에 합치고 그 객체를 돌려준다(이미 상세가 있으면 요청 0).
  * REF 에 없는 id 는 받은 객체를 그대로 돌려준다(옛 폴백 — 검색 API 가 번들보다 새로울 때).
