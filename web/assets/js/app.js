@@ -5,7 +5,7 @@ import { el } from './dom.js'; // 덱 이름표도 데이터 문자열이다(회
 import { compare } from './calc.js';
 import { renderReport, saveRecentComparison } from './report.js';
 import { loadReferenceIndex } from './boot.js';
-import { hasDetail, loadDetail, ensureCompanies, bumpPair, seqSnapshot, seqCurrent, slotSeq } from './company-store.js'; // 복지 행(상세)은 쓰는 순간 그 회사만 받는다(2026-10-22)
+import { hasDetail, loadDetail, ensureCompanies, bumpPair, releaseHeldDraft, seqSnapshot, seqCurrent, slotSeq } from './company-store.js'; // 복지 행(상세)은 쓰는 순간 그 회사만 받는다(2026-10-22)
 import { normalizeCompany, fillBenefits, initWsState, blankWs, clearSlot } from './inputs.js';
 import { mountUI, notify, showDetailError, searchHooks, reflectSlotLabel, focusSlotInput, maybeAdvance, bindBootRetry, renderInputView, notePrefill, syncAxisSegment, effectiveRate, remoteHint, condHints, syncExclusionNote, clearExclusions } from './ui.js';
 import { rowMark } from './marks.js'; // 표시 행(법정 · 업무 교육) — 계산기 목록에는 남기고 비교·집계에서만 뺀다(SP-LEGAL-5 · SP-MARK)
@@ -702,6 +702,7 @@ async function withDetails(ids, state, run) {
   // 성공하면 앞선 실패 안내를 지운다(검토 M2b). 안내 상자가 없으면 만들지 않는다.
   const box = typeof document !== 'undefined' && document.getElementById ? document.getElementById('ui-notify') : null;
   if (box) box.textContent = '';
+  releaseHeldDraft(state); // 상태를 반영하기 직전 — 실패한 행동은 초안을 건드리지 않는다
   return run();
 }
 
@@ -794,6 +795,7 @@ export function renderBenefitsView(state = App.state, deps = {}) {
  */
 export function swapSlots(state = App.state, deps = {}) {
   bumpPair(state); // 받는 중이던 선택 · 조합 · 불러오기 응답은 바뀐 자리에 맞지 않는다
+  releaseHeldDraft(state);
   for (const key of ['matched', 'benS', 'wsState', 'chosenType', 'inputMode', 'cmtS']) {
     const box = state[key];
     if (!box) continue;

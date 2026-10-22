@@ -685,3 +685,16 @@ describe('L-c — 쌍을 바꾸는 행동 뒤에는 초안 원래 값이 되살�
     assert.equal(snapshotInput(App.state).slots.a.comp_id, undefined);
   });
 });
+
+describe('L-c 보정 — 실패한 쌍 행동은 초안 원래 값을 건드리지 않는다', () => {
+  test('초안 a=KT 실패(held) → 조합 클릭 → 상세 503 → 저장 값은 KT 유지', async () => {
+    installFetch({ fail: [KT, NAVER] });
+    loadShell();
+    globalThis.localStorage.setItem('loupit.inputDraft', JSON.stringify({
+      v: 1, savedAt: Date.now(), draft: { slots: { a: { comp_id: KT, excluded: ['meal'] } }, salS: { a: { low: 1, high: 2 } } },
+    }));
+    await boot(HOOKS);
+    assert.equal(await pickTrendingPairLoaded({ a_comp_id: KT, b_comp_id: NAVER }, { go: () => {} }, App.state), false);
+    assert.deepEqual(snapshotInput(App.state).slots.a, { comp_id: KT, excluded: ['meal'] });
+  });
+});

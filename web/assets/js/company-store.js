@@ -27,10 +27,12 @@ function seqBag(state) {
   return bag;
 }
 export function bumpSlot(state, slot) { return ++seqBag(state)[slot]; }
-export function bumpPair(state) {
-  // 쌍을 바꾸는 행동이 시작되면 부팅 때 쥐어 둔 초안 원래 값은 더 이상 지키지 않는다(저장 때 되살아나지 않게, 검토 L-c).
+export function bumpPair(state) { return ++seqBag(state).pair; }
+
+// 쌍 행동(조합 · 불러오기 · 바꾸기)이 **성공해 상태를 반영하기 직전**에 부른다 — 부팅 때 쥐어 둔 초안 원래 값은 더 이상
+// 지키지 않는다(저장 때 되살아나지 않게, 검토 L-c). 시작 때가 아니라 성공 때인 이유: 실패하면 상태가 그대로라 초안도 그대로여야 한다.
+export function releaseHeldDraft(state) {
   if (state && state.ui && state.ui.heldDraft) state.ui.heldDraft = {};
-  return ++seqBag(state).pair;
 }
 export function slotSeq(state, slot) { return seqBag(state)[slot]; }
 export function seqSnapshot(state) { return { ...seqBag(state) }; }
