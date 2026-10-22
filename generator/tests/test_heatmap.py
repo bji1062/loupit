@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import re
 
 import pytest
@@ -233,3 +234,99 @@ def test_page_emits_highlight_attributes_and_readout():
     assert 'data-g="g0"' in p.html and "data-c=" in p.html and "data-nm=" in p.html
     assert "data-group-nm" not in p.html  # 묶음 이름은 그룹 요소에만(칸 중복 출력 금지)
     assert 'data-readout' in p.html and 'aria-live="polite"' in p.html
+
+
+# ── 첫 화면 = 복지 지도만, 나머지는 패널별 데이터 파일(2026-10-22) ───────────────
+
+
+def _pages():
+    return heatmap.render_all(make_env(), _ctx(), CFG)
+
+
+def test_first_html_bakes_only_the_welfare_map_and_others_are_empty_vessels():
+    page = _pages()[0]
+    html = page.html
+    assert html.count('class="hm-map hm-landscape"') == 1 and html.count('class="hm-map hm-portrait"') == 1
+    panels = re.findall(r'<div class="hm-panel" data-panel="([^"]+)"( data-src="[^"]+")?>', html)
+    lazy = [k for k, src in panels if src]
+    assert lazy and len(lazy) == len(panels) - 1  # 복지 패널 하나만 src 가 없다(구운 쪽)
+    for m in re.finditer(r'<div class="hm-panel" data-panel="[^"]+" data-src="[^"]+">(.*?)\n    </div>', html, re.S):
+        assert "hm-t" not in m.group(1) and "<noscript>" in m.group(1) and "자바스크립트를 켜야" in m.group(1)
+
+
+def test_welfare_panel_markup_and_link_count_unchanged():
+    """구운 복지 패널은 지금까지와 같은 칸 수 — 회사 수만큼(가로·세로 두 벌)."""
+    ctx = _ctx()
+    page = heatmap.render_all(make_env(), ctx, CFG)[0]
+    assert len(re.findall(r'<a class="hm-t ', page.html)) == 2 * len(ctx.companies)
+
+
+def test_data_pages_one_per_lazy_panel_with_fingerprint_url_and_json_type():
+    pages = _pages()
+    view = heatmap.build_view(_ctx(), SECTORS)
+    expected = sum(len(m["panels"]) for m in view["modes"] if m["key"] != "w")
+    data = pages[1:]
+    assert len(data) == expected and expected >= 2
+    for d in data:
+        assert d.path.startswith("heatmap/") and d.path.endswith(".json") and not d.in_sitemap
+        assert d.content_type.startswith("application/json")
+        assert json.loads(d.html)["v"] == 1
+        key = d.path.removeprefix("heatmap/").removesuffix(".json")
+        assert re.search(rf'data-src="/{re.escape(d.path)}\?v=[0-9a-f]{{10}}"', pages[0].html), key
+
+
+def test_data_url_fingerprint_follows_content():
+    ctx = _ctx()
+    a = heatmap.render_all(make_env(), ctx, CFG)[0].html
+    b = heatmap.render_all(make_env(), ctx, CFG)[0].html
+    assert a == b  # 결정적
+    ctx2 = _ctx()
+    ctx2.companies[0]["benefits"][0]["benefit_nm"] = "다른 이름"
+    c = heatmap.render_all(make_env(), ctx2, CFG)[0].html
+    assert re.findall(r"\?v=[0-9a-f]{10}", a) != re.findall(r"\?v=[0-9a-f]{10}", c)
+
+
+def test_panel_data_covers_both_orientations_with_same_tiles():
+    for m in heatmap.build_view(_ctx(), SECTORS)["modes"]:
+        for p in m["panels"]:
+            d = heatmap.panel_data(p)
+            n = len(d["tiles"])
+            for o in heatmap.ORIENT_ORDER:
+                assert sorted(t[0] for t in d[o]["t"]) == list(range(n)), (m["key"], p["key"], o)
+                assert len(d[o]["g"]) == len(d["groups"])
+
+
+# ── 서버 그림 = 브라우저 그림 픽스처 ─────────────────────────────────────────
+
+
+def test_panel_cases_fixture_matches_current_template_and_panel_data():
+    """`heatmap_panel_cases.json` 이 지금 템플릿·panel_data 가 내는 것과 같다 — JS 테스트(heatmap.test.js)가 같은
+    파일로 buildMaps 를 잰다. 다르면 `python3 generator/tests/data/make_heatmap_cases.py` 로 다시 뽑는다."""
+    import sys
+    from pathlib import Path
+    data_dir = Path(__file__).resolve().parent / "data"
+    sys.path.insert(0, str(data_dir))
+    try:
+        import make_heatmap_cases
+    finally:
+        sys.path.remove(str(data_dir))
+    want = make_heatmap_cases.build_cases()
+    have = json.loads((data_dir / "heatmap_panel_cases.json").read_text(encoding="utf-8"))
+    assert have == want, "heatmap_panel_cases.json 이 낡았다 — make_heatmap_cases.py 로 다시 뽑아라"
+    assert {p["mode"] for p in have["panels"]} >= {"w", "f", "c"}
+
+
+# ── 크기 상한 ────────────────────────────────────────────────────────────────
+
+
+def test_size_caps_first_html_and_data_files():
+    """상한은 실측(2026-10-22, 286사·6,475행)으로 정했다: 첫 HTML 압축 35KB(이전 716KB) · 데이터 파일 최대 65KB.
+    가짜 번들은 작아서 절대값으로는 못 잡는다 — 그래서 구조도 함께 잰다: 칸 설명은 한 번만(두 배치가 공유)."""
+    import gzip
+    pages = _pages()
+    assert len(gzip.compress(pages[0].html.encode("utf-8"))) <= 60_000
+    for d in pages[1:]:
+        assert len(gzip.compress(d.html.encode("utf-8"))) <= 100_000, d.path
+        data = json.loads(d.html)
+        assert len(data["tiles"]) == len(data["landscape"]["t"]) == len(data["portrait"]["t"])
+        assert d.html.count('"landscape"') == 1 and d.html.count('"portrait"') == 1

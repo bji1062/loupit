@@ -1,0 +1,15 @@
+{# _hm_maps.html — 히트맵 패널 하나의 지도 마크업(가로·세로). 정적으로 굽는 패널(복지)이 쓰고, 같은 마크업을
+   heatmap.js `buildMaps` 가 데이터 파일로 다시 그린다 — 둘이 글자 하나 다르지 않다는 것을 픽스처 대조 테스트가
+   잰다(generator/tests/data/make_heatmap_cases.py). 이 마크업을 고치면 heatmap.js 와 픽스처를 함께 고친다. #}
+{% macro maps(p) %}
+{% for orient, lay in p.layouts.items() %}
+<div class="hm-map hm-{{ orient }}" aria-hidden="{{ 'false' if orient == 'landscape' else 'true' }}">
+  {% for g in lay.groups %}
+  <div class="hm-grp{% if g.narrow %} narrow{% endif %}{% if g.unlisted %} unlisted{% endif %}" data-g="{{ g.gkey }}" data-nm="{{ g.name }}" style="left:{{ g.x }}%;top:{{ g.y }}%;width:{{ g.w }}%;height:{{ g.h }}%" title="{{ g.name }} {{ g.count }}곳"><span>{{ g.name }} <em>{{ g.count }}</em></span></div>
+  {% endfor %}
+  {% for t in lay.tiles %}
+  <a class="hm-t {{ t.cls }} {{ t.size }}" href="{{ t.href }}" data-g="{{ t.gkey }}" data-c="{{ t.ckey }}" style="left:{{ t.x }}%;top:{{ t.y }}%;width:{{ t.w }}%;height:{{ t.h }}%" title="{{ t.nm }} — {{ t.industry }} · {{ t.sector }} — {{ t.tip }}"><b>{{ t.nm }}</b><i>{{ t.sub }}</i></a>
+  {% endfor %}
+</div>
+{% endfor %}
+{% endmacro %}
