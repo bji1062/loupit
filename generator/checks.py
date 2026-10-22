@@ -150,7 +150,8 @@ def _check_heatmap_weight(pages: list[Page]) -> None:
         size = len(gzip.compress(p.html.encode("utf-8"), compresslevel=9))
         if size > cap:
             raise BuildError(f"GC-32: {label} 압축 크기 {size:,}B 가 상한 {cap:,}B 를 넘는다 — 첫 화면에 지도를 되돌려 구웠거나 "
-                             f"데이터 파일이 부풀었다(SP-HEAT-8)")
+                             f"데이터 파일이 부풀었다(SP-HEAT-8). 정당한 성장이면 checks.HEATMAP_HTML_GZ_MAX / HEATMAP_DATA_GZ_MAX 를 "
+                             f"올린다. ⚠ 이 검사가 실패하면 스왑이 멈춰 릴리스 전체가 막힌다(다른 페이지 변경 포함)")
 
 
 def run_generated_checks(out_dir: str, pages: list[Page]) -> None:

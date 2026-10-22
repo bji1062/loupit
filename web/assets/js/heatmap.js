@@ -103,7 +103,8 @@ const MSG_LOADING = '불러오는 중…';
 const MSG_FAILED = '지도를 받지 못했습니다. 다시 누르면 다시 받습니다.';
 const MSG_STALE = '지도가 새로 바뀌었어요. 새로고침해 주세요.'; // 404 — 데이터 파일 이름에 내용 지문이 있어 옛 페이지는 새 빌드 뒤 404 를 받는다
 const DATA_VERSION = 1; // generator/pages/heatmap.py DATA_VERSION 과 같은 값만 그린다
-const FETCH_TIMEOUT_MS = 15000;
+const FETCH_TIMEOUT_MS = 15000; // 응답 머리까지
+const FETCH_TOTAL_MS = 60000;   // 본문까지 전체 상한 — 느린 회선(slow-2g)에서도 65KB 가 끝날 시간을 준다
 
 /** 순수: 데이터 파일 → 지도 div 둘(가로·세로)을 담은 DocumentFragment. 텍스트는 textContent·속성으로만 넣는다. */
 export function buildMaps(doc, data) {
@@ -153,7 +154,7 @@ export function buildMaps(doc, data) {
 }
 
 /** 데이터 파일 받기 — 같은 주소는 한 번만(받는 중·받은 것 공유). 실패는 기억하지 않는다(다음 클릭에 다시). */
-export function createLoader(fetchFn, timeoutMs = FETCH_TIMEOUT_MS) {
+export function createLoader(fetchFn, timeoutMs = FETCH_TIMEOUT_MS, totalMs = FETCH_TOTAL_MS) {
   const seen = new Map();
   return {
     has: (src) => seen.has(src),
@@ -161,18 +162,22 @@ export function createLoader(fetchFn, timeoutMs = FETCH_TIMEOUT_MS) {
     forget: (src) => { seen.delete(src); },
     load(src) {
       if (seen.has(src)) return seen.get(src);
-      // 시간 초과도 실패다(끊긴 회선에서 「불러오는 중…」 이 영원히 남지 않게). 본문까지 받는 시간을 함께 잰다.
+      // 시간 초과도 실패다(끊긴 회선에서 「불러오는 중…」 이 영원히 남지 않게). 응답 머리는 짧게(timeoutMs),
+      // 본문까지는 넉넉하게(totalMs) 잰다 — 머리가 왔으면 느려도 끝까지 받는다.
       const ctl = typeof AbortController === 'function' ? new AbortController() : null;
-      let timer;
+      let headTimer; let totalTimer;
+      const fail = (reject) => () => { ctl?.abort(); reject(new Error('시간 초과')); };
       const timeout = new Promise((_, reject) => {
-        timer = setTimeout(() => { ctl?.abort(); reject(new Error('시간 초과')); }, timeoutMs);
+        headTimer = setTimeout(fail(reject), timeoutMs);
+        totalTimer = setTimeout(fail(reject), totalMs);
       });
       const get = Promise.resolve().then(() => fetchFn(src, ctl ? { signal: ctl.signal } : undefined)).then((r) => {
+        clearTimeout(headTimer);
         if (!r.ok) { const e = new Error(`HTTP ${r.status}`); e.status = r.status; throw e; }
         return r.json();
       });
       get.catch(() => { /* 시간 초과가 먼저 이긴 뒤의 거절은 경쟁에서 이미 처리됐다 */ });
-      const p = Promise.race([get, timeout]).finally(() => clearTimeout(timer));
+      const p = Promise.race([get, timeout]).finally(() => { clearTimeout(headTimer); clearTimeout(totalTimer); });
       seen.set(src, p);
       p.catch(() => seen.delete(src));
       return p;
@@ -257,7 +262,7 @@ function syncUrl(mode, cat) {
 
 export function initHeatmap(doc = globalThis.document, opts = {}) {
   if (!doc?.querySelector('.hm-tabs')) return false;
-  const loader = createLoader(opts.fetch || ((src, init) => globalThis.fetch(src, init)), opts.timeoutMs);
+  const loader = createLoader(opts.fetch || ((src, init) => globalThis.fetch(src, init)), opts.timeoutMs, opts.totalMs);
   const params = new URLSearchParams(globalThis.location?.search || '');
   let mode = params.get('mode') || 'w';
   let cat = params.get('cat') || '';

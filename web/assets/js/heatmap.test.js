@@ -350,3 +350,22 @@ test('지도 div 에 aria-hidden 을 두지 않는다(보이는 배치가 스크
   holder.appendChild(buildMaps(doc, dataOf('f')));
   assert.equal(holder.querySelectorAll('[aria-hidden]').length, 0);
 });
+
+test('응답 머리가 오면 본문이 머리 제한보다 느려도 전체 상한 안에서 끝까지 받는다', async () => {
+  const doc = new JSDOM(SHELL()).window.document;
+  const fetchFn = async () => ({ ok: true, json: () => new Promise((r) => setTimeout(() => r(dataOf('f')), 80)) });
+  initHeatmap(doc, { fetch: fetchFn, timeoutMs: 20, totalMs: 500, noPrefetch: true });
+  click(doc, doc.querySelector('[data-mode="f"][role="tab"]'));
+  await new Promise((r) => setTimeout(r, 200));
+  assert.equal(doc.querySelectorAll('#hm-f .hm-map').length, 2);
+  assert.equal(doc.querySelector('#hm-f .hm-status'), null);
+});
+
+test('본문이 전체 상한을 넘기면 실패 안내', async () => {
+  const doc = new JSDOM(SHELL()).window.document;
+  const fetchFn = async () => ({ ok: true, json: () => new Promise(() => {}) });
+  initHeatmap(doc, { fetch: fetchFn, timeoutMs: 20, totalMs: 60, noPrefetch: true });
+  click(doc, doc.querySelector('[data-mode="f"][role="tab"]'));
+  await new Promise((r) => setTimeout(r, 150));
+  assert.equal(doc.querySelector('#hm-f .hm-status').textContent, '지도를 받지 못했습니다. 다시 누르면 다시 받습니다.');
+});

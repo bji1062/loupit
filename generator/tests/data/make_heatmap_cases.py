@@ -47,11 +47,12 @@ def build_cases() -> dict:
     # 합성 패널 하나: 가짜 번들의 그룹은 전부 넓어서 「좁은 그룹」(narrow)·비상장·큰 좌표가 안 나온다 — 무게를 크게
     # 갈라 그 분기를 픽스처에 싣는다(JS 가 이 분기를 빼먹어도 위 실제 패널만으로는 안 잡힌다).
     # 글자 이스케이프도 여기서 잰다: 회사명 · 부제 · 그룹 이름에 `<` `&` 따옴표를 넣어, JS 가 innerHTML 로 「간단히」
-    # 바꾸면 이 대조가 깨지게 한다.
+    # 바꾸면 이 대조가 깨지게 한다. 한글 앞의 `<` · 공백 앞의 `&` 는 HTML 이 글자로 읽어 innerHTML 이어도 같게 나온다 —
+    # 그래서 **ASCII 태그(`<b>`)와 진짜 엔티티(`&amp;`)** 를 쓴다.
     cs = ctx.companies
-    weird = [{**cs[0], "comp_nm": 'A<b>&"회사"\''}, {**cs[1], "comp_nm": "B & <i>C</i>"}, {**cs[2 % len(cs)], "comp_nm": "D\"E\"<>"}]
-    items = [{"c": weird[0], "sector": 'Q<큰> & "그룹"', "weight": 1000, "cls": "s-stated", "anchor": "b-meal", "sub": "<1> & \"100\"만원", "tip": "큰 칸 · 100만원 · 회사 공식 수치"},
-             {"c": weird[1], "sector": "작은 <그룹> &", "weight": 3, "cls": "s-est", "anchor": "", "sub": "3만원 <i>x</i>", "tip": "작은 칸"},
+    weird = [{**cs[0], "comp_nm": 'A<b>굵게</b> &amp; "회사"\''}, {**cs[1], "comp_nm": "B & <i>C</i>"}, {**cs[2 % len(cs)], "comp_nm": "D\"E\"<>"}]
+    items = [{"c": weird[0], "sector": 'Q<b>큰</b> &amp; "그룹"', "weight": 1000, "cls": "s-stated", "anchor": "b-meal", "sub": "<1> & \"100\"만원", "tip": "큰 칸 · 100만원 · 회사 공식 수치"},
+             {"c": weird[1], "sector": "작은 <i>그룹</i> &lt; &#38;", "weight": 3, "cls": "s-est", "anchor": "", "sub": "3만원 <i>x</i>", "tip": "작은 칸"},
              {"c": weird[2], "sector": heatmap.UNLISTED, "weight": 1, "cls": "s-qual", "anchor": "", "sub": "금액 없음 & 그 밖", "tip": "최소 칸 \"따옴표\" & <꺾쇠>"}]
     syn = {"key": "synthetic", "layouts": heatmap._panel_layouts(items, ctx)}
     panels.append({"mode": "x", "panel": "synthetic", "html": str(macro(syn)), "data": heatmap.panel_data(syn)})
