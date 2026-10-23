@@ -101,3 +101,64 @@ class ReferenceIndex(BaseModel):  # 최상위 정확히 4키
     benefit_presets: dict[str, list[PresetBenefit]]
     companies: list[IndexCompany]
     category_stats: CategoryStats
+
+
+# ── /find 부팅용 가벼운 묶음 + 코드별 설명 (2026-10-22) ────────────────────────────────────
+# 복지검색은 부팅 때 번들 전체를 받았지만 압축 크기의 약 75%가 설명 문장이고, 화면이 설명을 쓰는 곳은 결과 행의 한 줄뿐이다.
+# 부팅은 설명 없는 묶음 + 「회사마다 금액 큰 3개 행」의 설명(`top_notes`)을, 그 밖의 설명은 고른 코드마다 `GET /reference/notes/{code}` 로 받는다.
+# 🚨 여기 선언하지 않은 필드는 조용히 떨어진다 — 행에 필드를 더할 때 이 모델도 함께 고쳐라.
+class FindBenefit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    benefit_cd: str
+    benefit_nm: str
+    benefit_ctgr_cd: str
+    qual_yn: bool
+    benefit_amt: int | None = None
+    amt_source: str
+    badge_src_cd: str | None = None
+
+
+class FindCompany(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    comp_id: int
+    comp_eng_nm: str
+    comp_nm: str
+    comp_tp_cd: str
+    industry_nm: str | None = None
+    logo_nm: str | None = None
+    aliases: list[str]
+    benefits: list[FindBenefit]  # 번들 행 순서 그대로 · 표시 행 포함(countable 은 클라이언트가 거른다)
+
+
+class TopNote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    comp_id: int
+    benefit_cd: str
+    qual_desc_ctnt: str | None = None
+    note_ctnt: str | None = None
+
+
+class ReferenceFind(BaseModel):  # 최상위 정확히 3키
+    model_config = ConfigDict(extra="forbid")
+
+    company_types: list[CompanyType]
+    companies: list[FindCompany]
+    top_notes: list[TopNote]
+
+
+class CompanyNote(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    comp_id: int
+    qual_desc_ctnt: str | None = None
+    note_ctnt: str | None = None
+
+
+class ReferenceNotes(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    benefit_cd: str
+    notes: list[CompanyNote]

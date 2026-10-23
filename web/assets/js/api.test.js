@@ -5,7 +5,7 @@ import test, { describe, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-  apiFetch, ApiError, getReference, searchCompanies, getCompany, API_BASE,
+  apiFetch, ApiError, getReference, getReferenceFind, getReferenceNotes, searchCompanies, getCompany, API_BASE,
   getBenefitsForEdit, createBenefit, updateBenefit, getEdits,
   requestLoginCode, requestEmployCode, login,
   listPosts, getPost, getComments, createPost, updatePost, deletePost,
@@ -116,6 +116,14 @@ describe('T-06.6.2 엔드포인트 래퍼', () => {
     mockFetchOk({ company_types: [] });
     await getReference();
     assert.equal(calls[0].url, API_BASE + '/reference/all');
+  });
+
+  test('getReferenceFind → /reference/find · getReferenceNotes → 코드를 인코딩해 /reference/notes/{code}', async () => {
+    mockFetchOk({ companies: [] });
+    await getReferenceFind();
+    await getReferenceNotes('meal');
+    assert.equal(calls[0].url, API_BASE + '/reference/find');
+    assert.equal(calls[1].url, API_BASE + '/reference/notes/meal');
   });
 
   test('searchCompanies → q를 encodeURIComponent로 인코딩해 경로 조립', async () => {

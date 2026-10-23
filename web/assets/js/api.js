@@ -79,9 +79,12 @@ export class ApiError extends Error {
 
 // 3종 GET 소비(health 제외). 익명 열람 전용(무쿠키·무인증, INV-1).
 export const getReference = (opt) => apiFetch('/reference/all', opt);
-// 비교 화면 부팅(2026-10-22): 복지 행 없는 가벼운 목록 + 고른 회사 한 곳씩의 상세. /reference/all 은 /find 용으로 그대로 둔다.
+// 비교 화면 부팅(2026-10-22): 복지 행 없는 가벼운 목록 + 고른 회사 한 곳씩의 상세. /reference/all 은 두 화면의 폴백으로 그대로 둔다.
 export const getReferenceIndex = (opt) => apiFetch('/reference/index', opt);
 export const getReferenceCompany = (id, opt) => apiFetch('/reference/companies/' + encodeURIComponent(id), opt);
+// 복지검색 부팅(2026-10-22): 설명 없는 가벼운 묶음 + 고른 복지 코드의 설명. /reference/all 은 두 화면의 폴백으로 그대로 둔다.
+export const getReferenceFind = (opt) => apiFetch('/reference/find', opt);
+export const getReferenceNotes = (code, opt) => apiFetch('/reference/notes/' + encodeURIComponent(code), opt);
 export const searchCompanies = (q, opt) => apiFetch('/companies/search?q=' + encodeURIComponent(q), opt);
 export const getCompany = (id, opt) => apiFetch('/companies/' + encodeURIComponent(id), opt);
 

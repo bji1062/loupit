@@ -1,8 +1,9 @@
-"""SP-API-9 GET /reference/all · /reference/index · /reference/companies/{id} — 부팅 단일 소스 + 인메모리 캐시(SP-API-4).
+"""SP-API-9 GET /reference/all · /index · /companies/{id} · /find · /notes/{code} — 부팅 단일 소스 + 인메모리 캐시(SP-API-4).
 
-캐시 미스 시 DB 조립(build_reference_bundle) 1회 → 세 응답 바이트로 잘라 캐시 저장(services/reference_cut.py).
+캐시 미스 시 DB 조립(build_reference_bundle) 1회 → 다섯 응답 바이트로 잘라 캐시 저장(services/reference_cut.py).
 캐시 히트 시 저장된 바이트를 그대로 반환(요청당 재직렬화 비용 제거).
-/all = 번들 전체(/find 용), /index + /companies/{id} = /compare 용(부팅은 가벼운 목록, 상세는 필요할 때 한 곳씩).
+/all = 번들 전체(두 화면의 폴백), /index + /companies/{id} = /compare 용(부팅은 가벼운 목록, 상세는 필요할 때 한 곳씩),
+/find + /notes/{code} = /find 용(부팅은 설명 없는 묶음, 설명은 고른 코드마다).
 """
 from __future__ import annotations
 
@@ -12,17 +13,17 @@ from fastapi import APIRouter, HTTPException, Path, Request, Response
 
 from server.config import get_settings
 from server.database import get_pool
-from server.models.reference import Company, ReferenceBundle, ReferenceIndex  # OpenAPI 문서(응답 모델)
+from server.models.reference import Company, ReferenceBundle, ReferenceFind, ReferenceIndex, ReferenceNotes  # OpenAPI 문서(응답 모델)
 from server.services import benefit_codes
 from server.services.reference import build_reference_bundle
 from server.services.reference_cut import ReferenceCut, cut_bundle
 
 router = APIRouter(tags=["reference"])
-_CACHE_KEY = "reference_cut"  # 번들 한 번 조립 → /all · /index · /companies/{id} 세 가지를 함께 담는다
+_CACHE_KEY = "reference_cut"  # 번들 한 번 조립 → /all · /index · /companies/{id} · /find · /notes/{code} 다섯 가지를 함께 담는다
 
 
 async def _build_reference_cut() -> ReferenceCut:
-    """DB 조립 → 계약 검증 → 세 가지 응답 바이트. 캐시 미스(dogpile 락 하) 1회만 실행."""
+    """DB 조립 → 계약 검증 → 다섯 가지 응답 바이트. 캐시 미스(dogpile 락 하) 1회만 실행."""
     async with get_pool().acquire() as conn:
         bundle = await build_reference_bundle(conn)
     # H-1: raw Response 반환이라 response_model(라우트 데코레이터)이 런타임 미적용 →
@@ -54,7 +55,7 @@ def _json(body: bytes) -> Response:
 
 @router.api_route("/reference/all", methods=["GET", "HEAD"], response_model=ReferenceBundle)
 async def reference_all(request: Request) -> Response:
-    """번들 전체 — /find(복지검색)가 쓴다. 비교 화면은 아래 두 길로 옮겼다(바이트는 예전과 같다)."""
+    """번들 전체 — 두 화면(/compare · /find)의 폴백이다. 부팅은 아래 가벼운 길로 옮겼다(바이트는 예전과 같다)."""
     return _json((await _cut(request)).all_body)
 
 
@@ -70,6 +71,21 @@ async def reference_company(request: Request, comp_id: int = Path(..., ge=1)) ->
     body = (await _cut(request)).company_bodies.get(comp_id)
     if body is None:
         raise HTTPException(status_code=404, detail="회사를 찾을 수 없습니다.")
+    return _json(body)
+
+
+@router.api_route("/reference/find", methods=["GET", "HEAD"], response_model=ReferenceFind)
+async def reference_find(request: Request) -> Response:
+    """/find 부팅용 가벼운 묶음 — 설명 없는 복지 행 + 회사마다 금액 큰 3개 행의 설명(`top_notes`)."""
+    return _json((await _cut(request)).find_body)
+
+
+@router.api_route("/reference/notes/{benefit_cd}", methods=["GET", "HEAD"], response_model=ReferenceNotes)
+async def reference_notes(request: Request, benefit_cd: str = Path(..., pattern=r"^[a-z0-9_]{1,64}$")) -> Response:
+    """/find 에서 고른 복지 코드의 설명 — 그 코드를 가진 모든 회사 행. 형식이 틀리면 422 · 번들에 없는 코드는 404."""
+    body = (await _cut(request)).note_bodies.get(benefit_cd)
+    if body is None:
+        raise HTTPException(status_code=404, detail="복지 항목을 찾을 수 없습니다.")
     return _json(body)
 
 

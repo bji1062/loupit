@@ -30,7 +30,7 @@ server/
 ├─ routers/
 │  ├─ __init__.py
 │  ├─ health.py            # SP-API-8   GET /health              (FR-91)
-│  ├─ reference.py         # SP-API-9   GET /reference/all · /index · /companies/{id} (FR-92)
+│  ├─ reference.py         # SP-API-9   GET /reference/all · /index · /companies/{id} · /find · /notes/{code} (FR-92)
 │  ├─ companies.py         # SP-API-10  GET /companies/search    (FR-93)
 │  │                       # SP-API-11  GET /companies/{comp_id} (FR-94)
 │  └─ trending.py          # GET /comparisons/trending · POST /comparisons/log  (개정 2026-07-14)
@@ -210,7 +210,7 @@ class TTLCache:
         self._store.clear()
 ```
 
-- 저장 대상 = 참조 번들 한 번 조립에서 잘라 낸 **세 응답의 직렬화된 JSON 바이트**(`/reference/all` · `/reference/index` · `/reference/companies/{id}`, 재직렬화 비용 제거, SP-API-9). 키 = `"reference_cut"`(2026-10-22 — 전엔 `"reference_all"` 바이트 하나). `cache.clear()` 한 번이 셋을 함께 비운다.
+- 저장 대상 = 참조 번들 한 번 조립에서 잘라 낸 **다섯 응답의 직렬화된 JSON 바이트**(`/reference/all` · `/reference/index` · `/reference/companies/{id}` · `/reference/find` · `/reference/notes/{code}`, 재직렬화 비용 제거, SP-API-9). 키 = `"reference_cut"`(2026-10-22 — 전엔 `"reference_all"` 바이트 하나). `cache.clear()` 한 번이 다섯을 함께 비운다.
 - 캐시 인스턴스는 `main.py`가 1개 생성해 `app.state.reference_cache`로 공유(SP-API-5).
 - 재시드(빌드타임) 후 최대 TTL(1시간) 내 반영(D4.4). 프로세스 재기동 시 캐시 비움(콜드 스타트 = 첫 요청이 DB 조회).
 - **추적**: FR-92·FR-96(캐시), NFR3, D4.4.
@@ -511,7 +511,8 @@ async def reference_all(request: Request) -> Response:
 - **캐시된 바이트 직접 반환** → 요청당 Pydantic 재직렬화 비용 제거. `response_model`은 OpenAPI 스키마·계약 문서화 용도이며 `Response` 반환 시 검증을 우회한다(계약 검증은 테스트 SP-API-14가 담당).
 - 최상위 키 정확히 3종·프로파일러 키 부재는 SP-API-7이 구조적으로 보장(INV-2).
 - 클라이언트 로드 실패 처리는 FR-E1(SP-FE 소유).
-- **2026-10-22 — 번들을 세 가지로 자른다**(사용자 결정 · 10-21 실측 `/compare` 부팅 700KB): `/compare` 는 부팅 때 번들 전체(복지 6천여 행)를 받았지만 화면이 쓰는 상세는 고른 두 회사뿐이다. 캐시 미스 때 `build_reference_bundle` 을 **한 번** 돌려 검증된 덤프(`services/reference_cut.py::cut_bundle`)로부터 ① `GET /reference/all` — 예전과 **바이트 동일**, `/find`(복지검색)가 계속 쓴다 ② `GET /reference/index` — `ReferenceIndex`(최상위 4키: `company_types`·`benefit_presets`·`companies[]`(`comp_id·comp_eng_nm·comp_nm·comp_tp_cd·industry_nm·logo_nm·aliases` + `benefit_n`=셀 수 있는 복지 수, 복지 행·`work_style_val`·`careers_benefit_url` 없음, 순서는 번들과 같음)·`category_stats`=`{total, sums, rmax}` — 평균이 아니라 **합**: JS 가 같은 `round2` 로 나눠야 번들로 센 값과 글자까지 같다. 정의는 `generator/corpus.py::build` 와 같다) ③ `GET /reference/companies/{comp_id}` — 번들의 그 회사 객체 그대로(`Company`, 출처 계보 `edit_origin` 포함; 없는 id 404 · 비정수·<1 422) 를 함께 만든다. 셋이 한 조립에서 나오므로 목록과 상세가 서로 다른 시점의 값이 되지 않는다. 헤더 · HEAD 허용은 `/reference/all` 과 같다. `GET /companies/{id}` 는 별도 SQL 이라 `edit_origin` 을 파생하지 않아(늘 `seed`) 이 길에 쓰지 않는다.
+- **2026-10-22 — 번들을 세 가지로 자른다**(사용자 결정 · 10-21 실측 `/compare` 부팅 700KB): `/compare` 는 부팅 때 번들 전체(복지 6천여 행)를 받았지만 화면이 쓰는 상세는 고른 두 회사뿐이다. 캐시 미스 때 `build_reference_bundle` 을 **한 번** 돌려 검증된 덤프(`services/reference_cut.py::cut_bundle`)로부터 ① `GET /reference/all` — 예전과 **바이트 동일**, `/compare` · `/find` 두 화면의 폴백 ② `GET /reference/index` — `ReferenceIndex`(최상위 4키: `company_types`·`benefit_presets`·`companies[]`(`comp_id·comp_eng_nm·comp_nm·comp_tp_cd·industry_nm·logo_nm·aliases` + `benefit_n`=셀 수 있는 복지 수, 복지 행·`work_style_val`·`careers_benefit_url` 없음, 순서는 번들과 같음)·`category_stats`=`{total, sums, rmax}` — 평균이 아니라 **합**: JS 가 같은 `round2` 로 나눠야 번들로 센 값과 글자까지 같다. 정의는 `generator/corpus.py::build` 와 같다) ③ `GET /reference/companies/{comp_id}` — 번들의 그 회사 객체 그대로(`Company`, 출처 계보 `edit_origin` 포함; 없는 id 404 · 비정수·<1 422) 를 함께 만든다. 셋이 한 조립에서 나오므로 목록과 상세가 서로 다른 시점의 값이 되지 않는다. 헤더 · HEAD 허용은 `/reference/all` 과 같다. `GET /companies/{id}` 는 별도 SQL 이라 `edit_origin` 을 파생하지 않아(늘 `seed`) 이 길에 쓰지 않는다.
+- **2026-10-22 — `/find` 도 가볍게: 두 갈래를 더 자른다**(사용자 결정 「무거운 페이지 가볍게 하기」 · 실측 `/find` 부팅 전송량 700,198B(운영 nginx gzip 1단계) 중 설명 문장이 약 75%): 같은 한 조립에서 ④ `GET /reference/find` — `ReferenceFind`(최상위 정확히 3키: `company_types` · `companies[]`(번들 순서; `comp_id·comp_eng_nm·comp_nm·comp_tp_cd·industry_nm·logo_nm·aliases` + `benefits[]` = **번들 행 순서 그대로, 표시 행 포함**, 행 키는 정확히 `benefit_cd·benefit_nm·benefit_ctgr_cd·qual_yn·benefit_amt·amt_source·badge_src_cd` — 설명 없음) · `top_notes[]` = `{comp_id, benefit_cd, qual_desc_ctnt, note_ctnt}`: 회사마다 **조건 없음 화면의 금액 큰 3개 행**(`marks.countable` 중 금액>0 · 금액 내림차순 안정 정렬 · 앞 3개; 금액 판정은 `reference_cut.amount_of` = JS `find.js::amountOf`)) ⑤ `GET /reference/notes/{benefit_cd}` — `ReferenceNotes` `{benefit_cd, notes:[{comp_id, qual_desc_ctnt, note_ctnt}]}`: 그 코드를 가진 **모든 회사 행**(번들 회사 순서). 경로 값이 `^[a-z0-9_]{1,64}$` 가 아니면 422 · 번들에 없는 코드 404. 모델은 모두 `extra="forbid"`. 서버 「금액 큰 3개」와 클라이언트 `renderRow` 의 조건 없음 3개가 어긋나도 안전판이 그 코드를 한 번 더 받을 뿐(요청 하나 증가)이지만 어긋남 자체를 막으려고 공용 픽스처 `generator/tests/data/find_lazy_cases.json`(만드는 스크립트 `make_find_lazy_cases.py`)이 두 쪽을 같은 입력으로 대조한다. 헤더 · HEAD 허용은 `/reference/all` 과 같다. nginx 는 그대로다(`location ^~ /api/v1/` · `loupit_api` burst 60 — 부팅 1회 + 고른 코드 수만큼).
 - 같은 결과 보장: `generator/tests/data/compare_index_cases.json`(만드는 스크립트 `make_compare_index_cases.py`) 을 `server/tests/test_reference_cut.py` 와 `web/assets/js/compare-index.test.js` 가 함께 읽는다.
 - **추적**: FR-92·FR-D1, SP-ARCH-4·SP-ARCH-5, INV-2, NFR3, §6·D4.4.
 

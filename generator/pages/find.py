@@ -1,7 +1,7 @@
 """generator/pages/find.py — `/find` 「복지검색」 (SP-FIND, 2026-09-06).
 
 회사 이름이 아니라 **복지 항목**으로 회사를 거르는 탭이다. 고르는 도구 자체는 클라이언트가
-그린다(`web/assets/js/find.js` + 부팅 번들 `reference/all` — 새 API·새 컬럼 0). 이 파일이 만드는
+그린다(`web/assets/js/find.js` + 부팅 묶음 `reference/find` · 고른 코드의 `reference/notes/{code}` — 새 컬럼 0). 이 파일이 만드는
 것은 그 도구가 앉을 **정적 셸**과, JS 없이도 읽히는 본문이다.
 
 비-JS 본문을 「안내 문구」로 때우지 않는 이유(GC-10 정신 + 콘텐츠 두께):

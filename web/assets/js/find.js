@@ -1,7 +1,9 @@
 // web/assets/js/find.js — 「복지검색」 탭(/find, SP-FIND). 회사 이름이 아니라 **복지 항목**으로 거른다.
 //
-// 데이터는 부팅 참조 번들(`reference/all`) 하나뿐이다 — 새 API 도, 새 DB 컬럼도 없다(INV: 무빌드
-// 바닐라 ES 모듈 · 읽기 전용 · 무전송). 그래서 이 파일은 두 층으로 갈라져 있다:
+// 데이터는 부팅 때 받는 가벼운 묶음(`reference/find` — 복지 행에 설명 문장이 없다) 하나와, 고른 복지 코드의 설명
+// (`reference/notes/{code}` — `find-notes.js` 가 받아 행에 써 넣는다)뿐이다. 새 DB 컬럼은 없다(INV: 무빌드
+// 바닐라 ES 모듈 · 읽기 전용 · 무전송). 번들 전체(`reference/all`)로 부팅하면(배포 순간의 폴백) 설명이 처음부터 다 있다.
+// 그래서 이 파일은 두 층으로 갈라져 있다:
 //   ① 순수 계산(deriveCodes · parseParams/buildParams · matchCompanies · sortRows · suggest)
 //   ② DOM(렌더 · 접힘 컨트롤러 · initFind)
 // ①은 node:test 가 DOM 없이 직접 검사하고, ②는 `dom.js::el` 규약(textContent·setAttribute)만 쓴다.
@@ -14,6 +16,7 @@ import { slugOf } from './directory.js';
 import { initDeckCollapse, DESKTOP_MIN } from './deck.js';
 import { CATEGORY_ORDER, CATEGORY_LABEL } from './categories.js';
 import { SUMMARY, countable, isSummary } from './marks.js'; // 표시 행(법정 · 업무 교육)은 칩 수 · 매칭에서 뺀다(SP-MARK)
+import { NOTE_FAILED, NOTE_LOADING, NOTE_RETRY, createNoteStore, isLightRef } from './find-notes.js';
 
 // ── 상수 ─────────────────────────────────────────────────────────────────────
 
@@ -469,10 +472,38 @@ export function benefitNote(b) {
 }
 
 /**
+ * 설명 칸 하나를 채운다. `notes`(설명 저장소)가 없거나 설명이 있으면 지금과 같은 글 · `title`, 오는 중이면 자리 표시,
+ * 받지 못했으면 안내 + 「다시 시도」(그 코드만). 설명이 도착하면 저장소가 이 함수로 **그 칸만** 다시 채운다.
+ */
+export function fillNote(span, b, notes = null) {
+  const st = notes ? notes.state(b) : 'ok';
+  span.replaceChildren();
+  span.removeAttribute('title');
+  span.setAttribute('class', st === 'loading' ? 'find-hit-d dim' : 'find-hit-d');
+  if (st === 'loading') { span.textContent = NOTE_LOADING; return; }
+  if (st === 'failed') {
+    span.textContent = NOTE_FAILED;
+    const btn = el('button', { type: 'button', class: 'find-note-retry', text: NOTE_RETRY });
+    btn.addEventListener('click', () => {
+      // 버튼은 곧 사라지므로 초점을 칸 자체로 옮겨 키보드 초점이 문서 처음으로 튀지 않게 한다.
+      span.setAttribute('tabindex', '-1');
+      span.addEventListener('blur', () => span.removeAttribute('tabindex'), { once: true }); // 초점이 떠나면 탭 순서 밖으로 되돌린다
+      span.focus({ preventScroll: true });
+      notes.ensure([b.benefit_cd], { retry: true });
+      notes.refreshTracked();
+    });
+    span.append(btn);
+    return;
+  }
+  span.setAttribute('title', benefitNote(b));
+  span.textContent = benefitNote(b);
+}
+
+/**
  * 결과 행 하나. 고른 조건이 있으면 **그 항목들**을(없는 회사는 OR 모드에서 「없음」으로),
  * 없으면 금액 큰 항목 3개를 보여준다 — 해시태그가 아니라 실제 명칭·금액·조건이 근거다.
  */
-export function renderRow(row, { codes = {}, sel = [], types = {}, compare = null, onCompare = null } = {}) {
+export function renderRow(row, { codes = {}, sel = [], types = {}, compare = null, onCompare = null, notes = null } = {}) {
   const c = row.company;
   const slug = slugOf(c.comp_eng_nm);
   const href = slug ? `/company/${slug}` : null;
@@ -502,7 +533,10 @@ export function renderRow(row, { codes = {}, sel = [], types = {}, compare = nul
       li.append(el('span', { class: 'find-hit-k', text: b.benefit_nm }));
       if (isSummary(b)) li.append(el('span', { class: 'find-tag find-tag-sum', title: SUMMARY.title, text: SUMMARY.label }));
       li.append(renderAmount(b));
-      li.append(el('span', { class: 'find-hit-d', title: benefitNote(b), text: benefitNote(b) }));
+      const note = el('span', { class: 'find-hit-d' });
+      fillNote(note, b, notes);
+      if (notes) notes.track(note, b, (span, row2) => fillNote(span, row2, notes));
+      li.append(note);
     }
     hits.append(li);
   }
@@ -578,6 +612,8 @@ export function mountFind(root, ref, opts = {}) {
   let cat = state.sel.length ? (codes[state.sel[state.sel.length - 1]] || {}).ctgr || DEFAULT_CATEGORY : DEFAULT_CATEGORY;
   let shown = PAGE_SIZE;
   const compare = { A: null, B: null };
+  // 가벼운 묶음이면 설명 저장소 — 번들 전체로 부팅했으면(폴백) 설명이 이미 다 있어 필요 없다. 테스트는 `opts.notes`/`opts.fetchNotes` 로 주입한다.
+  const notes = opts.notes !== undefined ? opts.notes : (isLightRef(ref) ? createNoteStore(ref, { fetchFn: opts.fetchNotes }) : null);
 
   const $ = (s) => pick(root, s);
   const nodes = {
@@ -615,7 +651,10 @@ export function mountFind(root, ref, opts = {}) {
   function toggleCode(cd) {
     const i = state.sel.indexOf(cd);
     if (i >= 0) state.sel.splice(i, 1);
-    else { state.sel.push(cd); cat = (codes[cd] || {}).ctgr || cat; }
+    else {
+      state.sel.push(cd); cat = (codes[cd] || {}).ctgr || cat;
+      if (notes) notes.ensure([cd], { retry: true }); // 고를 때 그 코드의 설명만 — 같은 코드는 다시 안 받고, 지난번에 실패했으면 다시 누른 것이니 다시 받는다
+    }
     shown = PAGE_SIZE;
     render();
   }
@@ -769,8 +808,9 @@ export function mountFind(root, ref, opts = {}) {
     if (nodes.list) {
       nodes.list.replaceChildren();
       for (const row of rows.slice(0, shown)) {
-        nodes.list.append(renderRow(row, { codes, sel: state.sel, types, compare, onCompare }));
+        nodes.list.append(renderRow(row, { codes, sel: state.sel, types, compare, onCompare, notes }));
       }
+      if (notes) notes.ensureTracked(); // 보이는 행 중 설명을 기다리는 코드(묶음과 어긋난 드문 경우의 안전판 — 진행 중이면 다시 안 부른다)
     }
     if (nodes.empty) nodes.empty.hidden = rows.length > 0;
     if (nodes.more) {
@@ -847,6 +887,7 @@ export function mountFind(root, ref, opts = {}) {
   const html = root.ownerDocument && root.ownerDocument.documentElement;
   if (html && html.style) html.style.overflowAnchor = 'none';
 
+  if (notes) notes.ensure(state.sel); // URL 로 들어온 조건의 설명 — 첫 그림과 함께 받기 시작한다
   render();
   collapse = initDeckCollapse({
     wrap: nodes.deck, anchorEl: root, minibar: nodes.minibar,
@@ -855,14 +896,14 @@ export function mountFind(root, ref, opts = {}) {
     // 헤더의 값이고 360px 에서는 97px 이 된다. `headerEl` 이 없으면 CSS 의 토큰값이 그대로 남는다.
     headerEl: siteHeader(root),
   });
-  return { render, state, codes, collapse, destroy() { if (collapse) collapse.destroy(); } };
+  return { render, state, codes, collapse, notes, destroy() { if (collapse) collapse.destroy(); } };
 }
 
 /** 페이지 진입 — 번들을 받아 도구를 켠다. 실패해도 정적 본문(카테고리 표)은 그대로 남는다. */
 export async function initFind(doc = globalThis.document, loader = null) {
   const root = doc && doc.querySelector('[data-find-tool]');
   if (!root) return null;
-  const load = loader || (await import('./boot.js')).loadReference;
+  const load = loader || (await import('./boot.js')).loadFindBundle;
   let ref;
   try {
     ref = await load();
