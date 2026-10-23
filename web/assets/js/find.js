@@ -487,7 +487,8 @@ export function fillNote(span, b, notes = null) {
     btn.addEventListener('click', () => {
       // 버튼은 곧 사라지므로 초점을 칸 자체로 옮겨 키보드 초점이 문서 처음으로 튀지 않게 한다.
       span.setAttribute('tabindex', '-1');
-      span.focus();
+      span.addEventListener('blur', () => span.removeAttribute('tabindex'), { once: true }); // 초점이 떠나면 탭 순서 밖으로 되돌린다
+      span.focus({ preventScroll: true });
       notes.ensure([b.benefit_cd], { retry: true });
       notes.refreshTracked();
     });

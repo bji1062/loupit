@@ -338,18 +338,17 @@ describe('응답 모양 · 동기 오류 · 초점 · 칸 정리', () => {
     await flush();
     assert.equal(env.doc.activeElement, span);
     assert.ok(!env.root.textContent.includes(NOTE_FAILED));
+    span.blur();
+    assert.equal(span.hasAttribute('tabindex'), false, '초점이 떠나면 tabindex 를 지운다');
   });
 
   test('실패 상태에서 렌더를 거듭해도 추적하는 칸이 쌓이지 않는다', async () => {
     const env = light('?b=gym', notesFetch([], { fail: ['gym'] }));
     await flush();
-    const spans = new Set();
-    const orig = env.app.notes.track;
     for (let i = 0; i < 5; i += 1) env.app.render();
-    // 추적 칸 수 = 화면에 붙어 있는 실패 칸 수 (간접 확인: 정리 뒤 재시도하면 붙은 칸만 갱신된다)
+    // 추적 칸 수 = 화면에 붙어 있는 실패 칸 수 — trackedSize() 로 직접 잰다
     const live = env.all('.find-hit-d').filter((n) => n.textContent.includes(NOTE_FAILED)).length;
     assert.ok(live > 0);
-    void spans; void orig;
     assert.equal(env.app.notes.trackedSize(), live);
   });
 });
