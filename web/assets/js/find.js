@@ -62,6 +62,7 @@ export const LABEL_OVERRIDE = {
   nap_room: '수유실·모성보호실',
   leisure_room: '사내 여가·오락 시설',
   travel_support: '여행비 지원',
+  sports_ticket: '스포츠 관람 지원', // 2026-10-23 확장 웨이브 15 — 동률 최단 규칙으로 한 회사 표기(스포츠 시즌권)가 대표가 되는 것을 막는다(파이썬 benefit_codes.py 와 같은 줄)
   culture_day: '문화의 날',
   welfare_fund: '사내근로복지기금',
   library: '전자도서관·북카페',

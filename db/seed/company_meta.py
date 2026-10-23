@@ -320,6 +320,49 @@ WAVE13_ALIASES: dict[str, list[str]] = {
     "visang_edu": ["Visang Education"],  # 영문(DART VISANG EDUCATION INC) — 계열 비상캠퍼스 · 비상교과서 이름 금지
 }
 
+# 확장 웨이브 14(2026-10-23 서빙 반영 · 후보 풀 3차 셋째 · 비상장 11 + 상장 7)
+WAVE14_ALIASES: dict[str, list[str]] = {
+    "posco": ["POSCO"],  # 영문(DART POSCO) — 지주 POSCO홀딩스 · 포스코DX 등 계열 이름 금지
+    "posco_enc": ["포스코건설", "POSCO E&C"],  # 구명(2023-03 상호 변경) · 영문 약칭 — 포스코 · 포스코홀딩스 이름 금지
+    "sk_shieldus": ["에스케이쉴더스", "SK shieldus", "SK인포섹", "ADT캡스"],  # DART 목록 이름 · 영문 · 구명(에스케이인포섹 · 2021 (주)에이디티캡스 거쳐 상호 변경 — 사업보고서) — SK스퀘어 · 캡스 상표 금지
+    "hotel_lotte": ["Hotel Lotte"],  # 영문(DART Hotel Lotte Co., Ltd.) — 롯데호텔 · 롯데면세점 · 롯데월드 사업부 상표 금지
+    "lotte_innovate": ["롯데정보통신", "LOTTE INNOVATE"],  # 구명 · 영문 — 롯데지주 · 계열 이름 금지
+    "hyundai_transys": ["현대다이모스", "Hyundai Transys"],  # 구명(2019 현대파워텍 흡수합병 뒤 상호 변경 — 존속법인) · 영문 — 현대파워텍(소멸법인) · 현대자동차 이름 금지
+    "dongwon_fnb": ["Dongwon F&B"],  # 영문(DART DONGWON F & B) — 동원산업 · 동원그룹 이름 금지
+    "osstem": ["오스템", "Osstem Implant"],  # 약칭 · 영문 — 덴티스트리인베스트먼트 이름 금지
+    "eland_world": ["Eland World"],  # 영문 — 이랜드(그룹) · 이랜드리테일 · 스파오 등 브랜드 금지
+    "shinsegae_food": ["Shinsegae Food"],  # 영문 — 이마트 · 신세계 이름 금지
+    "ls_cable": ["LS Cable & System", "LS Cable"],  # 영문(DART LS Cable & System Ltd.) · 약칭 — ㈜LS · 가온전선 이름 금지
+    "korea_seven": ["코리아세븐", "세븐일레븐", "Korea Seven"],  # DART 목록 이름(표시명 괄호 꼴 · 판정 163) · 브랜드 별칭(163) · 영문 — 롯데지주 · 미니스톱 이름 금지
+    "samlip": ["SPC삼립", "에스피씨삼립", "Samlip"],  # 구명(2026-03 상호 변경 — 반기보고서) · 영문 — 상미당홀딩스 · 파리크라상 · SPC 그룹 이름 금지
+    "hanjin": ["Hanjin"],  # 영문(DART HANJIN Logistics Corporation) — 한진칼 · 대한항공 이름 금지
+    "dongkuk_steel": ["Dongkuk Steel"],  # 영문(DART DONGKUK STEEL MILL) — 동국홀딩스 · 동국씨엠 이름 금지
+    "shinsegae_inc": ["신세계아이앤씨", "신세계I&C", "Shinsegae I&C"],  # 법인 국문 상호 · DART 목록 이름 · 영문 — 이마트 · 신세계 이름 금지
+    "kolon_global": ["Kolon Global"],  # 영문 — ㈜코오롱 · 코오롱인더스트리 이름 금지
+    "hansol_paper": ["Hansol Paper"],  # 영문(DART Hansol Paper Co., Ltd) — 한솔홀딩스 · 한솔케미칼 이름 금지
+}
+
+# 확장 웨이브 15(2026-10-23 서빙 반영 · 후보 풀 3차 넷째 · 비상장 10 + 상장 7)
+WAVE15_ALIASES: dict[str, list[str]] = {
+    "woori_bank": ["Woori Bank"],  # 영문(DART Woori Bank) — 우리금융지주 · 우리카드 등 계열 이름 금지
+    "sc_bank": ["한국스탠다드차타드은행", "SC제일은행", "Standard Chartered Bank Korea"],  # DART 목록 이름(표시명 괄호 꼴 · 판정 163) · 브랜드 별칭(163) · 영문 — Standard Chartered 그룹 · SC증권 이름 금지
+    "meritz_fire": ["메리츠화재해상보험", "Meritz Fire & Marine Insurance"],  # DART 목록 이름 · 영문 — 메리츠금융지주 · 메리츠증권 이름 금지
+    "hyundai_card": ["Hyundai Card"],  # 영문(DART HYUNDAI CARD) — 현대커머셜 · 현대캐피탈 · 현대자동차 이름 금지
+    "sk_ecoplant": ["에스케이에코플랜트", "SK건설", "SK ecoplant"],  # DART 목록 이름 · 구명(2021-05-21 상호 변경 — 사업보고서) · 영문 — SK(주) · SK에코엔지니어링 이름 금지
+    "lotte_enc": ["Lotte E&C"],  # 영문 약칭(DART LOTTE Engineering & Construction) — 롯데케미칼 · 롯데지주 이름 금지
+    "sk_siltron": ["LG실트론", "SK Siltron"],  # 구명(2017-08-17 상호 변경 — 반기보고서) · 영문 — SK(주) 이름 금지
+    "semes": ["SEMES"],  # 영문 표기 — 삼성전자 이름 금지
+    "sk_energy": ["SK Energy"],  # 영문(DART SK Energy) — SK이노베이션 · SK온 · SK엔무브 이름 금지
+    "lotte_glogis": ["Lotte Global Logistics"],  # 영문(DART Lotte Global Logistics) — 롯데지주 · 롯데택배(상표) 이름 금지
+    "lf": ["LG패션", "LF Corp"],  # 구명(2014-03-28 상호 변경 — 사업보고서) · 영문 — 코람코 · 브랜드 이름 금지
+    "cafe24": ["심플렉스인터넷", "Cafe24"],  # 구명(2017-03-29 상호 변경 — 사업보고서) · 영문 — 서비스 상표 금지
+    "lg_hellovision": ["엘지헬로비전", "CJ헬로비전", "CJ헬로", "LG HelloVision"],  # 법인 국문 상호(DART (주)엘지헬로비전) · 구명(씨제이헬로비전 2008 ~ 2017 · 씨제이헬로 2017 ~ 2019 — 사업보고서) · 영문 — LG유플러스 이름 금지
+    "jw_pharma": ["중외제약", "JW Pharmaceutical"],  # 구명(2011-03-18 상호 변경 · 분할 공시 「JW중외제약 (구. 중외제약)」) · 영문 — JW홀딩스 · JW생명과학 이름 금지
+    "kcc_glass": ["케이씨씨글라스", "KCC Glass"],  # DART 목록 이름 · 영문 — KCC · KCC건설 이름 금지
+    "dohwa": ["Dohwa Engineering"],  # 영문(DART DOHWA ENGINEERING) — 계열 이름 금지
+    "multicampus": ["크레듀", "Multicampus"],  # 구명(2016-03-11 상호 변경 — 사업보고서) · 영문 — 삼성SDS 이름 금지
+}
+
 NCSOFT_ALIASES = ["엔씨소프트", "NCSOFT", "NC", "엔씨", "리니지"]
 NCSOFT_INDUSTRY = "게임/IT"  # DG-3 확정값(소스 SQL의 '게임'을 정밀화)
 
@@ -594,6 +637,12 @@ def build_company_meta() -> dict:
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
     for eng, extra_aliases in WAVE13_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE14_ALIASES.items():
+        if eng in meta:
+            meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
+    for eng, extra_aliases in WAVE15_ALIASES.items():
         if eng in meta:
             meta[eng]["aliases"] = _dedup(meta[eng]["aliases"] + extra_aliases)
 

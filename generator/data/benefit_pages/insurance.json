@@ -89,6 +89,7 @@
         "illness"
       ],
       "why": "「질병사망」은 사망 보험금이다 — 질병 진단비나 치료비 보장은 적혀 있지 않다"
-    }
+    },
+    {"comp": "sc_bank", "h": "ba0e3fc4b7", "facets_add": ["premium"], "why": "원문 Core bank funding for life insurance — 은행이 보험료를 부담한다고 밝힘"}
   ]
 }

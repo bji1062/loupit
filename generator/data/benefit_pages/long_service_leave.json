@@ -128,6 +128,8 @@
     {"comp": "posco_dx", "h": "0383e7c265", "mode": "both", "why": "원문 「근속 5년 재충전 지원금 지급, 근속 10년부터 5년 단위(최대 35년) 로 부상금 및 휴가 지급」 — 돈(지원금 · 부상금)과 휴가를 함께 준다"},
     {"comp": "nice_info", "h": "98d3d5b8ac", "mode": "both", "why": "반기보고서 주석이 「장기근속휴가 및 장기근속보상」으로 휴가와 보상을 함께 밝히나 「장기근속보상」 낱말이 패턴에 없다"},
     {"comp": "kbank", "h": "26591f52bb", "mode": "both", "why": "원문 「재충전을 위해 근속 3년마다 휴가와 보상금을 지원해요」 — 휴가와 보상금(돈)을 함께 주는데 규칙이 「보상금」을 돈 낱말로 모른다"},
-    {"comp": "gs_caltex", "h": "0fcd333964", "mode": "both", "facets_add": ["goods"], "why": "원문 「장기근속 기념금품 및 휴가(5년 단위)」가 기념금품과 휴가를 함께 준다고 밝힘(영문판 Gift and leave for long-term service)"}
+    {"comp": "gs_caltex", "h": "0fcd333964", "mode": "both", "facets_add": ["goods"], "why": "원문 「장기근속 기념금품 및 휴가(5년 단위)」가 기념금품과 휴가를 함께 준다고 밝힘(영문판 Gift and leave for long-term service)"},
+    {"comp": "sk_ecoplant", "h": "c8ee9fd79f", "mode": "both", "why": "원문 「장기근속 포상 및 특별 휴가」는 포상과 휴가를 함께 적었는데 「포상 및 특별 휴가」 사이 「특별」 때문에 규칙이 휴가만으로 읽는다"},
+    {"comp": "kcc_glass", "h": "6d57503762", "mode": "both", "facets_add": ["goods"], "why": "원문 「근속 년수에 따라 유급 휴가 및 고급 콘도 숙박권을 지급」 — 휴가와 숙박권(선물)을 함께 주는데 규칙이 「숙박권」을 선물 낱말로 모른다"}
   ]
 }

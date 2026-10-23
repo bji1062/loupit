@@ -46,6 +46,7 @@
     {"comp": "nice_info", "h": "071ed24c49", "facets_remove": ["abroad"], "why": "원문은 「어학연수비를 지원」만 적고 해외 연수인지 밝히지 않는다"},
     {"comp": "dongwon_industries", "h": "9adbc56d3d", "mode": "inhouse", "why": "영문판 원문 「we offer training programs that enhance … language proficiency」 — 회사가 여는 과정이고 학습비 지원 낱말은 없다"},
     {"comp": "aekyung_industrial", "h": "0ed9461703", "mode": "both", "why": "원문이 전화·화상 외국어 과정 · 그룹 외국어 수업(회사가 엶)과 어학 시험 지원 제도를 함께 적었다 — 「시험 지원」 낱말이 학습비 규칙에 없다"},
-    {"comp": "nexen_tire", "h": "7e88b178ac", "mode": "inhouse", "why": "원문 「글로벌 경쟁력을 위해 3개월 간 화상 어학 프로그램을 제공」 · 「실용적인 커리큘럼을 운영」 — 회사가 여는 화상 수업"}
+    {"comp": "nexen_tire", "h": "7e88b178ac", "mode": "inhouse", "why": "원문 「글로벌 경쟁력을 위해 3개월 간 화상 어학 프로그램을 제공」 · 「실용적인 커리큘럼을 운영」 — 회사가 여는 화상 수업"},
+    {"comp": "woori_bank", "h": "7f3de9ba0f", "mode": "unknown", "why": "원문은 외국어 연수 지원뿐이라 회사가 수업을 여는지 비용을 대는지 나오지 않는다"}
   ]
 }

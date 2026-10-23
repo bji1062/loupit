@@ -120,6 +120,8 @@
     },
     {"comp": "nice_info", "h": "0bbd9aaec3", "facets_add": ["self_approve", "reason"], "why": "원문 「휴가 신청에는 결재자가 없습니다 … 복잡한 결재라인 없이」(승인 없이 쓰기)와 「연 1회 거주이전휴가 … 이사해 보세요」(이사 사유 휴가)를 규칙 패턴이 못 잡는다"},
     {"comp": "lg_hnh", "h": "cf0e36b0ff", "facets_add": ["hourly"], "why": "원문 「반반일 휴가제 실시」 — 하루보다 잘게 쪼개 쓰는 휴가 단위"},
-    {"comp": "toss", "h": "0ca96b5371", "facets_add": ["self_approve"], "why": "원문 「별도의 보고나 승인 없이 자유롭게 휴가를 사용할 수 있습니다」 — 승인 없이 스스로 쓰는 휴가"}
+    {"comp": "toss", "h": "0ca96b5371", "facets_add": ["self_approve"], "why": "원문 「별도의 보고나 승인 없이 자유롭게 휴가를 사용할 수 있습니다」 — 승인 없이 스스로 쓰는 휴가"},
+    {"comp": "posco_enc", "h": "9cca7f37a7", "facets_add": ["self_approve"], "why": "원문 「연차휴가 셀프 결재」 · 채용 홈페이지 「연차사용 자가결재」 — 승인 없이 스스로 쓰는 방식"},
+    {"comp": "meritz_fire", "h": "7f5378ff28", "facets_add": ["self_approve"], "why": "원문이 누구나 승인 없이 자유롭게 휴가를 사용한다고 밝힌다"}
   ]
 }

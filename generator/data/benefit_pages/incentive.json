@@ -181,6 +181,9 @@
     {"comp": "daishin_securities", "h": "451944c000", "mode": "both", "why": "원문이 일반 직원 성과보수에 회사 전체·총괄·부문 단위의 생산성, 손익, 핵심성과지표 달성률을, 채용 페이지가 직무별 성과 및 능력을 적어 회사 실적과 개인 성과가 둘 다 나온다"},
     {"comp": "yg_entertainment", "h": "fe2056bf71", "facets_remove": ["frequency"], "why": "「2025년 상반기」는 경영성과를 잰 기간이고 지급 주기가 아니다"},
     {"comp": "ecopro_materials", "h": "c8788b4b56", "mode": "individual", "why": "운영직 평가제도를 개편해 정량지표에 따라 평가급을 지급한다는 원문은 개인 평가에 따른 차등 지급이다 — 「개인」 낱말이 없어 unknown 으로 잡혔다"},
-    {"comp": "harim", "h": "85b3d9f077", "mode": "individual", "why": "2025 지속가능경영보고서 81쪽 「직급별 평가 결과에 따라 연간 성과 상여를 지급」 — 평가 결과 연동 성과급"}
+    {"comp": "harim", "h": "85b3d9f077", "mode": "individual", "why": "2025 지속가능경영보고서 81쪽 「직급별 평가 결과에 따라 연간 성과 상여를 지급」 — 평가 결과 연동 성과급"},
+    {"comp": "lotte_innovate", "h": "71750ed27f", "mode": "both", "why": "원문 「전사 성과급과 개인 성과 상여를 지급」이 회사 단위 성과급과 개인 성과 상여를 함께 밝힌다"},
+    {"comp": "ls_cable", "h": "653c80cefc", "mode": "both", "why": "원문 「연말에 회사, 소속된 조직 및 개인이 달성한 성과에 따른 성과급 제도」는 회사 성과와 조직·개인 성과를 함께 적었다"},
+    {"comp": "sk_siltron", "h": "eb7c197056", "mode": "both", "why": "Profit Sharing(이익 분배)과 Target Incentive(목표달성상여금)를 평가결과에 따라 지급(45쪽) — 회사 실적과 개인 평가 둘 다"}
   ]
 }

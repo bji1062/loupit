@@ -210,6 +210,10 @@
     {"comp": "skc", "h": "4ec183535f", "facets_remove": ["external"], "why": "원문 「SK그룹 mySUNI 수강」은 그룹 공통 학습 플랫폼 수강이지 사외 교육비 지원이 아니다"},
     {"comp": "megastudy_edu", "h": "af294dfce9", "facets_remove": ["talk"], "why": "자사 강좌 수강료 지원은 회사가 파는 인강 · 학원 수강 상품의 수강료 지원(Life 페이지 · 공고 「자사 강좌 수강료 지원 및 할인혜택」) — 특강 · 교양 강좌가 아니다"},
     {"comp": "dong_a_st", "h": "3d9e17b153", "facets_remove": ["talk"], "why": "원문 「사이버 강좌 지원」의 강좌는 온라인 수강이다 — 특강·교양 강좌를 밝힌 문장이 없다"},
-    {"comp": "db_hitek", "h": "a260c52a3a", "facets_remove": ["external"], "why": "원문 「외부강사 특강」은 회사가 외부 강사를 불러 여는 사내 특강이지 회사 밖 교육을 지원한다는 말이 아니다"}
+    {"comp": "db_hitek", "h": "a260c52a3a", "facets_remove": ["external"], "why": "원문 「외부강사 특강」은 회사가 외부 강사를 불러 여는 사내 특강이지 회사 밖 교육을 지원한다는 말이 아니다"},
+    {"comp": "woori_bank", "h": "5f15ba575b", "facets_add": ["online"], "why": "연수포털(WEZ)은 직무 · 자격증 강좌와 지식 콘텐츠를 제공하는 웹 학습 포털이다"},
+    {"comp": "lf", "h": "420b13d3e8", "facets_remove": ["external"], "why": "「외부 전문가 특강」의 외부는 강사가 회사 밖 사람이라는 뜻이다 — 사외 교육비 지원 문장이 아니다(외부교육 지원은 conference 행)"},
+    {"comp": "kcc_glass", "h": "cd9face50c", "facets_remove": ["talk"], "why": "원문 「사내 외국어 강좌와 온라인 강좌를 운영」의 온라인 강좌는 온라인 과정이고 특강 · 교양 강좌가 아니다"},
+    {"comp": "multicampus", "h": "e5418ae0df", "facets_add": ["study"], "why": "공고 조직문화 지원 줄에 학습 소모임 운영이 있다 — 규칙 학습 모임 패턴이 소모임을 못 잡는다"}
   ]
 }

@@ -104,6 +104,8 @@
       "why": "「조직장 추천 인원」은 GDS 포상 대상을 고르는 절차다 — 인재 추천 포상이 아니다"
     },
     {"comp": "hyosung_tnc", "h": "0976d137e4", "facets_remove": ["invention"], "why": "「연구」는 자랑스러운 효성인상 시상 부문 이름(마케팅, 기술, 연구, 지원 4개부문)이지 발명 · 연구 포상이 아니다"},
-    {"comp": "hanall_biopharma", "h": "4529868bbe", "facets_add": ["excellent"], "why": "원문 「우수인재 정기 포상」 · 「우수 인재에 대한 정기 포상」 — 우수 직원 포상인데 규칙 낱말이 「우수사원」만 잡는다"}
+    {"comp": "hanall_biopharma", "h": "4529868bbe", "facets_add": ["excellent"], "why": "원문 「우수인재 정기 포상」 · 「우수 인재에 대한 정기 포상」 — 우수 직원 포상인데 규칙 낱말이 「우수사원」만 잡는다"},
+    {"comp": "posco", "h": "45b0b1babf", "facets_add": ["contribution"], "why": "원문 「우수한 성과를 창출한 직원에게는 공적에 따른 포상을 수여」는 공로 포상이다"},
+    {"comp": "jw_pharma", "h": "24019a5d9d", "facets_add": ["frequency", "excellent"], "why": "원문 윤리경영 실천 우수자 연 1회 시상 — 해마다 우수자를 뽑아 주는 포상"}
   ]
 }
