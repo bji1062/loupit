@@ -73,7 +73,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 7(2026-10-17): 제일기획 — 사용자 그룹 단위 인증 결정(삼성 계열 전부 samsung.com). 전용 도메인 cheil.com 은 아래 단일 줄
                          'cheil_worldwide',
                          -- 확장 웨이브 9(2026-10-31): 호텔신라 — samsungcareers E50 채용 문의 주소가 @samsung.com(삼성 그룹 단위 인증). 자기 메일 도메인 관측 0
-                         'hotel_shilla');
+                         'hotel_shilla',
+                         -- 확장 웨이브 15(2026-11-03): 세메스(채용 사이트 개인정보 안내 @semes.com · MX mailin.samsung.com) · 멀티캠퍼스(채용 사이트 꼬리말 @multicampus.com · MX mailin.samsung.com) — 삼성 그룹 단위 인증 · 전용 도메인은 아래 단일 줄
+                         'semes','multicampus');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
@@ -92,7 +94,9 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          -- 확장 웨이브 10(2026-11-07): SKC 2026 지속가능경영보고서 문의처 @sk.com · 자기 웹 도메인 skc.kr · skc.co.kr 의 MX 도 spmail.sk.com
                          'skc',
                          -- 확장 웨이브 13(2026-10-20): SK온 공식 홈 개인정보 관련 담당자 표 관측 주소 @sk.com · 자기 웹 도메인 sk-on.com 의 MX 도 spmail.sk.com
-                         'sk_on');
+                         'sk_on',
+                         -- 확장 웨이브 15(2026-11-03): SK에코플랜트 · SK실트론 보고서 문의처 @sk.com · SK에너지는 게시 주소 0 이나 웹 skenergy.com 의 MX 가 spmail.sk.com(그룹 단위 인증 · SK바이오사이언스 선례) · skecoplant.com MX 도 spmail.sk.com
+                         'sk_ecoplant','sk_siltron','sk_energy');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
 -- 2026-07-29 추가분 — 62개사(도메인 등록 31 → 93/95, 커버리지 33% → 98%)
@@ -382,9 +386,10 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 확장 웨이브 9(2026-10-31): 롯데쇼핑(채용 FAQ · 보고서 문의처) · 롯데에너지머티리얼즈(보고서 제보 메일) 관측 주소가 @lotte.net. 롯데관광개발은 롯데그룹이 아니다 — 이 줄에 넣지 않는다.
 -- 확장 웨이브 12(2026-10-18): 롯데하이마트(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net · 웹 himart.co.kr 의 MX 도 antispam.lotte.net.
 -- 확장 웨이브 14(2026-10-27): 호텔롯데(2025 지속가능성 보고서 ESG 문의처) · 롯데이노베이트(보고서 문의처 · 채용 문의 대표 주소) · 코리아세븐(개인정보처리방침 보호 책임자 · 담당 부서) 관측 주소가 @lotte.net.
+-- 확장 웨이브 15(2026-11-03): 롯데건설(2026 지속가능경영보고서 문의처) · 롯데글로벌로지스(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY
-   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials','lotte_himart','hotel_lotte','lotte_innovate','korea_seven');
+   WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials','lotte_himart','hotel_lotte','lotte_innovate','korea_seven','lotte_enc','lotte_glogis');
 
 -- ── 확장 웨이브 1 (2026-09-01, 11개사 신규 등록 중 관측 6사) ─────────────────────
 -- 근거: 각사 공식 페이지 실관측(docs/handoff/2026-09-01-evidence/wave1/ 각 evidence).
@@ -810,3 +815,28 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lscns.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'ls_cable';
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hanjin.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hanjin';
+
+-- ═══════════════════════════════════════════════════════════════════════════════
+-- 확장 웨이브 15 (2026-11-03 서빙 반영, 17개사 중 전용 7사 7도메인 + 그룹 줄 병합 SK 3 · 롯데 2 · 삼성 2)
+-- 근거는 각사 evidence(loupit-evidence/2026-10-23-wave15/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 처리방침에 게시된 주소의 도메인만 · MX 는 감사 dig 실측(2026-10-23).
+-- 그룹 줄 병합: SK에코플랜트 · SK실트론 · SK에너지 → SK 그룹 줄 · 롯데건설 · 롯데글로벌로지스 → 롯데 그룹 줄 · 세메스 · 멀티캠퍼스 → 삼성 그룹 줄(전용 도메인은 아래 단일 줄 — 제일기획 선례).
+-- 미등록 5: 우리은행 · 한국스탠다드차타드은행 · 현대카드(게시 주소 0) · 메리츠화재 · JW중외제약(아래 보류 — 그룹 공용) → 수동 승인 폴백.
+-- ⓘ lghv.net 은 LG헬로비전 보고서 문의처 도메인(웹 lghellovision.net 과 다름 · MX outlook) · 모회사 LG유플러스는 lguplus.co.kr 로 겹치지 않는다.
+-- ⓘ homecc.com 은 KCC글라스 인테리어 사업(홈씨씨) 도메인이자 ESG 보고서 대표 문의 주소 · 형제 KCC 는 kccworld.co.kr 로 겹치지 않는다 — KCC 계열 다른 법인 주소로 관측되면 다시 본다.
+-- ⓘ semes.com · multicampus.com 은 삼성 그룹 메일 인프라(mailin.samsung.com)를 거치지만 주소 도메인은 법인 고유다.
+-- @rejected: meritz.co.kr — 메리츠화재. 메리츠금융그룹 공용 도메인(채용 사이트 meta author 메리츠금융그룹) — 그룹 단위 인증 결정 없음 · 코퍼스 메리츠 계열 1사
+-- @rejected: jw-group.co.kr — JW중외제약. JW그룹 공용 도메인(개인정보처리방침 문의처) — 그룹 단위 인증 결정 없음 · 코퍼스 JW 계열 1사
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'semes.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'semes';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lfcorp.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lf';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'cafe24corp.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'cafe24';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'lghv.net', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'lg_hellovision';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'homecc.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'kcc_glass';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'dohwa.co.kr', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'dohwa';
+INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
+  SELECT COMP_ID, 'multicampus.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'multicampus';

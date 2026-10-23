@@ -222,6 +222,9 @@ def test_SB10_scrape_official_companies_have_url(seeded_db):
         # 확장 웨이브 14(2026-10-27, 18) — 신규 등록(후보 풀 3차 셋째 · 비상장 11), 전부 실 URL 헤더
         "posco", "posco_enc", "sk_shieldus", "hotel_lotte", "lotte_innovate", "hyundai_transys", "dongwon_fnb", "osstem", "eland_world",
         "shinsegae_food", "ls_cable", "korea_seven", "samlip", "hanjin", "dongkuk_steel", "shinsegae_inc", "kolon_global", "hansol_paper",
+        # 확장 웨이브 15(2026-11-03, 17) — 신규 등록(후보 풀 3차 넷째 · 비상장 10 · 금융 4), 전부 실 URL 헤더
+        "woori_bank", "sc_bank", "meritz_fire", "hyundai_card", "sk_ecoplant", "lotte_enc", "sk_siltron", "semes", "sk_energy",
+        "lotte_glogis", "lf", "cafe24", "lg_hellovision", "jw_pharma", "kcc_glass", "dohwa", "multicampus",
         # 재수집 R-1(2026-09-26, 9) — 구본 「수동 입력」 헤더를 공식 출처 URL 로 다시 세움
         "skt", "sk_innovation", "sk_hynix", "lig_nex1", "naver", "kakao_pay",
         "hyundai_motor", "s_oil", "lotte_chem",

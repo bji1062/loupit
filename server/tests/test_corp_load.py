@@ -35,7 +35,8 @@ FINANCIAL_7 = {"DB손해보험", "NH투자증권", "기업은행", "삼성생명
                "교보증권", "코리안리",  # 확장 웨이브 7(2026-10-16): 증권 · 재보험
                "신영증권", "미래에셋생명", "한화투자증권",  # 확장 웨이브 8(2026-10-16): 증권 · 생보 · 증권
                "대신증권",  # 확장 웨이브 9(2026-10-16): 증권
-               "케이뱅크", "한화손해보험"}  # 확장 웨이브 11(2026-10-16): 은행 · 손보(총 21)
+               "케이뱅크", "한화손해보험",  # 확장 웨이브 11(2026-10-16): 은행 · 손보
+               "우리은행", "한국스탠다드차타드은행(SC제일은행)", "메리츠화재", "현대카드"}  # 확장 웨이브 15(2026-11-03): 은행 2 · 손보 · 카드(총 25)
 CJ_ENM_CORP = "00265324"
 
 
@@ -57,8 +58,8 @@ def test_FN1_seed_populates_mapping_at_last_step(seeded_db):
     """`load.main(fresh=True)` 만으로 TCORP·TCOMPANY_CORP 가 채워진다(재시드 후 매핑 소실 방지)."""
     rows = load_corp.read_map()
     mapped = [r for r in rows if r["status"] != "UNMAPPED"]
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 303  # − LG · LS 지주 · HPSP 등록 해제(2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-16) + 확장 웨이브 7 22개사(2026-10-16) + 확장 웨이브 8 23개사(2026-10-16) + 확장 웨이브 9 22개사(2026-10-16) + 확장 웨이브 10 12개사(2026-10-16) + 확장 웨이브 11 5개사(2026-10-16) + 확장 웨이브 12 18개사(2026-10-18) + 확장 웨이브 13 11개사(2026-10-20) + 확장 웨이브 14 18개사(2026-10-27)
-    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 302
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCOMPANY_CORP") == len(mapped) == 320  # − LG · LS 지주 · HPSP 등록 해제(2026-10-02) + 확장 웨이브 5 13개사(2026-10-10) + 확장 웨이브 6 13개사(2026-10-16) + 확장 웨이브 7 22개사(2026-10-16) + 확장 웨이브 8 23개사(2026-10-16) + 확장 웨이브 9 22개사(2026-10-16) + 확장 웨이브 10 12개사(2026-10-16) + 확장 웨이브 11 5개사(2026-10-16) + 확장 웨이브 12 18개사(2026-10-18) + 확장 웨이브 13 11개사(2026-10-20) + 확장 웨이브 14 18개사(2026-10-27) + 확장 웨이브 15 17개사(2026-11-03)
+    assert _scalar(seeded_db, "SELECT COUNT(*) FROM TCORP") == len({r["corp_code"] for r in mapped}) == 319
     # 매핑된 회사는 전부 실재하는 TCOMPANY 를 가리킨다(고아 0)
     assert _scalar(
         seeded_db,
@@ -79,7 +80,7 @@ def test_FN1_reapply_is_idempotent(seeded_db):
     seeded_db.commit()
     assert _rows(seeded_db, "SELECT COMP_ID, CORP_CODE, MATCH_CD FROM TCOMPANY_CORP ORDER BY COMP_ID") == before
     assert _rows(seeded_db, "SELECT CORP_CODE, CORP_NM, STOCK_CD, ACCT_SET_CD, FS_DIV_CD FROM TCORP ORDER BY CORP_CODE") == corps_before
-    assert stats["mapped"] == 303 and stats["unmatched"] == []
+    assert stats["mapped"] == 320 and stats["unmatched"] == []
     assert all(db_id == dict((nm, cid) for cid, nm in _rows(seeded_db, "SELECT COMP_ID, COMP_NM FROM TCOMPANY"))[nm]
                for nm, _csv_id, db_id in stats["id_drift"]), "드리프트가 이름으로 해소되지 않았다"
     drift_lines = [ln for ln in lines if "드리프트" in ln]

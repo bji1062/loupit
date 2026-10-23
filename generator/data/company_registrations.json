@@ -9,6 +9,29 @@
   ],
   "waves": [
     {
+      "date": "2026-11-03",
+      "label": "회사 확장 웨이브 15",
+      "companies": [
+        "cafe24",
+        "dohwa",
+        "hyundai_card",
+        "jw_pharma",
+        "kcc_glass",
+        "lf",
+        "lg_hellovision",
+        "lotte_enc",
+        "lotte_glogis",
+        "meritz_fire",
+        "multicampus",
+        "sc_bank",
+        "semes",
+        "sk_ecoplant",
+        "sk_energy",
+        "sk_siltron",
+        "woori_bank"
+      ]
+    },
+    {
       "date": "2026-10-27",
       "label": "회사 확장 웨이브 14",
       "companies": [
