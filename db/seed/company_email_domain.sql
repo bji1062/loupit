@@ -74,7 +74,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          'cheil_worldwide',
                          -- 확장 웨이브 9(2026-10-31): 호텔신라 — samsungcareers E50 채용 문의 주소가 @samsung.com(삼성 그룹 단위 인증). 자기 메일 도메인 관측 0
                          'hotel_shilla',
-                         -- 확장 웨이브 15(2026-11-03): 세메스(채용 사이트 개인정보 안내 @semes.com · MX mailin.samsung.com) · 멀티캠퍼스(채용 사이트 꼬리말 @multicampus.com · MX mailin.samsung.com) — 삼성 그룹 단위 인증 · 전용 도메인은 아래 단일 줄
+                         -- 확장 웨이브 15(2026-10-23): 세메스(채용 사이트 개인정보 안내 @semes.com · MX mailin.samsung.com) · 멀티캠퍼스(채용 사이트 꼬리말 @multicampus.com · MX mailin.samsung.com) — 삼성 그룹 단위 인증 · 전용 도메인은 아래 단일 줄
                          'semes','multicampus');
 
 -- ── SK 그룹 공용 도메인 sk.com → 전 계열사(그룹단위 인증) ─────────────────────────
@@ -95,7 +95,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
                          'skc',
                          -- 확장 웨이브 13(2026-10-20): SK온 공식 홈 개인정보 관련 담당자 표 관측 주소 @sk.com · 자기 웹 도메인 sk-on.com 의 MX 도 spmail.sk.com
                          'sk_on',
-                         -- 확장 웨이브 15(2026-11-03): SK에코플랜트 · SK실트론 보고서 문의처 @sk.com · SK에너지는 게시 주소 0 이나 웹 skenergy.com 의 MX 가 spmail.sk.com(그룹 단위 인증 · SK바이오사이언스 선례) · skecoplant.com MX 도 spmail.sk.com
+                         -- 확장 웨이브 15(2026-10-23): SK에코플랜트 · SK실트론 보고서 문의처 @sk.com · SK에너지는 게시 주소 0 이나 웹 skenergy.com 의 MX 가 spmail.sk.com(그룹 단위 인증 · SK바이오사이언스 선례) · skecoplant.com MX 도 spmail.sk.com
                          'sk_ecoplant','sk_siltron','sk_energy');
 
 -- ═══════════════════════════════════════════════════════════════════════════════
@@ -385,8 +385,8 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
 -- 그룹 단위 인증(사용자 2026-10-14) · ⚠ 롯데렌탈은 최대주주 지분 매각 계약(2026-08-11 · 종결 전) — 종결되면 이 IN 목록에서 뺀다.
 -- 확장 웨이브 9(2026-10-31): 롯데쇼핑(채용 FAQ · 보고서 문의처) · 롯데에너지머티리얼즈(보고서 제보 메일) 관측 주소가 @lotte.net. 롯데관광개발은 롯데그룹이 아니다 — 이 줄에 넣지 않는다.
 -- 확장 웨이브 12(2026-10-18): 롯데하이마트(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net · 웹 himart.co.kr 의 MX 도 antispam.lotte.net.
--- 확장 웨이브 14(2026-10-27): 호텔롯데(2025 지속가능성 보고서 ESG 문의처) · 롯데이노베이트(보고서 문의처 · 채용 문의 대표 주소) · 코리아세븐(개인정보처리방침 보호 책임자 · 담당 부서) 관측 주소가 @lotte.net.
--- 확장 웨이브 15(2026-11-03): 롯데건설(2026 지속가능경영보고서 문의처) · 롯데글로벌로지스(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net.
+-- 확장 웨이브 14(2026-10-23): 호텔롯데(2025 지속가능성 보고서 ESG 문의처) · 롯데이노베이트(보고서 문의처 · 채용 문의 대표 주소) · 코리아세븐(개인정보처리방침 보호 책임자 · 담당 부서) 관측 주소가 @lotte.net.
+-- 확장 웨이브 15(2026-10-23): 롯데건설(2026 지속가능경영보고서 문의처) · 롯데글로벌로지스(2025 지속가능경영보고서 문의처) 관측 주소가 @lotte.net.
 INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'lotte.net', TRUE FROM TCOMPANY
    WHERE COMP_ENG_NM IN ('lotte_chem','lotte_fine_chem','lotte_chilsung','lotte_rental','lotte_wellfood','lotte_shopping','lotte_energy_materials','lotte_himart','hotel_lotte','lotte_innovate','korea_seven','lotte_enc','lotte_glogis');
@@ -790,7 +790,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'visang.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'visang_edu';
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- 확장 웨이브 14 (2026-10-27 서빙 반영, 18개사 중 전용 5사 5도메인 + 롯데 그룹 줄 병합 3사)
+-- 확장 웨이브 14 (2026-10-23 서빙 반영, 18개사 중 전용 5사 5도메인 + 롯데 그룹 줄 병합 3사)
 -- 근거는 각사 evidence(loupit-evidence/2026-10-22-wave14/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 처리방침에 게시된 주소의 도메인만.
 -- 그룹 줄 병합: 호텔롯데 · 롯데이노베이트 · 코리아세븐 → 위 롯데 그룹 줄(lotte.net — 보고서 문의처 · 처리방침 관측).
 -- 미등록 10: 포스코(posco.com 은 위 보류 목록 — 그룹 도메인이라 등록 안 함) · SK쉴더스(게시 주소 0 · MX spmail.sk.com 이지만 SK 기업집단 계열제외라 SK 그룹 줄에 넣지 않음) ·
@@ -817,7 +817,7 @@ INSERT IGNORE INTO TCOMPANY_EMAIL_DOMAIN (COMP_ID, EMAIL_DOMAIN_NM, ACTIVE_YN)
   SELECT COMP_ID, 'hanjin.com', TRUE FROM TCOMPANY WHERE COMP_ENG_NM = 'hanjin';
 
 -- ═══════════════════════════════════════════════════════════════════════════════
--- 확장 웨이브 15 (2026-11-03 서빙 반영, 17개사 중 전용 7사 7도메인 + 그룹 줄 병합 SK 3 · 롯데 2 · 삼성 2)
+-- 확장 웨이브 15 (2026-10-23 서빙 반영, 17개사 중 전용 7사 7도메인 + 그룹 줄 병합 SK 3 · 롯데 2 · 삼성 2)
 -- 근거는 각사 evidence(loupit-evidence/2026-10-23-wave15/collect/ 의 이메일 도메인 관측 절) — 공식 페이지 · 보고서 · 처리방침에 게시된 주소의 도메인만 · MX 는 감사 dig 실측(2026-10-23).
 -- 그룹 줄 병합: SK에코플랜트 · SK실트론 · SK에너지 → SK 그룹 줄 · 롯데건설 · 롯데글로벌로지스 → 롯데 그룹 줄 · 세메스 · 멀티캠퍼스 → 삼성 그룹 줄(전용 도메인은 아래 단일 줄 — 제일기획 선례).
 -- 미등록 5: 우리은행 · 한국스탠다드차타드은행 · 현대카드(게시 주소 0) · 메리츠화재 · JW중외제약(아래 보류 — 그룹 공용) → 수동 승인 폴백.

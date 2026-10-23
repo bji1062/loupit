@@ -320,7 +320,7 @@ WAVE13_ALIASES: dict[str, list[str]] = {
     "visang_edu": ["Visang Education"],  # 영문(DART VISANG EDUCATION INC) — 계열 비상캠퍼스 · 비상교과서 이름 금지
 }
 
-# 확장 웨이브 14(2026-10-27 서빙 반영 · 후보 풀 3차 셋째 · 비상장 11 + 상장 7)
+# 확장 웨이브 14(2026-10-23 서빙 반영 · 후보 풀 3차 셋째 · 비상장 11 + 상장 7)
 WAVE14_ALIASES: dict[str, list[str]] = {
     "posco": ["POSCO"],  # 영문(DART POSCO) — 지주 POSCO홀딩스 · 포스코DX 등 계열 이름 금지
     "posco_enc": ["포스코건설", "POSCO E&C"],  # 구명(2023-03 상호 변경) · 영문 약칭 — 포스코 · 포스코홀딩스 이름 금지
@@ -342,7 +342,7 @@ WAVE14_ALIASES: dict[str, list[str]] = {
     "hansol_paper": ["Hansol Paper"],  # 영문(DART Hansol Paper Co., Ltd) — 한솔홀딩스 · 한솔케미칼 이름 금지
 }
 
-# 확장 웨이브 15(2026-11-03 서빙 반영 · 후보 풀 3차 넷째 · 비상장 10 + 상장 7)
+# 확장 웨이브 15(2026-10-23 서빙 반영 · 후보 풀 3차 넷째 · 비상장 10 + 상장 7)
 WAVE15_ALIASES: dict[str, list[str]] = {
     "woori_bank": ["Woori Bank"],  # 영문(DART Woori Bank) — 우리금융지주 · 우리카드 등 계열 이름 금지
     "sc_bank": ["한국스탠다드차타드은행", "SC제일은행", "Standard Chartered Bank Korea"],  # DART 목록 이름(표시명 괄호 꼴 · 판정 163) · 브랜드 별칭(163) · 영문 — Standard Chartered 그룹 · SC증권 이름 금지
